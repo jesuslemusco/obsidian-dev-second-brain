@@ -572,6 +572,45 @@ is "unresolved-links: one CLI call for the whole run" "$(grep -c '^unresolved ' 
 export SECOND_BRAIN_OBSIDIAN="none"
 reset
 
+# ---------------------------------------------------------------- a project without sprints
+reset
+K="$vault/projects/kanban"
+sb scaffold project Kanban --path projects/kanban --keys KB --no-sprints
+sb task new KB-1 --project Kanban --title "First task"
+doc Kanban
+rc_is "no sprints: exit 0" 0
+is "no sprints: no fail row" "$(printf '%s\n' "$OUT" | grep '^fail ' || true)" ""
+chk "no sprints: the profile passes without a sprints hub" profile Kanban "ok | 0 | -"
+chk "no sprints: the sprints check passes" sprints Kanban "ok | 0 | -"
+is "no sprints: the sprints row says why" "$(fix_of sprints Kanban)" "sprints are off"
+export SECOND_BRAIN_OBSIDIAN="$stub/obsidian"
+rm -f "$stub/view-Current sprint.txt"
+: >"$stub/view-By topic.txt"
+printf '%s\n' "projects/kanban/tasks/KB-1/README.md" >"$stub/view-All.txt"
+: >"$stub/unresolved.txt"
+: >"$stub/calls.log"
+doc Kanban
+chk "no sprints: the board passes with no Current sprint view" board Kanban "ok | 0 | -"
+is "no sprints: one query for each of the four views" "$(grep -c '^base:query ' "$stub/calls.log")" "4"
+edit "$K/tasks/KB-1/README.md" 's/^status: planned$/status: planned\
+sprint: "2026-03-01"/'
+is "no sprints: a sprint id left on a task" "$(grep -c '^sprint: "2026-03-01"$' "$K/tasks/KB-1/README.md")" "1"
+doc Kanban
+chk "no sprints: a leftover sprint id is not reported" sprints Kanban "ok | 0 | -"
+edit "$K/claude/profile.md" 's/^uses_sprints: false$/uses_sprints: true/'
+doc Kanban
+chk "no sprints: turned on again, the leftover id is reported" sprints Kanban "fail | 1 | KB-1:2026-03-01"
+chk "no sprints: turned on again, the missing view is named" board Kanban "fail | 1 | Current sprint"
+export SECOND_BRAIN_OBSIDIAN="none"
+sb scaffold project Kanban --path projects/kanban --keys KB
+sb sprint open Kanban --end 2026-01-14
+edit "$K/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
+doc Kanban
+rc_is "no sprints: a sprint left in progress is no failure" 0
+chk "no sprints: a sprint left in progress is a warning" sprints Kanban "warn | 1 | 2026-01-14:in-progress"
+is "no sprints: the way to close it is given" "$(fix_of sprints Kanban)" \
+  "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
+
 # ---------------------------------------------------------------- arguments and setup
 doc Nope
 rc_is "a project that is not in the index: exit 1" 1

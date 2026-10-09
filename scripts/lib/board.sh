@@ -159,7 +159,9 @@ cmd_board() {
   [ -d "$dir" ] || sb_die 1 "no tasks folder at $SB_P_PATH/$SB_TASKS_ROOT"
   base="$SB_P_PATH/$SB_TASKS_ROOT/tasks.base"
   if [ "$view" = "Current sprint" ]; then
-    cur="$(sb_sprint_current_id "$SB_P_PATH")"
+    # Sprints turned off: a sprint note left in progress lists nothing.
+    cur=""
+    ! sb_uses_sprints "$SB_P_PATH" || cur="$(sb_sprint_current_id "$SB_P_PATH")"
     if [ -z "$cur" ]; then
       printf 'source: files\n'
       return 0

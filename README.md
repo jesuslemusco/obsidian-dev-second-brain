@@ -81,6 +81,10 @@ tag `billing/invoices`. A task never lives inside the topic it is about.
 An existing project does not have to move its folders. Its profile says where its topics and
 sprint notes are.
 
+Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
+`vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
+`Current sprint` view; its stories are tracked by status alone.
+
 ## Why it is cheap to run
 
 - The always-loaded text is one short index. The rules live in one note that is read on demand.

@@ -225,6 +225,12 @@ sb_task_set() {
   sb_need_task "$id" "$project"
   i=0
   while [ "$i" -lt "$n" ]; do
+    # Removing a leftover sprint id is still allowed where sprints are off.
+    case "${pairs[$i]}" in sprint=?*) sb_need_sprints ;; esac
+    i=$((i + 1))
+  done
+  i=0
+  while [ "$i" -lt "$n" ]; do
     kv="${pairs[$i]}"
     key="${kv%%=*}"
     value="${kv#*=}"

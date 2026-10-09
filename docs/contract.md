@@ -46,7 +46,7 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
   tasks/tasks.base
   tasks/<TICKET-ID>/README.md
   <topics_root>/...            default docs/
-  <sprints_root>/README.md     default sprints/
+  <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```
 
@@ -63,6 +63,7 @@ tracker: "Jira"
 persona: "Example engineer"
 tasks_root: tasks
 topics_root: docs
+uses_sprints: true
 sprints_root: sprints
 sprint_length_days: 14
 sprint_anchor_end: "2026-01-14"
@@ -82,6 +83,15 @@ tags:
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `topics_root: "."` means topic folders sit at the project root.
+- `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
+  them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
+  no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,
+  `task set` refuses a sprint id and `board <project> "Current sprint"` has no rows.
+  - Turning them on later: set the key to `true` and run `scaffold project` again. It creates the
+    hub and names on stderr what it leaves to add by hand in files that exist: the map line in the
+    project README, and the board's `Current sprint` view and sprint columns.
+  - Turning them off on a project that ran sprints: close the sprint in progress first. One left
+    in progress can no longer be closed, and the doctor warns about it.
 - `environments` lists environment names in promotion order, or is empty.
 - `repos` are folder names of the code repositories, used to match the working directory. The first
   one is the default repo for branch checks.
@@ -169,7 +179,8 @@ Body: an up-link to the sprints hub, then `## Goal`, `## Notes`, `## Close`.
 `<project>/<tasks_root>/tasks.base`, an Obsidian Bases file. Views, by exact name: `Active`,
 `Current sprint`, `By topic`, `Needs a status`, `All`. It lists only the README directly inside each
 task folder (a folder-depth filter), shows `file.asLink(aliases[0])` as the task name, and the
-`Current sprint` view filters on one literal sprint id that `sprint open` rewrites.
+`Current sprint` view filters on one literal sprint id that `sprint open` rewrites. A project with
+`uses_sprints: false` is scaffolded without the `Current sprint` view and the sprint columns.
 
 ## 7. The helper
 
@@ -198,7 +209,7 @@ Rules that hold for every command:
 | `version` | the plugin version | read from `.claude-plugin/plugin.json` |
 | `conventions [section]` | one level-2 section of the vault's conventions note | default section `The short version`; the name is matched case-insensitively; exit 1 when the note or the section is missing |
 | `root` | absolute physical path of the vault | exit 2 when the pointer is missing or not a vault |
-| `context [--cwd DIR]` | at most 6 `key: value` lines: `vault`, `obsidian` (up, down, missing), `search` (ok, unreliable, unknown), `project`, `project_path`, `sprint` | always exits 0; unknown values print `none`. `search` is read from the line `- search: ok ...` or `- search: unreliable ...` in the conventions' `## Limits on this install` block, which `probe` writes |
+| `context [--cwd DIR]` | at most 6 `key: value` lines: `vault`, `obsidian` (up, down, missing), `search` (ok, unreliable, unknown), `project`, `project_path`, `sprint` | always exits 0; unknown values print `none`. `sprint` is `off` for a project that does not use sprints. `search` is read from the line `- search: ok ...` or `- search: unreliable ...` in the conventions' `## Limits on this install` block, which `probe` writes |
 | `projects` | one TSV row per project: name, path, keys | from the index table |
 | `project --name N` / `--key K` / `--cwd DIR` | one TSV row: name, path, keys | `K` is a key prefix or a full id (`EX` or `EX-123`). With no flag it uses the working directory. Exit 1 none, exit 4 several (prints them) |
 | `repo <project> [name]` | with no name, one TSV row per repo in the profile's order: name, path, state (`ok`, `missing`, or `unknown` when no location is recorded; path is then `-`). With a name, the path alone | paths are absolute, with `~` expanded. With a name: exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
@@ -208,20 +219,20 @@ Rules that hold for every command:
 | `board <project> [view] [--files]` | first line `source: board` or `source: files`, then one row per task (no rows for `Current sprint` when no sprint is in progress, whatever the source): `id | title | status | sprint | topics | branch | next | envs` | default view `Active` (status planned, in-progress or in-review). Asks Obsidian which notes the view holds, then reads their frontmatter; `--files` or a closed app reads the files directly. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault-relative path(s) | tries the task path, then `obsidian aliases`, then a frontmatter grep; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, topics, envs, summary line, newest status note | |
-| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, and for list keys |
+| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys, and for a sprint id on a project that does not use sprints (`sprint=` still removes one) |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; refuses `type/` and `status/` tags (exit 5) |
 | `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoting when needed; the first alias never changes; exit 6 when the alias already names another task. Renaming a slug-named task to its ticket id (a new first alias and folder name) is not covered yet and is done by hand |
 | `task new <ID> [--project P] [--title T] [--topics a,b] [--envs]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README or the id is another task's alias; a folder with no README gets one. Exit 5 for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | `obsidian search:context` scoped with `path=`, retried once when empty; grep fallback |
-| `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress |
+| `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
 | `sprint set <project> key=value...` | the changed keys | sets `goal` or `committed` on the sprint in progress; exit 1 when there is none, exit 5 for any other key |
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
 | `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`. A file that already exists is reported on stderr as `exists: <path>` |
-| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root |
+| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
@@ -256,7 +267,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `sb_link_scan`), `scripts/lib/
 | vault | `descriptions` | a scanned skill or agent description is over 200 characters (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | project | `profile` | the profile is missing, lacks a contract key, or lacks one of the seven sections (fail) |
-| project | `board` | the board file is missing, or a view does not answer (fail; skip the view part when Obsidian is down) |
+| project | `board` | the board file is missing, or a view does not answer (fail; skip the view part when Obsidian is down). `Current sprint` is not asked for when the project does not use sprints |
 | project | `index-fresh` | task READMEs on disk differ in number from the rows of view `All` (warn; skip when down) |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
 | project | `needs-a-status` | status missing or not one of the five (warn; never changed) |
@@ -267,7 +278,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `sb_link_scan`), `scripts/lib/
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo listed in the profile has a recorded location whose folder is missing (warn). Nothing recorded is ok |
-| project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks |
+| project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | Obsidian lists unresolved links from notes under the project (warn; skip when down) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
 | project | `line-endings` | a task README with mixed line endings (warn) |
@@ -303,7 +314,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `obsidian.sh` and `projects.
 Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a
 function another library owns. Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`,
 `sb_fm_edit`, `sb_fm_keys`, `sb_section`, `sb_task_files`, `sb_task_scan`, `sb_sprint_current_id`,
-`sb_fill`, `sb_body_insert`, `sb_note`.
+`sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`.
 
 ## 8. Templates
 

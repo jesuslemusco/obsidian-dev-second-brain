@@ -172,6 +172,16 @@ sb_setting() {
   printf '%s\n' "$v"
 }
 
+# Return 0 when the project at a vault path uses sprints; only uses_sprints: false turns them off.
+sb_uses_sprints() {
+  [ "$(sb_setting "$1" uses_sprints true | tr '[:upper:]' '[:lower:]')" != "false" ]
+}
+
+# Exit 5 when the current project does not use sprints.
+sb_need_sprints() {
+  sb_uses_sprints "$SB_P_PATH" || sb_die 5 "$SB_P_NAME does not use sprints (uses_sprints: false in its profile)"
+}
+
 # Resolve a project argument or exit 1 or 4; sets the SB_P_ globals and its folders.
 sb_need_project() {
   local rc=0
@@ -386,8 +396,12 @@ $rows
 EOF
       project="$SB_P_NAME"
       ppath="$SB_P_PATH"
-      sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
-      [ -n "$sprint" ] || sprint="none"
+      if sb_uses_sprints "$SB_P_PATH"; then
+        sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
+        [ -n "$sprint" ] || sprint="none"
+      else
+        sprint="off"
+      fi
     fi
   else
     sb_ob_bin >/dev/null && ob="down"

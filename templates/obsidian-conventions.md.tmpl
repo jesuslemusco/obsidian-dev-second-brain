@@ -123,6 +123,8 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 - Carrying a task over appends the old id to `carried_from` and sets `sprint` to the next id.
 - One sprint is in progress at a time. Its task list is the board's `Current sprint` view; nothing
   is typed into the sprint note until it closes.
+- A project whose profile says `uses_sprints: false` has no sprints: no sprint notes, no `sprint`
+  on its tasks, no `Current sprint` view. Its tasks are tracked by status alone.
 
 ## Hubs and links
 

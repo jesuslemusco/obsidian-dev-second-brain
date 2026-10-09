@@ -116,14 +116,44 @@ sb_index_add_row() {
   return 0
 }
 
+# Rewrite a board file without its sprint parts: the Current sprint view and the sprint columns.
+sb_board_drop_sprint() {
+  local file="$1" tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-base.XXXXXX")" || return 1
+  LC_ALL=C awk '
+    function flush(   i) {
+      if (!drop) for (i = 1; i <= n; i++) print buf[i]
+      n = 0; drop = 0
+    }
+    { line = $0; sub(/\r$/, "", line) }
+    line ~ /^  - type:/ { flush(); inview = 1 }
+    line ~ /^  note\.(sprint|carried_from):/ { skip = 1; next }
+    skip && line ~ /^    / { next }
+    { skip = 0 }
+    line ~ /^      - (sprint|carried_from)$/ { next }
+    inview && line ~ /^    name: Current sprint$/ { drop = 1 }
+    inview { buf[++n] = $0; next }
+    { print }
+    END { flush() }
+  ' "$file" >"$tmp" || { rm -f "$tmp"; return 1; }
+  cat "$tmp" >"$file"
+  rm -f "$tmp"
+  return 0
+}
+
 # Create a project tree on the standard layout and list it in the index.
 sb_scaffold_project() {
   local name="" path="" keys="" use="" rows hit troot topics sroot depth cur intro k keylist
-  local f_tasks="" f_topics="" f_sprints="" profile had_profile=0 line_tasks line_topics="" line_sprints q hit2
+  local f_tasks="" f_topics="" f_sprints="" profile had_profile=0 line_tasks line_topics="" line_sprints="" q hit2
+  local no_sprints=0 sprints=1 views base hub_new=0
   local nl=$'\n' cr=$'\r' tab=$'\t'
-  local usage="usage: second-brain scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R]"
+  local usage="usage: second-brain scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]"
   while [ $# -gt 0 ]; do
     case "$1" in
+      --no-sprints)
+        no_sprints=1
+        shift
+        ;;
       --path | --keys | --use-when | --tasks-root | --topics-root | --sprints-root)
         [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
         case "$1" in
@@ -145,6 +175,7 @@ sb_scaffold_project() {
     esac
   done
   if [ -z "$name" ] || [ -z "$path" ]; then sb_die 5 "$usage"; fi
+  if [ "$no_sprints" -eq 1 ] && [ -n "$f_sprints" ]; then sb_die 5 "--no-sprints and --sprints-root cannot go together"; fi
   case "$name$path$use" in
     *"$nl"* | *"$cr"* | *"$tab"*) sb_die 5 "the name, the path and the use-when text are one line each" ;;
   esac
@@ -199,10 +230,16 @@ sb_scaffold_project() {
     troot="$(sb_setting "$path" tasks_root tasks)"
     topics="$(sb_setting "$path" topics_root docs)"
     sroot="$(sb_setting "$path" sprints_root sprints)"
+    sb_uses_sprints "$path" || sprints=0
+    if [ "$no_sprints" -eq 1 ] && [ "$sprints" -eq 1 ]; then
+      sb_note "the profile exists: it says the project uses sprints and --no-sprints is ignored"
+    fi
   else
     troot="${f_tasks:-tasks}"
     topics="${f_topics:-docs}"
     sroot="${f_sprints:-sprints}"
+    [ "$no_sprints" -eq 0 ] || sprints=0
+    # Checked without sprints too: the profile keeps sprints_root, for the day they are turned on.
     if [ "$troot" = "$sroot" ] || [ "$troot" = "$topics" ] || [ "$topics" = "$sroot" ]; then
       sb_die 5 "the tasks, topics and sprints roots are three different folders"
     fi
@@ -211,7 +248,7 @@ sb_scaffold_project() {
   fi
   line_tasks="$(sb_scaffold_hub_line "$path" "$name" "$troot" "Tasks Hub" "one folder per task, and the task board")"
   [ "$topics" = "." ] || line_topics="$(sb_scaffold_hub_line "$path" "$name" "$topics" "Docs Hub" "the topics: one folder per subject")"
-  line_sprints="$(sb_scaffold_hub_line "$path" "$name" "$sroot" "Sprints Hub" "one note per sprint")"
+  [ "$sprints" -eq 0 ] || line_sprints="$(sb_scaffold_hub_line "$path" "$name" "$sroot" "Sprints Hub" "one note per sprint")"
   sb_scaffold_file project-readme.md.tmpl "$path/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
     "TASKS_HUB_LINE=$line_tasks" "TOPICS_HUB_LINE=$line_topics" "SPRINTS_HUB_LINE=$line_sprints"
   sb_scaffold_file project-claude-hub.md.tmpl "$path/claude/README.md" "PROJECT=$name" "PROJECT_PATH=$path"
@@ -231,21 +268,30 @@ sb_scaffold_project() {
         sb_fm_set_raw "$profile" "$k" "$(sb_yaml_quote "$q")"
       fi
     done
+    [ "$sprints" -eq 1 ] || sb_fm_set_raw "$profile" uses_sprints false
   fi
+  views='`Current sprint`, `By topic`,
+`Needs a status` and `All`'
+  [ "$sprints" -eq 1 ] || views='`By topic`, `Needs a status` and `All`'
   intro="One folder per task: \`$troot/<TICKET-ID>/README.md\`, with its queries, notebooks and logs beside it.
 A task is never filed under the topic it is about; it carries topic tags instead.
 
 ## Board
 
-The live board over every task README. Its other views are \`Current sprint\`, \`By topic\`,
-\`Needs a status\` and \`All\`. Nothing is added to it by hand.
+The live board over every task README. Its other views are $views. Nothing is added to it by hand.
 
 ![[$path/$troot/tasks.base#Active]]"
   sb_scaffold_file hub.md.tmpl "$path/$troot/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
     "HUB_NAME=$troot" "HUB_TITLE=Tasks Hub" "HUB_INTRO=$intro"
   depth="$(printf '%s\n' "$path/$troot" | awk -F/ '{ print NF + 1 }')"
   cur="$(sb_sprint_current_id "$path")"
-  sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "SPRINT_ID=${cur:-none}"
+  base="$SB_ROOT/$path/$troot/tasks.base"
+  if [ "$sprints" -eq 0 ] && [ ! -e "$base" ]; then
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "SPRINT_ID=none"
+    sb_board_drop_sprint "$base" || sb_die 1 "cannot write $path/$troot/tasks.base"
+  else
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "SPRINT_ID=${cur:-none}"
+  fi
   if [ "$topics" != "." ]; then
     intro="The topics root. Each folder under \`$topics/\` is a topic, and its tag is the folder path below
 \`$topics/\`, lowercased. Give each topic folder a \`README.md\` hub that links up to this note.
@@ -254,12 +300,22 @@ The live board over every task README. Its other views are \`Current sprint\`, \
     sb_scaffold_file hub.md.tmpl "$path/$topics/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
       "HUB_NAME=$topics" "HUB_TITLE=Docs Hub" "HUB_INTRO=$intro"
   fi
-  intro="One note per sprint, named by its end date: \`$sroot/<YYYY-MM-DD>.md\`. Opening a sprint adds
+  if [ "$sprints" -eq 1 ]; then
+    [ -e "$SB_ROOT/$path/$sroot/README.md" ] || hub_new=1
+    intro="One note per sprint, named by its end date: \`$sroot/<YYYY-MM-DD>.md\`. Opening a sprint adds
 its link below, newest first.
 
 ## Sprints"
-  sb_scaffold_file hub.md.tmpl "$path/$sroot/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
-    "HUB_NAME=$sroot" "HUB_TITLE=Sprints Hub" "HUB_INTRO=$intro"
+    sb_scaffold_file hub.md.tmpl "$path/$sroot/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
+      "HUB_NAME=$sroot" "HUB_TITLE=Sprints Hub" "HUB_INTRO=$intro"
+    # Sprints turned on after the project was made: say what no scaffold run adds to existing files.
+    if [ "$hub_new" -eq 1 ]; then
+      grep -qF "[[$path/$sroot/README|" "$SB_ROOT/$path/README.md" 2>/dev/null ||
+        sb_note "add the sprints hub to the map in $path/README.md: $line_sprints"
+      [ -n "$(sb_board_sprint_literal "$base")" ] ||
+        sb_note "the board at $path/$troot/tasks.base has no Current sprint view: add the view and the sprint columns from templates/tasks.base.tmpl"
+    fi
+  fi
   if [ "$hit" != "same" ]; then
     sb_index_add_row "$SB_ROOT/CLAUDE.md" "$name" "$path" "$keys" "$use" || sb_die 1 "cannot edit CLAUDE.md"
     sb_note "index row added for $name"

@@ -74,7 +74,7 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 - Means: `tasks.base` is missing from the tasks root, or Obsidian cannot answer for one of its views.
 - Why: status overviews and the sprint list are read from those views, so they come back empty or wrong.
-- Fix: no file: `second-brain scaffold project <name> --path <path>` again. A view: repair it in `tasks.base`; `templates/tasks.base.tmpl` under the plugin root lists all five.
+- Fix: no file: `second-brain scaffold project <name> --path <path>` again. A view: repair it in `tasks.base`; `templates/tasks.base.tmpl` under the plugin root lists all five. `Current sprint` is not checked when the profile says `uses_sprints: false`.
 
 ### index-fresh
 
@@ -140,7 +140,7 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 - Means: two sprints are in progress, one is in progress past its end date, or a task's `sprint` names a sprint with no note.
 - Why: the `Current sprint` view filters on one sprint id, so the tasks of any other sprint show on no sprint list.
-- Fix: close the extra or overdue sprint through the sprint skill. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it through the sprint skill, never re-point them.
+- Fix: close the extra or overdue sprint through the sprint skill. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it through the sprint skill, never re-point them. With `uses_sprints: false` in the profile the one finding is a sprint note still in progress: set the key to `true`, close the sprint through the sprint skill, then set it to `false` again.
 
 ### unresolved-links
 

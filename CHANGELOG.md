@@ -15,3 +15,6 @@ First version.
   `vault-setup repo <project>` adds a repository with its rows, and the doctor warns when one has none.
 - The helper works where `awk` is gawk in a UTF-8 locale, as on the Ubuntu CI runner: every awk
   program that loads the shared functions now runs in the C locale.
+- Sprints are optional per project: `uses_sprints: false` in the profile, written by
+  `second-brain scaffold project --no-sprints`, turns them off. The project gets no sprints hub and
+  no `Current sprint` view, the `sprint` commands refuse it, and the doctor skips its sprint checks.

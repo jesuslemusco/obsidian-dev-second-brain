@@ -30,6 +30,10 @@ second-brain sprint current "$p"
   block again with `--name`.
 - `profile ... sprints` prints this project's own sprint rules. They win over the defaults here.
 - `sprint current` prints id, start, end, days left and goal. Exit 1: no sprint is in progress.
+- Exit 5 with `does not use sprints`: the profile says `uses_sprints: false`. Say so and stop, in
+  every mode. Its stories are read through story-tracker. Sprints come back only when the user
+  sets that key to `true` and runs `second-brain scaffold project` again with the same name and
+  path; relay the `note:` lines it prints, they name what is left to add by hand.
 
 Stop when the setup is missing. Never guess a path.
 

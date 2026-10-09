@@ -11,7 +11,9 @@ nothing and rewrites no note body.
 - Settle the three roots, each a folder path relative to the project: tasks, topics, sprints. The
   topics root is `.` when topic folders sit at the project root. A kind of note the project does
   not have yet takes the default: `tasks`, `docs`, `sprints`.
-- Ask for what the files do not say: the display name, the ticket key prefixes, the "use when" line.
+- Ask for what the files do not say: the display name, the ticket key prefixes, the "use when" line,
+  and whether the project runs sprints. With no sprints there is no sprints root to settle: pass
+  `--no-sprints` in place of `--sprints-root`, and skip the sprint keys when filling the profile.
 
 ## 2. Scaffold only what is missing
 

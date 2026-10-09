@@ -34,7 +34,7 @@ sprints:  sprint current <project> | sprint next <project>
           sprint close <project> [--carry IDs] [--backlog IDs] [--abandon IDs]
 setup:    scaffold vault [DIR]
           scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT]
-              [--tasks-root R] [--topics-root R] [--sprints-root R]
+              [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
           link [--check | --apply] | doctor [project] [--json] [--fix]
           snapshot [name] | compare [name] | probe | session-check
 other:    ob <obsidian cli args>

@@ -51,10 +51,13 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 
 1. Ask, in one round: the folder inside the vault, as a vault-relative path such as
    `clients/acme/projects/example`; the ticket key prefixes, such as `EX,EXOPS`, or none; one line
-   that says when the project applies. A folder that already holds notes is a case for adopt.
+   that says when the project applies; whether the project runs sprints. A folder that already
+   holds notes is a case for adopt.
 2. Run `second-brain scaffold project <name> --path <path> --keys <K1,K2> --use-when "<one line>"`.
    It creates the project hub, `claude/README.md`, `claude/profile.md`, the tasks hub and its
    board, the docs hub and the sprints hub, adds the index row, and never overwrites.
+   - No sprints: add `--no-sprints`. It writes `uses_sprints: false` into the profile and creates
+     no sprints hub and no `Current sprint` view. Then skip the two sprint rows of the interview.
    - Exit 5 or 6: show the message and ask. 6 means the name, the path or a key already belongs
      to another project, which the message names: ask for another one, or for different keys.
 3. Interview for the profile, in one short round:

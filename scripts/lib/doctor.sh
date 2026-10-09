@@ -221,6 +221,8 @@ sb_doc_project() {
   SB_TASKS_ROOT="$(sb_setting "$SB_P_PATH" tasks_root tasks)"
   SB_TOPICS_ROOT="$(sb_setting "$SB_P_PATH" topics_root docs)"
   SB_SPRINTS_ROOT="$(sb_setting "$SB_P_PATH" sprints_root sprints)"
+  SB_DOC_SPRINTS=1
+  sb_uses_sprints "$SB_P_PATH" || SB_DOC_SPRINTS=0
   SB_DOC_ALL=""
   SB_DOC_FILES="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT")"
   SB_DOC_SCAN="$(printf '%s\n' "$SB_DOC_FILES" | sb_task_scan)"
@@ -343,13 +345,14 @@ sb_doc_check_board() {
     return 0
   fi
   for view in "Active" "Current sprint" "By topic" "Needs a status" "All"; do
+    if [ "$view" = "Current sprint" ] && [ "$SB_DOC_SPRINTS" -eq 0 ]; then continue; fi
     got="$(sb_ob base:query "path=$base" "view=$view" format=paths)" || got="Error"
     case "$got" in
       Error* | *'not found'*) bad="$bad$view$nl" ;;
       *) [ "$view" != "All" ] || SB_DOC_ALL="answered$nl$got" ;;
     esac
   done
-  sb_doc_report fail board "$SB_P_NAME" "$bad" "repair the view in tasks.base (the template lists all five)"
+  sb_doc_report fail board "$SB_P_NAME" "$bad" "repair the view in tasks.base (the template lists every view)"
 }
 
 # Check that view All holds as many notes as there are task READMEs on disk.
@@ -554,6 +557,17 @@ sb_doc_check_repos() {
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
   local fix="open the next sprint through the sprint skill; do not re-point carried tasks by hand"
+  if [ "$SB_DOC_SPRINTS" -eq 0 ]; then
+    # Sprints are off: the one thing left to say is a sprint note nobody can close any more.
+    bad=""
+    [ ! -d "$dir" ] || bad="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '$3 == "in-progress" { print $2 ":in-progress" }')"
+    if [ -n "$bad" ]; then
+      sb_doc_row warn sprints "$SB_P_NAME" "$bad" "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
+    else
+      sb_doc_row ok sprints "$SB_P_NAME" "" "sprints are off"
+    fi
+    return 0
+  fi
   [ ! -d "$dir" ] || notes="$(sb_sprint_files "$dir" | sb_sprint_scan)"
   # A close leaves carried tasks on the id sprint next gives; that id is exempt while no sprint runs.
   upcoming="$(sb_sprint_next_row 2>/dev/null | cut -f1)"

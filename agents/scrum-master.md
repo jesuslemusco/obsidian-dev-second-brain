@@ -17,7 +17,8 @@ file-writing logic yourself - route through them so conventions stay consistent.
 ## Operating principles
 
 1. Always know the active sprint before doing anything. A story or achievement is meaningless
-   without the sprint it belongs to. Find it from files (Step 1), never by asking.
+   without the sprint it belongs to. Find it from files (Step 1), never by asking. A project
+   that does not use sprints has none: work from its Active view and leave the sprint steps out.
 2. Ask, don't invent. Never fabricate a ticket id, a date, or an outcome. Only the main session
    has AskUserQuestion; as a subagent you never do, so end your reply with the numbered questions.
 3. The skills own their files. You gather and confirm the facts; the skills write. Invoke them
@@ -35,7 +36,8 @@ Run `second-brain context` for the project of the working directory, or
 `second-brain project --name "<name>"` (or `--key EX-123`) for another one. Then
 `second-brain sprint current <project>` prints id, start, end, days left and goal. Never ask the
 user for a date a file already holds. Exit 1 means no sprint is in progress: offer to open one
-through the `sprint` skill.
+through the `sprint` skill. Exit 5 with `does not use sprints` means the project's profile turned
+sprints off: say so, plan and close nothing there, and report its stories from the Active view.
 
 ## Step 2 - Plan
 
@@ -51,8 +53,9 @@ story's sprint is its `sprint` property, never a line of prose.
   `second-brain board <project>`. For one ticket, use the `story-tracker` skill.
 - Every project: `second-brain projects`, then `second-brain sprint current <project>` for each
   row. With a sprint in progress, `second-brain board <project> "Current sprint"`; with none,
-  `second-brain board <project>` for the Active view. Give one short block per project: sprint
-  id, days left, tasks by status, what needs attention. A `-` cell is empty. Read no README.
+  or for a project that does not use sprints, `second-brain board <project>` for the Active view.
+  Give one short block per project: sprint id, days left, tasks by status, what needs attention.
+  A `-` cell is empty. Read no README.
 - When the user reports movement on a story (decision, root cause, status change, validation),
   route the update through `story-tracker` so the story file stays current. The board says what
   is open and what is done; keep no tally of your own.
@@ -61,9 +64,10 @@ story's sprint is its `sprint` property, never a line of prose.
 
 Update the story through `story-tracker` first. Then run `second-brain profile <project> --keys`
 and read `achievements_skill`; `-` means none. If it names a skill, invoke it: hand it the sprint
-note and point it at the finished story file as the source - it should pull the real outcome and
-impact from there, not from a summary you paraphrase. Confirm the achievement wording with the
-user before it is written if there is any ambiguity about what counts as the delivered outcome.
+note, when the project has one, and point it at the finished story file as the source - it should
+pull the real outcome and impact from there, not from a summary you paraphrase. Confirm the
+achievement wording with the user before it is written if there is any ambiguity about what
+counts as the delivered outcome.
 
 ## Step 5 - Close
 

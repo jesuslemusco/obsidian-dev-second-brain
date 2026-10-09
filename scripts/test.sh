@@ -281,6 +281,7 @@ $P/docs/README.md
 $P/sprints/README.md"
 line_is "index: one row for the project" "$vault/CLAUDE.md" "| Example | $P | EX, EXOPS | Anything about Example. |"
 line_is "profile: ticket keys" "$vault/$P/claude/profile.md" "ticket_keys: [EX, EXOPS]"
+line_is "profile: sprints are on by default" "$vault/$P/claude/profile.md" "uses_sprints: true"
 line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder(\"$P/tasks\")"
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
@@ -1183,6 +1184,85 @@ out_has "project --cwd: a project with no recorded location still matches by fol
 sb context --cwd "$tmp/other root/alpha-api"
 is "context: still six lines" "$(lines "$OUT")" "6"
 out_has "context: project from a recorded repository folder" "project: Repo Two"
+
+# ---------------------------------------------------------------- scaffold project, no sprints
+N="work/kanban"
+sb scaffold project Kanban --path "$N" --keys KB --no-sprints
+rc_is "no sprints: scaffold exit 0" 0
+out_is "no sprints: no sprints hub is created" "$N/README.md
+$N/claude/README.md
+$N/claude/profile.md
+$N/tasks/README.md
+$N/tasks/tasks.base
+$N/docs/README.md"
+line_is "no sprints: the profile says so" "$vault/$N/claude/profile.md" "uses_sprints: false"
+absent "no sprints: no sprints folder" "$vault/$N/sprints"
+file_lacks "no sprints: the map has no sprints line" "$vault/$N/README.md" "Sprints Hub"
+is "no sprints: every map link points at a file" "$(check_links "$vault/$N/README.md")" ""
+file_lacks "no sprints: the tasks hub names no sprint view" "$vault/$N/tasks/README.md" "Current sprint"
+file_lacks "no sprints: the board has no sprint view, filter or column" "$vault/$N/tasks/tasks.base" "sprint"
+file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/tasks.base" "carried_from"
+for v in Active "By topic" "Needs a status" All; do
+  line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
+done
+is "no sprints: the board keeps its four views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "4"
+line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
+sb context --cwd "$vault/$N"
+out_has "no sprints: context says off" "sprint: off"
+for c in "current Kanban" "next Kanban" "open Kanban --end 2026-02-01" "set Kanban goal=x" "close Kanban"; do
+  # shellcheck disable=SC2086
+  sb sprint $c
+  rc_is "no sprints: sprint ${c%% *} exits 5" 5
+  err_has "no sprints: sprint ${c%% *} says why" "Kanban does not use sprints"
+done
+absent "no sprints: a refused open writes no note" "$vault/$N/sprints"
+sb task new KB-1 --project Kanban --title First
+rc_is "no sprints: task new works" 0
+sb task set KB-1 status=in-progress sprint=2026-02-01
+rc_is "no sprints: task set refuses a sprint id" 5
+file_lacks "no sprints: a refused task set writes nothing" "$vault/$N/tasks/KB-1/README.md" "in-progress"
+edit "$vault/$N/tasks/KB-1/README.md" 's/^status: planned$/status: planned\
+sprint: "2026-02-01"/'
+line_is "no sprints: a sprint id left over from before" "$vault/$N/tasks/KB-1/README.md" 'sprint: "2026-02-01"'
+sb task set KB-1 sprint=
+out_is "no sprints: task set may still remove a sprint id" "sprint: (removed)"
+file_lacks "no sprints: the leftover id is gone" "$vault/$N/tasks/KB-1/README.md" "sprint:"
+sb board Kanban
+out_has "no sprints: the board still lists the task" "KB-1 | First | planned | - |"
+sb board Kanban "Current sprint"
+is "no sprints: the sprint view has no rows" "$(lines "$OUT")" "1"
+sb scaffold project Kanban --path "$N" --keys KB
+out_is "no sprints: a second run without the flag creates nothing" ""
+absent "no sprints: the profile decides, so still no sprints hub" "$vault/$N/sprints"
+sb scaffold project Clash --path work/clash --no-sprints --sprints-root cadence
+rc_is "no sprints: the flag and a sprints root together exit 5" 5
+absent "no sprints: nothing written on the clash" "$vault/work/clash"
+sb scaffold project Roots --path "$R" --keys RT --no-sprints
+err_has "no sprints: an existing profile that uses sprints wins over the flag" "--no-sprints is ignored"
+line_is "no sprints: that profile is unchanged" "$vault/$R/claude/profile.md" "uses_sprints: true"
+edit "$vault/$N/claude/profile.md" 's/^uses_sprints: false$/uses_sprints: False/'
+sb sprint current Kanban
+rc_is "no sprints: the letter case of false does not matter" 5
+edit "$vault/$N/claude/profile.md" 's/^uses_sprints: False$/uses_sprints: true/'
+sb scaffold project Kanban --path "$N" --keys KB
+out_is "sprints turned on: the next scaffold adds the hub" "$N/sprints/README.md"
+err_has "sprints turned on: the map line to add is given" "add the sprints hub to the map in $N/README.md: - [[$N/sprints/README|Kanban Sprints Hub]] - one note per sprint"
+err_has "sprints turned on: the board view to add is named" "the board at $N/tasks/tasks.base has no Current sprint view"
+sb scaffold project Kanban --path "$N" --keys KB
+is "sprints turned on: said once, when the hub is made" "$(printf '%s\n' "$ERR" | grep -c '^note: ' || true)" "0"
+sb sprint open Kanban --end 2026-02-01
+rc_is "sprints turned on: a sprint opens" 0
+err_has "sprints turned on: the missing view is named" "has no Current sprint view to update"
+sb context --cwd "$vault/$N"
+out_has "sprints turned on: context shows the sprint" "sprint: 2026-02-01"
+sb task set KB-1 sprint=2026-02-01
+sb board Kanban "Current sprint"
+out_has "sprints turned on: the sprint lists its task" "KB-1 | First | planned | 2026-02-01 |"
+edit "$vault/$N/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
+sb board Kanban "Current sprint"
+out_is "sprints turned off again: a sprint left in progress lists nothing" "source: files"
+sb context --cwd "$vault/$N"
+out_has "sprints turned off again: context says off" "sprint: off"
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"

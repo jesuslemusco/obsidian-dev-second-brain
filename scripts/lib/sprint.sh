@@ -69,6 +69,7 @@ sb_sprint_current() {
   local row
   [ $# -eq 1 ] || sb_die 5 "usage: second-brain sprint current <project>"
   sb_need_project "$1"
+  sb_need_sprints
   row="$(sb_sprint_current_row "$SB_P_PATH")"
   [ -n "$row" ] || sb_die 1 "no sprint is in progress for $SB_P_NAME"
   printf '%s\n' "$row" | LC_ALL=C SB_T="$(sb_today)" awk -F'\t' "$(sb_awk_lib)"'
@@ -104,6 +105,7 @@ sb_sprint_next() {
   [ $# -eq 1 ] || sb_die 5 "usage: second-brain sprint next <project>"
   sb_need_project "$1"
   sb_need_profile
+  sb_need_sprints
   sb_sprint_next_row || sb_die 1 "the profile has no sprint_anchor_end; open the first sprint with --end YYYY-MM-DD"
 }
 
@@ -143,6 +145,7 @@ sb_sprint_set() {
     i=$((i + 1))
   done
   sb_need_project "$project"
+  sb_need_sprints
   row="$(sb_sprint_current_row "$SB_P_PATH")"
   [ -n "$row" ] || sb_die 1 "no sprint is in progress for $SB_P_NAME"
   note="${row%%"$tab"*}"
@@ -236,6 +239,7 @@ sb_sprint_open() {
   [ -n "$project" ] || sb_die 5 "$usage"
   sb_need_project "$project"
   sb_need_profile
+  sb_need_sprints
   len="$(sb_sprint_length)"
   anchor="$(sb_setting "$SB_P_PATH" sprint_anchor_end "")"
   dir="$SB_P_DIR/$SB_SPRINTS_ROOT"
@@ -319,6 +323,7 @@ sb_sprint_close() {
   done
   [ -n "$project" ] || sb_die 5 "$usage"
   sb_need_project "$project"
+  sb_need_sprints
   row="$(sb_sprint_current_row "$SB_P_PATH")"
   [ -n "$row" ] || sb_die 1 "no sprint is in progress for $SB_P_NAME"
   IFS=$'\t' read -r note id status start end goal <<EOF

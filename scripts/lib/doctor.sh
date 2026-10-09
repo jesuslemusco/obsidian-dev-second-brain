@@ -457,7 +457,7 @@ sb_doc_check_no_readme() {
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
 sb_doc_topic_exceptions() {
-  sb_section "$SB_P_PROFILE" Topics 2>/dev/null | awk "$(sb_awk_lib)"'
+  sb_section "$SB_P_PROFILE" Topics 2>/dev/null | LC_ALL=C awk "$(sb_awk_lib)"'
     /^[ \t]*[-*][ \t]+/ && match($0, /[ \t]+->[ \t]+/) {
       tag = substr($0, 1, RSTART - 1); folder = trim(substr($0, RSTART + RLENGTH))
       sub(/^[ \t]*[-*][ \t]+/, "", tag); gsub(/`/, "", tag); gsub(/`/, "", folder)

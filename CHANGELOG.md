@@ -13,3 +13,5 @@ First version.
 - Docs follow production: `docs-keeper` edits a doc only after the change is confirmed deployed, and
   records the planned edits until then. Every repository has rows in the profile's code-to-doc map;
   `vault-setup repo <project>` adds a repository with its rows, and the doctor warns when one has none.
+- The helper works where `awk` is gawk in a UTF-8 locale, as on the Ubuntu CI runner: every awk
+  program that loads the shared functions now runs in the C locale.

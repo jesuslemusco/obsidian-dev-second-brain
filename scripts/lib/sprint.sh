@@ -71,7 +71,7 @@ sb_sprint_current() {
   sb_need_project "$1"
   row="$(sb_sprint_current_row "$SB_P_PATH")"
   [ -n "$row" ] || sb_die 1 "no sprint is in progress for $SB_P_NAME"
-  printf '%s\n' "$row" | SB_T="$(sb_today)" awk -F'\t' "$(sb_awk_lib)"'
+  printf '%s\n' "$row" | LC_ALL=C SB_T="$(sb_today)" awk -F'\t' "$(sb_awk_lib)"'
     {
       left = "-"
       if (date_ok($5) && date_ok(ENVIRON["SB_T"])) left = date_days($5) - date_days(ENVIRON["SB_T"])
@@ -86,7 +86,7 @@ sb_sprint_next_row() {
   len="$(sb_sprint_length)"
   anchor="$(sb_setting "$SB_P_PATH" sprint_anchor_end "")"
   sb_date_ok "$anchor" || return 1
-  end="$(SB_A="$anchor" SB_T="$(sb_today)" SB_L="$len" awk "$(sb_awk_lib)"'BEGIN {
+  end="$(LC_ALL=C SB_A="$anchor" SB_T="$(sb_today)" SB_L="$len" awk "$(sb_awk_lib)"'BEGIN {
     a = date_days(ENVIRON["SB_A"]); t = date_days(ENVIRON["SB_T"]); len = ENVIRON["SB_L"] + 0
     k = (t - a) / len
     if (k != int(k)) k = (k > 0 ? int(k) + 1 : int(k))

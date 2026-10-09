@@ -82,6 +82,8 @@ sb_today() {
 }
 
 # Print the awk functions shared by the awk programs in this plugin.
+# Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
+# pattern in a UTF-8 locale, which stops the whole program.
 sb_awk_lib() {
   cat <<'AWK'
 function trim(s) { sub(/^[ \t\r]+/, "", s); sub(/[ \t\r]+$/, "", s); return s }
@@ -203,22 +205,22 @@ AWK
 
 # Return 0 when the argument is a real YYYY-MM-DD date.
 sb_date_ok() {
-  SB_D="$1" awk "$(sb_awk_lib)"'BEGIN { exit(date_ok(ENVIRON["SB_D"]) ? 0 : 1) }'
+  LC_ALL=C SB_D="$1" awk "$(sb_awk_lib)"'BEGIN { exit(date_ok(ENVIRON["SB_D"]) ? 0 : 1) }'
 }
 
 # Print a date shifted by a number of days.
 sb_date_add() {
-  SB_D="$1" SB_N="$2" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }'
+  LC_ALL=C SB_D="$1" SB_N="$2" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }'
 }
 
 # Print the number of days from the second date to the first.
 sb_date_diff() {
-  SB_A="$1" SB_B="$2" awk "$(sb_awk_lib)"'BEGIN { print date_days(ENVIRON["SB_A"]) - date_days(ENVIRON["SB_B"]) }'
+  LC_ALL=C SB_A="$1" SB_B="$2" awk "$(sb_awk_lib)"'BEGIN { print date_days(ENVIRON["SB_A"]) - date_days(ENVIRON["SB_B"]) }'
 }
 
 # Print a value as a YAML scalar, quoted when it needs it; a second argument forces quotes.
 sb_yaml_quote() {
-  SB_V="$1" SB_F="${2:-}" awk "$(sb_awk_lib)"'BEGIN { print yq(ENVIRON["SB_V"], ENVIRON["SB_F"] != "") }'
+  LC_ALL=C SB_V="$1" SB_F="${2:-}" awk "$(sb_awk_lib)"'BEGIN { print yq(ENVIRON["SB_V"], ENVIRON["SB_F"] != "") }'
 }
 
 # Return 0 when two files hold the same bytes.

@@ -118,6 +118,8 @@ check_links() {
 for f in "$here/bin/second-brain" "$here"/scripts/lib/*.sh "$here"/scripts/*.sh; do
   if bash -n "$f" 2>"$tmp/stderr"; then pass "syntax: ${f#"$here"/}"; else fail "syntax: ${f#"$here"/}" "$(cat "$tmp/stderr")"; fi
 done
+is "awk: every program that loads the shared functions runs in the C locale" \
+  "$(grep -n '"$(sb_awk_lib)"' "$here"/scripts/lib/*.sh | grep -v 'LC_ALL=C' || true)" ""
 
 # ---------------------------------------------------------------- dispatcher
 sb version

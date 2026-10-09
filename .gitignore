@@ -1,0 +1,9 @@
+.DS_Store
+*.swp
+# local-only word list for the leak check (project names, ticket keys)
+.leak-words
+# scratch vaults built by the tests
+/tmp/
+/.scratch/
+# local state from Claude Code tooling
+/.omc/

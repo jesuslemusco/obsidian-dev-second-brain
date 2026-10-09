@@ -1,0 +1,22 @@
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Leak check
+        run: bash scripts/leak-check.sh
+      - name: Scratch-vault tests
+        run: bash scripts/test.sh
+      - name: Link tests
+        run: bash scripts/test-link.sh
+      - name: Doctor tests
+        run: bash scripts/test-doctor.sh
+      - name: Snapshot tests
+        run: bash scripts/test-snapshot.sh

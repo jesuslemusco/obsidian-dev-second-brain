@@ -1,0 +1,198 @@
+---
+aliases:
+  - Obsidian Conventions
+type: onboarding
+conventions_version: 1
+tags:
+  - type/onboarding
+---
+
+# Obsidian conventions
+
+How this vault is organized and how to work in it: where notes and tasks live, how they are tagged
+and linked, how to search, and how to use Obsidian from the terminal. It applies to every project in
+the vault. Skills and agents read "The short version" before they write notes.
+
+## The short version
+
+1. Every task is `<project>/tasks/<TICKET-ID>/README.md`. Never file a task inside the topic it is
+   about. With no ticket yet, the folder is a kebab-case slug.
+2. A note says what it is about with **topic tags**. A topic tag is a folder path under the project's
+   **topics root** (`docs/` unless the profile says otherwise), lowercased: `billing/invoices`.
+   Tag only folders that exist; a cross-cutting note carries no topic tag.
+3. Every note has a unique **alias**; a task's first alias is its folder name. Aliases are for
+   finding a note, not for linking to it.
+4. **Links carry a path**: `[[<vault path or unique file name>|<alias>]]`, and the full vault path
+   for every `README.md`. A bare `[[Alias]]` does not resolve.
+5. Folder `README.md` files are **hubs** that link down to their notes and up to their parent.
+   Every other note starts with `> Up: [[<path>|<Hub alias>]]`.
+6. **Move and rename with `second-brain ob move` / `second-brain ob rename`**, never `mv`.
+7. **Frontmatter is the truth.** A task carries `title`, `status`, `next` (the next action, in one
+   phrase), `branch` and `epic`. `status` is `planned`, `in-progress`, `in-review`, `done` or
+   `abandoned`; its tag is `status/done` for the last two and `status/active` for the rest. Change
+   both with `second-brain task set <ID> status=<status>`.
+8. **Quote a YAML value** that holds a colon then a space or a `#`, starts with `-` or `[`, is a
+   lone dash, or looks like a date or a number: `- "Runbook: rotate the API keys"`, `epic: "-"`.
+9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date. A task joins it with
+   the property `sprint: "<id>"`, always quoted. No `sprint` key means backlog.
+10. Find things with the **Obsidian CLI** for metadata and **grep** for text. Scope every search.
+11. After editing links, `second-brain ob unresolved verbose` must not list a target you wrote.
+
+## Note metadata
+
+Every substantive note carries frontmatter. Properties feed Bases; tags feed the tag pane, search
+and the graph.
+
+```yaml
+---
+aliases:
+  - EX-123                 # a unique handle: the ticket id, a hub name or a short title
+title: "Invoice totals are rounded twice"
+status: in-progress        # tasks only
+next: "Confirm the fix in staging"
+sprint: "2026-10-14"       # tasks only; omit for backlog
+type: task                 # the kind of note
+tags:
+  - billing/invoices       # topic tags: zero, one or several
+  - type/task              # mirrors type
+  - status/active          # coarse rollup of status
+---
+```
+
+- **`aliases`** - at least one, unique across the vault. Most notes are named `README.md`, so the
+  alias is the only name that tells them apart.
+- **`type`** and the `type/<type>` tag - one of `task`, `bug`, `investigation`, `architecture`,
+  `runbook`, `validation`, `tool`, `ops`, `onboarding`, `data-source`, `data-output`, `sprint`,
+  `profile`, `moc`. A project may add its own. `moc` is for hubs.
+- **`status`** - tasks use `planned`, `in-progress`, `in-review`, `done`, `abandoned`. The tag is
+  the rollup: `status/done` for `done` and `abandoned`, `status/active` for the rest.
+- **Task notes** also carry `title`, `next`, `branch`, `epic` and `carried_from` (the sprint ids a
+  task was carried over from). The ticket id is the folder name and the first alias, not a property.
+
+YAML traps. Quote a value when:
+
+- it contains a colon then a space: `- "Runbook: rotate the API keys"` (else it is read as a key)
+- it is a lone dash: `epic: "-"` (else it is read as empty)
+- it is a sprint id, or any string shaped like a date or a number: `sprint: "2026-10-14"` (else it
+  may be read as a date and miss the board filter)
+- it contains `#`, or starts with `-` or `[`
+
+## Topic tags
+
+A **topic** is a folder under the project's topics root. Its **tag** is that folder's path below the
+topics root, lowercased, with spaces and underscores written as hyphens:
+
+```
+folder  <project>/docs/billing/Invoices/   ->  tag  billing/invoices
+folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
+```
+
+- Use the **deepest folder** the note is really about. A sub-topic implies its parent; do not add both.
+- **Several topics, several tags. Cross-cutting, no tag.** Do not invent a catch-all such as `general`.
+- **Only tag folders that exist.** Organizational folders (`tasks/`, `sprints/`) are not topics.
+- **Tag to folder:** read the tag as a path under the topics root, matching case-insensitively and
+  treating `_` and spaces as `-`. That folder's `README.md` is the topic's hub. With
+  `topics_root: "."` in the profile, topic folders sit at the project root.
+
+## Tasks
+
+```
+<project>/tasks/<TICKET-ID>/README.md      # the task
+<project>/tasks/<TICKET-ID>/queries/ ...   # its queries, notebooks, decks and logs, beside it
+<project>/tasks/README.md                  # the tasks hub
+<project>/tasks/tasks.base                 # the task board
+```
+
+- One folder per task, directly under `tasks/`; its name is the README's first alias.
+- No ticket yet: the folder is a kebab-case slug. Once the ticket exists, add the id as an alias
+  with `second-brain task alias <slug> add <ID>`; every command then accepts the id. The folder
+  keeps the slug: renaming a task folder is not supported yet.
+- A goal tracked as one ticket per environment is **one** folder and one README, under the first
+  environment's id, with every id in `aliases` and an `envs:` mapping in the frontmatter.
+- The **task board** (`tasks.base`, Obsidian Bases) is a live table over the README frontmatter,
+  with the views `Active`, `Current sprint`, `By topic`, `Needs a status` and `All`. Nothing is
+  added to it by hand. A status edited in the board changes the property only; fix the `status/`
+  tag the next time the note is touched.
+- A status note is one line, newest first, under `## Status notes`:
+  `` **YYYY-MM-DD (session `<id>`) - <text>** ``.
+
+## Sprints
+
+- One note per sprint, named by its end date, which is its id. The profile holds the cadence
+  (`sprint_length_days`, `sprint_anchor_end`) and may name another folder than `sprints/`.
+- Carrying a task over appends the old id to `carried_from` and sets `sprint` to the next id.
+- One sprint is in progress at a time. Its task list is the board's `Current sprint` view; nothing
+  is typed into the sprint note until it closes.
+
+## Hubs and links
+
+- **Every folder `README.md` is a hub** (`type: moc`). It links down to its notes and up to its
+  parent hub. Every other note starts with an up-link line: `> Up: [[<path>|<Hub alias>]]`.
+- **Links resolve by file name or path, never by alias.** Write a link the way Obsidian generates
+  it, with the alias as display text:
+  - the full vault path when the file name is not unique, which is every `README.md`:
+    `[[clients/acme/projects/example/tasks/EX-123/README|EX-123]]`
+  - the bare file name when it is unique in the vault: `[[obsidian-conventions|Obsidian Conventions]]`
+  - `\|` instead of `|` when the link sits in a table cell
+- Get the path from the alias: `obsidian aliases verbose | grep "^<alias>"`.
+- **Check what you wrote:** `obsidian unresolved verbose` lists links that go nowhere.
+
+## Moving and renaming
+
+Use `obsidian move path="<vault path>" to="<existing folder or new path>"` and
+`obsidian rename path="<vault path>" name="<new name>"`. Obsidian then rewrites every link to the
+note. Create the destination folder first. Do not use `mv`: links are left to fix by hand.
+
+## Obsidian CLI
+
+Obsidian's own index is reachable from the terminal with `obsidian <command>`, while the app is
+running. `second-brain ob <command>` finds the binary and stops early when the app is closed.
+`obsidian help` lists everything.
+
+| Need | Command |
+|---|---|
+| A note by id or alias | `obsidian aliases verbose \| grep -i "^<alias>"` |
+| Notes carrying one exact tag | `obsidian tag name=billing/invoices verbose` |
+| Every tag in use, with counts | `obsidian tags counts` |
+| A project's task board | `obsidian base:query path="<project>/tasks/tasks.base" view=Active format=md` |
+| What links to a note | `obsidian backlinks path="<vault path>"` |
+| Links that go nowhere | `obsidian unresolved verbose` |
+| Read or set a property | `obsidian property:read name=status path="<vault path>"`, `property:set name=status value=done path=...` |
+| Headings of a long note | `obsidian outline path="<vault path>"` |
+| Text inside one folder | `obsidian search:context query="<text>" path="<folder>"` |
+| Move or rename a note | `obsidian move ...`, `obsidian rename ...` |
+
+`obsidian tag name=<tag>` matches that exact tag, not its sub-tags. After many files change on disk
+at once, the index can lag; `obsidian reload` forces a re-read.
+A search that matches hundreds of notes can come back empty: keep queries selective and scoped with
+`path=`. `second-brain search` falls back to grep when the CLI returns nothing.
+
+## Limits on this install
+
+- No probe has been run yet. Run `second-brain probe` to record what works on this install.
+
+## Searching
+
+Search by metadata first and by text last. Scope every search to one project, and for tasks to the
+READMEs one level under `tasks/`: task folders hold large logs and data.
+
+- **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias: `second-brain find <ID>`.
+- **Active tasks**, with sprint, topics, branch and next action: `second-brain board <project>`.
+- **Tasks on a topic**, sub-topics included: `second-brain topic <project> billing/invoices`.
+- **From a topic tag to its docs:** the tag is the folder path. Start at that folder's `README.md`.
+- **Full text:** `second-brain search <project> "<text>"`, inside the narrowest folder that could
+  hold it. Never grep the whole vault. Grep works when Obsidian is closed.
+
+## In the Obsidian app
+
+- **Quick switcher** matches aliases: type a ticket id or a hub name.
+- **Tag pane** shows the topic tree with counts; **Bookmarks** can hold each project's board.
+- **Bases** renders the task board; status, sprint and branch are editable in the table.
+
+## Per-project specifics
+
+This note holds the rules. A project holds only what is particular to it:
+
+- `<project>/claude/profile.md` - ticket keys, folders, sprint cadence, repos, branches, environments.
+- `<project>/claude/README.md` - its skills and agents, and its rules for live systems.
+- `<project>/_conventions.md` - optional, for specifics the profile cannot hold.

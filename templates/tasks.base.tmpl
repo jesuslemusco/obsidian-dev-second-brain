@@ -1,0 +1,109 @@
+filters:
+  and:
+    - file.inFolder("{{TASKS_PATH}}")
+    - file.name == "README"
+    - file.folder.split("/").length == {{TASK_DEPTH}}
+formulas:
+  task: file.asLink(aliases[0])
+  topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))
+properties:
+  formula.task:
+    displayName: Task
+  formula.topics:
+    displayName: Topics
+  note.title:
+    displayName: Title
+  note.status:
+    displayName: Status
+  note.next:
+    displayName: Next
+  note.sprint:
+    displayName: Sprint
+  note.carried_from:
+    displayName: Carried from
+  note.epic:
+    displayName: Epic
+  note.branch:
+    displayName: Branch
+  file.mtime:
+    displayName: Updated
+views:
+  - type: table
+    name: Active
+    filters:
+      or:
+        - status == "in-progress"
+        - status == "in-review"
+        - status == "planned"
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - formula.task
+      - title
+      - next
+      - sprint
+      - formula.topics
+      - branch
+      - file.mtime
+  - type: table
+    name: Current sprint
+    filters:
+      and:
+        - sprint == "{{SPRINT_ID}}"
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - formula.task
+      - title
+      - next
+      - formula.topics
+      - branch
+      - carried_from
+  - type: table
+    name: By topic
+    filters:
+      or:
+        - status == "in-progress"
+        - status == "in-review"
+        - status == "planned"
+    sort:
+      - property: formula.topics
+        direction: ASC
+    order:
+      - formula.topics
+      - formula.task
+      - title
+      - status
+      - next
+      - branch
+  - type: table
+    name: Needs a status
+    filters:
+      and:
+        - status != "in-progress"
+        - status != "in-review"
+        - status != "planned"
+        - status != "done"
+        - status != "abandoned"
+    order:
+      - formula.task
+      - title
+      - status
+      - formula.topics
+      - file.mtime
+  - type: table
+    name: All
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - formula.task
+      - title
+      - status
+      - sprint
+      - formula.topics
+      - epic
+      - branch
+      - file.mtime

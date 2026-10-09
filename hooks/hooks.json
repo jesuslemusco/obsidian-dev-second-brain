@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/second-brain",
+            "args": ["session-check"],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

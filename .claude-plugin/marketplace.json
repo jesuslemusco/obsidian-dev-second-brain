@@ -1,0 +1,12 @@
+{
+  "name": "second-brain",
+  "owner": { "name": "Jesus Lemus Leal" },
+  "description": "Obsidian-backed second brain for developers.",
+  "plugins": [
+    {
+      "name": "obsidian-dev-second-brain",
+      "source": "./",
+      "description": "Stories, sprints and project docs kept in an Obsidian vault, with a health check."
+    }
+  ]
+}

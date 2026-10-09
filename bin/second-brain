@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# second-brain - the helper behind the obsidian-dev-second-brain plugin.
+# Usage: second-brain <command> [args]. Commands and exit codes: docs/contract.md.
+set -u
+
+# Resolve this file's real directory through any chain of symlinks.
+sb_src="${BASH_SOURCE[0]}"
+while [ -L "$sb_src" ]; do
+  sb_dir="$(cd -P "$(dirname "$sb_src")" && pwd)"
+  sb_src="$(readlink "$sb_src")"
+  case "$sb_src" in
+    /*) ;;
+    *) sb_src="$sb_dir/$sb_src" ;;
+  esac
+done
+SB_PLUGIN_ROOT="$(cd -P "$(dirname "$sb_src")/.." && pwd)"
+unset sb_src sb_dir
+
+# State shared by the library functions; never taken from the environment.
+SB_ROOT=""
+SB_OB_STATE=""
+SB_OB_VAULT_ARG=""
+
+for sb_lib in "$SB_PLUGIN_ROOT"/scripts/lib/*.sh; do
+  # shellcheck disable=SC1090
+  [ -f "$sb_lib" ] && . "$sb_lib"
+done
+unset sb_lib
+
+if ! declare -F sb_usage >/dev/null 2>&1; then
+  printf 'second-brain: scripts/lib is missing next to %s\n' "$SB_PLUGIN_ROOT/bin" >&2
+  exit 2
+fi
+
+sb_cmd="${1:-}"
+[ $# -gt 0 ] && shift
+
+case "$sb_cmd" in
+  help | -h | --help)
+    sb_usage
+    exit 0
+    ;;
+  '' | *[!a-z0-9-]*)
+    sb_usage >&2
+    exit 5
+    ;;
+esac
+
+sb_fn="cmd_$(printf '%s' "$sb_cmd" | tr '-' '_')"
+if declare -F "$sb_fn" >/dev/null 2>&1; then
+  "$sb_fn" "$@"
+  exit $?
+fi
+
+printf 'second-brain: unknown command: %s\n' "$sb_cmd" >&2
+sb_usage >&2
+exit 5

@@ -1,0 +1,42 @@
+---
+aliases:
+  - Vault Claude Hub
+type: moc
+tags:
+  - type/moc
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Vault Claude hub
+
+What Claude uses from this vault and is tied to no single project: your own global skills and
+agents. A skill or agent that only makes sense for one project lives in that project's `claude/`
+folder instead, and its hub lists it.
+
+```
+claude/skills/<name>/SKILL.md    a skill, with its supporting files beside it
+claude/agents/<name>.md          an agent
+```
+
+## Adding a skill or agent
+
+1. Create the file here, or in `<project>/claude/` for a project one. The skill folder name, or the
+   agent file name, equals `name` in its frontmatter.
+2. Frontmatter carries at least `name` and `description`. Keep the description to one sentence.
+3. Names share one namespace. Prefix a project-specific name with the project: `example-deploy`.
+4. Register it with `second-brain link --apply`. That symlinks it into `~/.claude/skills/` or
+   `~/.claude/agents/`. The file in the vault stays the only copy.
+5. List it below, or in the project's `claude/README.md`, with its "use when" line.
+6. On rename, move or delete, fix or remove the link in the same change. `second-brain link --check`
+   lists links left dangling.
+
+## Skills
+
+| Skill | Use when |
+|---|---|
+
+## Agents
+
+| Agent | Use when |
+|---|---|

@@ -1,0 +1,13 @@
+## Environments
+
+One goal, one ticket per environment, tracked in this one file. The folder and the first alias are
+the first environment's id, {{ID}}. The `envs:` mapping in the frontmatter is the list.
+
+- When a later environment gets its ticket, put its id in `envs:` and add it as an alias with
+  `second-brain task alias {{ID}} add <ID>`. Never create a second folder.
+- `status` is the set's status: the least advanced environment that is still open.
+- Under `## Acceptance criteria` and `## Verification`, keep one subsection per environment, headed
+  `### <ENV> - <ID> (<status>)`. The first is `### {{ENV}} - {{ID}} (planned)`. They are different
+  checks, not copies.
+- The description, findings and code verification are written once. Status notes and the discovery
+  log are one timeline; name the environment in each entry.

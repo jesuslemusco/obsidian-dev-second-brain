@@ -1,0 +1,117 @@
+---
+aliases:
+  - "{{PROJECT}} Profile"
+type: profile
+project: "{{PROJECT}}"
+ticket_keys: [{{TICKET_KEYS}}]
+tracker: ""
+persona: ""
+tasks_root: {{TASKS_ROOT}}
+topics_root: {{TOPICS_ROOT}}
+sprints_root: {{SPRINTS_ROOT}}
+sprint_length_days: 14
+sprint_anchor_end: ""
+base_branch: main
+production_branch: ""
+branch_pattern: "feature/<ID>-<slug>"
+environments: []
+repos: []
+repos_root: ""
+repo_paths: []
+achievements_skill: ""
+tags:
+  - type/profile
+---
+
+> Up: [[{{PROJECT_PATH}}/claude/README|{{PROJECT}} Claude Hub]]
+
+# {{PROJECT}} profile
+
+The one settings note for {{PROJECT}}. Skills and agents read the frontmatter through the helper and
+one section at a time. Keep it to facts about the project; the workflow lives in the skills.
+
+## Stories
+
+- Persona: the role a story's description opens with (`*As a* <persona>,`). Set it in `persona:` above.
+- Tracker: <where tickets live, where epics usually sit, any ticket markup to keep>.
+- Extra frontmatter a task README needs here, and how to pick topic tags for a new ticket: <or "none">.
+
+## Topics
+
+| Topic tag | Folder | Hub alias |
+|---|---|---|
+| `<topic>` | `<Topic>/` under the topics root | `<Topic> Hub` |
+
+- Spelling exceptions: <folders whose name does not lowercase into their tag, or "none">.
+- Cross-cutting work: <what a story with no topic tag looks like here>.
+
+## Repos
+
+- `<repo folder name>` - <what it holds>.
+- List every folder name in `repos:` above, so a working directory resolves to this project. The
+  first name is the default repository for branch checks.
+- `repos_root:` is the folder those repositories usually sit in on this machine, absolute or
+  starting with `~`. `repo_paths:` lists the ones stored elsewhere, one `name=path` string each.
+
+## Environments
+
+- <"None", or the environment names in promotion order, the same as `environments:` above.>
+- <What differs between them: configuration, data stores, who promotes.>
+
+## Sprints
+
+- Cadence: <the day a sprint ends, and anything that shifts it>. The numbers are in the frontmatter.
+- Extra fields a sprint note carries here: <or "none">.
+- When a story is done, hand it to: <the skill named in `achievements_skill:`, or "nothing">.
+
+## Docs
+
+Docs follow production: a doc is updated only after the change is confirmed deployed to production.
+`production_branch` in the frontmatter names the branch production runs (empty means `base_branch`).
+Say here how a deployment is confirmed in this project.
+
+### Repo doc surfaces
+
+- `<repo>`: <the doc files kept inside the repo, one line each>.
+
+### Vault doc surfaces
+
+- <Topic folders and notes in the vault, and which kind of question each one answers.>
+
+### Code to doc map
+
+Every repository in `repos` has at least one row. When a repository is added to the project, add its
+rows here in the same change.
+
+| Repo | Change in the code | Docs to update |
+|---|---|---|
+| <repo> | <kind of change> | <surfaces> |
+
+### Facts in several places
+
+- <A fact, and every surface that states it.>
+
+### Not drift
+
+- <A difference between surfaces that is intended, and why.>
+
+### Terminology
+
+- <Term> - <meaning; the spelling to use>.
+
+### Reference implementation
+
+- <One well-documented component to copy the doc shape from.>
+
+### Neighbours
+
+- <A neighbouring skill or agent, and where its job ends and this one begins.>
+
+### Debt file
+
+- <Path of the note where doc gaps found but not fixed are appended, or "none".>
+
+## Live systems
+
+- <Each live system: data stores, queues, production services.>
+- <What is read-only unless you ask for a write, and who to ask first.>

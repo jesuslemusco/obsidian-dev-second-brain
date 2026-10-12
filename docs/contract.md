@@ -203,8 +203,8 @@ Rules that hold for every command:
 - A lookup that finds nothing exits 1 (`find`, `topic`, `search`). A listing that finds nothing
   exits 0 with no rows (`board`, `projects`, `backlinks`, `unresolved`).
 - Writes change only the lines they must and keep the file's line endings.
-- Wherever a command takes `<path>`, it is a vault path. One that leaves the vault or enters a dot
-  folder is refused with exit 5.
+- Wherever a command takes `<path>`, it is a vault path. One that leaves the vault, enters a dot
+  folder or holds a backslash is refused with exit 5.
 - An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`, which
   Git Bash and Windows programs both accept. An absolute path that is read (an argument, an
   environment override, `repos_root`, a `repo_paths` entry) may be in that form, written with
@@ -237,8 +237,8 @@ Rules that hold for every command:
 | `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
 | `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing |
 | `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project |
-| `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists, exit 5 when `<from>` is the vault root, an index project's folder, or a folder that holds one. `--dry-run` prints the same lines after a first line `dry run` and writes nothing |
-| `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; the extension is kept when `<name>` has none. An ending counts as an extension when it follows the last dot and holds a letter, so `draft v1.2` keeps `.md`. Exit 5 when `<name>` holds a slash |
+| `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists. Exit 5 when `<from>` is the vault root, or is or holds a file the helper finds at a fixed path (the index, the conventions note, a project's profile), and when a name in `<to>` cannot be written in a link. `--dry-run` prints the same lines after a first line `dry run` and writes nothing |
+| `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder. The extension never changes: `<name>` may end with the file's own extension or leave it out, and anything else is part of the name, so `api.v2` gives `api.v2.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
@@ -274,6 +274,8 @@ share one reading of a note's links, in `scripts/lib/graph.sh`.
 - A target that resolves to no file is unresolved.
 - The files of the vault are every file under the vault root outside dot folders (`.obsidian`,
   `.trash`, `.second-brain`). Notes are the `.md` files among them; only notes are read for links.
+  A symlink inside the vault is not followed: what lies behind it is not a file of the vault.
+- A markdown link sits on one line. One whose text is wrapped over two lines is not read.
 
 What `move` and `rename` do to links:
 
@@ -289,6 +291,12 @@ What `move` and `rename` do to links:
 - Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
   moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
 - The links are worked out before anything is written; the files are moved, then the notes edited.
+- A destination is refused with exit 5 when one of its names holds `#`, `^`, `|`, `[`, `]`, a
+  backslash or a control character, or starts or ends with a blank: a link could not spell it.
+  So is a source or a destination that lies behind a symlinked folder.
+- Nothing is moved or written unless every note to rewrite can be read in full and written. A
+  note that cannot is named on stderr and the command exits 1.
+- The destination is looked at again right before the move and is never overwritten.
 - Not covered: a rename that changes only the letter case of a name, on a file system that
   ignores case. It exits 6.
 
@@ -324,7 +332,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
 | vault | `index` | the index is missing or has no Projects table (fail) |
-| vault | `conventions` | the conventions note is missing (fail) |
+| vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |

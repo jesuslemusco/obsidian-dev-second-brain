@@ -124,8 +124,8 @@ claude plugin validate . --strict
 ```
 
 The suites run on Linux, macOS and Windows in CI. `scripts/e2e-claude.sh` runs Claude Code itself
-against a scratch vault, on a Linux and a Windows runner; it costs API usage, so the `e2e` workflow
-runs only when started from the Actions tab.
+against a scratch vault, on a Linux and a Windows runner. It costs API usage, so the `e2e` workflow
+runs only when asked: from the Actions tab, or by a commit on a branch whose message holds `[e2e]`.
 
 `docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
 template placeholders. Change it first, then the code.

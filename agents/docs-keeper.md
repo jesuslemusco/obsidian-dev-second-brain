@@ -113,13 +113,12 @@ Cheapest first. A whole note is the last resort. The conventions are not restate
 
 - Find a note: `second-brain find <ID-or-alias> --project <project>`.
 - Tasks on a topic: `second-brain topic <project> <tag>`.
-- Before you change or remove a note: `second-brain ob backlinks path="<vault path>"`.
-- Part of a note: `second-brain ob outline path="<vault path>" format=json`, then a ranged Read.
+- Before you change or remove a note: `second-brain backlinks "<vault path>"`.
+- Part of a note: `second-brain outline "<vault path>"`, then a ranged Read.
 - Text: `second-brain search <project> "<text>" --in <subpath>`.
-- Move or rename only with `second-brain ob move` / `second-brain ob rename`, never `mv`.
-- After writing links: `second-brain ob unresolved verbose` must not list a target you wrote.
+- Move or rename only with `second-brain move` / `second-brain rename`, never `mv`.
+- After writing links: `second-brain unresolved <project>` must not list a link you wrote.
 - An edit that does not match: check for non-breaking spaces before concluding the text is absent.
-- `context` shows `obsidian: down` or `missing`: `ob` exits 3. Leave moves and renames for later.
 
 ## Boundaries
 

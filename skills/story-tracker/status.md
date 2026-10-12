@@ -5,8 +5,7 @@ a story, set a status or repair a field here.
 
 ## Gather the rows
 
-One call: `second-brain board <project> [view]`. Its first line is `source: board` or
-`source: files`; both are valid. Every other line is one story:
+One call: `second-brain board <project> [view]`. Every line is one story:
 `id | title | status | sprint | topics | branch | next | envs`.
 
 | The user asks for | Do |

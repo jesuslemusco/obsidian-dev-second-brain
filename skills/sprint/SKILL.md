@@ -125,5 +125,3 @@ Read `${CLAUDE_SKILL_DIR}/close.md` and follow it. Read it only in this mode.
   `second-brain task set`, `second-brain task note` and the sprint commands that move tasks.
 - Ask, do not invent: a date, a goal, a ticket id, a reason.
 - The helper prints `-` for an empty cell or value. Read it as empty.
-- `source: files` on the first line of a board answer means Obsidian was not reachable and the
-  helper read the files instead. The rows are still right.

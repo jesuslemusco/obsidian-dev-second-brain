@@ -1,14 +1,14 @@
 # Doctor checks
 
-One entry per check, named as `second-brain doctor` prints it, in the order of its table: ten for
-the vault, then sixteen for each project. Every entry is a heading and three lines. Read an
+One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
+the vault, then fifteen for each project. Every entry is a heading and three lines. Read an
 entry only when its check is not `ok`, and run a fix only after the user agrees to it.
 
 ### pointer
 
 - Means: `~/.claude/second-brain-vault` is missing, or does not lead to a folder that holds `.obsidian/`.
 - Why: every helper command finds the vault through it, so each one exits 2 and no skill can run.
-- Fix: `/obsidian-dev-second-brain:vault-setup init`, or by hand `ln -s "<vault folder>" ~/.claude/second-brain-vault`.
+- Fix: `/obsidian-dev-second-brain:vault-setup init`, or by hand `second-brain pointer set "<vault folder>"`.
 
 ### index
 
@@ -40,12 +40,6 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 - Why: the same skill or agent is registered twice, so it is listed twice and its description is loaded twice.
 - Fix: remove that link, not its target: `unlink ~/.claude/skills/<name>` or `unlink ~/.claude/agents/<name>.md`.
 
-### obsidian-cli
-
-- Means: the Obsidian command line was not found, or Obsidian is not running.
-- Why: the board, alias lookups, link checks and moves use Obsidian's index, so some checks are `skip` and no note can be moved.
-- Fix: open Obsidian and turn on its command line interface (Settings, General). Confirm with `second-brain context`.
-
 ### always-loaded-size
 
 - Means: the vault's `CLAUDE.md` is over 60 lines, or `~/.claude/CLAUDE.md` is over 40.
@@ -72,15 +66,9 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### board
 
-- Means: `tasks.base` is missing from the tasks root, or Obsidian cannot answer for one of its views.
-- Why: status overviews and the sprint list are read from those views, so they come back empty or wrong.
-- Fix: no file: `second-brain scaffold project <name> --path <path>` again. A view: repair it in `tasks.base`; `templates/tasks.base.tmpl` under the plugin root lists all five. `Current sprint` is not checked when the profile says `uses_sprints: false`.
-
-### index-fresh
-
-- Means: the number of task READMEs on disk differs from the rows of the board's `All` view.
-- Why: Obsidian's index lags behind the files, so a board answer can miss a task or show a stale one.
-- Fix: `second-brain ob reload`, wait a few seconds, check again. Still off: report both counts to the user.
+- Means: `tasks.base` is missing from the tasks root.
+- Why: Obsidian shows the task board from that file, so the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs.
+- Fix: `second-brain scaffold project <name> --path <path>` again. It writes the board and overwrites nothing.
 
 ### task-frontmatter
 
@@ -144,14 +132,14 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### unresolved-links
 
-- Means: Obsidian lists links, from notes under the project, that lead to no note.
-- Why: a bare alias link such as `[[EX-123]]` does not resolve in Obsidian, so the note is not reachable from it.
-- Fix: `second-brain ob unresolved verbose` lists them. Write each as a path link: `[[<project path>/tasks/EX-123/README|EX-123]]`.
+- Means: a note under the project holds a link that resolves to no file. Each offender is the note's path under the project and the line.
+- Why: a bare alias link such as `[[EX-123]]` does not resolve, so the note is not reachable from it.
+- Fix: `second-brain unresolved <project>` lists each link. Write it as a path link: `[[<project path>/tasks/EX-123/README|EX-123]]`.
 
 ### bare-links
 
 - Means: a task README links a file name that many notes share, such as `[[README]]`, with no path.
-- Why: Obsidian opens one of the notes by that name, maybe the wrong one, and never lists the link as unresolved.
+- Why: the link leads to one of the notes by that name, maybe the wrong one, and is never listed as unresolved.
 - Fix: write the full vault path and the alias: `[[<project path>/docs/billing/invoices/README|Invoices Hub]]`.
 
 ### line-endings

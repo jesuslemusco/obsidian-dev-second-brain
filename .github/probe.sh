@@ -1,67 +1,63 @@
 #!/usr/bin/env bash
 # Temporary: times the common reads against the scratch vault the main suite builds, in Git Bash
-# on the Windows runner. Removed before the branch is merged.
+# on the Windows runner, with the helper as it is and as it was before it started fewer processes.
+# Removed before the branch is merged.
 set -u
 
+[ -n "${CI:-}" ] || { echo "probe: it fetches one old commit into the checkout, run it in CI only" >&2; exit 2; }
 echo "OSTYPE=${OSTYPE:-} $(bash --version | head -1)"
-
-# Three ways to print the shared awk functions, twenty times each.
-SB_ROOT=""
-. scripts/lib/core.sh
-text="$(sb_awk_lib)"
-eval "f_read() { local t; IFS= read -r -d '' t <<'AWK'
-$text
-AWK
-printf '%s' \"\$t\"; }"
-esc="$(printf '%s' "$text" | command sed "s/'/'\\\\''/g")"
-eval "f_printf() { printf '%s\n' '$esc'; }"
-r20="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
-for f in sb_awk_lib f_read f_printf; do
-  [ "$($f)" = "$text" ] || echo "$f prints another text"
-  s="$(date +%s%N)"
-  for i in $r20; do x="$($f)"; done
-  e="$(date +%s%N)"
-  printf '%-12s %5s ms for 20 calls, %s bytes\n' "$f" "$(((e - s) / 1000000))" "${#x}"
-done
+before="8231b6d5a569eb3aada688ca790e67ece8f2d474"
+old="$(mktemp -d)"
+git fetch -q --depth=1 origin "$before"
+git archive "$before" bin scripts templates .claude-plugin | tar -x -C "$old"
+echo "the helper before: $(git log -1 --format='%h %s' "$before") ($(ls "$old" | tr '\n' ' '))"
+export SB_OLD="$old/bin/second-brain"
 
 # The main suite as it is, without its cleanup and its result lines, with the timings at its end.
 timed="scripts/.timed.sh"
 sed '/^trap /d' scripts/test.sh | sed '/^# -* result$/,$d' >"$timed"
 cat >>"$timed" <<'EOF'
 printf '\n=== timings: %s passed, %s failed before them ===\n' "$n_pass" "$n_fail"
-# tm <label> <command...>: the fastest of three runs, in milliseconds.
-tm() {
-  local label="$1" best="" i s e ms
-  shift
+# ms <command...>: the fastest of three runs, in milliseconds.
+ms() {
+  local best="" i s e t
   for i in 1 2 3; do
     s="$(date +%s%N)"
     "$@" >/dev/null 2>&1
     e="$(date +%s%N)"
-    ms=$(((e - s) / 1000000))
-    if [ -z "$best" ] || [ "$ms" -lt "$best" ]; then best="$ms"; fi
+    t=$(((e - s) / 1000000))
+    if [ -z "$best" ] || [ "$t" -lt "$best" ]; then best="$t"; fi
   done
-  printf '%-46s %6s ms\n' "$label" "$best"
+  printf '%s' "$best"
+}
+# tm <label> <args...>: time one helper command, now and before.
+tm() {
+  local label="$1"
+  shift
+  printf '%-46s %6s ms now %6s ms before\n' "$label" "$(ms "$SB" "$@")" "$(ms bash "$SB_OLD" "$@")"
 }
 printf 'vault: %s projects, %s task READMEs, %s notes\n' "$("$SB" projects | grep -c .)" \
   "$(find "$vault" -path '*/tasks/*/README.md' | grep -c .)" "$(find "$vault" -name '*.md' | grep -c .)"
-tm "nothing (what the clock itself costs)" true
-tm "version (start-up alone)" "$SB" version
-tm "session-check" "$SB" session-check
-tm "root" "$SB" root
-tm "context, from a folder that is no project" "$SB" context
-tm "context --cwd in a project of the vault" "$SB" context --cwd "$vault/$P/tasks"
-tm "context --cwd in a recorded repository" "$SB" context --cwd "$tmp/other root/alpha-api"
-tm "project --key EX" "$SB" project --key EX
-tm "board Example" "$SB" board Example
-tm "board Example All" "$SB" board Example All
-tm "task head EX-1" "$SB" task head EX-1
-tm "task head EX-1 --project Example" "$SB" task head EX-1 --project Example
-tm "search Example \"status notes\"" "$SB" search Example "status notes"
-tm "unresolved" "$SB" unresolved
-tm "unresolved Example" "$SB" unresolved Example
-tm "doctor Example" "$SB" doctor Example
+printf '%-46s %6s ms\n' "nothing (what the clock itself costs)" "$(ms true)"
+tm "version (start-up alone)" version
+tm "session-check" session-check
+tm "root" root
+tm "context, from a folder that is no project" context
+tm "context --cwd in a project of the vault" context --cwd "$vault/$P/tasks"
+tm "context --cwd in a recorded repository" context --cwd "$tmp/other root/alpha-api"
+tm "project --key EX" project --key EX
+tm "board Example" board Example
+tm "board Example All" board Example All
+tm "task head EX-1" task head EX-1
+tm "task head EX-1 --project Example" task head EX-1 --project Example
+tm "search Example \"status notes\"" search Example "status notes"
+tm "unresolved" unresolved
+tm "unresolved Example" unresolved Example
+tm "doctor Example" doctor Example
+tm "link --check" link --check
 rm -rf "$tmp"
 EOF
 bash "$timed" | sed -n '/^=== timings/,$p'
 rm -f "$timed"
+rm -rf "$old"
 exit 0

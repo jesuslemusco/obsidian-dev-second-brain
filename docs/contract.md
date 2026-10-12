@@ -295,8 +295,9 @@ What `move` and `rename` do to links:
   that does not exist yet, holds one of `# ^ [ ] | \ : * ? " < >`, a backtick or a control
   character, or starts or ends with a blank: Obsidian forbids them, and a link could not spell
   the name. So is a source or a destination that lies behind a symlinked folder.
-- `<from>` is written as the vault lists it. A spelling that reaches the file only because the
-  file system folds letter case or Unicode forms is refused with exit 1.
+- Where the file system ignores letter case, `<from>` may be written in another case of ASCII
+  letters. A spelling that reaches the file only through a fold the helper does not make, a
+  Unicode form or the case of a letter outside ASCII, is refused with exit 1.
 - Nothing is moved or written unless every note of the vault can be read in full and every note
   to rewrite can be written. A note that cannot is named on stderr and the command exits 1.
 - Every rewritten line is read again before anything is moved: each rewritten link must be found

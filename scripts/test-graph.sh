@@ -995,15 +995,15 @@ if [ -e "$vault/CI/mixed case.md" ]; then
     "ci/linker.md:1: [[ci/Mixed Case]]${NL}ci/linker.md:1: [[Mixed Case|shown]]"
   sb outline "CI/mixed case.md"
   out_is "ignoring case: the outline of a note named in another letter case" "1: # Mixed"
-  sb move "CI/mixed case.md" ci/moved.md
+  sb move "CI/mixed case.md" ci/shifted.md
   rc_is "ignoring case: a note named in another letter case is moved" 0
-  out_is "ignoring case: the move is reported and its links counted" "moved: CI/mixed case.md -> ci/moved.md${NL}links: ci/linker.md | 2"
-  is "ignoring case: the folder holds the note under its new name alone" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md moved.md sub "
-  is "ignoring case: the links follow the note" "$(line ci/linker.md 1)" '[[ci/moved]] and [[moved|shown]]'
-  sb rename ci/moved.md MOVED
+  out_is "ignoring case: the move is reported and its links counted" "moved: CI/mixed case.md -> ci/shifted.md${NL}links: ci/linker.md | 2"
+  is "ignoring case: the folder holds the note under its new name alone" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md shifted.md sub "
+  is "ignoring case: the links follow the note" "$(line ci/linker.md 1)" '[[ci/shifted]] and [[shifted|shown]]'
+  sb rename ci/shifted.md SHIFTED
   rc_is "ignoring case: a rename that changes only the letter case gives exit 6" 6
-  is "ignoring case: the note keeps its name" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md moved.md sub "
-  sb move ci/linker.md CI/Moved.md
+  is "ignoring case: the note keeps its name" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md shifted.md sub "
+  sb move ci/linker.md CI/Shifted.md
   rc_is "ignoring case: a destination that exists in another letter case gives exit 6" 6
   sb move CI/SUB ci/under
   rc_is "ignoring case: a folder named in another letter case is moved" 0
@@ -1013,7 +1013,7 @@ if [ -e "$vault/CI/mixed case.md" ]; then
   sb unresolved
   is "ignoring case: none of these links is left unresolved" "$(printf '%s\n' "$OUT" | grep -c '^ci/' || true)" "0"
 else
-  sb move "CI/mixed case.md" ci/moved.md
+  sb move "CI/mixed case.md" ci/shifted.md
   rc_is "minding case: a note named in another letter case is not found, exit 1" 1
   sb backlinks "CI/MIXED CASE.md"
   rc_is "minding case: nor are its backlinks, exit 1" 1

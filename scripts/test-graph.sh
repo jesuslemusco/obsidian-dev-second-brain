@@ -593,13 +593,21 @@ rc_is "rename: a name that holds a backslash gives exit 5" 5
 tree >"$tmp/tree.after"
 same "move: the refusals, and the folder moved there and back, leave the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
 
-# ---------------------------------------------------------------- a name that no link can spell
-# A wikilink ends its target at # and |, closes at ]], and drops the blanks around it.
+# ---------------------------------------------------------------- a name that a move may not create
+# Obsidian allows none of # ^ [ ] | \ : * ? " < > in a name. A link reader ends a target at some
+# of them, a colon makes a markdown target a URL, and a backtick can open a code span.
 note "sp/spnote.md" '# A note'
 note "sp/reader.md" '[[spnote]] and [[sp/spnote|shown]]'
 note "sp/C# course/inner.md" '[[sibling]] next to it'
 note "sp/C# course/sibling.md" '# A sibling'
 note "sp/sibling.md" '# Another sibling'
+note "sp/meeting.md" '# The meeting'
+note "sp/sib.md" '[m](meeting.md) [d](./meeting.md) [a](<meeting.md>) [[meeting]]'
+mkdir -p "$vault/sp/[archive]" "$vault/sp/ti\`ck"
+note "sp/minutes.md" '# Minutes'
+note "sp/min-reader.md" '[[sp/minutes|the minutes]]'
+note "sp/mover.md" '# A note to move'
+note "sp/tick-wiki.md" '[[sp/mover]] and a lone ` here'
 tree >"$tmp/tree.before"
 # unspelled <what the name holds> <name>: neither rename nor move may give a note that name.
 unspelled() {
@@ -613,6 +621,13 @@ unspelled "a caret" 'a^b'
 unspelled "a bar" 'a|b'
 unspelled "an opening bracket" 'a[b'
 unspelled "a closing bracket" 'a]b'
+unspelled "a colon" 'a:b'
+unspelled "a star" 'a*b'
+unspelled "a question mark" 'a?b'
+unspelled "a double quote" 'a"b'
+unspelled "a less-than sign" 'a<b'
+unspelled "a greater-than sign" 'a>b'
+unspelled "a backtick" 'a`b'
 unspelled "a blank at its start" ' lead'
 unspelled "a blank at its end" 'trail '
 unspelled "a tab" "$(printf 'x\ty')"
@@ -620,21 +635,71 @@ unspelled "a line break" "$(printf 'x\ny')"
 unspelled "a control byte" "$(printf 'x\001y')"
 sb rename sp/spnote.md 'C# notes' --dry-run
 rc_is "rename --dry-run: the same refusal" 5
-err_has "rename: says what a link cannot spell" "no link can spell a name"
+err_has "rename: says what a name cannot hold" "a name cannot hold any of"
+sb backlinks sp/meeting.md
+is "rename: four links lead to a note" "$(printf '%s\n' "$OUT" | grep -c '')" "4"
+sb rename sp/meeting.md 'RFC: design'
+rc_is "rename: a name that would turn its markdown links into a URL gives exit 5" 5
+sb backlinks sp/meeting.md
+is "rename: the four links still lead to it" "$(printf '%s\n' "$OUT" | grep -c '')" "4"
 sb move sp/spnote.md 'sp/bad#folder/note.md'
-rc_is "move: a folder on the way with such a name gives exit 5" 5
-sb move sp/spnote.md 'sp/C# course/'
-rc_is "move: into a folder that has such a name gives exit 5" 5
+rc_is "move: a folder that the move would make, with such a name, gives exit 5" 5
 sb move sp/spnote.md 'sp/trail .png'
 rc_is "move: a blank before an extension that links always carry is fine" 0
 sb move 'sp/trail .png' sp/spnote.md
+# A folder that is there already may have such a name. A link that cannot be written for it stops the move.
+sb move sp/spnote.md 'sp/C# course/'
+rc_is "move: into a folder whose path a wikilink cannot spell, a link that needs the path stops the move, exit 1" 1
+err_has "move: names the note and the line" "note: sp/reader.md:1 cannot be rewritten"
 sb move 'sp/C# course/inner.md' sp/inner.md
-rc_is "move: a link that would need a path no wikilink can spell stops the move, exit 1" 1
-err_has "move: names the note, the line and the file" "note: sp/C# course/inner.md:1 would need a link to sp/C# course/sibling.md"
+rc_is "move: out of such a folder, a link that would need its path stops the move, exit 1" 1
+err_has "move: names that note and line too" "note: sp/C# course/inner.md:1 cannot be rewritten"
+sb move sp/minutes.md 'sp/[archive]/'
+rc_is "move: into a folder with brackets in its name, the same, exit 1" 1
+sb move sp/mover.md 'sp/ti`ck/'
+rc_is "move: a path with a backtick that would close a code span over the link stops the move, exit 1" 1
+err_has "move: names the note whose link would be hidden" "note: sp/tick-wiki.md:1 cannot be rewritten"
 tree >"$tmp/tree.after"
-same "a name no link can spell: every refusal leaves the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+same "a name a move may not create: every refusal leaves the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+if ! sb_is_windows; then
+  # Another tool can leave a colon in a name; Windows cannot store one.
+  note "sp/RFC: design.md" '# A name another tool gave'
+  note "sp/deep/colon.md" '[a](<../RFC: design.md>)'
+  tree >"$tmp/tree.before"
+  sb backlinks 'sp/RFC: design.md'
+  out_is "markdown: a target that starts with dots is not a URL" "sp/deep/colon.md:1: [a](<../RFC: design.md>)"
+  sb move sp/deep/colon.md sp/colon.md
+  rc_is "move: a markdown link that would read as a URL once rewritten stops the move, exit 1" 1
+  err_has "move: names the note and the line of that link" "note: sp/deep/colon.md:1 cannot be rewritten"
+  tree >"$tmp/tree.after"
+  same "move: and nothing is moved or written" "$tmp/tree.before" "$tmp/tree.after"
+fi
+rm "$vault/sp/tick-wiki.md"
+note "sp/free.md" '# Free'
+note "sp/free-reader.md" '[[free]] and [md](./free.md)'
+sb move sp/free.md 'sp/C# course/'
+out_is "move: a note whose links can still be written goes into a folder with such a name" \
+  "moved: sp/free.md -> sp/C# course/free.md${NL}links: sp/free-reader.md | 1"
+is "move: the name alone is left, and the markdown path is percent-encoded" "$(line sp/free-reader.md 1)" '[[free]] and [md](./C%23%20course/free.md)'
+sb rename 'sp/C# course/free.md' freed
+out_is "rename: a note inside such a folder gets a new name" "moved: sp/C# course/free.md -> sp/C# course/freed.md${NL}links: sp/free-reader.md | 2"
+is "rename: both links follow" "$(line sp/free-reader.md 1)" '[[freed]] and [md](./C%23%20course/freed.md)'
+sb backlinks 'sp/C# course/freed.md'
+is "rename: and both still lead to the note" "$(printf '%s\n' "$OUT" | grep -c '')" "2"
+note "sp/overview.md" '# Overview'
+note "sp/ov-reader.md" '[[overview]] and [m](./overview.md)'
+sb move sp/overview.md 'sp/[archive]/'
+out_is "move: into a folder with brackets in its name" "moved: sp/overview.md -> sp/[archive]/overview.md${NL}links: sp/ov-reader.md | 1"
+is "move: the markdown path keeps the brackets and reads back" "$(line sp/ov-reader.md 1)" '[[overview]] and [m](./[archive]/overview.md)'
+note "sp/tick-md.md" '[m](./mover.md) and a lone ` here'
+sb move sp/mover.md 'sp/ti`ck/'
+out_is "move: into a folder with a backtick in its name" "moved: sp/mover.md -> sp/ti\`ck/mover.md${NL}links: sp/tick-md.md | 1"
+is "move: the backtick is percent-encoded in a markdown path, so no code span opens" "$(line sp/tick-md.md 1)" '[m](./ti%60ck/mover.md) and a lone ` here'
+sb backlinks 'sp/ti`ck/mover.md'
+out_is "move: and the link reads back" 'sp/tick-md.md:1: [m](./ti%60ck/mover.md)'
 sb rename 'sp/C# course' 'C sharp course'
-out_is "rename: a folder that has such a name gets one that links can spell" "moved: sp/C# course -> sp/C sharp course"
+out_is "rename: a folder that has such a name gets one that links can spell" \
+  "moved: sp/C# course -> sp/C sharp course${NL}links: sp/free-reader.md | 1"
 
 # ---------------------------------------------------------------- stand-ins that make a move go wrong
 # The helper finds awk and mv on the PATH. These two do what a test asks for, then run the real one.
@@ -653,9 +718,13 @@ exec "$REAL_AWK" "$@"
 EOF
 cat >"$shim/mv" <<'EOF'
 #!/bin/sh
-# Stand-in for mv: fails without moving when a test asks for it.
+# Stand-in for mv: fails without moving when a test asks for it, or moves and then runs what
+# the test gives it, as someone who edits a note while the command runs.
 [ -z "${SHIM_MV_FAILS:-}" ] || exit 1
-exec "$REAL_MV" "$@"
+"$REAL_MV" "$@"
+rc=$?
+[ -z "${SHIM_AFTER_MV:-}" ] || eval "$SHIM_AFTER_MV"
+exit "$rc"
 EOF
 chmod +x "$shim/awk" "$shim/mv"
 # Whoever runs the suite as root reads and writes a file whatever its mode says.
@@ -693,6 +762,33 @@ run env PATH="$shim:$PATH" SHIM_MV_FAILS=1 "$SB" move race/a.md race/kept/more/a
 exists "move: a folder that was there before a failed move is kept" "$vault/race/kept"
 absent "move: and only the one made for the move is taken back" "$vault/race/kept/more"
 
+# ---------------------------------------------------------------- move, a note that is edited while the command runs
+# The stand-in for mv edits a note after the move and before the links are put in place.
+note "ed/target.md" '# The target'
+note "ed/ref.md" 'line 1 keep' 'see [[ed/target]]' 'line 3 keep'
+note "ed/other.md" '[[ed/target]]'
+export SHIM_FILE="$vault/ed/ref.md"
+run env PATH="$shim:$PATH" SHIM_AFTER_MV='{ printf "a line added meanwhile\n"; cat "$SHIM_FILE"; } >"$SHIM_FILE.new" && cat "$SHIM_FILE.new" >"$SHIM_FILE" && rm "$SHIM_FILE.new"' \
+  "$SB" move ed/target.md ed/moved.md
+rc_is "move: a note that got a line while the command ran gives exit 1" 1
+is "move: that note is left exactly as it was edited" "$(cat "$vault/ed/ref.md")" \
+  "a line added meanwhile${NL}line 1 keep${NL}see [[ed/target]]${NL}line 3 keep"
+err_has "move: names it as changed, with its old link" "note: ed/ref.md changed while the command ran: it is left as it is, and still holds an old link"
+out_is "move: reports the move and the note it did rewrite" "moved: ed/target.md -> ed/moved.md${NL}links: ed/other.md | 1"
+is "move: the other note is rewritten" "$(line ed/other.md 1)" '[[ed/moved]]'
+note "ed/ref.md" 'line 1 keep' 'see [[ed/moved]]' 'line 3 keep'
+run env PATH="$shim:$PATH" SHIM_AFTER_MV='sed "s/^see /SEE /" "$SHIM_FILE" >"$SHIM_FILE.new" && cat "$SHIM_FILE.new" >"$SHIM_FILE" && rm "$SHIM_FILE.new"' \
+  "$SB" move ed/moved.md ed/target.md
+rc_is "move: a line to rewrite that was edited, the note keeping its length, gives exit 1" 1
+is "move: that edit is kept, and the note is left with its old link" "$(line ed/ref.md 2)" 'SEE [[ed/moved]]'
+is "move: the other note is rewritten again" "$(line ed/other.md 1)" '[[ed/target]]'
+note "ed/ref.md" 'line 1 keep' 'see [[ed/target]]' 'line 3 keep'
+run env PATH="$shim:$PATH" SHIM_AFTER_MV='sed "s/^line 3 keep/LINE 3 KEEP/" "$SHIM_FILE" >"$SHIM_FILE.new" && cat "$SHIM_FILE.new" >"$SHIM_FILE" && rm "$SHIM_FILE.new"' \
+  "$SB" move ed/target.md ed/moved.md
+rc_is "move: an edit of another line that keeps the length does not stop the rewrite" 0
+is "move: that edit is kept and the link is rewritten" "$(cat "$vault/ed/ref.md")" "line 1 keep${NL}see [[ed/moved]]${NL}LINE 3 KEEP"
+unset SHIM_FILE
+
 # ---------------------------------------------------------------- move, a note that awk cannot hand back whole
 note "nul/nulnote.md" '# A note'
 printf 'line one [[nulnote]]\nbinary \0 middle\nlast line with more text\n' >"$vault/nul/ref.md"
@@ -708,6 +804,26 @@ else
   tree >"$tmp/tree.after"
   same "move: nothing is moved or written then" "$tmp/tree.before" "$tmp/tree.after"
 fi
+rm "$vault/nul/ref.md"
+printf 'binary \0 first\nthen a link, [[nulnote]]\n' >"$vault/nul/late.md"
+tree >"$tmp/tree.before"
+sb move nul/nulnote.md nul/nulmoved.md
+if [ "$RC" -eq 0 ]; then
+  printf 'binary \0 first\nthen a link, [[nulmoved]]\n' >"$tmp/late.want"
+  same "move: a link after a NUL byte is rewritten by an awk that reads the note whole" "$tmp/late.want" "$vault/nul/late.md"
+  sb move nul/nulmoved.md nul/nulnote.md
+else
+  rc_is "move: a note cut at a NUL byte before its link stops the move too, exit 1" 1
+  err_has "move: names the note whose link it could not see" "note: nul/late.md holds bytes"
+  tree >"$tmp/tree.after"
+  same "move: nothing is moved, so that link is not left behind" "$tmp/tree.before" "$tmp/tree.after"
+fi
+rm "$vault/nul/late.md"
+printf 'no link here, only a control \001 byte\n' >"$vault/nul/plain.md"
+sb move nul/nulnote.md nul/nulmoved.md
+rc_is "move: a note with that byte and no link to rewrite does not stop a move" 0
+sb move nul/nulmoved.md nul/nulnote.md
+rm "$vault/nul/plain.md"
 note "nul/ctlnote.md" '# A note'
 printf 'line one [[ctlnote]]\ncontrol \001 byte\nlast line\n' >"$vault/nul/ctl.md"
 tree >"$tmp/tree.before"
@@ -718,7 +834,7 @@ sb move nul/ctlnote.md nul/ctlmoved.md --dry-run
 rc_is "move --dry-run: says the same, exit 1" 1
 tree >"$tmp/tree.after"
 same "move: nothing is moved or written for that note either" "$tmp/tree.before" "$tmp/tree.after"
-rm "$vault/nul/ctl.md" "$vault/nul/ref.md"
+rm "$vault/nul/ctl.md"
 
 # ---------------------------------------------------------------- move, a note that cannot be written or read
 note "wr/target.md" '# The target'
@@ -737,7 +853,7 @@ if [ "$modes" -eq 1 ]; then
   run env PATH="$shim:$PATH" SHIM_LOCK="$vault/wr/b2.md" "$SB" move wr/target.md wr/moved.md
   rc_is "move: a write that fails after the move gives exit 1" 1
   out_is "move: it reports the move and the notes it did rewrite" "moved: wr/target.md -> wr/moved.md${NL}links: wr/a1.md | 1${NL}links: wr/c3.md | 1"
-  err_has "move: names the note that still holds an old link" "note: wr/b2.md still holds an old link"
+  err_has "move: names the note that still holds an old link" "note: wr/b2.md could not be written, and still holds an old link"
   is "move: the notes before and after that one are rewritten" "$(line wr/a1.md 1)$(line wr/c3.md 1)" '[[wr/moved]][[wr/moved]]'
   is "move: that note is as it was" "$(line wr/b2.md 1)" '[[wr/target]]'
   chmod 644 "$vault/wr/b2.md"
@@ -747,9 +863,16 @@ if [ "$modes" -eq 1 ]; then
   chmod 000 "$vault/wr/b2.md"
   sb move wr/moved.md wr/target.md
   rc_is "move: a note that cannot be read stops the move, exit 1" 1
-  err_has "move: names the note that cannot be read" "note: wr/b2.md cannot be read"
+  err_has "move: names the note that cannot be read" "note: wr/b2.md could not be read"
   exists "move: nothing is moved then" "$vault/wr/moved.md"
   is "move: and no note is rewritten" "$(line wr/a1.md 1)" '[[wr/moved]]'
+  sb backlinks wr/moved.md
+  rc_is "backlinks: a note that cannot be read leaves exit 0" 0
+  out_is "backlinks: the notes it could read are listed" "wr/a1.md:1: [[wr/moved]]${NL}wr/c3.md:1: [[wr/moved]]"
+  err_is "backlinks: the note it could not read is named" "note: wr/b2.md could not be read"
+  sb unresolved
+  rc_is "unresolved: a note that cannot be read leaves exit 0" 0
+  err_is "unresolved: the note it could not read is named" "note: wr/b2.md could not be read"
   chmod 644 "$vault/wr/b2.md"
   mkdir -p "$vault/wr/sealed"
   note "wr/sealed/inside.md" '[[wr/moved]]'
@@ -786,6 +909,11 @@ if [ -L "$vault/sym/linked" ]; then
   rc_is "move: the symlink itself gives exit 5" 5
   sb rename sym/linked/farnote.md near
   rc_is "rename: a note behind a symlinked folder gives exit 5" 5
+  sb outline sym/linked/farnote.md
+  rc_is "outline: a note behind a symlinked folder is not a note of the vault, exit 1" 1
+  out_is "outline: and nothing is read through the symlink" ""
+  sb backlinks sym/linked/farnote.md
+  rc_is "backlinks: the same, exit 1" 1
   exists "symlink: the file behind it is where it was" "$tmp/elsewhere/farnote.md"
   exists "symlink: the note in the vault is where it was" "$vault/sym/reader.md"
   rm "$vault/sym/linked"
@@ -793,6 +921,34 @@ else
   printf 'note: this system makes no symlink to a folder, so the notes behind one are not tried\n'
   rm -rf "$vault/sym/linked"
 fi
+
+# ---------------------------------------------------------------- move, a path the vault lists under another spelling
+# Some file systems find a file under a spelling their own list does not show: another Unicode
+# form of a letter, or another case of a letter outside ASCII. No link would follow that move.
+nfd="$(printf 'cafe\314\201')"
+nfc="$(printf 'caf\303\251')"
+note "uni/$nfd.md" '# Stored with a combining accent'
+note "uni/reader.md" "[[uni/$nfd]]"
+sb move "uni/$nfc.md" uni/moved.md
+rc_is "move: a path typed in another Unicode form than the vault lists gives exit 1" 1
+if [ -e "$vault/uni/$nfc.md" ]; then
+  err_has "move: says to write the path as the vault lists it" "write the path as the vault lists it"
+fi
+absent "move: nothing is moved" "$vault/uni/moved.md"
+is "move: and no link is touched" "$(line uni/reader.md 1)" "[[uni/$nfd]]"
+mkfifo "$vault/uni/pipe.md" 2>/dev/null
+if [ -p "$vault/uni/pipe.md" ]; then
+  sb move uni/pipe.md uni/other.md
+  rc_is "move: something at the path that the vault's list does not hold gives exit 1" 1
+  err_has "move: says the vault does not list it" "the vault does not list it under that spelling"
+  if [ -p "$vault/uni/pipe.md" ]; then pass "move: it is left where it was"; else fail "move: it is left where it was" "it was moved"; fi
+else
+  printf 'note: this system makes no named pipe, so a path outside the list is not tried that way\n'
+fi
+rm -f "$vault/uni/pipe.md"
+mkdir -p "$vault/uni/empty"
+sb move uni/empty uni/still-empty
+out_is "move: a folder with no file in it is in no list, and moves" "moved: uni/empty -> uni/still-empty"
 
 # ---------------------------------------------------------------- move, a canvas or a base that names the old path
 mkdir -p "$vault/img" "$vault/cv"

@@ -113,6 +113,9 @@ cmd_search() {
   sub="${sub#/}"
   sub="${sub%/}"
   case "/$sub/" in */../* | */./*) sb_die 5 "--in takes a folder inside the project: $sub" ;; esac
+  if sb_is_windows; then
+    case "$sub" in *\\*) sb_die 5 "--in takes a folder inside the project, with forward slashes: $sub" ;; esac
+  fi
   rel="$SB_P_PATH${sub:+/$sub}"
   [ -d "$SB_ROOT/$rel" ] || sb_die 1 "no folder at $rel"
   out="$(sb_search_notes "$text" "$rel")"

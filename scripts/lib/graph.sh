@@ -260,10 +260,16 @@ AWK
 }
 
 # Set SB_GRAPH_PATH to a vault path with "." folded out; exit 5 when it leaves the vault or
-# enters a dot folder. The vault root comes out empty.
+# enters a dot folder. The vault root comes out empty. On Windows a backslash separates folders
+# too and a drive letter opens an absolute path, so neither is a vault path there.
 sb_graph_path() {
   local rest="$1" out="" seg
   case "$rest" in /*) sb_die 5 "not a vault path, give it from the vault root: $1" ;; esac
+  if sb_is_windows; then
+    case "$rest" in
+      *\\* | [A-Za-z]:*) sb_die 5 "not a vault path, give it from the vault root with forward slashes: $1" ;;
+    esac
+  fi
   while [ -n "$rest" ]; do
     seg="${rest%%/*}"
     case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac

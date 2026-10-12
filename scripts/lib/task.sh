@@ -32,8 +32,10 @@ sb_alias_scan() {
 }
 
 # Print "project<TAB>file" for each index row whose tasks folder holds the id.
+# On Windows a backslash separates folders too, so an id that holds one names no task folder.
 sb_task_by_path() {
   local id="$1" rows="$2" name path keys f
+  if sb_is_windows; then case "$id" in *\\*) return 0 ;; esac; fi
   while IFS=$'\t' read -r name path keys; do
     [ -n "$name" ] || continue
     f="$SB_ROOT/$path/$(sb_setting "$path" tasks_root tasks)/$id/README.md"

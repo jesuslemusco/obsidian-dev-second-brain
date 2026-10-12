@@ -64,7 +64,10 @@ sb_rmlink() {
   rm -f "$1"
 }
 
-# On Windows awk reads in text mode and drops the CR of every line; run it in binary mode there.
+# On Windows awk, grep and sed read in text mode and drop the CR of every line; run them in binary
+# mode there, so that a line ending is seen and kept as on the other systems.
 if sb_is_windows; then
   awk() { command awk -v BINMODE=3 "$@"; }
+  grep() { command grep -U "$@"; }
+  sed() { command sed -b "$@"; }
 fi

@@ -546,7 +546,7 @@ sb_fill_text() {
   local tmpl kv
   tmpl="$(sb_plugin_root)/templates/$1"
   shift
-  [ -f "$tmpl" ] || sb_die 2 "template missing: $tmpl"
+  [ -f "$tmpl" ] || sb_die 2 "template missing: $(sb_path_out "$tmpl")"
   local assigns
   assigns=("SBT__=1")
   for kv in "$@"; do assigns[${#assigns[@]}]="SBT_$kv"; done

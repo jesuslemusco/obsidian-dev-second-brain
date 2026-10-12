@@ -151,12 +151,16 @@ rewrites every link to it and the links inside it. Do not use `mv`: links are le
 - Add `--dry-run` to see what would move and which notes would be rewritten. Nothing is written.
 - `rename` never changes the extension: the new name may repeat it or leave it out. To change an
   extension, use `move`.
-- A name cannot hold `#`, `^`, `|`, `[`, `]` or a backslash, nor start or end with a space. No link
-  could spell it, so the helper refuses that destination.
+- A new name cannot hold any of `# ^ [ ] | \ : * ? " < >`, a backtick or a control character,
+  nor start or end with a space. Obsidian allows none of them. A folder that is there already
+  keeps its name and can still take a note.
 - The index, this note and a project's profile stay where they are. The helper finds them at a
   fixed path and does not move them, nor a folder that holds one.
-- When a note with a link to rewrite cannot be read or written, nothing is moved and the note is
-  named.
+- Before a file is touched, every rewritten line is read again. When a link on it would not lead
+  to its file any more, nothing is moved and the note and line are named.
+- When a note with a link to rewrite cannot be written, nothing is moved and the note is named.
+- A note that changes while the command runs is left as it is. The command names it, rewrites
+  the others and exits 1.
 - A `.canvas` or `.base` file is never edited. The helper names the ones that mention the old
   path; fix those by hand.
 
@@ -194,8 +198,10 @@ and prints their lines that hold at least one.
 - A note behind a symlink is not seen. The helper does not follow one.
 - A name must have the same Unicode form in the link and on disk. An NFC link to a file whose
   name is stored as NFD is unresolved.
-- A note that holds bytes awk cannot hand back whole is never rewritten: a NUL byte on some
-  systems, the control byte 1 on all. A move that would have to rewrite it is refused.
+- One note or folder that cannot be read stops every move: a link in it could be missed.
+  `unresolved` and `backlinks` name it and go on.
+- A note that awk cannot read whole stops every move too: one with a NUL byte, on some systems.
+  A note that holds the control byte 1 is never rewritten.
 
 ## Searching
 

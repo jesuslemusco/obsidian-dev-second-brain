@@ -27,7 +27,7 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
 In Claude Code:
 
 ```
-/plugin marketplace add <owner>/obsidian-dev-second-brain
+/plugin marketplace add jesuslemusco/obsidian-dev-second-brain
 /plugin install obsidian-dev-second-brain@second-brain
 ```
 

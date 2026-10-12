@@ -133,6 +133,21 @@ doc
 chk "index: a missing index fails" index vault "fail | 1 | CLAUDE.md"
 chk "conventions: a missing note fails" conventions vault "fail | 1 | obsidian-conventions.md"
 reset
+tv="$(sed -n 's/^conventions_version: *//p' "$here/templates/obsidian-conventions.md.tmpl" | head -1)"
+edit "$vault/obsidian-conventions.md" "s/^conventions_version: .*/conventions_version: $((tv - 1))/"
+doc
+rc_is "conventions: an older note leaves exit 0" 0
+chk "conventions: a note older than the plugin's template warns, with its version" conventions vault "warn | 1 | obsidian-conventions.md:$((tv - 1))"
+is "conventions: the fix says to scaffold the note again or to edit it, and gives the template's version" "$(fix_of conventions vault)" \
+  "the note is older than the plugin's template, version $tv: delete it and run second-brain scaffold vault, or edit it by hand"
+edit "$vault/obsidian-conventions.md" '/^conventions_version:/d'
+doc
+chk "conventions: a note with no version warns" conventions vault "warn | 1 | obsidian-conventions.md:none"
+edit "$vault/obsidian-conventions.md" "s/^type: onboarding\$/type: onboarding\\
+conventions_version: $((tv + 1))/"
+doc
+chk "conventions: a note newer than the template is fine" conventions vault "ok | 0 | -"
+reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: an absolute import line is found" import vault "ok | 0 | -"

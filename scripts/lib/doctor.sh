@@ -50,11 +50,24 @@ sb_doc_check_index() {
   sb_doc_report fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
 }
 
-# Check that the conventions note exists.
+# Check that the conventions note exists, and that it is not older than the plugin's template.
+# An older note names its conventions_version after the file name, or "none" when it has none.
 sb_doc_check_conventions() {
-  local bad=""
-  [ -f "$SB_ROOT/obsidian-conventions.md" ] || bad="obsidian-conventions.md"
-  sb_doc_report fail conventions vault "$bad" "run second-brain scaffold vault to create it"
+  local f="$SB_ROOT/obsidian-conventions.md" have want
+  if [ ! -f "$f" ]; then
+    sb_doc_row fail conventions vault "obsidian-conventions.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  have="$(sb_fm_get "$f" conventions_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/obsidian-conventions.md.tmpl" conventions_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+    sb_doc_row warn conventions vault "obsidian-conventions.md:${have:-none}" \
+      "the note is older than the plugin's template, version $want: delete it and run second-brain scaffold vault, or edit it by hand"
+    return 0
+  fi
+  sb_doc_row ok conventions vault "" "-"
 }
 
 # Check that the link directory's CLAUDE.md imports the index.

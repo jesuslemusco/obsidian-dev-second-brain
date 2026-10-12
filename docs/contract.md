@@ -204,7 +204,7 @@ Rules that hold for every command:
   exits 0 with no rows (`board`, `projects`, `backlinks`, `unresolved`).
 - Writes change only the lines they must and keep the file's line endings.
 - Wherever a command takes `<path>`, it is a vault path. One that leaves the vault, enters a dot
-  folder or holds a backslash is refused with exit 5.
+  folder or holds a backslash is refused with exit 5, and so is an absolute path.
 - An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`, which
   Git Bash and Windows programs both accept. An absolute path that is read (an argument, an
   environment override, `repos_root`, a `repo_paths` entry) may be in that form, written with
@@ -374,6 +374,11 @@ Inside the helper every absolute path is in the shell's own form, which on Windo
 `/c/...`. `sb_path_in` turns a path that was read into that form and `sb_path_out` turns one into
 the form that is printed. On macOS and Linux both print the path unchanged.
 
+Git Bash's `awk`, `grep` and `sed` read in text mode and drop the CR of every line. On Windows
+`platform.sh` defines shell functions with those three names that run the tools in binary mode,
+so a CRLF file is read and written byte for byte. They are the one exception to the `sb_*` naming
+rule. A library calls the three tools by their plain names, never through `env` or `command`.
+
 Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `graph.sh` and
 `projects.sh`:
 
@@ -395,7 +400,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `sb_projects_tsv` | name, path, keys per line |
 | `sb_project_path <name>` | prints the vault-relative path or returns 1 |
 | `sb_profile <name>` | prints the profile's absolute path or returns 1 |
-| `sb_repo_rows <project>` | prints the `repo` rows (name, path, state) for other libraries to reuse |
+| `sb_repo_rows <project>` | prints the `repo` rows (name, path, state) for other libraries to reuse, with paths in the shell's own form |
 | `sb_today` | prints today's date; honours `SECOND_BRAIN_TODAY` for tests |
 
 Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a

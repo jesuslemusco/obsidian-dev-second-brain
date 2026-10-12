@@ -95,7 +95,8 @@ helper. PowerShell alone is not enough.
 - A junction cannot lead to a single file, so a vault's or a project's agents are linked as one
   folder. Every `.md` file in a `claude/agents` folder is then seen by Claude Code.
 - A junction needs a folder on a local drive. A vault on a network share cannot be linked.
-- Paths are printed as `C:/...`. Paths you give may use backslashes.
+- Absolute paths are printed as `C:/...`, and one you give may use backslashes. Paths inside the
+  vault always use forward slashes, and so does a repository location in a project's profile.
 
 ## Why it is cheap to run
 
@@ -123,7 +124,8 @@ bash scripts/leak-check.sh    fails if a generic file carries a home path or a s
 claude plugin validate . --strict
 ```
 
-The suites run on Linux, macOS and Windows in CI. `scripts/e2e-claude.sh` runs Claude Code itself
+The suites run on Linux, macOS and Windows in CI. On Windows they build symlinks as fixtures,
+which takes Developer Mode or an elevated shell; using the plugin takes neither. `scripts/e2e-claude.sh` runs Claude Code itself
 against a scratch vault, on a Linux and a Windows runner. It costs API usage, so the `e2e` workflow
 runs only when asked: from the Actions tab, or by a commit on a branch whose message holds `[e2e]`.
 

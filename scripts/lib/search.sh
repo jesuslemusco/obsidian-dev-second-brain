@@ -9,7 +9,7 @@ sb_md_files() {
 
 # Find a note by task id or alias; print vault-relative paths.
 cmd_find() {
-  local id="" project="" rows hits="" name path keys f pfx=""
+  local id="" project="" rows hits="" name path keys f
   local usage="usage: second-brain find <ID-or-alias> [--project P]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -30,7 +30,6 @@ cmd_find() {
   if [ -n "$project" ]; then
     sb_need_project "$project"
     rows="$SB_P_NAME"$'\t'"$SB_P_PATH"$'\t'"$SB_P_KEYS"
-    pfx="$SB_P_PATH/"
   else
     rows="$(sb_projects_tsv)"
   fi
@@ -39,14 +38,7 @@ cmd_find() {
     */* | .*) ;;
     *) hits="$(sb_task_by_path "$id" "$rows" | cut -f2-)" ;;
   esac
-  # 2. The alias index of the app.
-  if [ -z "$hits" ] && sb_ob_up; then
-    hits="$(sb_ob aliases verbose | SB_W="$id" SB_PFX="$pfx" SB_R="$SB_ROOT" awk -F'\t' '
-      BEGIN { w = tolower(ENVIRON["SB_W"]); pfx = ENVIRON["SB_PFX"] }
-      NF >= 2 && tolower($1) == w && (pfx == "" || substr($2, 1, length(pfx)) == pfx) { print ENVIRON["SB_R"] "/" $2 }
-    ' | while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done)"
-  fi
-  # 3. The aliases in frontmatter: task READMEs first, then every note of the project.
+  # 2. The aliases in frontmatter: task READMEs first, then every note of the project.
   [ -n "$hits" ] || hits="$(sb_task_by_alias "$id" "$rows" | cut -f2-)"
   if [ -z "$hits" ]; then
     hits="$({
@@ -65,28 +57,34 @@ EOF
   printf '%s\n' "$hits" | SB_R="$SB_ROOT/" awk '{ r = ENVIRON["SB_R"]; if (substr($0, 1, length(r)) == r) $0 = substr($0, length(r) + 1); print }'
 }
 
-# Search one folder through the app; print path:line: text rows.
-sb_search_cli() {
-  sb_ob search:context "query=$1" "path=$2" limit=40 | LC_ALL=C SB_PFX="$2/" awk "$(sb_awk_lib)"'
-    BEGIN { pfx = ENVIRON["SB_PFX"] }
-    substr($0, 1, length(pfx)) == pfx && $0 ~ /:[0-9]+:/ { print cut($0, 240) }'
+# Search the notes of one folder for words. A note matches when it holds every word, in any
+# letter case. Print at most 40 path:line: text rows, the lines that hold the most words first.
+sb_search_notes() {
+  (
+    cd "$SB_ROOT" || exit 1
+    find "$2" -name '.*' -prune -o -type f -name '*.md' -print 2>/dev/null | LC_ALL=C SB_Q="$1" awk '
+      BEGIN {
+        n = split(tolower(ENVIRON["SB_Q"]), part, " ")
+        for (i = 1; i <= n; i++) if (!(part[i] in known)) { known[part[i]] = 1; word[++nw] = part[i] }
+      }
+      $0 != "" {
+        path = $0; ln = 0; nh = 0; found = 0
+        split("", seen)
+        while ((getline line < path) > 0) {
+          ln++
+          low = tolower(line); c = 0
+          for (i = 1; i <= nw; i++) if (index(low, word[i]) > 0) { c++; if (!(i in seen)) { seen[i] = 1; found++ } }
+          if (c) { nh++; hits[nh] = c; at[nh] = ln; text[nh] = line }
+        }
+        close(path)
+        if (found < nw) next
+        for (i = 1; i <= nh; i++) { gsub(/[\t\r]/, " ", text[i]); print hits[i] "\t" path "\t" at[i] "\t" text[i] }
+      }'
+  ) | LC_ALL=C sort -t $'\t' -k1,1nr -k2,2 -k3,3n | LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
+    NR <= 40 { print cut($2 ":" $3 ": " trim($4), 240) }'
 }
 
-# Search the markdown files of one folder with grep; print path:line: text rows.
-sb_search_grep() {
-  (cd "$SB_ROOT" && find "$2" -name '.*' -prune -o -type f -name '*.md' -exec grep -niF -e "$1" /dev/null {} + 2>/dev/null) |
-    LC_ALL=C sort -t: -k1,1 -k2,2n | LC_ALL=C awk "$(sb_awk_lib)"'
-    {
-      i = index($0, ".md:")
-      if (i == 0) next
-      p = substr($0, 1, i + 2); rest = substr($0, i + 4)
-      j = index(rest, ":")
-      if (j == 0) next
-      print cut(p ":" substr(rest, 1, j - 1) ": " trim(substr(rest, j + 1)), 240)
-    }'
-}
-
-# Search text inside a project folder: the app first, grep when it is down or finds nothing.
+# Search text inside a project folder, in the notes that hold every word of it.
 cmd_search() {
   local project="" text="" sub="" rel out=""
   local usage="usage: second-brain search <project> \"<text>\" [--in SUBPATH]"
@@ -109,6 +107,7 @@ cmd_search() {
         ;;
     esac
   done
+  case "$text" in *[!\ ]*) ;; *) text="" ;; esac
   if [ -z "$project" ] || [ -z "$text" ]; then sb_die 5 "$usage"; fi
   sb_need_project "$project"
   sub="${sub#/}"
@@ -116,12 +115,7 @@ cmd_search() {
   case "/$sub/" in */../* | */./*) sb_die 5 "--in takes a folder inside the project: $sub" ;; esac
   rel="$SB_P_PATH${sub:+/$sub}"
   [ -d "$SB_ROOT/$rel" ] || sb_die 1 "no folder at $rel"
-  if sb_ob_up; then
-    out="$(sb_search_cli "$text" "$rel")"
-    # An empty answer is retried once before it is believed.
-    [ -n "$out" ] || out="$(sb_search_cli "$text" "$rel")"
-  fi
-  [ -n "$out" ] || out="$(sb_search_grep "$text" "$rel")"
+  out="$(sb_search_notes "$text" "$rel")"
   [ -n "$out" ] || sb_die 1 "no match in $rel"
-  printf '%s\n' "$out" | head -40
+  printf '%s\n' "$out"
 }

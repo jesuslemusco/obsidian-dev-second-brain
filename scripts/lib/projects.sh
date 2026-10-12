@@ -356,25 +356,9 @@ cmd_profile() {
   sb_section "$SB_P_PROFILE" "$what" || sb_die 1 "no section \"## $what\" in $SB_P_PATH/claude/profile.md"
 }
 
-# Print the search verdict recorded in the conventions note: ok, unreliable or unknown.
-sb_search_verdict() {
-  local f="$SB_ROOT/obsidian-conventions.md"
-  [ -f "$f" ] || { printf 'unknown\n'; return 0; }
-  LC_ALL=C awk '
-    { sub(/\r$/, "") }
-    /^## / { inblock = (tolower($0) ~ /^##[ \t]+limits on this install/); next }
-    inblock && tolower($0) ~ /search/ {
-      l = tolower($0)
-      if (l ~ /unreliable|not dependable|not reliable/) { v = "unreliable"; exit }
-      if (l ~ /(^|[^a-z])(ok|reliable|dependable)([^a-z]|$)/) { v = "ok"; exit }
-    }
-    END { print (v == "" ? "unknown" : v) }
-  ' "$f"
-}
-
-# Print the context block: vault, CLI state, search verdict, project and sprint.
+# Print the context block: vault, project, project path and sprint.
 cmd_context() {
-  local cwd="$PWD" vault="none" ob="missing" search="unknown" project="none" ppath="none" sprint="none" rows count
+  local cwd="$PWD" vault="none" project="none" ppath="none" sprint="none" rows count
   while [ $# -gt 0 ]; do
     if [ "$1" = "--cwd" ] && [ $# -ge 2 ]; then
       cwd="$2"
@@ -385,9 +369,6 @@ cmd_context() {
   SB_ROOT="$(sb_root 2>/dev/null)" || SB_ROOT=""
   if [ -n "$SB_ROOT" ]; then
     vault="$SB_ROOT"
-    sb_ob_up || true
-    ob="${SB_OB_STATE:-missing}"
-    search="$(sb_search_verdict)"
     rows="$(sb_project_rows_by_cwd "$cwd" 2>/dev/null)"
     count="$(printf '%s' "$rows" | grep -c . || true)"
     if [ "$count" = "1" ]; then
@@ -403,10 +384,7 @@ EOF
         sprint="off"
       fi
     fi
-  else
-    sb_ob_bin >/dev/null && ob="down"
   fi
-  printf 'vault: %s\nobsidian: %s\nsearch: %s\nproject: %s\nproject_path: %s\nsprint: %s\n' \
-    "$vault" "$ob" "$search" "$project" "$ppath" "$sprint"
+  printf 'vault: %s\nproject: %s\nproject_path: %s\nsprint: %s\n' "$vault" "$project" "$ppath" "$sprint"
   return 0
 }

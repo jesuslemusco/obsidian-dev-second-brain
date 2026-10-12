@@ -14,8 +14,7 @@ mkdir -p "$vault/.obsidian" "$tmp/userdir"
 export HOME="$tmp/userdir"
 export SECOND_BRAIN_VAULT="$vault"
 export SECOND_BRAIN_TODAY="2026-10-08"
-export SECOND_BRAIN_OBSIDIAN="none"
-unset CLAUDE_SESSION_ID SECOND_BRAIN_OB_TIMEOUT
+unset CLAUDE_SESSION_ID SECOND_BRAIN_CLAUDE_HOME
 
 P="clients/acme/projects/example"
 P2="clients/acme/projects/two"
@@ -132,10 +131,19 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "sprint next" "sprint set" "board <project> [view] [--files]" "--tasks-root R" "--topics-root R" "--sprints-root R" \
-  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "probe" "session-check"; do
+for c in "task tag" "task alias" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
+  "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
 done
+for c in "--files" "probe" "ob <" "Obsidian"; do
+  out_lacks "help: no longer lists $c" "$c"
+done
+out_has "help: exit code 3 is retired" "2 setup missing, 4 ambiguous"
+sb ob version
+rc_is "ob: the command is gone, exit 5" 5
+sb probe
+rc_is "probe: the command is gone, exit 5" 5
 sb 'bad;name'
 rc_is "odd command name: exit 5" 5
 mkdir -p "$tmp/links/deep"
@@ -207,14 +215,20 @@ mkdir -p "$tmp/userdir/.claude"
 ln -s "$vault" "$tmp/userdir/.claude/second-brain-vault"
 run env -u SECOND_BRAIN_VAULT "$SB" root
 out_is "root: follows the pointer symlink" "$vault"
+mkdir -p "$tmp/other-home"
+run env -u SECOND_BRAIN_VAULT SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" root
+rc_is "root: the pointer is looked for in the link directory, exit 2 when it has none" 2
+run env SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" pointer set "$vault"
+run env -u SECOND_BRAIN_VAULT SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" root
+out_is "root: follows the pointer of the link directory" "$vault"
 
 # ---------------------------------------------------------------- context, before setup
 sb context
 rc_is "context: exit 0 on an empty vault" 0
-is "context: six lines" "$(lines "$OUT")" "6"
-out_has "context: vault line" "vault: $vault"
-out_has "context: no CLI" "obsidian: missing"
-out_has "context: no project" "project: none"
+out_is "context: four lines, in the contract's order" "vault: $vault
+project: none
+project_path: none
+sprint: none"
 run env SECOND_BRAIN_VAULT="$tmp/nowhere" "$SB" context
 rc_is "context: exit 0 with no vault" 0
 out_has "context: vault none" "vault: none"
@@ -229,8 +243,8 @@ exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 1"
-line_is "conventions: limits block" "$vault/obsidian-conventions.md" "## Limits on this install"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
+is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
 rc_is "conventions: exit 0" 0
@@ -238,14 +252,16 @@ is "conventions: the default is the short version, without its heading" "$(print
 is "conventions: one section only" "$(printf '%s\n' "$OUT" | grep -c '^## ' || true)" "0"
 if [ "$(lines "$OUT")" -le 30 ]; then pass "conventions: the short version stays within 30 lines"; else fail "conventions: the short version stays within 30 lines" "$(lines "$OUT") lines"; fi
 for c in "<project>/tasks/<TICKET-ID>/README.md" "topic tag" "unique **alias**" "Links carry a path" 'bare `[[Alias]]` does not resolve' \
-  "second-brain ob move" "status/done" "in-review" "Quote a YAML value" 'sprint: "<id>"'; do
+  "second-brain move" "second-brain unresolved <project>" "status/done" "in-review" "Quote a YAML value" 'sprint: "<id>"'; do
   out_has "conventions: the short version covers: $c" "$c"
 done
 sb conventions "note metadata"
 out_has "conventions: a named section, any case" "YAML traps"
 out_lacks "conventions: stops at the next section" "A **topic** is a folder"
-sb conventions Obsidian CLI
-out_has "conventions: a section name of several words" "base:query"
+sb conventions Helper commands
+out_has "conventions: a section name of several words" 'second-brain backlinks "<vault path>"'
+sb conventions "in the obsidian app"
+out_has "conventions: the app is kept as the viewer" "Obsidian is the viewer"
 sb conventions tasks
 out_has "conventions: a slug gets the id as an alias" 'second-brain task alias <slug> add <ID>'
 out_has "conventions: says the folder keeps the slug" "renaming a task folder is not supported yet"
@@ -364,15 +380,6 @@ rc_is "project: flag with no value gives exit 5" 5
 sb context --cwd "$tmp/code/example-api"
 out_has "context: project from the working directory" "project: Example"
 out_has "context: project path" "project_path: $P"
-out_has "context: search verdict unknown before a probe" "search: unknown"
-cp "$vault/obsidian-conventions.md" "$tmp/conventions.before"
-edit "$vault/obsidian-conventions.md" 's/^- No probe has been run yet.*$/- search: ok (3 of 3 scoped calls answered, 2026-10-08)/'
-sb context
-out_has "context: search verdict read from the limits block" "search: ok"
-edit "$vault/obsidian-conventions.md" 's/^- search: ok.*$/- search: unreliable (1 of 3 scoped calls answered, 2026-10-08)/'
-sb context
-out_has "context: an unreliable verdict" "search: unreliable"
-cat "$tmp/conventions.before" >"$vault/obsidian-conventions.md"
 out_has "context: no sprint yet" "sprint: none"
 
 # ---------------------------------------------------------------- profile
@@ -680,26 +687,31 @@ sb task alias no-alias add "Other name" --project "Example Two"
 out_is "task alias: a note with no aliases gets the folder id first" "no-alias
 Other name"
 
-# ---------------------------------------------------------------- board, through the files
+# ---------------------------------------------------------------- board
 edit "$vault/$P/tasks/EX-7/README.md" 's/^status: planned$/status: active/'
 sb board Example
 rc_is "board: exit 0" 0
-is "board: names its source first" "$(printf '%s\n' "$OUT" | head -1)" "source: files"
+out_lacks "board: no source line" "source:"
 out_has "board: row format" 'EX-1 | Fix: totals "rounded" twice | in-review | 2026-10-14 | billing/invoices | feature/EX-1-fix | Check: the #1 thing | -'
-is "board Active: planned, in-progress and in-review only" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | tr '\n' ' ')" "EX-5 EX-1 EX-6 EX-2 "
+is "board Active: planned, in-progress and in-review only" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-5 EX-1 EX-6 EX-2 "
 sb board Example All
-is "board All: every task folder" "$(($(lines "$OUT") - 1))" "8"
-is "board: every row has eight cells" "$(printf '%s\n' "$OUT" | sed 1d | awk -F' [|] ' 'NF != 8' | grep -c . || true)" "0"
+is "board All: every task folder" "$(lines "$OUT")" "8"
+is "board: every row has eight cells" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 8' | grep -c . || true)" "0"
 out_has "board: envs column for an environment set" "EX-7 | Per environment | active | - | - | none yet | Promote to qa | dev:EX-7:done,qa:EX-70:planned"
 out_has "board: title from the heading when the property is absent" "legacy-task | Legacy task | - | - | - | - | - | -"
 sb board Example needs a status
-is "board Needs a status: missing or non-standard status" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | tr '\n' ' ')" "EX-7 legacy-task "
+is "board Needs a status: missing or non-standard status" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-7 legacy-task "
 sb board Example "By topic"
-is "board By topic: active tasks by first topic, untagged last" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | tr '\n' ' ')" "EX-2 EX-1 EX-5 EX-6 "
+is "board By topic: active tasks by first topic, untagged last" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-2 EX-1 EX-5 EX-6 "
 sb board Example "Current sprint"
-out_is "board Current sprint: empty while no sprint is in progress" "source: files"
+rc_is "board Current sprint: exit 0 while no sprint is in progress" 0
+out_is "board Current sprint: no rows while no sprint is in progress" ""
+mv "$vault/$P/tasks/tasks.base" "$tmp/tasks.base.aside"
+sb board Example
+is "board: the board file is not read" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-5 EX-1 EX-6 EX-2 "
+mv "$tmp/tasks.base.aside" "$vault/$P/tasks/tasks.base"
 sb board Example all --files
-rc_is "board: --files accepted" 0
+rc_is "board: the --files flag is gone, exit 5" 5
 sb board Example bogus
 rc_is "board: unknown view gives exit 5" 5
 sb board Nope
@@ -728,6 +740,11 @@ sb find "example tasks hub"
 out_is "find: a hub by alias" "$P/tasks/README.md"
 sb find "Obsidian Conventions"
 out_is "find: a vault-level note" "obsidian-conventions.md"
+printf -- '---\naliases:\n  - "Billing Notes"\n---\n\n# Notes on billing\n' >"$vault/$P/docs/billing/notes.md"
+sb find "billing notes"
+out_is "find: an alias in the frontmatter of any note of the project" "$P/docs/billing/notes.md"
+sb find "billing notes" --project "Example Two"
+rc_is "find: an alias of another project's note is not found with --project" 1
 sb find TWO-1 --project Example
 rc_is "find: --project narrows the search" 1
 sb find TWO-1 --project "Example Two"
@@ -737,7 +754,7 @@ rc_is "find: none gives exit 1" 1
 sb find
 rc_is "find: no argument gives exit 5" 5
 
-# ---------------------------------------------------------------- search, through grep
+# ---------------------------------------------------------------- search
 i=0
 : >"$vault/$P/docs/billing/Invoices/many.md"
 while [ "$i" -lt 60 ]; do
@@ -760,6 +777,24 @@ sb search Example rounded --in nowhere
 rc_is "search --in: missing folder gives exit 1" 1
 sb search Example
 rc_is "search: no text gives exit 5" 5
+sb search Example "   "
+rc_is "search: a text of spaces gives exit 5" 5
+W="$P/docs/billing/Invoices"
+printf '%s\n' '# Qalpha report' '' 'qalpha only here' 'QBETA and Qalpha together' 'nothing' 'qbeta alone' >"$vault/$W/words.md"
+printf '%s\n' 'qbeta qalpha' >"$vault/$W/zz-words.md"
+printf '%s\n' 'qalpha without the other word' >"$vault/$W/half.md"
+sb search Example "qbeta  QALPHA"
+rc_is "search: several words, exit 0" 0
+out_is "search: the notes that hold every word; lines with more of the words first, then by path and line" "$W/words.md:4: QBETA and Qalpha together
+$W/zz-words.md:1: qbeta qalpha
+$W/words.md:1: # Qalpha report
+$W/words.md:3: qalpha only here
+$W/words.md:6: qbeta alone"
+sb search Example "qalpha"
+out_has "search: one word matches the note that holds it" "$W/half.md:1: qalpha without the other word"
+sb search Example "qalpha no-such-word"
+rc_is "search: a word no note holds gives exit 1" 1
+rm "$vault/$W/words.md" "$vault/$W/zz-words.md" "$vault/$W/half.md"
 
 # ---------------------------------------------------------------- sprint
 sb sprint current Example
@@ -817,7 +852,7 @@ sb sprint set Nope goal=x
 rc_is "sprint set: unknown project gives exit 1" 1
 for t in EX-2 EX-3 EX-4 EX-5; do sb task set "$t" sprint=2026-10-14; done
 sb board Example "Current sprint"
-is "board Current sprint: the tasks of the sprint in progress" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-1 EX-2 EX-3 EX-4 EX-5 EX-6 "
+is "board Current sprint: the tasks of the sprint in progress" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-1 EX-2 EX-3 EX-4 EX-5 EX-6 "
 sb sprint close Example --carry EX-1
 rc_is "sprint close: open tasks left unnamed give exit 5" 5
 is "sprint close: lists the missing ones" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-2 EX-5 EX-6 "
@@ -891,7 +926,7 @@ line_is "sprint open: a closed task is left where it is" "$T4" 'sprint: "2031-01
 line_is "sprint open: a task on a sprint that has a note is left alone" "$T3" 'sprint: "2026-10-14"'
 is "sprint open: re-pointing is not a carry" "$(SB_ROOT="$vault"; sb_fm_list "$T1" carried_from | tr '\n' ' ')" "2026-10-14 2026-10-28 "
 sb board Example "Current sprint"
-is "sprint open: the re-pointed tasks show in the sprint" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-1 EX-2 "
+is "sprint open: the re-pointed tasks show in the sprint" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-1 EX-2 "
 line_is "sprint open: an anchor that exists is not moved" "$vault/$P/claude/profile.md" 'sprint_anchor_end: "2026-10-14"'
 sb sprint open "Example Two" --end 2028-03-05
 line_is "sprint open: start over a leap day" "$vault/$P2/sprints/2028-03-05.md" "start: 2028-02-21"
@@ -949,7 +984,7 @@ line_is "bare README: status tag" "$BR" "  - status/active"
 is "bare README: the type tag sits before the status tag" "$(($(lineno "$BR" '  - type/task') < $(lineno "$BR" '  - status/active')))" "1"
 is "bare README: first alias is the folder name" "$(SB_ROOT="$vault"; sb_fm_list "$BR" aliases | head -1)" "bare-readme"
 file_has "bare README: the body is kept" "$BR" "Text written by hand."
-sb board Example Active --files
+sb board Example Active
 out_has "bare README: now a board row" "bare-readme | Bare one | planned | - | - | - | - | -"
 mkdir -p "$vault/$P2/tasks/legacy-task"
 printf -- '---\naliases:\n  - legacy-task\nstatus: planned\n---\n\n# legacy-task - twin\n\n## Discovery log\n\nold finding\n' >"$vault/$P2/tasks/legacy-task/README.md"
@@ -1031,9 +1066,8 @@ mkdir -p "$vault/$R/knowledge/api"
 sb task tag RT-1 add knowledge/API
 out_is "other roots: a tag is the path under the topics root" "api"
 is "other roots: an existing topic folder gives no warning" "$ERR" ""
-sb board Roots --files
-out_is "other roots: board --files reads the tasks root" "source: files
-RT-1 | First | planned | - | api | none yet | Frame the story | -"
+sb board Roots
+out_is "other roots: board reads the tasks root" "RT-1 | First | planned | - | api | none yet | Frame the story | -"
 sb sprint open Roots --end 2026-10-21
 out_is "other roots: sprint open writes under the sprints root" "$R/cadence/sprints/2026-10-21.md"
 line_is "other roots: sprint hub line" "$vault/$R/cadence/sprints/README.md" "- [[$R/cadence/sprints/2026-10-21|Roots Sprint 2026-10-21]] - 2026-10-08 to 2026-10-21"
@@ -1182,7 +1216,7 @@ is "project --cwd: the fallback prints both candidates" "$(lines "$OUT")" "2"
 sb project --cwd "$tmp/code/example-api/src/deep"
 out_has "project --cwd: a project with no recorded location still matches by folder name" "Example${TAB}$P${TAB}"
 sb context --cwd "$tmp/other root/alpha-api"
-is "context: still six lines" "$(lines "$OUT")" "6"
+is "context: still four lines" "$(lines "$OUT")" "4"
 out_has "context: project from a recorded repository folder" "project: Repo Two"
 
 # ---------------------------------------------------------------- scaffold project, no sprints
@@ -1230,7 +1264,7 @@ file_lacks "no sprints: the leftover id is gone" "$vault/$N/tasks/KB-1/README.md
 sb board Kanban
 out_has "no sprints: the board still lists the task" "KB-1 | First | planned | - |"
 sb board Kanban "Current sprint"
-is "no sprints: the sprint view has no rows" "$(lines "$OUT")" "1"
+out_is "no sprints: the sprint view has no rows" ""
 sb scaffold project Kanban --path "$N" --keys KB
 out_is "no sprints: a second run without the flag creates nothing" ""
 absent "no sprints: the profile decides, so still no sprints hub" "$vault/$N/sprints"
@@ -1260,7 +1294,7 @@ sb board Kanban "Current sprint"
 out_has "sprints turned on: the sprint lists its task" "KB-1 | First | planned | 2026-02-01 |"
 edit "$vault/$N/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
 sb board Kanban "Current sprint"
-out_is "sprints turned off again: a sprint left in progress lists nothing" "source: files"
+out_is "sprints turned off again: a sprint left in progress lists nothing" ""
 sb context --cwd "$vault/$N"
 out_has "sprints turned off again: context says off" "sprint: off"
 
@@ -1269,88 +1303,16 @@ is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2
 is "templates: only UPPER_SNAKE placeholders" "$(cat "$here"/templates/*.tmpl | grep -o '{{[^}]*}}' | grep -vc '^{{[A-Z][A-Z0-9_]*}}$' || true)" "0"
 bad_links="$(find "$vault" -name '.*' -prune -o -type f -name '*.md' -print | while IFS= read -r f; do check_links "$f"; done)"
 is "generated notes: every link carries a path that exists" "$bad_links" ""
+sb unresolved
+rc_is "generated notes: unresolved exits 0" 0
+out_is "generated notes: the helper reads no unresolved link in them" ""
 
-# ---------------------------------------------------------------- Obsidian CLI, no app
-sb ob version
-rc_is "ob: no CLI gives exit 3" 3
-sb ob
-rc_is "ob: no arguments gives exit 5" 5
-
-# ---------------------------------------------------------------- Obsidian CLI, a stand-in
-stub="$tmp/stub"
-mkdir -p "$stub"
-cat >"$stub/obsidian" <<'EOF'
-#!/usr/bin/env bash
-# Stand-in for the Obsidian CLI: answers from files in STUB_DIR.
-printf '%s\n' "$*" >>"$STUB_DIR/calls.log"
-case "$1" in
-  vault) cat "$STUB_DIR/vault.txt" ;;
-  base:query) cat "$STUB_DIR/board.txt" ;;
-  aliases) cat "$STUB_DIR/aliases.txt" ;;
-  search:context)
-    n="$(cat "$STUB_DIR/search.count" 2>/dev/null || printf 0)"
-    n=$((n + 1))
-    printf '%s\n' "$n" >"$STUB_DIR/search.count"
-    if [ "$n" -ge 2 ]; then cat "$STUB_DIR/search.txt"; else printf 'No matches found.\n'; fi
-    ;;
-  hang) exec sleep 30 ;;
-  *) printf 'Error: Command "%s" not found.\n' "$1" ;;
-esac
-EOF
-chmod +x "$stub/obsidian"
-export STUB_DIR="$stub"
-export SECOND_BRAIN_OBSIDIAN="$stub/obsidian"
-printf '%s\n' "$vault" >"$stub/vault.txt"
-printf '%s\n' "$P/tasks/EX-2/README.md" "$P/tasks/EX-1/README.md" >"$stub/board.txt"
-printf 'Example Tasks Hub\t%s\nBilling Notes\t%s\n' "$P/tasks/README.md" "$P/docs/README.md" >"$stub/aliases.txt"
-printf '%s\n' "$P/docs/billing/Invoices/many.md:3: line 2 holds needle-x here" >"$stub/search.txt"
-sb context --cwd "$vault/$P"
-out_has "context: CLI answering for this vault" "obsidian: up"
-sb ob vault info=path
-rc_is "ob: passes arguments through" 0
-out_is "ob: prints the CLI output" "$vault"
-sb board Example Active
-is "board: source is the base when the CLI answers" "$(printf '%s\n' "$OUT" | head -1)" "source: board"
-is "board: rows keep the order of the base" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | tr '\n' ' ')" "EX-2 EX-1 "
-file_has "board: one base:query for the view" "$stub/calls.log" "base:query path=$P/tasks/tasks.base view=Active format=paths"
-sb board Example "Current sprint"
-is "board Current sprint: the base is used while its literal names the sprint in progress" "$(printf '%s\n' "$OUT" | head -1)" "source: board"
-cp "$vault/$P/tasks/tasks.base" "$tmp/base.keep"
-edit "$vault/$P/tasks/tasks.base" 's/sprint == "2026-11-05"/sprint == "2020-01-01"/'
-sb board Example "Current sprint"
-is "board Current sprint: a stale literal is not trusted" "$(printf '%s\n' "$OUT" | head -1)" "source: files"
-is "board Current sprint: rows of the sprint in progress" "$(printf '%s\n' "$OUT" | sed 1d | cut -d' ' -f1 | LC_ALL=C sort | tr '\n' ' ')" "EX-1 EX-2 "
-cat "$tmp/base.keep" >"$vault/$P/tasks/tasks.base"
+# ---------------------------------------------------------------- a sprint with no tasks
 sb sprint close Four
 rc_is "sprint close: a sprint with no tasks closes" 0
 file_has "sprint close: the board keeps the closed sprint's literal" "$vault/work/four/tasks/tasks.base" 'sprint == date("2026-11-11")'
 sb board Four "Current sprint"
-out_is "board Current sprint: no rows with no sprint in progress, whatever the source" "source: files"
-file_lacks "board Current sprint: the base is not asked" "$stub/calls.log" "path=work/four/tasks/tasks.base"
-printf 'Error: View not found: Active\n' >"$stub/board.txt"
-sb board Example Active
-is "board: falls back to the files on a CLI error" "$(printf '%s\n' "$OUT" | head -1)" "source: files"
-sb board Example Active --files
-is "board: --files skips the CLI" "$(printf '%s\n' "$OUT" | head -1)" "source: files"
-sb find "billing notes"
-out_is "find: uses the alias index" "$P/docs/README.md"
-sb search Example needle-x --in docs
-out_is "search: an empty CLI answer is retried once" "$P/docs/billing/Invoices/many.md:3: line 2 holds needle-x here"
-is "search: two CLI calls" "$(cat "$stub/search.count")" "2"
-file_has "search: scoped with path=" "$stub/calls.log" "search:context query=needle-x path=$P/docs limit=40"
-: >"$stub/search.txt"
-sb search Example needle-x --in docs
-is "search: grep fallback when the CLI stays empty" "$(lines "$OUT")" "40"
-printf '%s\n' "$tmp/vault2" >"$stub/vault.txt"
-sb ob vault info=path
-rc_is "ob: another vault in front gives exit 3" 3
-sb context
-out_has "context: CLI down for this vault" "obsidian: down"
-sb board Example Active
-is "board: files when the app has another vault" "$(printf '%s\n' "$OUT" | head -1)" "source: files"
-printf '%s\n' "$vault" >"$stub/vault.txt"
-run env SECOND_BRAIN_OB_TIMEOUT=1 "$SB" ob hang
-rc_is "ob: a call that hangs is cut off, exit 3" 3
+out_is "board Current sprint: no rows once the sprint is closed, whatever the board's literal says" ""
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

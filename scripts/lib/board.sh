@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# board.sh - the task board: one base:query, or the same views read from task frontmatter.
+# board.sh - the task board: the views of the board file, read from task frontmatter.
 
 # Print the task READMEs directly inside a tasks folder, one absolute path per line.
 sb_task_files() {
@@ -139,55 +139,29 @@ sb_board_sprint_literal() {
   ' "$1"
 }
 
-# Print a project's board for one view, from the base or from the task files.
+# Print a project's board for one view, from the frontmatter of its task READMEs.
 cmd_board() {
-  local project="" view="" files=0 dir base paths="" rows="" source="files" answered=0 cur=""
+  local project="" view="" dir cur=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --files) files=1 ;;
-      -*) sb_die 5 "usage: second-brain board <project> [view] [--files]" ;;
+      -*) sb_die 5 "usage: second-brain board <project> [view]" ;;
       *)
         if [ -z "$project" ]; then project="$1"; else view="${view:+$view }$1"; fi
         ;;
     esac
     shift
   done
-  [ -n "$project" ] || sb_die 5 "usage: second-brain board <project> [view] [--files]"
+  [ -n "$project" ] || sb_die 5 "usage: second-brain board <project> [view]"
   view="$(sb_board_view "$view")" || sb_die 5 "unknown view (views: Active, Current sprint, By topic, Needs a status, All)"
   sb_need_project "$project"
   dir="$SB_P_DIR/$SB_TASKS_ROOT"
   [ -d "$dir" ] || sb_die 1 "no tasks folder at $SB_P_PATH/$SB_TASKS_ROOT"
-  base="$SB_P_PATH/$SB_TASKS_ROOT/tasks.base"
   if [ "$view" = "Current sprint" ]; then
     # Sprints turned off: a sprint note left in progress lists nothing.
-    cur=""
     ! sb_uses_sprints "$SB_P_PATH" || cur="$(sb_sprint_current_id "$SB_P_PATH")"
-    if [ -z "$cur" ]; then
-      printf 'source: files\n'
-      return 0
-    fi
-    # The base filters on a literal id: use it only while it names the sprint in progress.
-    [ "$(sb_board_sprint_literal "$SB_ROOT/$base")" = "$cur" ] || files=1
+    [ -n "$cur" ] || return 0
   fi
-  if [ "$files" -eq 0 ] && [ -f "$SB_ROOT/$base" ] && sb_ob_up; then
-    paths="$(sb_ob base:query "path=$base" "view=$view" format=paths)"
-    case "$paths" in
-      Error* | *'not found'*) paths="" ;;
-      *) answered=1 ;;
-    esac
-    paths="$(printf '%s\n' "$paths" | grep '\.md$' || true)"
-    if [ -n "$paths" ]; then
-      rows="$(printf '%s\n' "$paths" | SB_R="$SB_ROOT" awk '{ print ENVIRON["SB_R"] "/" $0 }' | sb_task_scan | sb_board_rows)"
-      [ -n "$rows" ] && source="board"
-    fi
-  fi
-  if [ "$source" = "files" ]; then
-    rows="$(sb_task_files "$dir" | sb_task_scan | sb_board_filter "$view" "$cur" | sb_board_rows)"
-    # An empty answer from the base only counts when the files agree.
-    if [ -z "$rows" ] && [ "$answered" -eq 1 ]; then source="board"; fi
-  fi
-  printf 'source: %s\n' "$source"
-  [ -z "$rows" ] || printf '%s\n' "$rows"
+  sb_task_files "$dir" | sb_task_scan | sb_board_filter "$view" "$cur" | sb_board_rows
   return 0
 }
 

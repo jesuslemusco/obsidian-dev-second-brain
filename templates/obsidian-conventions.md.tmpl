@@ -2,7 +2,7 @@
 aliases:
   - Obsidian Conventions
 type: onboarding
-conventions_version: 1
+conventions_version: 2
 tags:
   - type/onboarding
 ---
@@ -10,7 +10,7 @@ tags:
 # Obsidian conventions
 
 How this vault is organized and how to work in it: where notes and tasks live, how they are tagged
-and linked, how to search, and how to use Obsidian from the terminal. It applies to every project in
+and linked, how to search, and which helper command does what. It applies to every project in
 the vault. Skills and agents read "The short version" before they write notes.
 
 ## The short version
@@ -26,7 +26,7 @@ the vault. Skills and agents read "The short version" before they write notes.
    for every `README.md`. A bare `[[Alias]]` does not resolve.
 5. Folder `README.md` files are **hubs** that link down to their notes and up to their parent.
    Every other note starts with `> Up: [[<path>|<Hub alias>]]`.
-6. **Move and rename with `second-brain ob move` / `second-brain ob rename`**, never `mv`.
+6. **Move and rename with `second-brain move` / `second-brain rename`**, never `mv`.
 7. **Frontmatter is the truth.** A task carries `title`, `status`, `next` (the next action, in one
    phrase), `branch` and `epic`. `status` is `planned`, `in-progress`, `in-review`, `done` or
    `abandoned`; its tag is `status/done` for the last two and `status/active` for the rest. Change
@@ -35,8 +35,9 @@ the vault. Skills and agents read "The short version" before they write notes.
    lone dash, or looks like a date or a number: `- "Runbook: rotate the API keys"`, `epic: "-"`.
 9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date. A task joins it with
    the property `sprint: "<id>"`, always quoted. No `sprint` key means backlog.
-10. Find things with the **Obsidian CLI** for metadata and **grep** for text. Scope every search.
-11. After editing links, `second-brain ob unresolved verbose` must not list a target you wrote.
+10. Find things with the **helper**: `second-brain find`, `board` and `topic` for metadata,
+    `second-brain search` for text. Scope every search.
+11. After editing links, `second-brain unresolved <project>` must not list a link you wrote.
 
 ## Note metadata
 
@@ -136,42 +137,50 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
     `[[clients/acme/projects/example/tasks/EX-123/README|EX-123]]`
   - the bare file name when it is unique in the vault: `[[obsidian-conventions|Obsidian Conventions]]`
   - `\|` instead of `|` when the link sits in a table cell
-- Get the path from the alias: `obsidian aliases verbose | grep "^<alias>"`.
-- **Check what you wrote:** `obsidian unresolved verbose` lists links that go nowhere.
+- Get the path from the alias: `second-brain find "<alias>"`.
+- **Check what you wrote:** `second-brain unresolved <project>` lists links that go nowhere.
 
 ## Moving and renaming
 
-Use `obsidian move path="<vault path>" to="<existing folder or new path>"` and
-`obsidian rename path="<vault path>" name="<new name>"`. Obsidian then rewrites every link to the
-note. Create the destination folder first. Do not use `mv`: links are left to fix by hand.
+Use `second-brain move "<vault path>" "<folder or new vault path>"` and
+`second-brain rename "<vault path>" "<new name>"`. The helper moves the file or the folder, then
+rewrites every link to it and the links inside it. Do not use `mv`: links are left to fix by hand.
 
-## Obsidian CLI
+- A destination that is an existing folder, or that ends with `/`, takes the item under its own
+  name. Missing folders are created.
+- Add `--dry-run` to see what would move and which notes would be rewritten. Nothing is written.
+- `rename` keeps the extension when the new name has none.
+- A `.canvas` or `.base` file is never edited. The helper names the ones that mention the old
+  path; fix those by hand.
 
-Obsidian's own index is reachable from the terminal with `obsidian <command>`, while the app is
-running. `second-brain ob <command>` finds the binary and stops early when the app is closed.
-`obsidian help` lists everything.
+## Helper commands
+
+The helper, `second-brain`, reads and writes the vault's files. It never calls Obsidian, so every
+command works while the app is closed. A vault path is relative to the vault root, with forward
+slashes. `second-brain help` lists everything.
 
 | Need | Command |
 |---|---|
-| A note by id or alias | `obsidian aliases verbose \| grep -i "^<alias>"` |
-| Notes carrying one exact tag | `obsidian tag name=billing/invoices verbose` |
-| Every tag in use, with counts | `obsidian tags counts` |
-| A project's task board | `obsidian base:query path="<project>/tasks/tasks.base" view=Active format=md` |
-| What links to a note | `obsidian backlinks path="<vault path>"` |
-| Links that go nowhere | `obsidian unresolved verbose` |
-| Read or set a property | `obsidian property:read name=status path="<vault path>"`, `property:set name=status value=done path=...` |
-| Headings of a long note | `obsidian outline path="<vault path>"` |
-| Text inside one folder | `obsidian search:context query="<text>" path="<folder>"` |
-| Move or rename a note | `obsidian move ...`, `obsidian rename ...` |
+| A note by id or alias | `second-brain find "<ID or alias>"` |
+| A project's task board | `second-brain board <project> [view]` |
+| Tasks carrying a topic tag or a sub-tag | `second-brain topic <project> billing/invoices` |
+| What links to a note | `second-brain backlinks "<vault path>"` |
+| Links that go nowhere | `second-brain unresolved [project]` |
+| Read or set a task property | `second-brain task head <ID>`, `second-brain task set <ID> status=done` |
+| Headings of a long note | `second-brain outline "<vault path>"` |
+| Text inside one folder | `second-brain search <project> "<text>" --in <subpath>` |
+| Move or rename a note | `second-brain move ...`, `second-brain rename ...` |
 
-`obsidian tag name=<tag>` matches that exact tag, not its sub-tags. After many files change on disk
-at once, the index can lag; `obsidian reload` forces a re-read.
-A search that matches hundreds of notes can come back empty: keep queries selective and scoped with
-`path=`. `second-brain search` falls back to grep when the CLI returns nothing.
+A search splits the text into words. It lists the notes that hold every word, in any letter case,
+and prints their lines that hold at least one.
 
-## Limits on this install
+## Limits of the helper
 
-- No probe has been run yet. Run `second-brain probe` to record what works on this install.
+- It reads links from the files, not from Obsidian. A link resolves by its vault path, by its path
+  from the note's folder, or by the end of a path.
+- Its board views are fixed. A view changed or added in `tasks.base` shows in Obsidian only.
+- A move never edits a `.canvas` or `.base` file.
+- Letter case is ignored for ASCII letters only, in links and in searches.
 
 ## Searching
 
@@ -183,9 +192,12 @@ READMEs one level under `tasks/`: task folders hold large logs and data.
 - **Tasks on a topic**, sub-topics included: `second-brain topic <project> billing/invoices`.
 - **From a topic tag to its docs:** the tag is the folder path. Start at that folder's `README.md`.
 - **Full text:** `second-brain search <project> "<text>"`, inside the narrowest folder that could
-  hold it. Never grep the whole vault. Grep works when Obsidian is closed.
+  hold it. Never grep the whole vault.
 
 ## In the Obsidian app
+
+Obsidian is the viewer. Claude and the helper work on the files, and the app shows them. It does
+not have to be open.
 
 - **Quick switcher** matches aliases: type a ticket id or a hub name.
 - **Tag pane** shows the topic tree with counts; **Bookmarks** can hold each project's board.

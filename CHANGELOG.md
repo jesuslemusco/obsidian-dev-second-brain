@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.2.0 - unreleased
+
+The helper works on the vault's files alone, and the plugin runs on Windows.
+
+- The helper never calls Obsidian. Obsidian is where the vault is read: its command line interface
+  is no longer needed, and the app does not have to be running.
+- New commands replace what went through Obsidian's index: `outline`, `backlinks`, `unresolved`,
+  `move` and `rename`. `move` and `rename` rewrite the links to a moved note in the vault's notes
+  and take `--dry-run`.
+- Removed: `second-brain ob`, `second-brain probe`, the `--files` flag and the `source:` line of
+  `board`, the `obsidian` and `search` lines of `context`, the doctor checks `obsidian-cli` and
+  `index-fresh`, and exit code 3.
+- `search` finds the notes that hold every word of the text.
+- Windows is supported in Git Bash, the shell Claude Code uses there. The links are directory
+  junctions, which need no special rights: one per skill folder, and one per `claude/agents`
+  folder. Paths are printed as `C:/...`.
+- `second-brain pointer set <folder>` creates the vault pointer on every system. `vault-setup` uses
+  it in place of a hand-made symlink.
+- The SessionStart hook is written in shell form, so it runs on Windows.
+- The conventions note is at version 2: it describes the helper commands in place of the Obsidian
+  command line interface.
+- The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
+  scratch vault on a Linux and a Windows runner.
+
+Upgrading a vault that was set up with 0.1.0:
+
+- The pointer and the links keep working as they are.
+- `scaffold vault` never overwrites, so the vault keeps its version 1 conventions note, which
+  still names the removed commands. Delete `obsidian-conventions.md` and run
+  `second-brain scaffold vault` to get the new one, or edit it by hand.
+- In the vault's `CLAUDE.md`, the rule about moving notes should name `second-brain move` and
+  `second-brain rename`.
+- A snapshot taken with 0.1.0 does not compare with one taken now.
+
 ## 0.1.0 - unreleased
 
 First version.

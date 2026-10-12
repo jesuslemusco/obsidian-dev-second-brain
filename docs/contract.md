@@ -237,8 +237,8 @@ Rules that hold for every command:
 | `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
 | `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing |
 | `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project |
-| `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path; when it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists, exit 5 when `<from>` is the vault root, an index project's folder, or a folder that holds one. `--dry-run` prints the same lines after a first line `dry run` and writes nothing |
-| `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; the extension is kept when `<name>` has none. Exit 5 when `<name>` holds a slash |
+| `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists, exit 5 when `<from>` is the vault root, an index project's folder, or a folder that holds one. `--dry-run` prints the same lines after a first line `dry run` and writes nothing |
+| `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; the extension is kept when `<name>` has none. An ending counts as an extension when it follows the last dot and holds a letter, so `draft v1.2` keeps `.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
@@ -246,8 +246,8 @@ Rules that hold for every command:
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
 | `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`. A file that already exists is reported on stderr as `exists: <path>` |
 | `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
-| `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer |
-| `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
+| `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
+| `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
@@ -269,15 +269,18 @@ share one reading of a note's links, in `scripts/lib/graph.sh`.
   that path taken from the linking note's folder; the file whose vault path ends with the target
   at a folder boundary. When several files match the last rule, the one in the linking note's
   folder wins, then the one with the fewest folders in its path, then the first in byte order.
+- A target that starts with `./` or `../` is taken from the linking note's folder only. One that
+  starts with `/` is a vault path only.
 - A target that resolves to no file is unresolved.
 - The files of the vault are every file under the vault root outside dot folders (`.obsidian`,
   `.trash`, `.second-brain`). Notes are the `.md` files among them; only notes are read for links.
 
 What `move` and `rename` do to links:
 
-- Every link that resolved to a moved file is rewritten to resolve to it at its new place, and so
-  is every link inside a moved note that would otherwise resolve to another file or to none. A
-  link that still resolves to the same file is left as written.
+- Every link keeps leading to the file it led to. A link that resolved to a moved file is
+  rewritten to resolve to it at its new place. So is a link inside a moved note, and a link
+  anywhere that the moved file would capture at its new place, when it would otherwise resolve to
+  another file or to none. A link that still resolves to the same file is left as written.
 - A rewritten wikilink is the new file name alone when the old target was a file name alone and
   the new name is unique in the vault; otherwise it is the new vault path. It has `.md` only when
   the old target had it. `!`, `#heading` and `|text` are kept.
@@ -286,6 +289,8 @@ What `move` and `rename` do to links:
 - Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
   moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
 - The links are worked out before anything is written; the files are moved, then the notes edited.
+- Not covered: a rename that changes only the letter case of a name, on a file system that
+  ignores case. It exits 6.
 
 ### link, doctor, snapshot
 
@@ -303,7 +308,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   reads `agents/` through its sub-folders, so every agent file in a linked folder is found, and so
   is any other `.md` file kept there.
 - `link` prints one row per agent on every system. On Windows each agent row carries the state of
-  its folder's junction.
+  its folder's junction. Two project paths that give the same junction name cannot both be linked:
+  the agents of the later one are `duplicate`.
+- A junction needs a folder on a local drive, so a vault on a network share cannot be linked.
 - A plain `ln -s` is never used on Windows, where Git Bash turns it into a copy.
 - `sb_link_scan` prints one row per item, no header: `name | kind | state | target`. `kind` is
   `skill` or `agent`. `state` is one of `linked`, `missing`, `wrong-target`, `name-mismatch`,

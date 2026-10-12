@@ -18,8 +18,6 @@ unset sb_src sb_dir
 
 # State shared by the library functions; never taken from the environment.
 SB_ROOT=""
-SB_OB_STATE=""
-SB_OB_VAULT_ARG=""
 
 for sb_lib in "$SB_PLUGIN_ROOT"/scripts/lib/*.sh; do
   # shellcheck disable=SC1090

@@ -2,9 +2,10 @@
 
 A Claude Code plugin that makes an Obsidian vault the place where a developer's work is tracked:
 stories, sprints and project docs. It ships skills and agents that work for any project, and a
-helper that asks Obsidian's own index instead of reading whole files.
+helper that answers from the vault's files in one call instead of reading whole notes.
 
-The plugin holds no project data. Your vault does.
+The plugin holds no project data. Your vault does. Obsidian is where you read it: the helper works
+on the files and never calls the app.
 
 ## What you get
 
@@ -16,14 +17,14 @@ The plugin holds no project data. Your vault does.
 | `vault-doctor` | skill | Check the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. |
-| `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, scaffolding. |
+| `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
 
 ## Requirements
 
 - Claude Code.
-- Obsidian 1.12 or later, with its command line interface turned on (Settings, General). The
-  helper falls back to reading files when Obsidian is closed.
-- macOS or Linux. The setup relies on symlinks.
+- Obsidian 1.9 or later, to read the vault and its task boards. It does not have to be running,
+  and its command line interface is not used.
+- macOS, Linux, or Windows with Git for Windows. See On Windows below.
 
 ## Install
 
@@ -55,7 +56,7 @@ To try it for one session without installing: `claude --plugin-dir /path/to/obsi
 On your machine:
 
 ```
-~/.claude/second-brain-vault      a symlink to your vault; the only per-machine setting
+~/.claude/second-brain-vault      a link to your vault; the only per-machine setting
 ~/.claude/CLAUDE.md               one import line for the vault index
 ```
 
@@ -85,6 +86,17 @@ Sprints are optional per project. `uses_sprints: false` in a project's profile, 
 `vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
 `Current sprint` view; its stories are tracked by status alone.
 
+## On Windows
+
+Claude Code runs its Bash tool through Git Bash, which comes with Git for Windows, and so does the
+helper. PowerShell alone is not enough.
+
+- The links are directory junctions, which need no administrator rights and no Developer Mode.
+- A junction cannot lead to a single file, so a vault's or a project's agents are linked as one
+  folder. Every `.md` file in a `claude/agents` folder is then seen by Claude Code.
+- A junction needs a folder on a local drive. A vault on a network share cannot be linked.
+- Paths are printed as `C:/...`. Paths you give may use backslashes.
+
 ## Why it is cheap to run
 
 - The always-loaded text is one short index. The rules live in one note that is read on demand.
@@ -95,21 +107,25 @@ Sprints are optional per project. `uses_sprints: false` in a project's profile, 
 ## What it does not do
 
 - It does not talk to your ticket tracker or to any live system. It needs no credentials.
-- It does not move or rename existing notes unless you ask, and then it does it through Obsidian so
-  links are rewritten.
+- It does not move or rename existing notes unless you ask, and then it rewrites the links to them
+  in the vault's notes. A `.canvas` or `.base` file that mentions a moved note is named, not edited.
 - It supports one vault per machine.
-- Windows is not supported.
 
 ## Development
 
 ```
 bash scripts/test.sh          builds a scratch vault and checks every helper command
-bash scripts/test-link.sh     checks symlink registration on a scratch vault
+bash scripts/test-link.sh     checks the pointer and link registration on a scratch vault
+bash scripts/test-graph.sh    checks outline, backlinks, unresolved, move and rename
 bash scripts/test-doctor.sh   checks every doctor check on a scratch vault
-bash scripts/test-snapshot.sh checks snapshot, compare and probe
+bash scripts/test-snapshot.sh checks snapshot and compare
 bash scripts/leak-check.sh    fails if a generic file carries a home path or a session id
 claude plugin validate . --strict
 ```
+
+The suites run on Linux, macOS and Windows in CI. `scripts/e2e-claude.sh` runs Claude Code itself
+against a scratch vault, on a Linux and a Windows runner; it costs API usage, so the `e2e` workflow
+runs only when started from the Actions tab.
 
 `docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
 template placeholders. Change it first, then the code.

@@ -15,7 +15,6 @@ mkdir -p "$vault/.obsidian" "$tmp/userdir"
 export HOME="$tmp/userdir"
 export SECOND_BRAIN_VAULT="$vault"
 export SECOND_BRAIN_CLAUDE_HOME="$home"
-export SECOND_BRAIN_OBSIDIAN="none"
 
 # On Windows, in Git Bash, the helper makes junctions and prints paths in the drive form.
 WIN=0
@@ -653,7 +652,7 @@ out_is "hook: says that no vault is set up" "second-brain: no vault is set up - 
 run env CLAUDE_PLUGIN_ROOT="$here" bash -c "$hook"
 rc_is "hook: exits 0 with a vault" 0
 out_is "hook: says nothing with a vault" ""
-run env -u SECOND_BRAIN_VAULT CLAUDE_PLUGIN_ROOT="$here" bash -c "$hook"
+run env -u SECOND_BRAIN_VAULT -u SECOND_BRAIN_CLAUDE_HOME CLAUDE_PLUGIN_ROOT="$here" bash -c "$hook"
 out_is "hook: says nothing when the pointer leads to a vault" ""
 if [ "$WIN" -eq 1 ]; then
   run env CLAUDE_PLUGIN_ROOT="$(cygpath -w "$here")" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$hook"

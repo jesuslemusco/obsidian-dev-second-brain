@@ -1,7 +1,7 @@
 {
   "name": "obsidian-dev-second-brain",
   "displayName": "Obsidian Dev Second Brain",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Stories, sprints and project docs kept in an Obsidian vault, with a health check.",
   "author": { "name": "Jesus Lemus Leal" },
   "license": "MIT",

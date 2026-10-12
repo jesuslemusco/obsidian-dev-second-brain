@@ -17,6 +17,8 @@ jobs:
         run: bash scripts/test.sh
       - name: Link tests
         run: bash scripts/test-link.sh
+      - name: Graph tests
+        run: bash scripts/test-graph.sh
       - name: Doctor tests
         run: bash scripts/test-doctor.sh
       - name: Snapshot tests

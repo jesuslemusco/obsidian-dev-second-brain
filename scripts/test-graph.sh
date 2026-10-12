@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-graph-test.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
+# and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/vault"
 mkdir -p "$vault/.obsidian" "$tmp/userdir"
 export HOME="$tmp/userdir"
@@ -544,6 +548,66 @@ rc_is "move: an unknown flag gives exit 5" 5
 exists "move: the project is where it was" "$vault/$P/claude/profile.md"
 tree >"$tmp/tree.after"
 same "move: the refusals, and the folder moved there and back, leave the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+
+# ---------------------------------------------------------------- a file system that ignores letter case
+# Windows and macOS find a file whatever the letter case of its path; Linux does not.
+note "ci/Mixed Case.md" '# Mixed'
+note "ci/sub/deep.md" '# Deep'
+note "ci/linker.md" '[[ci/Mixed Case]] and [[Mixed Case|shown]]' '[[ci/sub/deep]]'
+if [ -e "$vault/CI/mixed case.md" ]; then
+  sb backlinks "CI/MIXED CASE.md"
+  out_is "ignoring case: the backlinks of a note named in another letter case" \
+    "ci/linker.md:1: [[ci/Mixed Case]]${NL}ci/linker.md:1: [[Mixed Case|shown]]"
+  sb outline "CI/mixed case.md"
+  out_is "ignoring case: the outline of a note named in another letter case" "1: # Mixed"
+  sb move "CI/mixed case.md" ci/moved.md
+  rc_is "ignoring case: a note named in another letter case is moved" 0
+  out_is "ignoring case: the move is reported and its links counted" "moved: CI/mixed case.md -> ci/moved.md${NL}links: ci/linker.md | 2"
+  is "ignoring case: the folder holds the note under its new name alone" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md moved.md sub "
+  is "ignoring case: the links follow the note" "$(line ci/linker.md 1)" '[[ci/moved]] and [[moved|shown]]'
+  sb rename ci/moved.md MOVED
+  rc_is "ignoring case: a rename that changes only the letter case gives exit 6" 6
+  is "ignoring case: the note keeps its name" "$(LC_ALL=C ls "$vault/ci" | tr '\n' ' ')" "linker.md moved.md sub "
+  sb move ci/linker.md CI/Moved.md
+  rc_is "ignoring case: a destination that exists in another letter case gives exit 6" 6
+  sb move CI/SUB ci/under
+  rc_is "ignoring case: a folder named in another letter case is moved" 0
+  out_is "ignoring case: the folder move is reported and its links counted" "moved: CI/SUB -> ci/under${NL}links: ci/linker.md | 1"
+  exists "ignoring case: the folder's note is at its new place" "$vault/ci/under/deep.md"
+  is "ignoring case: the link into the folder follows" "$(line ci/linker.md 2)" '[[ci/under/deep]]'
+  sb unresolved
+  is "ignoring case: none of these links is left unresolved" "$(printf '%s\n' "$OUT" | grep -c '^ci/' || true)" "0"
+else
+  sb move "CI/mixed case.md" ci/moved.md
+  rc_is "minding case: a note named in another letter case is not found, exit 1" 1
+  sb backlinks "CI/MIXED CASE.md"
+  rc_is "minding case: nor are its backlinks, exit 1" 1
+  exists "minding case: the note is where it was" "$vault/ci/Mixed Case.md"
+fi
+
+# ---------------------------------------------------------------- vault paths on Windows
+# There a backslash separates folders and a drive letter opens an absolute path: neither is a vault path.
+if sb_is_windows; then
+  tree >"$tmp/tree.before"
+  sb outline 'mv\crlf.md'
+  rc_is "Windows: outline refuses a path written with backslashes, exit 5" 5
+  err_has "Windows: the message asks for forward slashes" "with forward slashes"
+  sb backlinks 'mv\crlf.md'
+  rc_is "Windows: backlinks refuses a path written with backslashes" 5
+  sb move 'mv\solo.md' mv/there.md
+  rc_is "Windows: move refuses a source written with backslashes" 5
+  sb move mv/solo.md 'mv\..\..\outside.md'
+  rc_is "Windows: move refuses a destination that leaves the vault by backslashes" 5
+  absent "Windows: nothing is written outside the vault" "$tmp/outside.md"
+  sb move mv/solo.md 'mv\.hidden\solo.md'
+  rc_is "Windows: move refuses a destination that enters a dot folder by backslashes" 5
+  sb rename mv/solo.md 'a\b'
+  rc_is "Windows: rename refuses a name that holds a backslash" 5
+  sb outline "$(cygpath -m "$vault/mv/solo.md")"
+  rc_is "Windows: a path in the drive form is not a vault path, exit 5" 5
+  tree >"$tmp/tree.after"
+  same "Windows: the refusals leave the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+fi
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

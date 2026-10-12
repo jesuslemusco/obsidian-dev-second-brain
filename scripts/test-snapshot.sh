@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-snap-test.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
+# and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/vault"
 links="$tmp/claude-home"
 mkdir -p "$vault/.obsidian" "$links/skills" "$links/agents" "$tmp/userdir"
@@ -71,6 +75,14 @@ exists() {
 }
 same() { # same <desc> <file> <file>
   if cmp -s "$2" "$3"; then pass "$1"; else fail "$1" "$2 and $3 differ"; fi
+}
+# shown <path>: the path as the helper prints it; on Windows that is the drive form.
+shown() {
+  if sb_is_windows; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
+}
+# symlink <target> <link>: a real symlink on every system; on Windows a plain ln -s makes a copy.
+symlink() {
+  if sb_is_windows; then MSYS=winsymlinks:nativestrict ln -s "$1" "$2"; else ln -s "$1" "$2"; fi
 }
 
 # ---------------------------------------------------------------- syntax
@@ -200,13 +212,13 @@ out_is "diff: a missing file is named as not compared" "not compared: links.txt"
 # ---------------------------------------------------------------- the links and doctor views
 links2="$tmp/claude-home-2"
 mkdir -p "$links2/skills" "$links2/agents" "$tmp/src/zeta"
-ln -s "$tmp/src/zeta" "$links2/skills/zeta"
-ln -s "../elsewhere/alpha.md" "$links2/agents/alpha.md"
+symlink "$tmp/src/zeta" "$links2/skills/zeta"
+symlink "../elsewhere/alpha.md" "$links2/agents/alpha.md"
 mkdir "$links2/skills/a-real-folder"
 unset -f sb_link_scan cmd_doctor
 SB_ROOT="$vault"
 is "links view: with no link library, the symlinks as name and target" \
-  "$(SECOND_BRAIN_CLAUDE_HOME="$links2" sb_snap_links)" "alpha.md${TAB}../elsewhere/alpha.md${NL}zeta${TAB}$tmp/src/zeta"
+  "$(SECOND_BRAIN_CLAUDE_HOME="$links2" sb_snap_links)" "alpha.md${TAB}../elsewhere/alpha.md${NL}zeta${TAB}$(shown "$tmp/src/zeta")"
 is "links view: an empty link directory gives no rows" "$(SECOND_BRAIN_CLAUDE_HOME="$tmp/nowhere" sb_snap_links)" ""
 sb_link_scan() {
   printf '%s\n' 'zeta | skill | linked | src/zeta' 'alpha | agent | missing | src/alpha'

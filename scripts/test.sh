@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-test.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
+# and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/vault"
 mkdir -p "$vault/.obsidian" "$tmp/userdir"
 export HOME="$tmp/userdir"
@@ -83,6 +87,16 @@ edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
 }
 lineno() { grep -nF -- "$2" "$1" | head -1 | cut -d: -f1; }
+# shown <path>: the path as the helper prints it; on Windows that is the drive form.
+shown() {
+  if sb_is_windows; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
+}
+# symlink <target> <link>: a real symlink on every system; on Windows a plain ln -s makes a copy.
+symlink() {
+  if sb_is_windows; then MSYS=winsymlinks:nativestrict ln -s "$1" "$2"; else ln -s "$1" "$2"; fi
+}
+oV="$(shown "$vault")"
+oT="$(shown "$tmp")"
 
 # check_links <note>: report links outside code that lack a display text or point nowhere.
 check_links() {
@@ -147,8 +161,8 @@ rc_is "probe: the command is gone, exit 5" 5
 sb 'bad;name'
 rc_is "odd command name: exit 5" 5
 mkdir -p "$tmp/links/deep"
-ln -s "$SB" "$tmp/links/real-link"
-ln -s "../real-link" "$tmp/links/deep/chained-link"
+symlink "$SB" "$tmp/links/real-link"
+symlink "../real-link" "$tmp/links/deep/chained-link"
 run sh -c "cd '$tmp/links/deep' && ./chained-link version"
 rc_is "symlink chain from another directory: exit 0" 0
 out_has "symlink chain: finds its libraries" "."
@@ -206,26 +220,26 @@ SB_ROOT=""
 # ---------------------------------------------------------------- root
 sb root
 rc_is "root: exit 0" 0
-out_is "root: physical vault path" "$vault"
+out_is "root: physical vault path" "$oV"
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" root
 rc_is "root: not a vault gives exit 2" 2
 run env -u SECOND_BRAIN_VAULT "$SB" root
 rc_is "root: no pointer gives exit 2" 2
 mkdir -p "$tmp/userdir/.claude"
-ln -s "$vault" "$tmp/userdir/.claude/second-brain-vault"
+symlink "$vault" "$tmp/userdir/.claude/second-brain-vault"
 run env -u SECOND_BRAIN_VAULT "$SB" root
-out_is "root: follows the pointer symlink" "$vault"
+out_is "root: follows the pointer symlink" "$oV"
 mkdir -p "$tmp/other-home"
 run env -u SECOND_BRAIN_VAULT SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" root
 rc_is "root: the pointer is looked for in the link directory, exit 2 when it has none" 2
 run env SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" pointer set "$vault"
 run env -u SECOND_BRAIN_VAULT SECOND_BRAIN_CLAUDE_HOME="$tmp/other-home" "$SB" root
-out_is "root: follows the pointer of the link directory" "$vault"
+out_is "root: follows the pointer of the link directory" "$oV"
 
 # ---------------------------------------------------------------- context, before setup
 sb context
 rc_is "context: exit 0 on an empty vault" 0
-out_is "context: four lines, in the contract's order" "vault: $vault
+out_is "context: four lines, in the contract's order" "vault: $oV
 project: none
 project_path: none
 sprint: none"
@@ -1155,14 +1169,14 @@ err_has "repo name: the message says no location is recorded" "no location is re
 mkdir -p "$tmp/userdir/code/acme/alpha-api/src"
 edit "$RPF" 's|^repos_root: ""$|repos_root: "~/code/acme"|'
 sb repo "Repo One"
-out_is "repo: rows from repos_root, tilde expanded, in the order of repos" "alpha-api${TAB}$tmp/userdir/code/acme/alpha-api${TAB}ok
-alpha-web${TAB}$tmp/userdir/code/acme/alpha-web${TAB}missing"
+out_is "repo: rows from repos_root, tilde expanded, in the order of repos" "alpha-api${TAB}$oT/userdir/code/acme/alpha-api${TAB}ok
+alpha-web${TAB}$oT/userdir/code/acme/alpha-web${TAB}missing"
 run env HOME="$tmp/another" "$SB" repo "Repo One"
-out_is "repo: the tilde follows the home directory" "alpha-api${TAB}$tmp/another/code/acme/alpha-api${TAB}missing
-alpha-web${TAB}$tmp/another/code/acme/alpha-web${TAB}missing"
+out_is "repo: the tilde follows the home directory" "alpha-api${TAB}$oT/another/code/acme/alpha-api${TAB}missing
+alpha-web${TAB}$oT/another/code/acme/alpha-web${TAB}missing"
 sb repo "Repo One" alpha-api
 rc_is "repo name: exit 0 when the folder exists" 0
-out_is "repo name: prints the path alone" "$tmp/userdir/code/acme/alpha-api"
+out_is "repo name: prints the path alone" "$oT/userdir/code/acme/alpha-api"
 sb repo "Repo One" alpha-web
 rc_is "repo name: a missing folder gives exit 1" 1
 out_is "repo name: nothing on stdout for a missing folder" ""
@@ -1171,18 +1185,21 @@ sb repo "Repo One" alpha-nope
 rc_is "repo name: a name not in repos gives exit 1" 1
 err_has "repo name: the message says it is not in repos" "alpha-nope is not in repos"
 mkdir -p "$tmp/else where/alpha-tools" "$tmp/real-elsewhere/alpha-web/lib"
-ln -s "$tmp/real-elsewhere" "$tmp/userdir/elsewhere"
+symlink "$tmp/real-elsewhere" "$tmp/userdir/elsewhere"
 edit "$RPF" 's/^repos: .*$/repos: [alpha-api, alpha-web, alpha-tools]/'
 edit "$RPF" "s|^repo_paths: \\[\\]\$|repo_paths:\\
   - \"alpha-tools=$tmp/else where/alpha-tools\"\\
   - alpha-web=~/elsewhere/alpha-web|"
 sb repo "Repo One"
-out_is "repo: repo_paths wins over repos_root for the names it lists" "alpha-api${TAB}$tmp/userdir/code/acme/alpha-api${TAB}ok
-alpha-web${TAB}$tmp/userdir/elsewhere/alpha-web${TAB}ok
-alpha-tools${TAB}$tmp/else where/alpha-tools${TAB}ok"
+out_is "repo: repo_paths wins over repos_root for the names it lists" "alpha-api${TAB}$oT/userdir/code/acme/alpha-api${TAB}ok
+alpha-web${TAB}$oT/userdir/elsewhere/alpha-web${TAB}ok
+alpha-tools${TAB}$oT/else where/alpha-tools${TAB}ok"
 sb repo "Repo One" alpha-tools
-out_is "repo name: a path with spaces" "$tmp/else where/alpha-tools"
-is "sb_repo_rows: the same rows for other libraries" "$(SB_ROOT=""; sb_repo_rows "Repo One")" "$("$SB" repo "Repo One")"
+out_is "repo name: a path with spaces" "$oT/else where/alpha-tools"
+# Inside the helper a path is in the shell's own form; the repo command prints it as shown.
+is "sb_repo_rows: the same rows for other libraries" "$(SB_ROOT=""; sb_repo_rows "Repo One" | while IFS="$TAB" read -r n p s; do
+  printf '%s\t%s\t%s\n' "$n" "$oT${p#"$tmp"}" "$s"
+done)" "$("$SB" repo "Repo One")"
 sb_repo_rows "No Such Project" >/dev/null 2>&1
 is "sb_repo_rows: returns 1 for an unknown project" "$?" "1"
 SB_ROOT=""
@@ -1200,14 +1217,14 @@ mkdir -p "$tmp/other root/alpha-api/pkg" "$tmp/third/alpha-api"
 edit "$vault/work/repo-two/claude/profile.md" 's/^repos: \[\]$/repos: [alpha-api]/'
 edit "$vault/work/repo-two/claude/profile.md" "s|^repos_root: \"\"\$|repos_root: \"$tmp/other root\"|"
 sb repo "Repo Two" alpha-api
-out_is "repo: an absolute repos_root with a space" "$tmp/other root/alpha-api"
+out_is "repo: an absolute repos_root with a space" "$oT/other root/alpha-api"
 sb project --cwd "$tmp/userdir/code/acme/alpha-api/src"
 out_is "project --cwd: inside a recorded repository folder" "Repo One${TAB}$RP${TAB}RA"
 sb project --cwd "$tmp/other root/alpha-api/pkg"
 out_is "project --cwd: the same folder name under another root is the other project" "Repo Two${TAB}work/repo-two${TAB}RB"
 sb project --cwd "$tmp/real-elsewhere/alpha-web/lib"
 out_is "project --cwd: a recorded path through a symlink still matches" "Repo One${TAB}$RP${TAB}RA"
-ln -s "$tmp/other root/alpha-api" "$tmp/link-to-two"
+symlink "$tmp/other root/alpha-api" "$tmp/link-to-two"
 sb project --cwd "$tmp/link-to-two/pkg"
 out_is "project --cwd: a working directory reached through a symlink" "Repo Two${TAB}work/repo-two${TAB}RB"
 sb project --cwd "$tmp/third/alpha-api"
@@ -1218,6 +1235,59 @@ out_has "project --cwd: a project with no recorded location still matches by fol
 sb context --cwd "$tmp/other root/alpha-api"
 is "context: still four lines" "$(lines "$OUT")" "4"
 out_has "context: project from a recorded repository folder" "project: Repo Two"
+
+# ---------------------------------------------------------------- path forms on Windows
+# There an absolute path that is read may be written C:\a, C:/a or /c/a; one that is printed is C:/a.
+if sb_is_windows; then
+  wV="$(cygpath -w "$vault")"
+  run env SECOND_BRAIN_VAULT="$wV" "$SB" root
+  rc_is "path forms: a vault written with backslashes, exit 0" 0
+  out_is "path forms: the vault is printed in the drive form" "$oV"
+  run env SECOND_BRAIN_VAULT="$oV" "$SB" root
+  out_is "path forms: a vault in the drive form" "$oV"
+  run env SECOND_BRAIN_VAULT="/$(printf '%s' "${vault:1:1}" | tr '[:lower:]' '[:upper:]')${vault:2}" "$SB" root
+  out_is "path forms: a vault with an upper-case drive letter" "$oV"
+  run env SECOND_BRAIN_VAULT="$wV" "$SB" task head EX-1
+  rc_is "path forms: a task is read in a vault written with backslashes" 0
+  run env SECOND_BRAIN_VAULT="$wV" "$SB" context --cwd "$(cygpath -w "$tmp/other root/alpha-api")"
+  out_has "path forms: context prints the vault in the drive form" "vault: $oV"
+  out_has "path forms: context takes --cwd written with backslashes" "project: Repo Two"
+  sb project --cwd "$(cygpath -w "$tmp/userdir/code/acme/alpha-api/src")"
+  out_is "path forms: project --cwd written with backslashes" "Repo One${TAB}$RP${TAB}RA"
+  sb project --cwd "$oT/userdir/code/acme/alpha-api/src"
+  out_is "path forms: project --cwd in the drive form" "Repo One${TAB}$RP${TAB}RA"
+  sb project --cwd "$(cygpath -w "$vault/$P/tasks")"
+  out_has "path forms: project --cwd inside the vault, written with backslashes" "Example${TAB}$P${TAB}"
+  W2="$vault/work/repo-two/claude/profile.md"
+  cp "$W2" "$tmp/w2.before"
+  SB_ROOT="$vault"
+  sb_fm_set "$W2" repos_root "$oT/other root"
+  sb repo "Repo Two"
+  out_is "path forms: repos_root in the drive form" "alpha-api${TAB}$oT/other root/alpha-api${TAB}ok"
+  sb_fm_set "$W2" repos_root "$(cygpath -w "$tmp/other root")"
+  file_has "path forms: the profile holds repos_root with backslashes" "$W2" "repos_root: $(cygpath -w "$tmp/other root")"
+  sb repo "Repo Two"
+  out_is "path forms: repos_root written with backslashes" "alpha-api${TAB}$oT/other root/alpha-api${TAB}ok"
+  sb project --cwd "$tmp/other root/alpha-api/pkg"
+  out_is "path forms: a working directory under that repos_root" "Repo Two${TAB}work/repo-two${TAB}RB"
+  sb_fm_set "$W2" repos_root ""
+  sb_fm_edit "$W2" listadd repo_paths "alpha-api=$(cygpath -w "$tmp/third/alpha-api")"
+  sb repo "Repo Two" alpha-api
+  out_is "path forms: a repo_paths entry written with backslashes" "$oT/third/alpha-api"
+  cat "$tmp/w2.before" >"$W2"
+  SB_ROOT=""
+  mkdir -p "$tmp/vault6/.obsidian"
+  sb scaffold vault "$(cygpath -w "$tmp/vault6")"
+  rc_is "path forms: scaffold vault takes a folder written with backslashes" 0
+  exists "path forms: scaffold vault writes the index there" "$tmp/vault6/CLAUDE.md"
+  sb scaffold vault "$(cygpath -w "$tmp/userdir")"
+  rc_is "path forms: scaffold vault refuses a folder that is no vault, exit 2" 2
+  err_has "path forms: the refusal names the folder in the drive form" "$oT/userdir"
+  sb search Example "billing" --in 'docs\billing'
+  rc_is "path forms: search --in refuses a backslash, exit 5" 5
+  sb task head 'EX-1\..\EX-2'
+  rc_is "path forms: a task id with a backslash names no task folder, exit 1" 1
+fi
 
 # ---------------------------------------------------------------- scaffold project, no sprints
 N="work/kanban"

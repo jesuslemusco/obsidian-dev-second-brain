@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-doctor.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
+# and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/vault"
 home="$tmp/claude-home"
 mkdir -p "$vault/.obsidian" "$tmp/userdir" "$home"
@@ -62,6 +66,10 @@ out_has() {
 # edit <file> <sed script>: change a file through a temp file.
 edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
+}
+# symlink <target> <link>: a real symlink on every system; on Windows a plain ln -s makes a copy.
+symlink() {
+  if sb_is_windows; then MSYS=winsymlinks:nativestrict ln -s "$1" "$2"; else ln -s "$1" "$2"; fi
 }
 # doc [args]: run doctor and keep its rows in OUT.
 doc() { run "$SB" doctor "$@"; }
@@ -128,10 +136,24 @@ reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: an absolute import line is found" import vault "ok | 0 | -"
-ln -s "$vault" "$HOME/vault-link"
+symlink "$vault" "$HOME/vault-link"
 printf '# Mine\n\n@~/vault-link/CLAUDE.md  \r\n' >"$home/CLAUDE.md"
 doc
 chk "import: a line starting with ~ and going through a link is found" import vault "ok | 0 | -"
+if sb_is_windows; then
+  printf '# Mine\n\n@%s/CLAUDE.md\n' "$(cygpath -m "$vault")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line in the drive form is found" import vault "ok | 0 | -"
+  printf '# Mine\r\n\r\n@%s\\CLAUDE.md\r\n' "$(cygpath -w "$vault")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line written with backslashes, in a CRLF file, is found" import vault "ok | 0 | -"
+  printf '# Mine\n\n@~\\vault-link\\CLAUDE.md\n' >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line that starts with ~ and a backslash is found" import vault "ok | 0 | -"
+  printf '# Mine\n\n@%s\\CLAUDE.md\n' "$(cygpath -w "$tmp/userdir")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows another file written with backslashes does not count" import vault "warn | 1 | CLAUDE.md"
+fi
 printf '# Mine\n\n@~/elsewhere/CLAUDE.md\nsee @%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: another file does not count" import vault "warn | 1 | CLAUDE.md"
@@ -145,12 +167,12 @@ printf '%s\n' '---' 'name: my-skill' 'description: A skill of my own.' '---' 'Bo
 doc
 rc_is "links: an unlinked skill gives exit 1" 1
 chk "links: an unlinked skill fails" links vault "fail | 1 | my-skill:missing"
-ln -s "$vault/claude/skills/my-skill" "$home/skills/my-skill"
+symlink "$vault/claude/skills/my-skill" "$home/skills/my-skill"
 doc
 chk "links: ok once it is linked" links vault "ok | 0 | -"
-ln -s "$here/skills/story-tracker" "$home/skills/story-tracker"
-ln -s "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
-ln -s "$tmp/userdir" "$home/skills/elsewhere"
+symlink "$here/skills/story-tracker" "$home/skills/story-tracker"
+symlink "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
+symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
 chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/scrum-master.md"
 reset
@@ -489,6 +511,7 @@ if command -v python3 >/dev/null 2>&1; then
   else
     fail "--json: parses as JSON" "$(cat "$tmp/stderr")"
   fi
+  # A Python built for Windows ends the lines it prints with CRLF; tr takes that away.
   got="$(python3 -c '
 import json, sys
 rows = json.load(sys.stdin)
@@ -498,12 +521,12 @@ print(by["alias-unique"]["offenders"][0])
 print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["offenders"])
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
-print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1)"
+print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
   is "--json: 24 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
     "24 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
-  got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1)"
+  got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
   is "--json: the pointer row alone with no vault" "$got" "1 pointer fail"
 else
   printf 'skip  --json: python3 is not installed\n'

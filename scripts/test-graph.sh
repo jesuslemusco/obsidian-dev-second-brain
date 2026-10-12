@@ -378,7 +378,7 @@ is "rename: a file name alone becomes the vault path when the new name is not un
   '[[mv/dst/beta]] bare, [[mv/dst/beta#Part|shown]], ![[mv/dst/beta]], [[mv/dst/beta.md]], [[mv/dst/beta]], [[mv/dst/beta.md#^b1|x]]'
 is "rename: and so does the note's link to itself" "$(line mv/dst/beta.md 5)" '[[mv/dst/beta]] itself'
 sb rename mv/dst/beta.md "final v1.2 draft"
-out_has "rename: digits after a dot are not an extension, so .md is kept" "moved: mv/dst/beta.md -> mv/dst/final v1.2 draft.md"
+out_has "rename: a dot inside the name is part of the name, and .md is kept" "moved: mv/dst/beta.md -> mv/dst/final v1.2 draft.md"
 sb rename "mv/dst/final v1.2 draft.md" alpha
 out_has "rename: back to the first name" "moved: mv/dst/final v1.2 draft.md -> mv/dst/alpha.md"
 is "rename: .md stays where a link had it, through every rename" "$(line mv/linkers.md 4)" \
@@ -386,8 +386,22 @@ is "rename: .md stays where a link had it, through every rename" "$(line mv/link
 note "mv/ext.md" '# A note that becomes a text file'
 note "mv/ext-reader.md" '[[mv/ext|Ext]] and [[ext]]'
 sb rename mv/ext.md ext.txt
-out_is "rename: a name with an extension keeps its own" "moved: mv/ext.md -> mv/ext.txt${NL}links: mv/ext-reader.md | 2"
-is "rename: links to a file that is no longer a note carry its extension" "$(line mv/ext-reader.md 1)" '[[mv/ext.txt|Ext]] and [[ext.txt]]'
+out_is "rename: an ending that is not the file's own extension is part of the name" "moved: mv/ext.md -> mv/ext.txt.md${NL}links: mv/ext-reader.md | 2"
+sb rename mv/ext.txt.md api.v2
+out_has "rename: and so is an ending that looks like an extension" "moved: mv/ext.txt.md -> mv/api.v2.md"
+sb rename mv/api.v2.md ext.md
+out_has "rename: the name may repeat the file's extension" "moved: mv/api.v2.md -> mv/ext.md"
+sb rename mv/ext.md Other.MD
+out_has "rename: in any letter case, and the file keeps its own spelling of it" "moved: mv/ext.md -> mv/Other.md"
+sb rename mv/Other.md ext
+is "rename: the links followed through every name" "$(line mv/ext-reader.md 1)" '[[mv/ext|Ext]] and [[ext]]'
+printf 'all:\n' >"$vault/mv/Makefile"
+sb rename mv/Makefile Buildfile.txt
+out_is "rename: a file with no extension takes the name as it is typed" "moved: mv/Makefile -> mv/Buildfile.txt"
+rm "$vault/mv/Buildfile.txt"
+sb move mv/ext.md mv/ext.txt
+out_is "move: changes an extension, which rename never does" "moved: mv/ext.md -> mv/ext.txt${NL}links: mv/ext-reader.md | 2"
+is "move: links to a file that is no longer a note carry its extension" "$(line mv/ext-reader.md 1)" '[[mv/ext.txt|Ext]] and [[ext.txt]]'
 sb rename mv/dst/alpha.md "sub/alpha"
 rc_is "rename: a name with a slash gives exit 5" 5
 sb rename mv/dst/alpha.md ..
@@ -520,7 +534,7 @@ rc_is "move: a folder goes inside an existing folder, where its name is free" 0
 sb move mv/src/archive mv
 sb move "$P" projects/renamed
 rc_is "move: an index project's folder gives exit 5" 5
-err_has "move: says why" "is a project of the index"
+err_has "move: says why" "it holds the profile of the project Example"
 sb move "$P" projects/renamed --dry-run
 rc_is "move --dry-run: the same refusal" 5
 sb move projects archive
@@ -529,6 +543,23 @@ sb move . elsewhere
 rc_is "move: the vault root gives exit 5" 5
 sb rename "$P" renamed
 rc_is "rename: an index project's folder gives exit 5" 5
+sb move "$P/claude" "$P/config"
+rc_is "move: the folder that holds a project's profile gives exit 5" 5
+sb move "$P/claude/profile.md" "$P/claude/settings.md"
+rc_is "move: a project's profile gives exit 5" 5
+err_has "move: names the profile" "it is the profile of the project Example"
+sb move CLAUDE.md index.md
+rc_is "move: the index gives exit 5" 5
+err_has "move: names the index" "it is the index of the vault"
+sb rename obsidian-conventions.md rules
+rc_is "rename: the conventions note gives exit 5" 5
+err_has "rename: names the conventions note" "it is the conventions note"
+mv "$vault/projects/two/claude/profile.md" "$tmp/profile.aside"
+sb move projects/two projects/second
+rc_is "move: a project whose profile is not written yet stays too, exit 5" 5
+mv "$tmp/profile.aside" "$vault/projects/two/claude/profile.md"
+sb move "$P/claude/README.md" "$P/claude/hub.md" --dry-run
+rc_is "move: another note of a project's claude folder may move" 0
 sb move mv mv/inside
 rc_is "move: a folder into itself gives exit 5" 5
 sb move ../outside.md mv/in.md
@@ -546,8 +577,239 @@ rc_is "move: three paths give exit 5" 5
 sb move mv/linkers.md mv/x.md --force
 rc_is "move: an unknown flag gives exit 5" 5
 exists "move: the project is where it was" "$vault/$P/claude/profile.md"
+sb outline 'mv\crlf.md'
+rc_is "outline: a path written with a backslash gives exit 5 on every system" 5
+err_has "outline: the message asks for forward slashes" "with forward slashes"
+sb backlinks 'mv\crlf.md'
+rc_is "backlinks: a path written with a backslash gives exit 5" 5
+sb unresolved 'projects\example'
+rc_is "unresolved: a project path written with a backslash gives exit 5" 5
+sb move 'mv\solo.md' mv/there.md
+rc_is "move: a source written with a backslash gives exit 5" 5
+sb move mv/solo.md 'mv\there.md'
+rc_is "move: a destination written with a backslash gives exit 5" 5
+sb rename mv/solo.md 'a\b'
+rc_is "rename: a name that holds a backslash gives exit 5" 5
 tree >"$tmp/tree.after"
 same "move: the refusals, and the folder moved there and back, leave the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+
+# ---------------------------------------------------------------- a name that no link can spell
+# A wikilink ends its target at # and |, closes at ]], and drops the blanks around it.
+note "sp/spnote.md" '# A note'
+note "sp/reader.md" '[[spnote]] and [[sp/spnote|shown]]'
+note "sp/C# course/inner.md" '[[sibling]] next to it'
+note "sp/C# course/sibling.md" '# A sibling'
+note "sp/sibling.md" '# Another sibling'
+tree >"$tmp/tree.before"
+# unspelled <what the name holds> <name>: neither rename nor move may give a note that name.
+unspelled() {
+  sb rename sp/spnote.md "$2"
+  rc_is "rename: a name with $1 gives exit 5" 5
+  sb move sp/spnote.md "sp/$2.md"
+  rc_is "move: a destination with $1 gives exit 5" 5
+}
+unspelled "a hash" 'C# notes'
+unspelled "a caret" 'a^b'
+unspelled "a bar" 'a|b'
+unspelled "an opening bracket" 'a[b'
+unspelled "a closing bracket" 'a]b'
+unspelled "a blank at its start" ' lead'
+unspelled "a blank at its end" 'trail '
+unspelled "a tab" "$(printf 'x\ty')"
+unspelled "a line break" "$(printf 'x\ny')"
+unspelled "a control byte" "$(printf 'x\001y')"
+sb rename sp/spnote.md 'C# notes' --dry-run
+rc_is "rename --dry-run: the same refusal" 5
+err_has "rename: says what a link cannot spell" "no link can spell a name"
+sb move sp/spnote.md 'sp/bad#folder/note.md'
+rc_is "move: a folder on the way with such a name gives exit 5" 5
+sb move sp/spnote.md 'sp/C# course/'
+rc_is "move: into a folder that has such a name gives exit 5" 5
+sb move sp/spnote.md 'sp/trail .png'
+rc_is "move: a blank before an extension that links always carry is fine" 0
+sb move 'sp/trail .png' sp/spnote.md
+sb move 'sp/C# course/inner.md' sp/inner.md
+rc_is "move: a link that would need a path no wikilink can spell stops the move, exit 1" 1
+err_has "move: names the note, the line and the file" "note: sp/C# course/inner.md:1 would need a link to sp/C# course/sibling.md"
+tree >"$tmp/tree.after"
+same "a name no link can spell: every refusal leaves the vault byte-identical" "$tmp/tree.before" "$tmp/tree.after"
+sb rename 'sp/C# course' 'C sharp course'
+out_is "rename: a folder that has such a name gets one that links can spell" "moved: sp/C# course -> sp/C sharp course"
+
+# ---------------------------------------------------------------- stand-ins that make a move go wrong
+# The helper finds awk and mv on the PATH. These two do what a test asks for, then run the real one.
+shim="$tmp/shim"
+mkdir -p "$shim"
+REAL_AWK="$(type -P awk)"
+REAL_MV="$(type -P mv)"
+export REAL_AWK REAL_MV
+cat >"$shim/awk" <<'EOF'
+#!/bin/sh
+# Stand-in for awk. While the vault is read for a move it lets a file appear; while the links
+# are put in place it takes the write permission of a note away.
+if [ "${SB_MODE:-}" = "move" ] && [ -n "${SHIM_APPEAR:-}" ]; then printf 'written by someone else\n' >"$SHIM_APPEAR"; fi
+if [ -n "${SB_SKIP:-}" ] && [ -n "${SHIM_LOCK:-}" ]; then chmod 444 "$SHIM_LOCK"; fi
+exec "$REAL_AWK" "$@"
+EOF
+cat >"$shim/mv" <<'EOF'
+#!/bin/sh
+# Stand-in for mv: fails without moving when a test asks for it.
+[ -z "${SHIM_MV_FAILS:-}" ] || exit 1
+exec "$REAL_MV" "$@"
+EOF
+chmod +x "$shim/awk" "$shim/mv"
+# Whoever runs the suite as root reads and writes a file whatever its mode says.
+printf 'probe\n' >"$tmp/probe"
+chmod 000 "$tmp/probe"
+modes=1
+[ ! -r "$tmp/probe" ] || modes=0
+
+# ---------------------------------------------------------------- move, a destination that turns up
+note "race/a.md" '# A'
+note "race/reader.md" '[[race/a]]'
+run env PATH="$shim:$PATH" SHIM_APPEAR="$vault/race/d.md" "$SB" move race/a.md race/d.md
+rc_is "move: a destination that appears while the vault is read gives exit 6" 6
+is "move: the file that appeared is not overwritten" "$(cat "$vault/race/d.md")" "written by someone else"
+exists "move: the note stays where it was" "$vault/race/a.md"
+is "move: no link is rewritten" "$(line race/reader.md 1)" '[[race/a]]'
+rm "$vault/race/d.md"
+ln -s nowhere "$vault/race/dangling.md" 2>/dev/null
+if [ -L "$vault/race/dangling.md" ] && [ ! -e "$vault/race/dangling.md" ]; then
+  sb move race/a.md race/dangling.md
+  rc_is "move: a dangling symlink at the destination counts as existing, exit 6" 6
+  if [ -L "$vault/race/dangling.md" ]; then pass "move: the symlink is left alone"; else fail "move: the symlink is left alone" "it was replaced"; fi
+  exists "move: the note stays where it was, again" "$vault/race/a.md"
+else
+  printf 'note: this system makes no dangling symlink, so that destination is not tried\n'
+fi
+rm -f "$vault/race/dangling.md"
+run env PATH="$shim:$PATH" SHIM_MV_FAILS=1 "$SB" move race/a.md race/new/deep/a.md
+rc_is "move: a move that fails gives exit 1" 1
+err_has "move: says that nothing was changed" "nothing was changed"
+absent "move: the folders made for it are taken back" "$vault/race/new"
+exists "move: the note stays where it was, a third time" "$vault/race/a.md"
+mkdir -p "$vault/race/kept"
+run env PATH="$shim:$PATH" SHIM_MV_FAILS=1 "$SB" move race/a.md race/kept/more/a.md
+exists "move: a folder that was there before a failed move is kept" "$vault/race/kept"
+absent "move: and only the one made for the move is taken back" "$vault/race/kept/more"
+
+# ---------------------------------------------------------------- move, a note that awk cannot hand back whole
+note "nul/nulnote.md" '# A note'
+printf 'line one [[nulnote]]\nbinary \0 middle\nlast line with more text\n' >"$vault/nul/ref.md"
+tree >"$tmp/tree.before"
+sb move nul/nulnote.md nul/nulmoved.md
+if [ "$RC" -eq 0 ]; then
+  printf 'line one [[nulmoved]]\nbinary \0 middle\nlast line with more text\n' >"$tmp/ref.want"
+  same "move: a note that holds a NUL byte is rewritten whole by an awk that reads it whole" "$tmp/ref.want" "$vault/nul/ref.md"
+  sb move nul/nulmoved.md nul/nulnote.md
+else
+  rc_is "move: a note that awk cuts at a NUL byte stops the move, exit 1" 1
+  err_has "move: names the note it cannot read whole" "note: nul/ref.md holds bytes"
+  tree >"$tmp/tree.after"
+  same "move: nothing is moved or written then" "$tmp/tree.before" "$tmp/tree.after"
+fi
+note "nul/ctlnote.md" '# A note'
+printf 'line one [[ctlnote]]\ncontrol \001 byte\nlast line\n' >"$vault/nul/ctl.md"
+tree >"$tmp/tree.before"
+sb move nul/ctlnote.md nul/ctlmoved.md
+rc_is "move: a note that holds the byte the helper splits a file at stops the move, exit 1" 1
+err_has "move: names that note" "note: nul/ctl.md holds bytes"
+sb move nul/ctlnote.md nul/ctlmoved.md --dry-run
+rc_is "move --dry-run: says the same, exit 1" 1
+tree >"$tmp/tree.after"
+same "move: nothing is moved or written for that note either" "$tmp/tree.before" "$tmp/tree.after"
+rm "$vault/nul/ctl.md" "$vault/nul/ref.md"
+
+# ---------------------------------------------------------------- move, a note that cannot be written or read
+note "wr/target.md" '# The target'
+note "wr/a1.md" '[[wr/target]]'
+note "wr/b2.md" '[[wr/target]]'
+note "wr/c3.md" '[[wr/target]]'
+if [ "$modes" -eq 1 ]; then
+  chmod 444 "$vault/wr/b2.md"
+  tree >"$tmp/tree.before"
+  sb move wr/target.md wr/moved.md
+  rc_is "move: a note that cannot be written stops the move before it starts, exit 1" 1
+  err_has "move: names the note that cannot be written" "note: wr/b2.md cannot be written"
+  tree >"$tmp/tree.after"
+  same "move: nothing is moved, and no other note is rewritten" "$tmp/tree.before" "$tmp/tree.after"
+  chmod 644 "$vault/wr/b2.md"
+  run env PATH="$shim:$PATH" SHIM_LOCK="$vault/wr/b2.md" "$SB" move wr/target.md wr/moved.md
+  rc_is "move: a write that fails after the move gives exit 1" 1
+  out_is "move: it reports the move and the notes it did rewrite" "moved: wr/target.md -> wr/moved.md${NL}links: wr/a1.md | 1${NL}links: wr/c3.md | 1"
+  err_has "move: names the note that still holds an old link" "note: wr/b2.md still holds an old link"
+  is "move: the notes before and after that one are rewritten" "$(line wr/a1.md 1)$(line wr/c3.md 1)" '[[wr/moved]][[wr/moved]]'
+  is "move: that note is as it was" "$(line wr/b2.md 1)" '[[wr/target]]'
+  chmod 644 "$vault/wr/b2.md"
+  sb unresolved
+  out_has "move: unresolved lists the link that is left" "wr/b2.md:1: [[wr/target]]"
+  note "wr/b2.md" '[[wr/moved]]'
+  chmod 000 "$vault/wr/b2.md"
+  sb move wr/moved.md wr/target.md
+  rc_is "move: a note that cannot be read stops the move, exit 1" 1
+  err_has "move: names the note that cannot be read" "note: wr/b2.md cannot be read"
+  exists "move: nothing is moved then" "$vault/wr/moved.md"
+  is "move: and no note is rewritten" "$(line wr/a1.md 1)" '[[wr/moved]]'
+  chmod 644 "$vault/wr/b2.md"
+  mkdir -p "$vault/wr/sealed"
+  note "wr/sealed/inside.md" '[[wr/moved]]'
+  chmod 000 "$vault/wr/sealed"
+  sb move wr/moved.md wr/target.md
+  rc_is "move: a folder that cannot be opened stops the move, exit 1" 1
+  exists "move: nothing is moved then either" "$vault/wr/moved.md"
+  chmod 755 "$vault/wr/sealed"
+  sb move wr/moved.md wr/target.md
+  out_is "move: once every note can be read and written, the move goes through" \
+    "moved: wr/moved.md -> wr/target.md${NL}links: wr/a1.md | 1${NL}links: wr/b2.md | 1${NL}links: wr/c3.md | 1${NL}links: wr/sealed/inside.md | 1"
+else
+  printf 'note: file modes do not bind this user, so the notes that cannot be read or written are not tried\n'
+fi
+
+# ---------------------------------------------------------------- move, a symlink in the vault
+mkdir -p "$tmp/elsewhere"
+printf '# Far away\n' >"$tmp/elsewhere/farnote.md"
+note "sym/reader.md" '[[farnote]]'
+ln -s "$tmp/elsewhere" "$vault/sym/linked" 2>/dev/null
+if [ -L "$vault/sym/linked" ]; then
+  sb unresolved
+  out_has "symlink: a note behind one is not a file of the vault" "sym/reader.md:1: [[farnote]]"
+  sb move sym/linked/farnote.md sym/farnote.md
+  rc_is "move: a source behind a symlinked folder gives exit 5" 5
+  err_has "move: names the symlink" "sym/linked is a symlink"
+  sb move sym/reader.md sym/linked/reader.md
+  rc_is "move: a destination behind a symlinked folder gives exit 5" 5
+  sb move sym/reader.md sym/linked/
+  rc_is "move: into a symlinked folder gives exit 5" 5
+  sb move sym/reader.md sym/linked
+  rc_is "move: onto a symlinked folder, which would take the note, gives exit 5" 5
+  sb move sym/linked sym/renamed
+  rc_is "move: the symlink itself gives exit 5" 5
+  sb rename sym/linked/farnote.md near
+  rc_is "rename: a note behind a symlinked folder gives exit 5" 5
+  exists "symlink: the file behind it is where it was" "$tmp/elsewhere/farnote.md"
+  exists "symlink: the note in the vault is where it was" "$vault/sym/reader.md"
+  rm "$vault/sym/linked"
+else
+  printf 'note: this system makes no symlink to a folder, so the notes behind one are not tried\n'
+  rm -rf "$vault/sym/linked"
+fi
+
+# ---------------------------------------------------------------- move, a canvas or a base that names the old path
+mkdir -p "$vault/img" "$vault/cv"
+printf 'png' >"$vault/img/pic.png"
+printf '{"nodes":[{"type":"text","text":"imgur, assets/img/x.png, img.png and myimg/pic.png"}]}\n' >"$vault/cv/words.canvas"
+printf '{"nodes":[{"type":"file","file":"img/pic.png"}]}\n' >"$vault/cv/file.canvas"
+printf 'filters:\n  and:\n    - file.inFolder("img")\n' >"$vault/cv/folder.base"
+sb move img pictures
+rc_is "move: a folder with a short name moves" 0
+err_is "move: a canvas or a base is named when it holds the old path as a whole path, not as a part of a word or of another path" \
+  "note: cv/file.canvas mentions img${NL}note: cv/folder.base mentions img"
+sb move pictures/pic.png pictures/shot.png
+err_is "move: a file's old path is not found in a canvas that names another file" ""
+printf '{"nodes":[{"type":"file","file":"pictures/shot.png.bak"},{"type":"file","file":"old/pictures/shot.png"}]}\n' >"$vault/cv/near.canvas"
+printf '{"nodes":[{"type":"text","text":"see ![[pictures/shot.png]]"}]}\n' >"$vault/cv/text.canvas"
+sb move pictures/shot.png pictures/pic.png
+err_is "move: a longer name and a deeper path are other files; a link in a text card names this one" "note: cv/text.canvas mentions pictures/shot.png"
 
 # ---------------------------------------------------------------- a file system that ignores letter case
 # Windows and macOS find a file whatever the letter case of its path; Linux does not.

@@ -129,19 +129,27 @@ sb_link_slot() {
 }
 
 # Print TSV rows: name, kind, state, target, what the link leads to, place in the link directory.
+# A place that another folder's link holds already makes a duplicate: on Windows two project
+# paths that differ only by a slash and a hyphen give one junction name.
 sb_link_rows() {
-  local home pre kind name src fm slot state target nl=$'\n'
+  local home pre kind name src fm slot state target nl=$'\n' tab=$'\t'
   local seen="$nl"
   home="$(sb_link_home)"
   while IFS=$'\t' read -r pre kind name src fm; do
     [ -n "$kind" ] || continue
     sb_link_place "$home" "$kind" "$src"
     slot="$SB_LINK_SLOT"
+    if [ "$pre" = "ok" ]; then
+      case "$seen" in
+        *"$nl$slot$tab$SB_LINK_SRC$nl"*) ;;
+        *"$nl$slot$tab"*) pre="duplicate" ;;
+        *) seen="$seen$slot$tab$SB_LINK_SRC$nl" ;;
+      esac
+    fi
     if [ "$pre" != "ok" ]; then
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$pre" "$src" "$SB_LINK_SRC" "$slot"
       continue
     fi
-    seen="$seen$slot$nl"
     sb_link_slot "$slot" "$SB_LINK_SRC"
     case "$SB_LINK_STATE" in missing | linked) SB_LINK_TARGET="$src" ;; esac
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$SB_LINK_STATE" "${SB_LINK_TARGET:--}" "$SB_LINK_SRC" "$slot"
@@ -156,7 +164,7 @@ EOF
   for kind in skill agent; do
     for slot in "$home/${kind}s"/*; do
       if [ ! -e "$slot" ] && [ ! -L "$slot" ]; then continue; fi
-      case "$seen" in *"$nl$slot$nl"*) continue ;; esac
+      case "$seen" in *"$nl$slot$tab"*) continue ;; esac
       name="${slot##*/}"
       [ "$kind" = "skill" ] || name="${name%.md}"
       state="foreign"
@@ -181,8 +189,8 @@ sb_link_format() {
   local name kind state target rest
   while IFS=$'\t' read -r name kind state target rest; do
     [ -n "$name" ] || continue
-    [ "$target" = "-" ] || target="$(sb_path_out "$target")"
-    printf '%s | %s | %s | %s\n' "$name" "$kind" "$state" "$target"
+    printf '%s | %s | %s | ' "$name" "$kind" "$state"
+    if [ "$target" = "-" ]; then printf '%s\n' "-"; else sb_path_out "$target"; fi
   done
 }
 

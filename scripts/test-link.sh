@@ -447,6 +447,28 @@ sb link --apply
 rc_is "two agents: clean again once the second is deleted" 0
 out_lacks "two agents: the deleted one has no row" "second-agent"
 
+# ---------------------------------------------------------------- two folders, one junction name
+# On Windows projects/example and projects-example give their agents folders the same junction name.
+sb scaffold project Clash --path projects-example
+agent "$vault/projects-example/claude" clash-agent clash-agent
+oCA="$oV/projects-example/claude/agents/clash-agent.md"
+sb link --apply
+if [ "$WIN" -eq 1 ]; then
+  rc_is "one junction name for two folders: on Windows apply exits 1" 1
+  row_is "one junction name for two folders: on Windows the later folder's agent is a duplicate" "clash-agent | agent | duplicate | $oCA"
+  row_is "one junction name for two folders: on Windows the first folder's agent stays linked" "ex-agent | agent | linked | $oPA"
+  points_at "one junction name for two folders: on Windows the junction still leads to the first" "$SPA" "$LPA"
+  is "one junction name for two folders: on Windows apply does nothing" "$ERR" ""
+else
+  rc_is "project paths alike but for a slash: apply exits 0" 0
+  row_is "project paths alike but for a slash: the second project's agent is linked" "clash-agent | agent | linked | $oCA"
+  row_is "project paths alike but for a slash: the first project's agent stays linked" "ex-agent | agent | linked | $oPA"
+fi
+rm -r "$vault/projects-example/claude/agents"
+sb link --apply
+rc_is "one junction name for two folders: clean again once the second has no agents" 0
+points_at "one junction name for two folders: the first folder's link is as it was" "$SPA" "$LPA"
+
 # ---------------------------------------------------------------- edges
 symlink "$VS" "$home/skills/alias-skill"
 sb link --apply

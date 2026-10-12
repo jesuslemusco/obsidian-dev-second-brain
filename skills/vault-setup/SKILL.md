@@ -1,6 +1,6 @@
 ---
 name: vault-setup
-description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by symlink.
+description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
 argument-hint: "[init | project <name> | adopt <path> | repo <project> | link]"
 disable-model-invocation: true
 allowed-tools: Read Glob Bash(second-brain *)
@@ -26,12 +26,16 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 
 1. Ask for the vault folder. Propose the working directory when it holds `.obsidian/`. Refuse a
    folder with no `.obsidian/`: tell the user to open it in Obsidian as a vault first, and stop.
-2. Create the pointer, `~/.claude/second-brain-vault`. Look first: `ls -ld ~/.claude/second-brain-vault`.
-   - Nothing there: `ln -s "<vault folder>" ~/.claude/second-brain-vault`, with the absolute path.
-   - A symlink to this vault: leave it.
-   - A symlink to another folder: show both targets and ask before changing it. On a yes:
-     `ln -sfn "<vault folder>" ~/.claude/second-brain-vault`.
-   - A real file or folder: never replace it. Say what it is and stop.
+2. Create the pointer, `~/.claude/second-brain-vault`, a link to the vault. Run
+   `second-brain pointer set "<vault folder>"`. It prints the folder the pointer leads to.
+   - Nothing was there: it creates the pointer.
+   - The pointer already leads to this vault: it leaves it.
+   - Exit 6, `the pointer leads elsewhere`: the message names the other folder. Show both folders
+     and ask before changing it. On a yes, run the command again with `--replace` at the end.
+   - Exit 6, `a real file or folder`: it is never replaced. Say what it is and stop.
+   - Exit 5: the folder is not a vault. Show the message and stop.
+   - `second-brain pointer` prints where the pointer leads, at any time.
+   - Never make the pointer another way. On Windows `ln -s` copies the vault.
 3. Run `second-brain root`. It must print the vault's path. Exit 2: show the message and stop.
 4. Run `second-brain scaffold vault`. It creates `CLAUDE.md` (the index, with an empty
    `## Projects` table), `obsidian-conventions.md` and `claude/README.md` (the hub for the user's
@@ -44,8 +48,6 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - Otherwise show the line. Say that file is their global instruction file, read in every
      session. Add the line at its end, or create the file with that one line, only after an
      explicit yes. On a no, leave it: the doctor will report `import`.
-6. Run `second-brain context` again. `obsidian: missing` or `down`: remind the user to open
-   Obsidian and turn on its command line interface (Settings, General).
 
 ## project <name>
 
@@ -114,6 +116,8 @@ project: `${CLAUDE_SKILL_DIR}/repo.md`. Project and adopt use its section 2, onc
      frontmatter. They must be made equal first. Propose which one to change.
    - `duplicate`: two pieces in the vault carry one name. One has to be renamed, usually the
      project one, with the project as its prefix.
+   - On Windows the agents of one `claude/` folder share one link, to its `agents` folder. Their
+     rows carry that link's state and change together.
 3. Run `second-brain link --apply` only after the user agrees. It reports what it did as `note:`
    lines (`linked:`, `repointed:`, `removed:`), then prints the rows as they now are. Exit 1:
    show the rows that are still neither `linked` nor `foreign`. Those need the user's decision.
@@ -122,7 +126,7 @@ project: `${CLAUDE_SKILL_DIR}/repo.md`. Project and adopt use its section 2, onc
 
 Run `second-brain doctor`, or `second-brain doctor <project>` after project, adopt and repo. A row
 is `result | check | scope | count | offenders | fix`. Report every row that is not `ok`, with its
-fix. A `skip` row means Obsidian was not running, not that the check passed.
+fix.
 
 - Init never overwrites a `CLAUDE.md` that was there, so it has no `## Projects` table and `index`
   fails. Say so: the first `second-brain scaffold project` adds the table and its row.
@@ -131,8 +135,9 @@ fix. A `skip` row means Obsidian was not running, not that the check passed.
 ## Rules
 
 - Never delete. Never overwrite an existing file. The scaffold commands skip what exists.
-- Never move a note with `mv`. A move is `second-brain snapshot`, then `second-brain ob move`.
-- Outside the vault, this skill itself creates or changes two things only: the pointer symlink
-  and, after a yes, the one import line. Links under `~/.claude/skills` and `~/.claude/agents`
-  are made by `second-brain link --apply`, never by hand.
+- Never move a note with `mv`. A move is `second-brain snapshot`, then `second-brain move`.
+- Outside the vault, this skill itself creates or changes two things only: the pointer, with
+  `second-brain pointer set`, and, after a yes, the one import line. Links under
+  `~/.claude/skills` and `~/.claude/agents` are made by `second-brain link --apply`. Never run
+  `ln` or `mklink`.
 - Ask, do not invent: a folder, a key prefix, a date, a location. `-` in helper output is empty.

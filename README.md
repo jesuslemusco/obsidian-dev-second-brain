@@ -51,6 +51,23 @@ Then set it up:
 
 Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
 
+## Your own skills and agents
+
+The vault can hold skills and agents of your own, next to the ones the plugin ships.
+
+- **Global ones**, useful in any project, go in `claude/` at the vault root:
+  `claude/skills/<name>/SKILL.md` and `claude/agents/<name>.md`.
+- **Project ones** go in that project's folder: `<project>/claude/skills/<name>/SKILL.md` and
+  `<project>/claude/agents/<name>.md`. Start the name with the project, as in `example-deploy`,
+  because all names share one list.
+- The folder or file name must equal the `name` in its frontmatter.
+- List each one in the `claude/README.md` beside it, with a line on when to use it. Claude reads
+  that note before it works on the project.
+- After you add, rename or remove one, run `/obsidian-dev-second-brain:vault-setup link`. It links
+  each one into `~/.claude`, where Claude Code looks. The file in the vault stays the only copy.
+
+Skills and agents you keep straight in `~/.claude`, outside the vault, are never touched.
+
 ## More
 
 - [docs/guide.md](docs/guide.md): what the plugin ships, how a vault is laid out, notes on Windows,

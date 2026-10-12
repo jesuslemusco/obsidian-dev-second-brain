@@ -80,8 +80,10 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    | `achievements_skill` | the skill finished stories are handed to, if any | `"<skill name>"` or `""` |
 
 4. Write the answers into the frontmatter of `<path>/claude/profile.md` with the Edit tool. Quote
-   strings and the sprint end date. Write a folder under the home directory as `~/...`. Never
-   remove or reorder a key. Add a key from the table only when the profile lacks it.
+   strings and the sprint end date. Write a folder under the home directory as `~/...`. On Windows
+   write any other folder with forward slashes, as in `"C:/code/acme"`: inside quotes a backslash
+   is an escape. Never remove or reorder a key. Add a key from the table only when the profile
+   lacks it.
 5. Never invent an answer the user did not give, least of all a location. Leave that key as the
    scaffold wrote it and say which keys are still open. An empty `repos_root` is fine.
 6. Run `second-brain repo <project>` and show its rows: name, path and state (`ok`, `missing` or

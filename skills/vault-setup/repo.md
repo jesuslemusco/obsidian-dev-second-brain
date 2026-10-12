@@ -11,7 +11,9 @@ with the Edit tool. Never invent a name, a location, a kind of change or a doc.
 2. Ask for the repository's folder name, and where it is stored on this machine.
 3. Add the name to `repos:`, last. The first name stays the default for branch checks.
 4. Stored under `repos_root`: write nothing more. Stored somewhere else: add `"<name>=<path>"` to
-   `repo_paths:`, with `~/...` for a folder under the home directory. Not known: leave it out.
+   `repo_paths:`, with `~/...` for a folder under the home directory. On Windows write the path
+   with forward slashes, as in `C:/work/example-web`: inside quotes a backslash is an escape. Not
+   known: leave it out.
 5. Add its line under `## Repos`: the folder name and what it holds, in the user's words.
 
 ## 2. The docs that follow it

@@ -25,7 +25,7 @@ claude/agents/<name>.md          an agent
    agent file name, equals `name` in its frontmatter.
 2. Frontmatter carries at least `name` and `description`. Keep the description to one sentence.
 3. Names share one namespace. Prefix a project-specific name with the project: `example-deploy`.
-4. Register it with `second-brain link --apply`. That symlinks it into `~/.claude/skills/` or
+4. Register it with `second-brain link --apply`. That links it into `~/.claude/skills/` or
    `~/.claude/agents/`. The file in the vault stays the only copy.
 5. List it below, or in the project's `claude/README.md`, with its "use when" line.
 6. On rename, move or delete, fix or remove the link in the same change. `second-brain link --check`

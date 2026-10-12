@@ -545,7 +545,8 @@ sb_fill_text() {
   local assigns
   assigns=("SBT__=1")
   for kv in "$@"; do assigns[${#assigns[@]}]="SBT_$kv"; done
-  env "${assigns[@]}" LC_ALL=C awk '
+  # The pairs are exported in a subshell, so that awk is called by its plain name.
+  (export "${assigns[@]}" && LC_ALL=C awk '
     {
       line = $0; out = ""; whole = 0; emptied = 0
       t = line; sub(/^[ \t]+/, "", t); sub(/[ \t]+$/, "", t)
@@ -567,7 +568,7 @@ sb_fill_text() {
       if (whole && emptied) next
       print out line
     }
-  ' "$tmpl"
+  ' "$tmpl")
 }
 
 # Fill a template into a new file. Returns 6 when the file exists; never overwrites.

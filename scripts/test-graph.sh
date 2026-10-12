@@ -811,6 +811,23 @@ printf '{"nodes":[{"type":"text","text":"see ![[pictures/shot.png]]"}]}\n' >"$va
 sb move pictures/shot.png pictures/pic.png
 err_is "move: a longer name and a deeper path are other files; a link in a text card names this one" "note: cv/text.canvas mentions pictures/shot.png"
 
+# ---------------------------------------------------------------- notes whose extension is in capitals
+note "$P/docs/LOUD.MD" '---' 'aliases:' '  - Loud Note' '---' '# Loud' 'the word qloud is here'
+note "ROOTLOUD.MD" '---' 'aliases: [Root Loud]' '---' '# At the root'
+note "$P/docs/quiet.md" '[[LOUD]] and [[projects/example/docs/LOUD.MD|by path]]'
+sb backlinks "$P/docs/LOUD.MD"
+out_is "capitals: the link reader counts a .MD file as a note" \
+  "$P/docs/quiet.md:1: [[LOUD]]${NL}$P/docs/quiet.md:1: [[projects/example/docs/LOUD.MD|by path]]"
+sb search Example qloud
+out_is "capitals: search reads it too" "$P/docs/LOUD.MD:6: the word qloud is here"
+sb find "loud note"
+out_is "capitals: find reads its aliases" "$P/docs/LOUD.MD"
+sb find "root loud"
+out_is "capitals: find reads the aliases of such a note at the vault root" "ROOTLOUD.MD"
+sb snapshot capitals
+is "capitals: the snapshot lists its aliases" "$(grep 'LOUD' "$vault/.second-brain/snapshots/capitals/aliases.txt" | tr '\t' '|')" \
+  "Loud Note|$P/docs/LOUD.MD${NL}Root Loud|ROOTLOUD.MD"
+
 # ---------------------------------------------------------------- a file system that ignores letter case
 # Windows and macOS find a file whatever the letter case of its path; Linux does not.
 note "ci/Mixed Case.md" '# Mixed'

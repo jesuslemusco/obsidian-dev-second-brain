@@ -39,7 +39,7 @@ sb_snap_unresolved() {
 sb_snap_aliases() {
   (
     cd "$SB_ROOT" || exit 1
-    find . -type d -name '.?*' -prune -o -type f -name '*.md' -print | LC_ALL=C awk "$(sb_awk_lib)"'
+    find . -type d -name '.?*' -prune -o -type f -name '*.[mM][dD]' -print | LC_ALL=C awk "$(sb_awk_lib)"'
       function put(v) { gsub(/[\t\r]/, " ", v); if (v != "") print v "\t" substr(file, 3) }
       {
         file = $0; key = ""; lineno = 0

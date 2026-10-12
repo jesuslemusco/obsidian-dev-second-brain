@@ -4,7 +4,7 @@
 # Print the markdown files under a folder, skipping dot folders.
 sb_md_files() {
   [ -d "$1" ] || return 0
-  find "$1" -name '.*' -prune -o -type f -name '*.md' -print 2>/dev/null
+  find "$1" -name '.*' -prune -o -type f -name '*.[mM][dD]' -print 2>/dev/null
 }
 
 # Find a note by task id or alias; print vault-relative paths.
@@ -48,7 +48,7 @@ cmd_find() {
 $rows
 EOF
       if [ -z "$project" ]; then
-        for f in "$SB_ROOT"/*.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
+        for f in "$SB_ROOT"/*.[mM][dD]; do [ -f "$f" ] && printf '%s\n' "$f"; done
         sb_md_files "$SB_ROOT/claude"
       fi
     } | sb_alias_scan "$id" | LC_ALL=C sort -u)"
@@ -62,7 +62,7 @@ EOF
 sb_search_notes() {
   (
     cd "$SB_ROOT" || exit 1
-    find "$2" -name '.*' -prune -o -type f -name '*.md' -print 2>/dev/null | LC_ALL=C SB_Q="$1" awk '
+    find "$2" -name '.*' -prune -o -type f -name '*.[mM][dD]' -print 2>/dev/null | LC_ALL=C SB_Q="$1" awk '
       BEGIN {
         n = split(tolower(ENVIRON["SB_Q"]), part, " ")
         for (i = 1; i <= n; i++) if (!(part[i] in known)) { known[part[i]] = 1; word[++nw] = part[i] }

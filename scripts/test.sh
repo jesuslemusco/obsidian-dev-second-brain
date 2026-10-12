@@ -781,8 +781,20 @@ rc_is "search: exit 0" 0
 out_has "search: path, line number, text" "$P/tasks/EX-1/README.md:4: title:"
 is "search: every row is path:line: text" "$(printf '%s\n' "$OUT" | grep -vc "^$P/.*\\.md:[0-9][0-9]*: ")" "0"
 sb search Example needle-x
-is "search: at most 40 rows" "$(lines "$OUT")" "40"
+out_is "search: a note gives three lines at most, its first for one word" "$P/docs/billing/Invoices/many.md:1: line 0 holds needle-x here
+$P/docs/billing/Invoices/many.md:2: line 1 holds needle-x here
+$P/docs/billing/Invoices/many.md:3: line 2 holds needle-x here"
 out_lacks "search: markdown files only" "data.txt"
+i=10
+mkdir -p "$vault/$P/docs/cap"
+while [ "$i" -lt 55 ]; do
+  printf 'first needle-y here\nsecond needle-y here\n' >"$vault/$P/docs/cap/n-$i.md"
+  i=$((i + 1))
+done
+sb search Example needle-y
+is "search: at most 40 rows" "$(lines "$OUT")" "40"
+is "search: every note keeps its best line before any note keeps a second" "$(printf '%s\n' "$OUT" | grep -c ':1: first needle-y here$')" "40"
+rm -r "$vault/$P/docs/cap"
 sb search Example rounded --in tasks/EX-1
 is "search --in: stays inside the sub-folder" "$(printf '%s\n' "$OUT" | grep -vc "^$P/tasks/EX-1/")" "0"
 sb search "Example Two" rounded
@@ -811,6 +823,27 @@ out_has "search: one word matches the note that holds it" "$W/half.md:1: qalpha 
 out_has "search: one word lists every line that holds it" "$W/words.md:3: qalpha only here"
 sb search Example "qalpha no-such-word"
 rc_is "search: a word no note holds gives exit 1" 1
+sb search Example '"qalpha only"'
+out_is "search: a part in double quotes is a phrase" "$W/words.md:3: qalpha only here"
+sb search Example '"QBETA ALONE"'
+out_is "search: a phrase matches in any letter case" "$W/words.md:6: qbeta alone"
+sb search Example '"qbeta   alone"'
+rc_is "search: a phrase keeps the blanks between its words, exit 1 when they differ" 1
+sb search Example '"qbeta alone" report'
+out_is "search: a phrase beside a word, each on its first line" "$W/words.md:1: # Qalpha report
+$W/words.md:6: qbeta alone"
+sb search Example '"qalpha qbeta"'
+rc_is "search: a phrase in another order matches nothing, exit 1" 1
+sb search Example '"qalpha only'
+out_is "search: a quote left open runs to the end of the text" "$W/words.md:3: qalpha only here"
+sb search Example '""'
+rc_is "search: quotes with nothing in them give exit 5" 5
+printf '%s\n' 'qone qtwo a' 'qone qtwo b' 'qone qtwo qthree best' 'qone qtwo c' 'qthree alone' >"$vault/$W/rank.md"
+sb search Example "qone qtwo qthree"
+out_is "search: several words, a note's three best lines, the fullest first" "$W/rank.md:3: qone qtwo qthree best
+$W/rank.md:1: qone qtwo a
+$W/rank.md:2: qone qtwo b"
+rm "$vault/$W/rank.md"
 rm "$vault/$W/words.md" "$vault/$W/zz-words.md" "$vault/$W/half.md" "$vault/$W/spread.md"
 
 # ---------------------------------------------------------------- sprint

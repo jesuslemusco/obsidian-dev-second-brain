@@ -182,9 +182,10 @@ slashes. `second-brain help` lists everything.
 | Text inside one folder | `second-brain search <project> "<text>" --in <subpath>` |
 | Move or rename a note | `second-brain move ...`, `second-brain rename ...` |
 
-A search splits the text into words and lists the notes that hold every word, in any letter case.
-For one word it prints the lines that hold it. For several it prints the lines that hold at least
-two of them, and for a note with no such line the first line that holds each word.
+A search splits the text into terms at spaces and lists the notes that hold every term, in any
+letter case. A part in double quotes is one term, a phrase: `second-brain search <project>
+'"exact phrase" word'`. Each note gives at most three lines: for one term the first lines that
+hold it, for several the lines that hold the most terms. To see every line of one note, read it.
 
 ## Limits of the helper
 

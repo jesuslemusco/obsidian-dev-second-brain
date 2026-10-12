@@ -2,7 +2,7 @@
 # End-to-end check with Claude Code itself: the plugin loads, its hook runs, the helper is on the
 # Bash PATH, and a vault's own skills and agents are found through the links.
 # It writes into the real link directory and spends a little API usage, so it runs in CI only.
-# Usage: CI=true ANTHROPIC_API_KEY=... bash scripts/e2e-claude.sh
+# Usage, on a CI runner: ANTHROPIC_API_KEY=... bash scripts/e2e-claude.sh
 set -u
 
 here="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -77,7 +77,12 @@ holds "hook: it exits 0" "$got" "exit=0"
 
 printf '== setup: pointer, scaffold, links ==\n'
 step "pointer set: creates the pointer" bash "$SB" pointer set "$vault"
-step "root: the vault is found through the pointer" bash "$SB" root
+# Everything below writes into the vault the pointer leads to: stop unless it is the scratch one.
+if [ ! "$(bash "$SB" root 2>/dev/null)" -ef "$vault" ]; then
+  echo "e2e: the pointer does not lead to the scratch vault; nothing more was written" >&2
+  exit 2
+fi
+pass "root: the vault is found through the pointer"
 step "scaffold vault" bash "$SB" scaffold vault
 step "scaffold project" bash "$SB" scaffold project Example --path "$P" --keys EX --no-sprints
 for dir in "$vault/claude" "$vault/$P/claude"; do

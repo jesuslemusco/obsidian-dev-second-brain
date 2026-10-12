@@ -3,10 +3,10 @@ name: probe
 on:
   push:
     branches: [feature/windows-support]
-    paths: [.github/probe.sh, .github/workflows/probe.yml]
 jobs:
   probe:
     runs-on: windows-latest
+    timeout-minutes: 15
     defaults:
       run:
         shell: bash

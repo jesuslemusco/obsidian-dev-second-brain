@@ -83,10 +83,13 @@ sb_project_rows_by_cwd() {
       ;;
   esac
   # A recorded repository folder that holds the directory decides; the deepest one wins.
+  # The same pass keeps every repo name with its project, for the match by folder name below.
   while IFS=$'\t' read -r name path keys; do
     [ -n "$name" ] || continue
     row="$name$tab$path$tab$keys"
     while IFS=$'\t' read -r r rpath state; do
+      [ -n "$r" ] || continue
+      table="$table${r// /_}$tab$row$nl"
       [ "$state" = "ok" ] || continue
       rphys="$(cd -P "$rpath" 2>/dev/null && pwd -P)" || continue
       case "$phys/" in
@@ -110,14 +113,6 @@ EOF
     return 0
   fi
   # Else a folder on the way up that carries a repo name from a profile.
-  while IFS=$'\t' read -r name path keys; do
-    [ -n "$name" ] || continue
-    for r in $(sb_fm_list "$SB_ROOT/$path/claude/profile.md" repos 2>/dev/null | tr ' ' '_'); do
-      table="$table$r"$'\t'"$name"$'\t'"$path"$'\t'"$keys"$'\n'
-    done
-  done <<EOF
-$rows
-EOF
   [ -n "$table" ] || return 0
   printf '%s' "$table" | SB_DIR="$phys" awk -F'\t' '
     BEGIN { n = split(ENVIRON["SB_DIR"], part, "/") }

@@ -87,8 +87,11 @@ sb_today() {
 # Print the awk functions shared by the awk programs in this plugin.
 # Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
 # pattern in a UTF-8 locale, which stops the whole program.
+# The text is one quoted string that the shell prints itself, since most commands ask for it
+# several times and a process started to print it costs about 20 ms each time on Windows.
+# It can hold no single quote: awk spells that character "\047".
 sb_awk_lib() {
-  cat <<'AWK'
+  printf '%s\n' '
 function trim(s) { sub(/^[ \t\r]+/, "", s); sub(/[ \t\r]+$/, "", s); return s }
 function unq(s,   q, i, c, out, n) {
   s = trim(s)
@@ -104,12 +107,12 @@ function unq(s,   q, i, c, out, n) {
     }
     return out
   }
-  if (q == "'") {
+  if (q == "\047") {
     out = ""
     for (i = 2; i <= n; i++) {
       c = substr(s, i, 1)
-      if (c == "'") {
-        if (substr(s, i + 1, 1) == "'") { out = out "'"; i++; continue }
+      if (c == "\047") {
+        if (substr(s, i + 1, 1) == "\047") { out = out "\047"; i++; continue }
         return out
       }
       out = out c
@@ -136,7 +139,7 @@ function split_inline(s, items,   n, i, c, cur, q, len, k) {
       else if (c == q) q = ""
       continue
     }
-    if ((c == "\"" || c == "'") && trim(cur) == "") { q = c; cur = cur c; continue }
+    if ((c == "\"" || c == "\047") && trim(cur) == "") { q = c; cur = cur c; continue }
     if (c == ",") { cur = trim(cur); if (cur != "") items[++n] = unq(cur); cur = ""; continue }
     cur = cur c
   }
@@ -159,7 +162,7 @@ function yq(s, force,   need, l) {
   if (s == "") need = 1
   else if (s ~ /^[ \t]/ || s ~ /[ \t]$/ || s ~ /:$/) need = 1
   else if (index(s, ": ") > 0 || index(s, "#") > 0) need = 1
-  else if (index("-[]{}!&*|>@%?,\"'`", substr(s, 1, 1)) > 0) need = 1
+  else if (index("-[]{}!&*|>@%?,\"\047`", substr(s, 1, 1)) > 0) need = 1
   else if (s ~ /^[+.]?[0-9]/) need = 1
   else if (l == "true" || l == "false" || l == "null" || l == "yes" || l == "no" || l == "on" || l == "off" || l == "~") need = 1
   return need ? dq(s) : s
@@ -202,8 +205,7 @@ function date_days(s) {
 function date_ok(s) {
   if (s !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) return 0
   return civil_from_days(date_days(s)) == s
-}
-AWK
+}'
 }
 
 # Return 0 when the argument is a real YYYY-MM-DD date.

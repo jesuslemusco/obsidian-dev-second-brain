@@ -7,7 +7,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root" || exit 2
 
 files="$(find . -type f \
-  -not -path './.git/*' -not -path './.scratch/*' -not -path './tmp/*' \
+  -not -path './.git/*' -not -path './.scratch/*' -not -path './tmp/*' -not -path './.omc/*' \
   -not -name '.leak-words' -not -name 'leak-check.sh' | sort)"
 
 fail=0

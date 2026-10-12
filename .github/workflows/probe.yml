@@ -1,0 +1,16 @@
+name: probe
+# Temporary: removed before the branch is merged.
+on:
+  push:
+    branches: [feature/windows-support]
+    paths: [.github/probe.sh, .github/workflows/probe.yml]
+jobs:
+  probe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Git Bash
+        run: bash .github/probe.sh

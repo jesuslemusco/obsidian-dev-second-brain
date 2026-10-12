@@ -76,7 +76,7 @@ sb_search_notes() {
         for (i = 1; i <= n; i++) {
           ch = substr(q, i, 1)
           if (ch == "\"") { add(cur); cur = ""; quoted = !quoted; continue }
-          if (ch == " " && !quoted) { add(cur); cur = ""; continue }
+          if (!quoted && (ch == " " || ch == "\t" || ch == "\n" || ch == "\r")) { add(cur); cur = ""; continue }
           cur = cur ch
         }
         add(cur)
@@ -104,7 +104,7 @@ sb_search_notes() {
           gsub(/[\t\r]/, " ", text[i]); print r "\t" hits[i] "\t" path "\t" at[i] "\t" text[i]
         }
       }'
-  ) | LC_ALL=C sort -t $'\t' -k1,1n -k2,2nr -k3,3 -k4,4n | head -40 |
+  ) | LC_ALL=C sort -t $'\t' -k1,1n -k2,2nr -k3,3 -k4,4n | awk 'NR <= 40' |
     LC_ALL=C sort -t $'\t' -k2,2nr -k3,3 -k4,4n | LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
     { print cut($3 ":" $4 ": " trim($5), 240) }'
 }

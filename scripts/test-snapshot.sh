@@ -210,15 +210,7 @@ is "diff: a missing file is no difference" "$?" "0"
 out_is "diff: a missing file is named as not compared" "not compared: links.txt"
 
 # ---------------------------------------------------------------- the links and doctor views
-links2="$tmp/claude-home-2"
-mkdir -p "$links2/skills" "$links2/agents" "$tmp/src/zeta"
-symlink "$tmp/src/zeta" "$links2/skills/zeta"
-symlink "../elsewhere/alpha.md" "$links2/agents/alpha.md"
-mkdir "$links2/skills/a-real-folder"
-unset -f sb_link_scan cmd_doctor
 SB_ROOT="$vault"
-is "links view: with no link library, the symlinks as name and target" \
-  "$(SECOND_BRAIN_CLAUDE_HOME="$links2" sb_snap_links)" "alpha.md${TAB}../elsewhere/alpha.md${NL}zeta${TAB}$(shown "$tmp/src/zeta")"
 is "links view: an empty link directory gives no rows" "$(SECOND_BRAIN_CLAUDE_HOME="$tmp/nowhere" sb_snap_links)" ""
 sb_link_scan() {
   printf '%s\n' 'zeta | skill | linked | src/zeta' 'alpha | agent | missing | src/alpha'

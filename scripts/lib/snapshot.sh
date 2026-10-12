@@ -72,18 +72,11 @@ sb_snap_tasks() {
   done | LC_ALL=C sort
 }
 
-# Print the link rows of the link library, or the symlinks in the link directory.
+# Print the link rows of the link library, sorted.
 sb_snap_links() {
-  local dir f out
-  if declare -F sb_link_scan >/dev/null 2>&1; then
-    out="$( (sb_link_scan) 2>/dev/null </dev/null)" || true
-    [ -z "$out" ] || printf '%s\n' "$out" | LC_ALL=C sort
-    return 0
-  fi
-  dir="$(sb_link_home)"
-  for f in "$dir"/skills/* "$dir"/agents/*; do
-    [ -L "$f" ] && printf '%s\t' "${f##*/}" && sb_path_out "$(readlink "$f")"
-  done | LC_ALL=C sort
+  local out
+  out="$( (sb_link_scan) 2>/dev/null </dev/null)" || true
+  [ -z "$out" ] || printf '%s\n' "$out" | LC_ALL=C sort
   return 0
 }
 

@@ -149,7 +149,14 @@ rewrites every link to it and the links inside it. Do not use `mv`: links are le
 - A destination that is an existing folder, or that ends with `/`, takes the item under its own
   name. Missing folders are created.
 - Add `--dry-run` to see what would move and which notes would be rewritten. Nothing is written.
-- `rename` keeps the extension when the new name has none.
+- `rename` never changes the extension: the new name may repeat it or leave it out. To change an
+  extension, use `move`.
+- A name cannot hold `#`, `^`, `|`, `[`, `]` or a backslash, nor start or end with a space. No link
+  could spell it, so the helper refuses that destination.
+- The index, this note and a project's profile stay where they are. The helper finds them at a
+  fixed path and does not move them, nor a folder that holds one.
+- When a note with a link to rewrite cannot be read or written, nothing is moved and the note is
+  named.
 - A `.canvas` or `.base` file is never edited. The helper names the ones that mention the old
   path; fix those by hand.
 
@@ -181,6 +188,14 @@ and prints their lines that hold at least one.
 - Its board views are fixed. A view changed or added in `tasks.base` shows in Obsidian only.
 - A move never edits a `.canvas` or `.base` file.
 - Letter case is ignored for ASCII letters only, in links and in searches.
+- A markdown link must sit on one line. One whose text holds `\]`, or whose target has blanks
+  around it, is not read.
+- A link inside a comment (`%%` or HTML) or inside math counts like any other.
+- A note behind a symlink is not seen. The helper does not follow one.
+- A name must have the same Unicode form in the link and on disk. An NFC link to a file whose
+  name is stored as NFD is unresolved.
+- A note that holds bytes awk cannot hand back whole is never rewritten: a NUL byte on some
+  systems, the control byte 1 on all. A move that would have to rewrite it is refused.
 
 ## Searching
 

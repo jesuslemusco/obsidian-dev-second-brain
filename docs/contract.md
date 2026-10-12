@@ -235,8 +235,8 @@ Rules that hold for every command:
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into words at spaces. A note matches when it holds every word, in any letter case; its lines that hold at least one of the words are printed, lines holding more of the words first, then by path and line. Exit 1 when no note matches |
 | `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
-| `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing |
-| `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project |
+| `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing. A note that cannot be read is named on stderr as `note: <path> could not be read` |
+| `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project. A note that cannot be read is named on stderr in the same way |
 | `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists. Exit 5 when `<from>` is the vault root, or is or holds what the helper finds at a fixed path (the index, the conventions note, an index project's folder or its profile), and when a name in `<to>` cannot be written in a link. `--dry-run` prints the same lines after a first line `dry run`, writes nothing, and exits as the move would |
 | `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder. The extension never changes: `<name>` may end with the file's own extension, in any letter case, or leave it out, and anything else is part of the name, so `api.v2` gives `api.v2.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
@@ -291,12 +291,19 @@ What `move` and `rename` do to links:
 - Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
   moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
 - The links are worked out before anything is written; the files are moved, then the notes edited.
-- A destination is refused with exit 5 when one of its names holds `#`, `^`, `|`, `[`, `]`, a
-  backslash or a control character, or starts or ends with a blank: a link could not spell it.
-  So is a source or a destination that lies behind a symlinked folder.
-- Nothing is moved or written unless every note to rewrite can be read in full and written. A
-  note that cannot is named on stderr and the command exits 1. So does a move that would leave a
-  link with no way to spell its new target, such as a path through a folder named with a `#`.
+- A destination is refused with exit 5 when a name the move creates, the new name or a folder
+  that does not exist yet, holds one of `# ^ [ ] | \ : * ? " < >`, a backtick or a control
+  character, or starts or ends with a blank: Obsidian forbids them, and a link could not spell
+  the name. So is a source or a destination that lies behind a symlinked folder.
+- `<from>` is written as the vault lists it. A spelling that reaches the file only because the
+  file system folds letter case or Unicode forms is refused with exit 1.
+- Nothing is moved or written unless every note of the vault can be read in full and every note
+  to rewrite can be written. A note that cannot is named on stderr and the command exits 1.
+- Every rewritten line is read again before anything is moved: each rewritten link must be found
+  and must resolve to its file. One that does not stops the command with exit 1, naming the note
+  and the line.
+- A note that changed while the command ran is left as it is and named on stderr as still
+  holding old links. The other notes are rewritten and the command exits 1.
 - The destination is looked at again right before the move and is never overwritten.
 - Not covered: a rename that changes only the letter case of a name, on a file system that
   ignores case. It exits 6.

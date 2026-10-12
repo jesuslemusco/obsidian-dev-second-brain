@@ -5,8 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/second-brain",
-            "args": ["session-check"],
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/bin/second-brain\" session-check",
             "timeout": 5
           }
         ]

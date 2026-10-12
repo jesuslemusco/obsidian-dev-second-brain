@@ -797,18 +797,21 @@ W="$P/docs/billing/Invoices"
 printf '%s\n' '# Qalpha report' '' 'qalpha only here' 'QBETA and Qalpha together' 'nothing' 'qbeta alone' >"$vault/$W/words.md"
 printf '%s\n' 'qbeta qalpha' >"$vault/$W/zz-words.md"
 printf '%s\n' 'qalpha without the other word' >"$vault/$W/half.md"
+printf '%s\n' 'intro qalpha here' 'filler' 'qalpha again' 'later qbeta shows' 'qbeta again' >"$vault/$W/spread.md"
 sb search Example "qbeta  QALPHA"
 rc_is "search: several words, exit 0" 0
-out_is "search: the notes that hold every word; lines with more of the words first, then by path and line" "$W/words.md:4: QBETA and Qalpha together
+out_is "search: lines holding two of the words, and for a note with none the first line of each word" "$W/words.md:4: QBETA and Qalpha together
 $W/zz-words.md:1: qbeta qalpha
-$W/words.md:1: # Qalpha report
-$W/words.md:3: qalpha only here
-$W/words.md:6: qbeta alone"
+$W/spread.md:1: intro qalpha here
+$W/spread.md:4: later qbeta shows"
+out_lacks "search: several words leave out a line that holds one of them beside a fuller line" "qalpha only here"
+out_lacks "search: several words leave out the later lines of a word in a note with no fuller line" "qalpha again"
 sb search Example "qalpha"
 out_has "search: one word matches the note that holds it" "$W/half.md:1: qalpha without the other word"
+out_has "search: one word lists every line that holds it" "$W/words.md:3: qalpha only here"
 sb search Example "qalpha no-such-word"
 rc_is "search: a word no note holds gives exit 1" 1
-rm "$vault/$W/words.md" "$vault/$W/zz-words.md" "$vault/$W/half.md"
+rm "$vault/$W/words.md" "$vault/$W/zz-words.md" "$vault/$W/half.md" "$vault/$W/spread.md"
 
 # ---------------------------------------------------------------- sprint
 sb sprint current Example

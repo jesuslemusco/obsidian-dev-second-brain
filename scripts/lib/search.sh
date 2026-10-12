@@ -59,6 +59,8 @@ EOF
 
 # Search the notes of one folder for words. A note matches when it holds every word, in any
 # letter case. Print at most 40 path:line: text rows, the lines that hold the most words first.
+# With several words a line holding one of them is noise: a note gives its lines that hold two or
+# more, or, when it has none, the first line that holds each word.
 sb_search_notes() {
   (
     cd "$SB_ROOT" || exit 1
@@ -68,17 +70,20 @@ sb_search_notes() {
         for (i = 1; i <= n; i++) if (!(part[i] in known)) { known[part[i]] = 1; word[++nw] = part[i] }
       }
       $0 != "" {
-        path = $0; ln = 0; nh = 0; found = 0
+        path = $0; ln = 0; nh = 0; found = 0; best = 0
         split("", seen)
         while ((getline line < path) > 0) {
           ln++
-          low = tolower(line); c = 0
-          for (i = 1; i <= nw; i++) if (index(low, word[i]) > 0) { c++; if (!(i in seen)) { seen[i] = 1; found++ } }
-          if (c) { nh++; hits[nh] = c; at[nh] = ln; text[nh] = line }
+          low = tolower(line); c = 0; first = 0
+          for (i = 1; i <= nw; i++) if (index(low, word[i]) > 0) { c++; if (!(i in seen)) { seen[i] = 1; found++; first = 1 } }
+          if (c) { nh++; hits[nh] = c; at[nh] = ln; text[nh] = line; lead[nh] = first; if (c > best) best = c }
         }
         close(path)
         if (found < nw) next
-        for (i = 1; i <= nh; i++) { gsub(/[\t\r]/, " ", text[i]); print hits[i] "\t" path "\t" at[i] "\t" text[i] }
+        for (i = 1; i <= nh; i++) {
+          if (nw > 1 && hits[i] < 2 && (best >= 2 || !lead[i])) continue
+          gsub(/[\t\r]/, " ", text[i]); print hits[i] "\t" path "\t" at[i] "\t" text[i]
+        }
       }'
   ) | LC_ALL=C sort -t $'\t' -k1,1nr -k2,2 -k3,3n | LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
     NR <= 40 { print cut($2 ":" $3 ": " trim($4), 240) }'

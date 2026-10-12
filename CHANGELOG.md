@@ -14,7 +14,9 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - Removed: `second-brain ob`, `second-brain probe`, the `--files` flag and the `source:` line of
   `board`, the `obsidian` and `search` lines of `context`, the doctor checks `obsidian-cli` and
   `index-fresh`, and exit code 3.
-- `search` finds the notes that hold every word of the text.
+- `search` finds the notes that hold every word of the text. For several words it prints the
+  lines that hold at least two of them, and for a note with no such line the first line of each
+  word.
 - Windows is supported in Git Bash, the shell Claude Code uses there. The links are directory
   junctions, which need no special rights: one per skill folder, and one per `claude/agents`
   folder. Absolute paths are printed as `C:/...` and read in any form Windows writes them. A path

@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 # doctor.sh - the health check: one row per check for the vault and each project, and the hook check.
 
-# Print the link directory: SECOND_BRAIN_CLAUDE_HOME, else the .claude folder in the home.
-sb_doc_home() {
-  local d="${SECOND_BRAIN_CLAUDE_HOME:-}"
-  [ -n "$d" ] || d="${HOME:-}/.claude"
-  printf '%s\n' "${d%/}"
-}
-
 # Print one row: result | check | scope | count | offenders | fix. Offenders come one per line.
 sb_doc_row() {
   local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}"
@@ -67,13 +60,14 @@ sb_doc_check_conventions() {
 # Check that the link directory's CLAUDE.md imports the index.
 sb_doc_check_import() {
   local home f line p bad="CLAUDE.md"
-  home="$(sb_doc_home)"
+  home="$(sb_link_home)"
   f="$home/CLAUDE.md"
   if [ -f "$f" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in @*) ;; *) continue ;; esac
       p="${line#@}"
       p="${p%"${p##*[![:space:]]}"}"
+      p="$(sb_path_in "$p")"
       case "$p" in
         '~/'*) p="${HOME:-}/${p#??}" ;;
         /*) ;;
@@ -99,7 +93,7 @@ sb_doc_check_links() {
 # Check that no link in the link directory points inside the plugin.
 sb_doc_check_double_registration() {
   local home root slot t bad="" nl=$'\n'
-  home="$(sb_doc_home)"
+  home="$(sb_link_home)"
   root="$(cd -P "$(sb_plugin_root)" 2>/dev/null && pwd -P)" || root=""
   for slot in "$home"/skills/* "$home"/agents/*; do
     [ -L "$slot" ] && [ -n "$root" ] || continue
@@ -118,7 +112,7 @@ sb_doc_check_double_registration() {
 # Check the line counts of the two files that are always loaded.
 sb_doc_check_always_loaded_size() {
   local idx="$SB_ROOT/CLAUDE.md" mine n bad="" nl=$'\n'
-  mine="$(sb_doc_home)/CLAUDE.md"
+  mine="$(sb_link_home)/CLAUDE.md"
   if [ -f "$idx" ]; then
     n="$(awk 'END { print NR }' "$idx")"
     [ "$n" -le 60 ] || bad="index:$n$nl"

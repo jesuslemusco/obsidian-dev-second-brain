@@ -6,11 +6,6 @@ sb_snap_home() {
   printf '%s\n' "$SB_ROOT/.second-brain/snapshots"
 }
 
-# Print the link directory: SECOND_BRAIN_CLAUDE_HOME, else .claude in the home folder.
-sb_snap_link_dir() {
-  printf '%s\n' "${SECOND_BRAIN_CLAUDE_HOME:-${HOME:-}/.claude}"
-}
-
 # Print a snapshot name that sorts by time; SECOND_BRAIN_NOW replaces the clock.
 sb_snap_stamp() {
   local now="${SECOND_BRAIN_NOW:-}"
@@ -85,9 +80,9 @@ sb_snap_links() {
     [ -z "$out" ] || printf '%s\n' "$out" | LC_ALL=C sort
     return 0
   fi
-  dir="$(sb_snap_link_dir)"
+  dir="$(sb_link_home)"
   for f in "$dir"/skills/* "$dir"/agents/*; do
-    [ -L "$f" ] && printf '%s\t%s\n' "$(basename "$f")" "$(readlink "$f")"
+    [ -L "$f" ] && printf '%s\t' "${f##*/}" && sb_path_out "$(readlink "$f")"
   done | LC_ALL=C sort
   return 0
 }

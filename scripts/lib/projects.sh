@@ -208,7 +208,9 @@ sb_need_profile() {
 }
 
 # Print name<TAB>path for each repo of a profile file; the path is "-" when no location is recorded.
+# A location comes out in the shell's own form; one that is not absolute is left for the caller to drop.
 sb_repo_paths() {
+  local name path
   [ -f "$1" ] || return 1
   LC_ALL=C awk "$(sb_awk_lib)"'
     function add(k, v,   j) {
@@ -242,11 +244,13 @@ sb_repo_paths() {
         p = "-"
         if (repo[r] in other) p = expand(other[repo[r]])
         else if (root != "") p = (root == "/" ? "" : root) "/" repo[r]
-        if (substr(p, 1, 1) != "/") p = "-"
         print repo[r] "\t" p
       }
     }
-  ' "$1"
+  ' "$1" | while IFS=$'\t' read -r name path; do
+    printf '%s\t' "$name"
+    sb_path_in "$path"
+  done
 }
 
 # Print the repo rows of a project path: name, path, state (ok, missing or unknown).
@@ -254,6 +258,7 @@ sb_repo_rows_at() {
   local name path
   sb_repo_paths "$SB_ROOT/$1/claude/profile.md" 2>/dev/null | while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
+    case "$path" in /*) ;; *) path="-" ;; esac
     if [ "$path" = "-" ]; then
       printf '%s\t-\tunknown\n' "$name"
     elif [ -d "$path" ]; then
@@ -279,7 +284,13 @@ cmd_repo() {
   sb_need_profile
   rows="$(sb_repo_rows_at "$SB_P_PATH")"
   if [ -z "$name" ]; then
-    [ -z "$rows" ] || printf '%s\n' "$rows"
+    while IFS=$'\t' read -r rname path state; do
+      [ -n "$rname" ] || continue
+      [ "$path" = "-" ] || path="$(sb_path_out "$path")"
+      printf '%s\t%s\t%s\n' "$rname" "$path" "$state"
+    done <<EOF
+$rows
+EOF
     return 0
   fi
   row="$(printf '%s\n' "$rows" | SB_W="$name" awk -F'\t' '
@@ -292,8 +303,8 @@ cmd_repo() {
 $row
 EOF
   case "$state" in
-    ok) printf '%s\n' "$path" ;;
-    missing) sb_die 1 "the folder of $rname is missing: $path" ;;
+    ok) sb_path_out "$path" ;;
+    missing) sb_die 1 "the folder of $rname is missing: $(sb_path_out "$path")" ;;
     *) sb_die 1 "no location is recorded for $rname: set repos_root or repo_paths in $SB_P_PATH/claude/profile.md" ;;
   esac
 }
@@ -320,7 +331,7 @@ cmd_project() {
         case "$1" in
           --name) name="$2" ;;
           --key) key="$2" ;;
-          --cwd) cwd="$2" ;;
+          --cwd) cwd="$(sb_path_in "$2")" ;;
         esac
         given=1
         shift 2
@@ -358,17 +369,18 @@ cmd_profile() {
 
 # Print the context block: vault, project, project path and sprint.
 cmd_context() {
-  local cwd="$PWD" vault="none" project="none" ppath="none" sprint="none" rows count
+  local cwd="$PWD" project="none" ppath="none" sprint="none" rows count
   while [ $# -gt 0 ]; do
     if [ "$1" = "--cwd" ] && [ $# -ge 2 ]; then
-      cwd="$2"
+      cwd="$(sb_path_in "$2")"
       shift
     fi
     shift
   done
   SB_ROOT="$(sb_root 2>/dev/null)" || SB_ROOT=""
+  printf 'vault: '
+  if [ -n "$SB_ROOT" ]; then sb_path_out "$SB_ROOT"; else printf 'none\n'; fi
   if [ -n "$SB_ROOT" ]; then
-    vault="$SB_ROOT"
     rows="$(sb_project_rows_by_cwd "$cwd" 2>/dev/null)"
     count="$(printf '%s' "$rows" | grep -c . || true)"
     if [ "$count" = "1" ]; then
@@ -385,6 +397,6 @@ EOF
       fi
     fi
   fi
-  printf 'vault: %s\nproject: %s\nproject_path: %s\nsprint: %s\n' "$vault" "$project" "$ppath" "$sprint"
+  printf 'project: %s\nproject_path: %s\nsprint: %s\n' "$project" "$ppath" "$sprint"
   return 0
 }

@@ -58,10 +58,10 @@ sb_plugin_root() {
 # Print the physical vault root, or exit 2. The pointer is second-brain-vault in the link directory.
 sb_root() {
   local v="${SECOND_BRAIN_VAULT:-}"
-  [ -n "$v" ] || v="$(sb_link_home)/second-brain-vault"
+  if [ -n "$v" ]; then v="$(sb_path_in "$v")"; else v="$(sb_link_home)/second-brain-vault"; fi
   [ -d "$v" ] || sb_die 2 "no vault found: the pointer second-brain-vault is missing from the link directory (run vault-setup init)"
-  [ -d "$v/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $v"
-  (cd -P "$v" 2>/dev/null && pwd -P) || sb_die 2 "cannot open the vault: $v"
+  [ -d "$v/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $(sb_path_out "$v")"
+  (cd -P "$v" 2>/dev/null && pwd -P) || sb_die 2 "cannot open the vault: $(sb_path_out "$v")"
 }
 
 # Set SB_ROOT once, or exit 2.
@@ -663,7 +663,7 @@ cmd_version() {
 # Print the vault root.
 cmd_root() {
   sb_need_root
-  printf '%s\n' "$SB_ROOT"
+  sb_path_out "$SB_ROOT"
 }
 
 # Print one level-2 section of the vault's conventions note; the short version by default.

@@ -289,7 +289,9 @@ What `move` and `rename` do to links:
 - A rewritten markdown link keeps its form: a path taken from its note's folder stays one, a vault
   path stays one, and `<>` or percent-encoding is kept.
 - In frontmatter, a link inside a single-quoted value is written, and read, with each apostrophe
-  of its target doubled, as YAML asks. Quoted values that run over several lines are not covered.
+  of its target doubled, as YAML asks. Not covered: a quoted value that runs over several lines,
+  a block scalar, a quoted value behind a tag or an anchor, an unquoted link whose new name YAML
+  reads as structure, and a note whose opening `---` is never closed.
 - Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
   moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
 - The links are worked out before anything is written; the files are moved, then the notes edited.

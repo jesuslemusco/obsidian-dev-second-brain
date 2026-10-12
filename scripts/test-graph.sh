@@ -701,6 +701,59 @@ sb rename 'sp/C# course' 'C sharp course'
 out_is "rename: a folder that has such a name gets one that links can spell" \
   "moved: sp/C# course -> sp/C sharp course${NL}links: sp/free-reader.md | 1"
 
+# ---------------------------------------------------------------- a link in a single-quoted frontmatter value
+# YAML writes an apostrophe twice inside single quotes. A new name with one must not end the value.
+note "ya/yanote.md" '# A note'
+note "ya/ref.md" '---' "up: '[[yanote]]'" 'rel: "[[yanote]]"' 'related:' "  - '[[yanote|N]]'" "  - '[[ya/yanote]]'" \
+  "flow: ['[[yanote]]', \"[[yanote]]\"]" "plain: John's [[yanote]]" "said: 'it''s [[yanote]]'" '---' 'body [[yanote]]'
+note "ya/it's here.md" '# A name with an apostrophe'
+note "ya/hand.md" '---' "up: '[[ya/it''s here]]'" "gone: '[[ya/it''s gone]]'" '---'
+cp "$vault/ya/ref.md" "$tmp/ya.before"
+sb backlinks "ya/it's here.md"
+out_is "frontmatter: a doubled apostrophe in a single-quoted value is read as one" "ya/hand.md:2: [[ya/it''s here]]"
+sb unresolved
+out_has "frontmatter: an unresolved link there is printed as it is written" "ya/hand.md:3: [[ya/it''s gone]]"
+sb rename ya/yanote.md "John's note"
+rc_is "rename: to a name with an apostrophe, exit 0" 0
+out_is "rename: every link of the note is rewritten" "moved: ya/yanote.md -> ya/John's note.md${NL}links: ya/ref.md | 9"
+is "rename: in a single-quoted value the apostrophe is written twice" "$(line ya/ref.md 2)" "up: '[[John''s note]]'"
+is "rename: in a double-quoted value it is written once" "$(line ya/ref.md 3)" 'rel: "[[John'"'"'s note]]"'
+is "rename: single-quoted list items" "$(line ya/ref.md 5)$(line ya/ref.md 6)" "  - '[[John''s note|N]]'  - '[[ya/John''s note]]'"
+is "rename: a flow list with both kinds of quotes" "$(line ya/ref.md 7)" "flow: ['[[John''s note]]', \"[[John's note]]\"]"
+is "rename: an apostrophe in a plain value opens no quote" "$(line ya/ref.md 8)" "plain: John's [[John's note]]"
+is "rename: a single-quoted value that held an apostrophe already" "$(line ya/ref.md 9)" "said: 'it''s [[John''s note]]'"
+is "rename: the body is not YAML" "$(line ya/ref.md 11)" "body [[John's note]]"
+sb backlinks "ya/John's note.md"
+is "rename: the nine links read back and lead to the note" "$(printf '%s\n' "$OUT" | grep -c '')" "9"
+out_has "backlinks: prints the link as it is written" "ya/ref.md:2: [[John''s note]]"
+sb unresolved
+is "rename: none of them is unresolved" "$(printf '%s\n' "$OUT" | grep -c '^ya/ref' || true)" "0"
+sb rename "ya/John's note.md" "Mary's own"
+out_is "rename: a second rename, from the name with an apostrophe" "moved: ya/John's note.md -> ya/Mary's own.md${NL}links: ya/ref.md | 9"
+is "rename: the single-quoted value follows" "$(line ya/ref.md 2)$(line ya/ref.md 9)" "up: '[[Mary''s own]]'said: 'it''s [[Mary''s own]]'"
+sb rename "ya/Mary's own.md" yanote
+same "rename: there and back leaves the note byte-identical" "$tmp/ya.before" "$vault/ya/ref.md"
+
+# ---------------------------------------------------------------- the end of options, and the temp folder
+note "dash/x.md" '# X'
+note "dash/reader.md" '[[dash/x]]'
+sb rename dash/x.md -draft
+rc_is "rename: a name that starts with a dash reads as an option, exit 5" 5
+sb rename dash/x.md -- -draft
+out_is "rename: after --, a name may start with a dash" "moved: dash/x.md -> dash/-draft.md${NL}links: dash/reader.md | 1"
+sb rename --dry-run -- dash/-draft.md --dry-run
+out_is "rename: after --, --dry-run is a name; before it, the option" \
+  "dry run${NL}moved: dash/-draft.md -> dash/--dry-run.md${NL}links: dash/reader.md | 1"
+sb move -- dash/-draft.md dash/x.md
+out_is "move: takes -- too" "moved: dash/-draft.md -> dash/x.md${NL}links: dash/reader.md | 1"
+mkdir -p "$tmp/work"
+run env TMPDIR="$tmp/work" "$SB" move dash/x.md dash/y.md --dry-run
+run env TMPDIR="$tmp/work" "$SB" move dash/x.md dash/y.md
+rc_is "move: with its temp files in another folder, exit 0" 0
+run env TMPDIR="$tmp/work" "$SB" move sp/minutes.md 'sp/[archive]/'
+rc_is "move: a move refused after the vault was read, exit 1" 1
+is "move: no temp file is left after a dry run, a move or a refusal" "$(ls -A "$tmp/work" | grep -c '' || true)" "0"
+
 # ---------------------------------------------------------------- stand-ins that make a move go wrong
 # The helper finds awk and mv on the PATH. These two do what a test asks for, then run the real one.
 shim="$tmp/shim"

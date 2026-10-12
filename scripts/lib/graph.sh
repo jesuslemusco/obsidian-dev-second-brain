@@ -254,6 +254,45 @@ function scan(o,   s, len, rest, off, i, j, nw, p, k, m, a, c, depth, q, r, ds, 
   }
   return NLK
 }
+# Mark the links of a frontmatter line that sit inside a single-quoted YAML scalar: LQ is 1 for
+# them, and their target is read as YAML reads it, with each doubled apostrophe as one. A quote
+# opens a scalar only where a value starts: after "key: ", a list dash, or [ , { in a flow list.
+function yamlquotes(line, n,   len, i, c, nx, state, want, depth, key, nq, k, raw) {
+  for (k = 1; k <= n; k++) LQ[k] = 0
+  len = length(line); state = 0; want = 1; depth = 0; key = 0; nq = 0
+  for (i = 1; i <= len; i++) {
+    c = substr(line, i, 1)
+    if (state == 1) {
+      if (c != "'") continue
+      if (substr(line, i + 1, 1) == "'") { i++; continue }
+      QE[nq] = i - 1; state = 0; want = 0
+      continue
+    }
+    if (state == 2) {
+      if (c == "\\") i++
+      else if (c == "\"") { state = 0; want = 0 }
+      continue
+    }
+    if (c == " " || c == "\t") continue
+    nx = substr(line, i + 1, 1)
+    if (want && c == "'") { state = 1; QS[++nq] = i + 1; QE[nq] = len; continue }
+    if (want && c == "\"") { state = 2; continue }
+    if (want && (c == "[" || c == "{")) { depth++; continue }
+    if (want && depth == 0 && c == "-" && (nx == " " || nx == "\t" || nx == "")) continue
+    if (depth > 0 && c == ",") { want = 1; continue }
+    if (depth > 0 && (c == "]" || c == "}")) { depth--; want = 0; continue }
+    if (c == ":" && (nx == " " || nx == "\t" || nx == "") && (depth > 0 || !key)) { key = 1; want = 1; continue }
+    want = 0
+  }
+  for (k = 1; k <= n; k++) {
+    for (i = 1; i <= nq; i++) if (TS[k] >= QS[i] && TS[k] <= QE[i]) LQ[k] = 1
+    if (!LQ[k]) continue
+    raw = substr(line, TS[k], TL[k])
+    if (index(raw, "''") == 0) continue
+    gsub(/''/, "'", raw)
+    LT[k] = (LP[k] ? unpct(raw) : raw)
+  }
+}
 # Read a whole file as one string, line endings and all. RS must be "\001" by now. PIECES says
 # in how many records it came, one when awk kept every byte, and UNREAD is 1 when it did not open.
 function slurp(p,   f, rec, out, rc) {
@@ -355,23 +394,23 @@ sb_graph_link() {
 }
 
 # Read the vault's file list and its notes in one awk pass. Modes: unresolved [folder],
-# backlinks <path>, move <from> <to> <plan file> <exact> <folder>. A note that cannot be read is
-# named on stderr. Move prints the "links:" lines and names on stderr the canvas and base files
-# left to edit. It writes to the plan:
+# backlinks <path>, move <from> <to> <work folder> <exact> <folder>. A note that cannot be read
+# is named on stderr. Move prints the "links:" lines and names on stderr the canvas and base
+# files left to edit. It writes to the file plan of the work folder:
 #   M<TAB>count                           the files of the list that the move takes
 #   N<TAB>bytes<TAB>old path<TAB>new path a note to rewrite, then for each line to change
 #   O<TAB>line<TAB>text                   the line as it was read, and
 #   L<TAB>line<TAB>text                   the line as it will be.
-# To the file <plan>.read it writes, for every note it read, "bytes<TAB>records<TAB>rewritten
-# <TAB>path". It exits 3 when a note or a folder cannot be read, and 4 when a line, once
-# rewritten, would not read back with every link leading to its file.
+# To the file read of that folder it writes, for every note it read, "bytes<TAB>records<TAB>
+# rewritten<TAB>path". It exits 3 when a note or a folder cannot be read, and 4 when a line,
+# once rewritten, would not read back with every link leading to its file.
 sb_graph_scan() {
   (
     cd "$SB_ROOT" || exit 1
     # A folder that find cannot open hides its notes: for a move that is a failure too.
     [ "$1" != "move" ] || set -o pipefail
     find . -type d -name '.?*' -prune -o -type f -print | LC_ALL=C sort |
-      LC_ALL=C SB_MODE="$1" SB_A1="${2:-}" SB_A2="${3:-}" SB_PLAN="${4:-}" SB_EXACT="${5:-}" SB_DIR="${6:-}" awk "$(sb_graph_awk)"'
+      LC_ALL=C SB_MODE="$1" SB_A1="${2:-}" SB_A2="${3:-}" SB_WORK="${4:-}" SB_EXACT="${5:-}" SB_DIR="${6:-}" awk "$(sb_graph_awk)"'
       # Print where a file is after the move.
       function newof(p,   lp) {
         lp = (exact ? p : tolower(p))
@@ -409,7 +448,7 @@ sb_graph_scan() {
         return pct(lead (resolve("n", lead t, ldir) == w ? t : w), how)
       }
       # Read one note and act on each of its links.
-      function note(i,   p, dir, np, ndir, lndir, text, pieces, cr, nl, ln, line, was, body, n, n2, x, k, r, rule, w, t, need, did, cnt, m, last, ok) {
+      function note(i,   p, dir, np, ndir, lndir, text, pieces, cr, nl, ln, line, was, body, yaml, n, n2, x, k, r, rule, w, t, need, did, cnt, m, last, ok) {
         p = F[i]; dir = tolower(folder(p))
         if (mode == "move") { np = N[i]; ndir = folder(np); lndir = tolower(ndir) }
         text = slurp(p); pieces = PIECES
@@ -433,6 +472,9 @@ sb_graph_scan() {
             if (line == "---") { body = 1; continue }
           }
           n = scan(line); need = 0; did = 0
+          # In frontmatter a single-quoted value writes an apostrophe twice.
+          yaml = (!body && n > 0 && index(line, "\047") > 0)
+          if (yaml) yamlquotes(line, n)
           for (x = 1; x <= n; x++) {
             k = LX[x]; NEW[k] = ""; WANT[x] = ""
             r = resolve("o", LT[k], dir); rule = RULE
@@ -445,6 +487,7 @@ sb_graph_scan() {
               if (resolve("n", LT[k], lndir) == w) continue
               need++
               t = retarget(k, w, ndir, rule)
+              if (yaml && LQ[k]) gsub(/\047/, "\047\047", t)
               if (t != substr(line, TS[k], TL[k])) { NEW[k] = t; did++ }
             }
           }
@@ -458,6 +501,7 @@ sb_graph_scan() {
           }
           # Read the line as any reader will: it must hold as many links, each leading to its file.
           n2 = scan(line); ok = (n2 == n)
+          if (yaml) yamlquotes(line, n2)
           for (x = 1; x <= n && ok; x++) if (WANT[x] != "" && resolve("n", LT[LX[x]], lndir) != WANT[x]) ok = 0
           if (!ok) {
             print "note: " p ":" ln " cannot be rewritten: a link on it would not lead to its file any more" >"/dev/stderr"
@@ -469,11 +513,12 @@ sb_graph_scan() {
           print "L\t" ln "\t" line >plan
           cnt += did
         }
-        if (mode == "move") print length(text) "\t" pieces "\t" (cnt ? 1 : 0) "\t" p >(plan ".read")
+        if (mode == "move") print length(text) "\t" pieces "\t" (cnt ? 1 : 0) "\t" p >sizes
         if (cnt) print "links: " np " | " cnt
       }
       BEGIN {
-        mode = ENVIRON["SB_MODE"]; a1 = ENVIRON["SB_A1"] ""; a2 = ENVIRON["SB_A2"] ""; plan = ENVIRON["SB_PLAN"]
+        mode = ENVIRON["SB_MODE"]; a1 = ENVIRON["SB_A1"] ""; a2 = ENVIRON["SB_A2"] ""
+        plan = ENVIRON["SB_WORK"] "/plan"; sizes = ENVIRON["SB_WORK"] "/read"
         # a move names its files as they are spelled, unless the file system finds them in any case
         exact = (mode == "move" && ENVIRON["SB_EXACT"] == "1")
         from = (exact ? a1 : tolower(a1)); n1 = length(a1); nf = 0
@@ -592,7 +637,7 @@ EOF
 # Move a file or a folder to a vault path that is free, and rewrite the links; third argument 1
 # for a dry run. Everything that can refuse the move is looked at before a file is touched.
 sb_graph_move() {
-  local from="$1" dest="$2" dry="$3" plan links why alt exact=1 isdir=0 kind bytes old rest
+  local from="$1" dest="$2" dry="$3" work plan links why alt exact=1 isdir=0 kind bytes old rest
   local total=0 taken=0 stuck="" partial made="" d line p rc nl=$'\n'
   [ -e "$SB_ROOT/$from" ] || sb_die 1 "nothing at $from"
   [ ! -d "$SB_ROOT/$from" ] || isdir=1
@@ -616,10 +661,11 @@ sb_graph_move() {
   # A file system that ignores letter case finds the typed path in any case; one that minds it does not.
   alt="$(printf '%s' "$from" | LC_ALL=C tr 'a-zA-Z' 'A-Za-z')"
   if [ "$alt" != "$from" ] && [ "$SB_ROOT/$alt" -ef "$SB_ROOT/$from" ]; then exact=0; fi
-  plan="$(mktemp "${TMPDIR:-/tmp}/sb-graph.XXXXXX")" || sb_die 1 "cannot create a temp file"
-  links="$(sb_graph_scan move "$from" "$dest" "$plan" "$exact" "$isdir")" || {
+  work="$(mktemp -d "${TMPDIR:-/tmp}/sb-graph.XXXXXX")" || sb_die 1 "cannot create a temp folder"
+  plan="$work/plan"
+  links="$(sb_graph_scan move "$from" "$dest" "$work" "$exact" "$isdir")" || {
     rc=$?
-    rm -f "$plan" "$plan.read"
+    rm -rf "$work"
     [ "$rc" -ne 4 ] || sb_die 1 "a link could not be rewritten so that it still leads to its file; nothing was moved"
     sb_die 1 "not every note of the vault could be read, so a link could be missed; nothing was moved"
   }
@@ -636,17 +682,16 @@ sb_graph_move() {
   # spelling than the list has, and no link to that file would follow.
   if [ "$taken" -eq 0 ]; then
     if [ "$isdir" -eq 0 ] || [ -n "$(cd "$SB_ROOT/$from" && find . -type d -name '.?*' -prune -o -type f -print | head -n 1)" ]; then
-      rm -f "$plan" "$plan.read"
+      rm -rf "$work"
       sb_die 1 "$from is there, but the vault does not list it under that spelling; write the path as the vault lists it. Nothing was moved"
     fi
   fi
   # A link is followed only in a note that awk read whole, and a note is rewritten only when it
   # can be written too.
   partial=""
-  [ ! -s "$plan.read" ] || partial="$(sb_graph_partial "$plan.read")"
-  rm -f "$plan.read"
+  [ ! -s "$work/read" ] || partial="$(sb_graph_partial "$work/read")"
   if [ -n "$partial$stuck" ]; then
-    rm -f "$plan"
+    rm -rf "$work"
     while IFS= read -r p; do
       [ -z "$p" ] || sb_note "$p holds bytes that awk does not read back whole, so its links cannot be followed or rewritten"
     done <<EOF
@@ -660,14 +705,14 @@ EOF
     sb_die 1 "a note cannot be read whole or rewritten safely; nothing was moved"
   fi
   if [ "$dry" -eq 1 ]; then
-    rm -f "$plan"
+    rm -rf "$work"
     printf 'dry run\nmoved: %s -> %s\n' "$from" "$dest"
     [ -z "$links" ] || printf '%s\n' "$links"
     return 0
   fi
   # The vault was read since the destination was looked at: look again, and never overwrite.
   if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then
-    rm -f "$plan"
+    rm -rf "$work"
     sb_die 6 "the destination exists: $dest"
   fi
   d="$dest"
@@ -679,7 +724,7 @@ EOF
   [ -z "$made" ] || mkdir -p "$SB_ROOT/${dest%/*}"
   mv -n "$SB_ROOT/$from" "$SB_ROOT/$dest"
   if [ -e "$SB_ROOT/$from" ] || [ -L "$SB_ROOT/$from" ] || { [ ! -e "$SB_ROOT/$dest" ] && [ ! -L "$SB_ROOT/$dest" ]; }; then
-    rm -f "$plan"
+    rm -rf "$work"
     # Take back the folders made for the move, the deepest first.
     while IFS= read -r d; do
       [ -z "$d" ] || rmdir "$SB_ROOT/$d" 2>/dev/null
@@ -690,7 +735,7 @@ EOF
     sb_die 1 "cannot move $from to $dest; nothing was changed"
   fi
   if [ "$total" -gt 0 ] && ! sb_graph_apply "$plan" "$total"; then
-    rm -f "$plan"
+    rm -rf "$work"
     printf 'moved: %s -> %s\n' "$from" "$dest"
     while IFS= read -r line; do
       p="${line#links: }"
@@ -711,7 +756,7 @@ $SB_GRAPH_LEFT
 EOF
     sb_die 1 "moved $from to $dest, but not every note could be rewritten; second-brain unresolved lists the links that are left"
   fi
-  rm -f "$plan"
+  rm -rf "$work"
   printf 'moved: %s -> %s\n' "$from" "$dest"
   [ -z "$links" ] || printf '%s\n' "$links"
 }
@@ -762,12 +807,14 @@ cmd_unresolved() {
 
 # Move a note, another file or a folder inside the vault, and rewrite the links.
 cmd_move() {
-  local from="" to="" dry=0 dest
+  local from="" to="" dry=0 opts=1 dest
   local usage="usage: second-brain move <from> <to> [--dry-run]"
   while [ $# -gt 0 ]; do
-    case "$1" in
-      --dry-run) dry=1 ;;
-      -*) sb_die 5 "$usage" ;;
+    # After --, an argument that starts with a dash is a path and not an option.
+    case "$opts$1" in
+      1--) opts=0 ;;
+      1--dry-run) dry=1 ;;
+      1-*) sb_die 5 "$usage" ;;
       *)
         if [ -z "$from" ]; then
           from="$1"
@@ -801,12 +848,14 @@ cmd_move() {
 
 # Give a note, another file or a folder a new name in its folder, and rewrite the links.
 cmd_rename() {
-  local path="" name="" dry=0 dest base ext
+  local path="" name="" dry=0 opts=1 dest base ext
   local usage="usage: second-brain rename <path> <name> [--dry-run]"
   while [ $# -gt 0 ]; do
-    case "$1" in
-      --dry-run) dry=1 ;;
-      -*) sb_die 5 "$usage" ;;
+    # After --, an argument that starts with a dash is a name and not an option.
+    case "$opts$1" in
+      1--) opts=0 ;;
+      1--dry-run) dry=1 ;;
+      1-*) sb_die 5 "$usage" ;;
       *)
         if [ -z "$path" ]; then
           path="$1"

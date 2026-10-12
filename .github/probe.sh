@@ -1,220 +1,154 @@
 #!/usr/bin/env bash
-# Temporary: prints how Git Bash on the Windows runner behaves, to ground the Windows port.
+# Temporary: checks the Windows port in Git Bash on the Windows runner.
 # Removed before the branch is merged.
 set -u
 
 say() { printf '\n=== %s ===\n' "$*"; }
 yn() { if "$@"; then echo yes; else echo no; fi; }
-# bytes <file or - for stdin>: the bytes on one line.
+# bytes <file or nothing for stdin>: the bytes on one line.
 bytes() { od -An -c "$@" | tr -s ' \n' ' '; }
 
+repo="$PWD"
 t="$(mktemp -d)"
 t="$(cd "$t" && pwd -P)"
-echo "t=$t OSTYPE=${OSTYPE:-} MSYSTEM=${MSYSTEM:-} MSYS=${MSYS:-} HOME=${HOME:-}"
-awk --version | head -1
+echo "t=$t OSTYPE=${OSTYPE:-}"
 
-# ------------------------------------------------------------------ awk
-say "awk and line endings"
+# ------------------------------------------------------------------ the other suites, in the background
+for s in test test-doctor test-snapshot; do
+  (bash "scripts/$s.sh" >"$t/$s.log" 2>&1; echo "rc=$?" >>"$t/$s.log") &
+done
+
+# ------------------------------------------------------------------ grep and sed
+say "grep and sed on a CRLF file"
 f="$t/crlf.txt"
 printf 'a\r\nb\r\n' >"$f"
-printf 'a\nb\r\nc\n' >"$t/mixed.txt"
-p='{ printf "%s", (/\r$/ ? "CR " : "no ") }'
-echo "file bytes:        $(bytes "$f")"
-echo "plain file:        $(awk "$p" "$f")"
-echo "plain stdin:       $(awk "$p" <"$f")"
-echo "plain pipe:        $(cat "$f" | awk "$p")"
-echo "-v BINMODE=3 file: $(awk -v BINMODE=3 "$p" "$f")"
-echo "-v BINMODE=3 stdin: $(awk -v BINMODE=3 "$p" <"$f")"
-echo "-v BINMODE=3 pipe: $(cat "$f" | awk -v BINMODE=3 "$p")"
-echo "-v BINMODE=1 file: $(awk -v BINMODE=1 "$p" "$f") pipe: $(cat "$f" | awk -v BINMODE=1 "$p")"
-echo "BEGIN BINMODE file: $(awk 'BEGIN { BINMODE = 3 } '"$p" "$f")"
-echo "BEGIN BINMODE stdin: $(awk 'BEGIN { BINMODE = 3 } '"$p" <"$f")"
-echo "BEGIN BINMODE pipe: $(cat "$f" | awk 'BEGIN { BINMODE = 3 } '"$p")"
-echo "-b file:           $(awk -b "$p" "$f")"
-echo "--posix file:      $(awk --posix "$p" "$f")"
-echo "RS=\\n file:        $(awk -v 'RS=\n' "$p" "$f")"
-echo "plain print file:  $(awk '{ print }' "$f" | bytes)"
-echo "seam print file:   $(awk -v BINMODE=3 '{ print }' "$f" | bytes)"
-echo "plain writes CR:   $(awk 'BEGIN { printf "x\r\ny\n" }' | bytes)"
-echo "seam writes CR:    $(awk -v BINMODE=3 'BEGIN { printf "x\r\ny\n" }' | bytes)"
-awk '{ print }' "$f" >"$t/o1"
-echo "plain round trip same: $(yn cmp -s "$f" "$t/o1") -> $(bytes "$t/o1")"
-awk -v BINMODE=3 '{ print }' "$f" >"$t/o2"
-echo "seam round trip same:  $(yn cmp -s "$f" "$t/o2") -> $(bytes "$t/o2")"
-awk -v BINMODE=3 '{ print }' <"$t/mixed.txt" >"$t/o3"
-echo "seam mixed stdin same: $(yn cmp -s "$t/mixed.txt" "$t/o3") -> $(bytes "$t/o3")"
-awk -v BINMODE=3 -v out="$t/o4" '{ print > out }' "$f"
-echo "seam print > file same: $(yn cmp -s "$f" "$t/o4")"
-awk -v out="$t/o5" '{ print > out }' "$f"
-echo "plain print > file:    $(bytes "$t/o5")"
-echo "seam getline:      $(awk -v BINMODE=3 -v f="$f" 'BEGIN { while ((getline l < f) > 0) printf "%s", (l ~ /\r$/ ? "CR " : "no ") }')"
-echo "plain getline:     $(awk -v f="$f" 'BEGIN { while ((getline l < f) > 0) printf "%s", (l ~ /\r$/ ? "CR " : "no ") }')"
-echo "seam LF file untouched: $(printf 'a\nb\n' >"$t/lf.txt"; awk -v BINMODE=3 '{ print }' "$t/lf.txt" | bytes)"
+cr="$(printf '\r')"
+echo "grep -c CR at end: file=$(grep -c "$cr\$" "$f") stdin=$(grep -c "$cr\$" <"$f") pipe=$(cat "$f" | grep -c "$cr\$")"
+echo "grep -U -c CR at end: file=$(grep -U -c "$cr\$" "$f") pipe=$(cat "$f" | grep -U -c "$cr\$")"
+echo "grep a:    $(grep a "$f" | bytes)"
+echo "grep -U a: $(grep -U a "$f" | bytes)"
+echo "grep -c . on a piped string with CR: $(printf 'a\r\n' | grep -c "a$cr")"
+echo "sed s:     $(sed 's/a/x/' "$f" | bytes)"
+echo "sed -b s:  $(sed -b 's/a/x/' "$f" | bytes) pipe: $(cat "$f" | sed -b 's/a/x/' | bytes)"
+echo "sed --version: $(sed --version | head -1) grep: $(grep --version | head -1)"
 
-say "the awk seam as a shell function"
-awk() { command awk -v BINMODE=3 "$@"; }
-echo "env prefix: $(LC_ALL=C SB_X="env ok" awk -F'\t' "$p"' END { print ENVIRON["SB_X"], ENVIRON["LC_ALL"] }' "$f")"
-echo "pipe:       $(printf 'a\r\nb\r\n' | LC_ALL=C awk '{ print }' | bytes)"
-echo "LC_ALL after the call: ${LC_ALL:-unset}"
-echo "inside \$( ) and a pipeline: $(printf 'k\tv\r\n' | awk -F'\t' '{ print $2 }' | bytes)"
-echo "env awk skips the function: $(env LC_ALL=C awk "$p" "$f")"
-unset -f awk
-
-# ------------------------------------------------------------------ other tools
-say "other tools and CRLF"
-echo "grep -c CR\$ file:  $(grep -c $'\r$' "$f") stdin: $(grep -c $'\r$' <"$f") pipe: $(cat "$f" | grep -c $'\r$')"
-echo "grep output:       $(grep a "$f" | bytes)"
-echo "grep -x a (no CR): $(grep -cx a "$f")"
-echo "sed output file:   $(sed 's/a/x/' "$f" | bytes) stdin: $(sed 's/a/x/' <"$f" | bytes)"
-echo "sed -n l:          $(sed -n l "$f" | tr '\n' ' ')"
-echo "sed -n 1p:         $(sed -n 1p "$f" | bytes)"
-echo "sort:              $(sort "$f" | bytes)"
-echo "head -1:           $(head -1 "$f" | bytes)"
-echo "tail -1:           $(tail -1 "$f" | bytes)"
-echo "tail -c 1:         $(tail -c 1 "$f" | bytes)"
-echo "cut -c1-:          $(cut -c1- "$f" | bytes)"
-echo "tr a x:            $(tr a x <"$f" | bytes)"
-echo "cat:               $(cat "$f" | bytes)"
-cat "$f" >"$t/c1"
-echo "cat > file same:   $(yn cmp -s "$f" "$t/c1")"
-printf 'a\nb\n' >"$t/c2"
-echo "cmp CRLF vs LF differ: $(yn cmp -s "$f" "$t/c2")"
-echo "wc -c:             $(wc -c <"$f" | tr -d ' ') wc -l: $(wc -l <"$f" | tr -d ' ')"
-echo "uniq:              $(uniq "$f" | bytes)"
-echo "bash read:         $(while IFS= read -r l; do case "$l" in *$'\r') printf 'CR ' ;; *) printf 'no ' ;; esac; done <"$f")"
-x="$(cat "$f")"
-echo "bash \$(cat):       $(printf '%s' "$x" | bytes)"
-printf 'q\r\n' >"$t/p1"
-echo "printf > file:     $(bytes "$t/p1")"
-cat >"$t/p2" <<EOF
-h
-EOF
-echo "here-doc > file:   $(bytes "$t/p2")"
-echo "bash igncr: $(shopt -o igncr 2>&1 | tr '\t' ' ')"
-
-# ------------------------------------------------------------------ paths
-say "path forms"
-w="$(cygpath -w "$t")"
-m="$(cygpath -m "$t")"
-echo "w=$w"
-echo "m=$m"
-echo "cygpath -u w:       $(cygpath -u "$w")"
-echo "cygpath -u -- w:    $(cygpath -u -- "$w" 2>&1)"
-echo "cygpath -m -- t:    $(cygpath -m -- "$t" 2>&1)"
-echo "cygpath -m /tmp=$(cygpath -m /tmp) /usr/bin=$(cygpath -m /usr/bin) /=$(cygpath -m /) /c=$(cygpath -m /c) /c/=$(cygpath -m /c/)"
-echo "cygpath -u C:/Users=$(cygpath -u C:/Users) C:=$(cygpath -u C:) C:/=$(cygpath -u C:/)"
-echo "cygpath -u of the short tmp: $(cygpath -u "$(cygpath -m /tmp)")"
-echo "cygpath -m //server/share/x: $(cygpath -m //server/share/x 2>&1)"
-echo "cygpath -m a/b: $(cygpath -m a/b) -u 'a\\b': $(cygpath -u 'a\b')"
-echo "cygpath -m of a missing path with a space: $(cygpath -m "/c/nope/x y")"
-echo "cygpath -m trailing slash: $(cygpath -m "$t/")"
-up="/$(printf '%s' "${t:1:1}" | tr a-z A-Z)${t:2}"
-echo "upper drive $up: -d=$(yn test -d "$up") pwd -P=$(cd "$up" && pwd -P) pwd=$(cd "$up" && pwd)"
-echo "-d on w: $(yn test -d "$w") -d on m: $(yn test -d "$m") -ef w t: $(yn test "$w" -ef "$t")"
-short="$(cygpath -m /tmp)"
-echo "short=$short"
-echo "pwd -P on the short mixed form: $(cd "$short" && pwd -P)"
-sp="/$(printf '%s' "${short:0:1}" | tr A-Z a-z)${short:2}"
-echo "pwd -P on $sp: $(cd "$sp" && pwd -P)"
-echo "pwd -P on /tmp: $(cd /tmp && pwd -P) on HOME: $(cd "$HOME" && pwd -P) cygpath -m HOME: $(cygpath -m "$HOME")"
-echo "substring and replace: ${t:1:1} ${t:3:5} $(p2='a\b\c'; echo "${p2//\\//}") $(p3='a/b/c'; echo "${p3//\//-}") $(p4='a/b/c'; echo "${p4//\//\\}")"
-
-# ------------------------------------------------------------------ cmd quoting
-say "what cmd receives"
-cmd //c 'echo A [%CMDCMDLINE%]'
-cmd //c echo B "a b" 'c&d' "e f&g" '[%CMDCMDLINE%]'
-SB_L='C:\x y\l&m' cmd //c 'echo C "%SB_L%" [%CMDCMDLINE%]'
-SB_L='C:\x y\l&m' MSYS_NO_PATHCONV=1 cmd /c 'echo D "%SB_L%" [%CMDCMDLINE%]'
-SB_L='C:\x y\l&m' MSYS2_ARG_CONV_EXCL='*' cmd /c 'echo E "%SB_L%" [%CMDCMDLINE%]'
-SB_L='C:\x y\l&m' cmd //c echo F '"%SB_L%"' '[%CMDCMDLINE%]'
-SB_L="$t" cmd //c 'echo G "%SB_L%"'
-SB_L="/c/Users" cmd //c 'echo H "%SB_L%"'
-echo "after the echoes rc=$?"
-
-say "mklink variants over awkward folder names"
-mk_a() { cmd //c mklink //J "$(cygpath -w "$2")" "$(cygpath -w "$1")"; }
-mk_b1() { SB_L="$(cygpath -w "$2")" SB_T="$(cygpath -w "$1")" cmd //c 'mklink /J "%SB_L%" "%SB_T%"'; }
-mk_b2() { SB_L="$(cygpath -w "$2")" SB_T="$(cygpath -w "$1")" MSYS_NO_PATHCONV=1 cmd /c 'mklink /J "%SB_L%" "%SB_T%"'; }
-mk_b3() { SB_L="$(cygpath -w "$2")" SB_T="$(cygpath -w "$1")" MSYS2_ARG_CONV_EXCL='*' cmd /c 'mklink /J "%SB_L%" "%SB_T%"'; }
-mk_b4() { SB_L="$(cygpath -w "$2")" SB_T="$(cygpath -w "$1")" cmd //d //s //c '"mklink /J "%SB_L%" "%SB_T%""'; }
-n=0
+# ------------------------------------------------------------------ sb_mklink
+say "sb_mklink over awkward folder names"
+SB_ROOT=""
+. scripts/lib/platform.sh
+echo "sb_is_windows: $(yn sb_is_windows)"
 u1="$(printf '\303\261and\303\272')"
 u2="$(printf '\346\227\245\346\234\254')"
+n=0
 for name in 'plain' 'with space' 'amp&nospace' 'amp & space' 'paren(x86)' 'paren (x86)' 'caret^hat' \
-  'pct%PATH%x' '100% sure' 'bang!x' 'comma,semi;eq=x' "quote'single" 'mix $#@~+{}[]' 'mix$#@~+{}[]' \
-  "$u1" "$u1 e" "$u2 $u1"; do
+  'caret ^ hat' 'pct%PATH%x' '100% sure' '%OS% and %PATH%' 'bang!x' 'bang ! x' 'comma,semi;eq=x' "quote'single" \
+  'mix $#@~+{}[]' 'mix$#@~+{}[]' "$u1" "$u1 e" "$u2 $u1" 'trail dot.d' 'a=b&c|d' '-dash' '@at'; do
   n=$((n + 1))
   d="$t/mk/$n-$name"
   mkdir -p "$d/target" 2>/dev/null || { echo "$name | cannot mkdir"; continue; }
   echo hi >"$d/target/f.md"
-  for v in a b1 b2 b3 b4; do
-    l="$d/link-$v"
-    out="$(mk_$v "$d/target" "$l" 2>&1)"
-    rc=$?
-    rl="$(readlink "$l" 2>/dev/null)"
-    printf '%s | %s | rc=%s L=%s ef=%s read=%s same=%s | %s\n' "$name" "$v" "$rc" "$(yn test -L "$l")" \
-      "$(yn test "$l" -ef "$d/target")" "$(yn test "$(cat "$l/f.md" 2>/dev/null)" = hi)" \
-      "$(yn test "$rl" = "$d/target")" "$(printf '%s' "$out" | tr '\r\n' '  ' | cut -c1-110)"
-  done
+  l="$d/link"
+  out="$(sb_mklink "$d/target" "$l" 2>&1)"
+  rc=$?
+  printf '%s | rc=%s L=%s ef=%s read=%s same=%s out=[%s]\n' "$name" "$rc" "$(yn test -L "$l")" \
+    "$(yn test "$l" -ef "$d/target")" "$(yn test "$(cat "$l/f.md" 2>/dev/null)" = hi)" \
+    "$(yn test "$(readlink "$l" 2>/dev/null)" = "$d/target")" "$(printf '%s' "$out" | tr '\r\n' '  ' | cut -c1-100)"
+  sb_rmlink "$l"
+  printf '    rmlink rc=%s gone=%s kept=%s\n' "$?" "$(yn test ! -L "$l")" "$(ls "$d/target" | tr '\n' ' ')"
 done
-echo "stray files made by a broken command line: $(ls "$PWD" | tr '\n' ' ')"
+mkdir -p "$t/mk/x/target"
+echo "onto an existing name: $(sb_mklink "$t/mk/x/target" "$t/mk/x" 2>&1 | tr '\r\n' '  '); rc=$(sb_mklink "$t/mk/x/target" "$t/mk/x" >/dev/null 2>&1; echo $?)"
+echo keep >"$t/mk/x/file.md"
+echo "to a file: rc=$(sb_mklink "$t/mk/x/file.md" "$t/mk/x/l1" >/dev/null 2>&1; echo $?) made=$(yn test -L "$t/mk/x/l1")"
+echo "to a missing folder: rc=$(sb_mklink "$t/mk/x/none" "$t/mk/x/l2" >/dev/null 2>&1; echo $?) made=$(yn test -L "$t/mk/x/l2")"
+echo "in a missing folder: rc=$(sb_mklink "$t/mk/x/target" "$t/mk/x/no/l3" >/dev/null 2>&1; echo $?)"
+echo "rmlink on a real folder: rc=$(sb_rmlink "$t/mk/x/target"; echo $?) kept=$(yn test -d "$t/mk/x/target")"
+(cd "$t/mk/x" && sb_mklink "$t/mk/x/target" "rel-link" && echo "relative link place: made=$(yn test -L "$t/mk/x/rel-link")")
+echo "path in:  $(sb_path_in 'C:\Users\x y') $(sb_path_in 'c:/Users') $(sb_path_in '/C/Users') $(sb_path_in 'D:\') $(sb_path_in '\\server\share\x')"
+echo "path out: $(sb_path_out '/c/Users/x y') $(sb_path_out /c) $(sb_path_out /tmp) $(sb_path_out /usr/bin) $(sb_path_out rel/x)"
+echo "stray files in the checkout: $(ls "$repo" | tr '\n' ' ')"
+unset -f awk
 
-# ------------------------------------------------------------------ fixtures
-say "links as fixtures, readlink forms, removal"
-S() { MSYS=winsymlinks:nativestrict ln -s "$@"; }
-fx="$t/fx"
-mkdir -p "$fx/target dir" "$fx/links"
-echo hi >"$fx/target dir/f.md"
-S "$fx/target dir" "$fx/links/abs-dir"
-echo "abs dir: rc=$? readlink=[$(readlink "$fx/links/abs-dir")] same=$(yn test "$(readlink "$fx/links/abs-dir")" = "$fx/target dir")"
-S "$fx/target dir/f.md" "$fx/links/abs-file.md"
-echo "abs file: rc=$? readlink=[$(readlink "$fx/links/abs-file.md")]"
-S "../target dir/f.md" "$fx/links/rel-file.md"
-echo "rel file: rc=$? readlink=[$(readlink "$fx/links/rel-file.md")] cat=$(cat "$fx/links/rel-file.md")"
-S "../target dir" "$fx/links/rel-dir"
-echo "rel dir: rc=$? readlink=[$(readlink "$fx/links/rel-dir")] -d=$(yn test -d "$fx/links/rel-dir")"
-S "$fx/nowhere" "$fx/links/dangling"
-echo "dangling: rc=$? readlink=[$(readlink "$fx/links/dangling")] -L=$(yn test -L "$fx/links/dangling") -e=$(yn test -e "$fx/links/dangling")"
-S "$fx/nowhere/deeper.md" "$fx/links/dangling2.md"
-echo "dangling2: rc=$? readlink=[$(readlink "$fx/links/dangling2.md")]"
-S "/tmp/${t##*/}/fx/target dir" "$fx/links/tmp-dir"
-echo "via /tmp: rc=$? readlink=[$(readlink "$fx/links/tmp-dir")]"
-S "$fx/links/abs-dir" "$fx/links/hop"
-echo "hop: rc=$? readlink=[$(readlink "$fx/links/hop")] -ef target: $(yn test "$fx/links/hop" -ef "$fx/target dir")"
-cmd //c mklink //J "$(cygpath -w "$fx/links/junc")" "$(cygpath -w "$fx/target dir")" >/dev/null
-echo "junction: readlink=[$(readlink "$fx/links/junc")] same=$(yn test "$(readlink "$fx/links/junc")" = "$fx/target dir")"
-cmd //c mklink //J "$(cygpath -w "$fx/links/junc-short")" "$(cygpath -w "/tmp/${t##*/}/fx/target dir")" >/dev/null
-echo "junction to the short form: readlink=[$(readlink "$fx/links/junc-short")]"
-mkdir -p "$fx/gone"
-cmd //c mklink //J "$(cygpath -w "$fx/links/junc-dead")" "$(cygpath -w "$fx/gone")" >/dev/null
-rmdir "$fx/gone"
-echo "dead junction: readlink=[$(readlink "$fx/links/junc-dead")] -L=$(yn test -L "$fx/links/junc-dead") -e=$(yn test -e "$fx/links/junc-dead")"
-echo "mklink onto an existing name: $(cmd //c mklink //J "$(cygpath -w "$fx/links/junc")" "$(cygpath -w "$fx/target dir")" 2>&1 | tr '\r\n' '  ') rc=${PIPESTATUS[0]}"
-echo "mklink to a file: $(cmd //c mklink //J "$(cygpath -w "$fx/links/junc-file")" "$(cygpath -w "$fx/target dir/f.md")" 2>&1 | tr '\r\n' '  ') -L=$(yn test -L "$fx/links/junc-file") -e=$(yn test -e "$fx/links/junc-file")"
-echo "mklink to a missing folder: $(cmd //c mklink //J "$(cygpath -w "$fx/links/junc-none")" "$(cygpath -w "$fx/none")" 2>&1 | tr '\r\n' '  ') -L=$(yn test -L "$fx/links/junc-none")"
-ls -l "$fx/links"
-cmd //c dir //AL "$(cygpath -w "$fx/links")"
-fsutil reparsepoint query "$(cygpath -w "$fx/links/junc")" 2>&1 | head -4
-before="$(ls -l "$fx/links")"
-sleep 1
-echo "ls -l is stable: $(yn test "$(ls -l "$fx/links")" = "$before")"
-for l in junc abs-dir abs-file.md rel-dir dangling junc-dead hop; do
-  rm "$fx/links/$l"
-  echo "rm $l: rc=$? gone=$(yn test ! -L "$fx/links/$l") target kept: $(ls "$fx/target dir" | tr '\n' ' ')"
+# ------------------------------------------------------------------ the awk seam in the helper
+say "awk seam: the helper keeps CRLF byte for byte"
+crlf() { command awk '{ printf "%s\r\n", $0 }' "$1"; }
+edit() { # edit <second-brain> <vault>: the same three writes on task EX-1
+  SECOND_BRAIN_VAULT="$2" bash "$1" task set EX-1 status=in-progress next="check the seam" >/dev/null
+  SECOND_BRAIN_VAULT="$2" bash "$1" task note EX-1 "a note on this file" --session s1 >/dev/null
+  SECOND_BRAIN_VAULT="$2" bash "$1" task tag EX-1 add docs/billing >/dev/null
+}
+export SECOND_BRAIN_TODAY=2026-01-05 SECOND_BRAIN_OBSIDIAN=none SECOND_BRAIN_CLAUDE_HOME="$t/seam home"
+mkdir -p "$t/noseam"
+cp -r bin scripts templates .claude-plugin "$t/noseam/"
+command awk '/^if sb_is_windows; then$/ { skip = 1 } !skip { print } skip && /^fi$/ { skip = 0 }' scripts/lib/platform.sh >"$t/noseam/scripts/lib/platform.sh"
+echo "the copy without the seam defines awk: $(grep -c '^  awk()' "$t/noseam/scripts/lib/platform.sh")"
+for v in lf crlf crlf-noseam; do
+  mkdir -p "$t/$v/.obsidian"
+  SECOND_BRAIN_VAULT="$t/$v" bash bin/second-brain scaffold vault >/dev/null
+  SECOND_BRAIN_VAULT="$t/$v" bash bin/second-brain scaffold project Example --path projects/example --keys EX >/dev/null
+  SECOND_BRAIN_VAULT="$t/$v" bash bin/second-brain task new EX-1 --title "Seam" >/dev/null
 done
-rm -f "$fx/links/junc-short" "$fx/links/rel-file.md" "$fx/links/tmp-dir" "$fx/links/dangling2.md"
-echo "rm -f the rest: rc=$? left: $(ls "$fx/links" | tr '\n' ' ') target kept: $(ls "$fx/target dir" | tr '\n' ' ')"
-cmd //c mklink //J "$(cygpath -w "$fx/links/j2")" "$(cygpath -w "$fx/target dir")" >/dev/null
-rm -rf "$fx/links"
-echo "rm -rf a folder that holds a junction: rc=$? target kept: $(ls "$fx/target dir" | tr '\n' ' ')"
-echo "env -u works: $(SB_Q=1 env -u SB_Q bash -c 'echo "${SB_Q:-unset}"')"
+task="projects/example/tasks/EX-1/README.md"
+for v in crlf crlf-noseam; do
+  crlf "$t/lf/$task" >"$t/$v/$task"
+done
+echo "before the edits: lf $(wc -l <"$t/lf/$task" | tr -d ' ') lines, $(tr -cd '\r' <"$t/lf/$task" | wc -c | tr -d ' ') CR; crlf $(wc -l <"$t/crlf/$task" | tr -d ' ') lines, $(tr -cd '\r' <"$t/crlf/$task" | wc -c | tr -d ' ') CR"
+edit bin/second-brain "$t/lf"
+edit bin/second-brain "$t/crlf"
+edit "$t/noseam/bin/second-brain" "$t/crlf-noseam"
+crlf "$t/lf/$task" >"$t/expected.md"
+echo "after, with the seam:    $(wc -l <"$t/crlf/$task" | tr -d ' ') lines, $(tr -cd '\r' <"$t/crlf/$task" | wc -c | tr -d ' ') CR; same bytes as the LF result with CRLF endings: $(yn cmp "$t/expected.md" "$t/crlf/$task")"
+echo "after, without the seam: $(wc -l <"$t/crlf-noseam/$task" | tr -d ' ') lines, $(tr -cd '\r' <"$t/crlf-noseam/$task" | wc -c | tr -d ' ') CR; same bytes: $(yn cmp -s "$t/expected.md" "$t/crlf-noseam/$task")"
+echo "first lines with the seam:"
+head -8 "$t/crlf/$task" | od -c | head -12
+printf 'a line with LF only\n' >>"$t/crlf/$task"
+echo "doctor line-endings, mixed file, with the seam:    $(SECOND_BRAIN_VAULT="$t/crlf" bash bin/second-brain doctor Example | grep 'line-endings')"
+printf 'a line with LF only\n' >>"$t/crlf-noseam/$task"
+echo "doctor line-endings, mixed file, without the seam: $(SECOND_BRAIN_VAULT="$t/crlf-noseam" bash "$t/noseam/bin/second-brain" doctor Example | grep 'line-endings')"
 
-# ------------------------------------------------------------------ timing
+# ------------------------------------------------------------------ how the helper is started
+say "starting the helper"
+echo "bash + POSIX path:        $(bash "$repo/bin/second-brain" version)"
+echo "bash + root\\..\\bin/name:  $(bash "$(cygpath -w "$repo")/bin/second-brain" version 2>&1)"
+echo "bash + all backslashes:   $(bash "$(cygpath -w "$repo/bin/second-brain")" version 2>&1 | head -2 | tr '\n' ' ')"
+echo "bash + drive form:        $(bash "$(cygpath -m "$repo/bin/second-brain")" version 2>&1 | head -2 | tr '\n' ' ')"
+echo "direct, by PATH:          $(PATH="$repo/bin:$PATH" second-brain version 2>&1)"
+echo "session-check, no vault:  $(SECOND_BRAIN_VAULT="$t/none" bash "$repo/bin/second-brain" session-check)"
+
+# ------------------------------------------------------------------ the link suite
+say "scripts/test-link.sh"
+bash scripts/test-link.sh >"$t/test-link.log" 2>&1
+echo "rc=$?"
+grep -v '^ok ' "$t/test-link.log"
+
+# ------------------------------------------------------------------ the other suites
+wait
+for s in test test-doctor test-snapshot; do
+  say "scripts/$s.sh with the port so far"
+  grep -c '^ok ' "$t/$s.log"
+  grep -A4 '^FAIL' "$t/$s.log" | head -150
+  tail -3 "$t/$s.log"
+done
+
+# ------------------------------------------------------------------ timing, with nothing else running
 say "timing"
-r20="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
-echo "20 forks:     $( { time (for i in $r20; do x="$(:)"; done); } 2>&1 | tr '\n' ' ')"
-echo "20 true:      $( { time (for i in $r20; do /usr/bin/true; done); } 2>&1 | tr '\n' ' ')"
-echo "20 cygpath:   $( { time (for i in $r20; do x="$(cygpath -m /c/x)"; done); } 2>&1 | tr '\n' ' ')"
-echo "20 awk:       $( { time (for i in $r20; do awk 'BEGIN { }'; done); } 2>&1 | tr '\n' ' ')"
-echo "20 cmd:       $( { time (for i in $r20; do cmd //c ver >/dev/null; done); } 2>&1 | tr '\n' ' ')"
+echo "session-check: $( { time SECOND_BRAIN_VAULT="$t/none" bash "$repo/bin/second-brain" session-check >/dev/null; } 2>&1 | tr '\n' ' ')"
+echo "version:       $( { time bash "$repo/bin/second-brain" version >/dev/null; } 2>&1 | tr '\n' ' ')"
+echo "test-link.sh:  $( { time bash scripts/test-link.sh >/dev/null 2>&1; } 2>&1 | tr '\n' ' ')"
+
+say "link on eight skills and eight agents"
+v="$t/big vault"
+mkdir -p "$v/.obsidian"
+export SECOND_BRAIN_VAULT="$v" SECOND_BRAIN_CLAUDE_HOME="$t/big home"
+bash bin/second-brain scaffold vault >/dev/null
+for i in 1 2 3 4 5 6 7 8; do
+  mkdir -p "$v/claude/skills/s$i" "$v/claude/agents"
+  printf -- '---\nname: s%s\ndescription: A skill.\n---\n' "$i" >"$v/claude/skills/s$i/SKILL.md"
+  printf -- '---\nname: a%s\ndescription: An agent.\n---\n' "$i" >"$v/claude/agents/a$i.md"
+done
+echo "apply: $( { time bash bin/second-brain link --apply >/dev/null 2>&1; } 2>&1 | tr '\n' ' ')"
+echo "check: $( { time bash bin/second-brain link --check >"$t/big.out"; } 2>&1 | tr '\n' ' ')"
+head -3 "$t/big.out"
+tail -2 "$t/big.out"
+ls -l "$t/big home/agents"
 exit 0

@@ -30,6 +30,8 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
 - The doctor checks more of a project. `hubs` warns about a hub that is missing or empty.
+  `task-location` warns about a note with `type: task` that is not the README of its own folder
+  under the tasks root.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
 

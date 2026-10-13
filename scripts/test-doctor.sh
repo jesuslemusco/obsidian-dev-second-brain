@@ -410,6 +410,44 @@ doc Example
 chk "no-readme: a task folder with no README, or an empty one, warns" no-readme Example "warn | 2 | EX-7, EX-8"
 reset
 
+# ---------------------------------------------------------------- task-location
+# stray <vault path> <raw type>: write a note with that type, wherever the path says.
+stray() {
+  mkdir -p "$vault/${1%/*}"
+  printf '%s\n' '---' "type: $2" '---' '' '# A note' >"$vault/$1"
+}
+doc Example
+chk "task-location: ok on new tasks" task-location Example "ok | 0 | -"
+stray "$P/docs/billing/EX-2.md" task
+doc Example
+rc_is "task-location: a warning leaves exit 0" 0
+chk "task-location: a task filed under its topic warns, as its path under the project" task-location Example "warn | 1 | docs/billing/EX-2.md"
+is "task-location: the fix names the move command and where a task goes" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+reset
+stray "$P/tasks/EX-3.md" '"task"'
+doc Example
+chk "task-location: a loose note in the tasks root, its type in quotes" task-location Example "warn | 1 | tasks/EX-3.md"
+reset
+stray "$P/tasks/EX-1/sub/README.md" "'task' # misfiled"
+doc Example
+chk "task-location: a README deeper in a task folder" task-location Example "warn | 1 | tasks/EX-1/sub/README.md"
+reset
+stray "$P/docs/billing/notes.md" note
+stray "$P/.trash/EX-8.md" task
+stray "$P/docs/.drafts/EX-9.md" task
+printf '%s\n' '# No frontmatter' '' 'type: task' >"$vault/$P/docs/plain.md"
+sb scaffold project Child --path "$P/child" --keys CH
+sb task new CH-1 --project Child --title "A task of the project inside"
+stray "$P/child/docs/CH-2.md" task
+doc
+chk "task-location: another type, dot folders, body text and the tasks of a project inside are left alone" task-location Example "ok | 0 | -"
+chk "task-location: the project inside gets its own misfiled task" task-location Child "warn | 1 | docs/CH-2.md"
+chk "index: a project inside another is a row like any other" index vault "ok | 0 | -"
+doc Example
+chk "task-location: the project inside is left alone when the doctor is run for one project" task-location Example "ok | 0 | -"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {
@@ -605,7 +643,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "25"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "26"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -642,8 +680,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 25 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "25 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 26 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "26 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -660,16 +698,16 @@ edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 # scope_rows <scope>: count the rows of one scope in the last run.
 scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
-is "two projects: sixteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "16/16"
+is "two projects: seventeen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "17/17"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
+  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/16/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/17/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

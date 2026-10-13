@@ -483,6 +483,48 @@ sb_doc_check_no_readme() {
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
 }
 
+# Check that no note under the project is a task outside its own folder in the tasks root.
+sb_doc_check_task_location() {
+  local bad
+  # A path that leaves the vault is not walked.
+  case "/$SB_P_PATH/" in
+    */../*)
+      sb_doc_row ok task-location "$SB_P_NAME" "" "-"
+      return 0
+      ;;
+  esac
+  # Three parts on stdin: the index paths, the task READMEs, the notes. A project folder inside
+  # this one holds its own tasks. Paths are matched without letter case, as some file systems do.
+  bad="$({
+    sb_projects_tsv 2>/dev/null | cut -f2
+    printf '\034\n%s\n\034\n' "$SB_DOC_FILES"
+    sb_md_files "$SB_P_DIR"
+  } | LC_ALL=C SB_R="$SB_ROOT/" SB_P="$SB_P_PATH" awk "$(sb_awk_lib)"'
+    function norm(p) { while (sub(/\/\.?\//, "/", p)) continue; return p }
+    BEGIN { part = 1; root = ENVIRON["SB_R"]; dir = norm(root ENVIRON["SB_P"] "/"); me = tolower(dir) }
+    $0 == "\034" { part++; next }
+    $0 == "" { next }
+    part == 1 { q = tolower(norm(root $0 "/")); if (q != me && substr(q, 1, length(me)) == me) inner[++ni] = q; next }
+    part == 2 { task[tolower(norm($0))] = 1; next }
+    {
+      file = $0; path = norm(file); low = tolower(path)
+      if (low in task) next
+      for (i = 1; i <= ni; i++) if (substr(low, 1, length(inner[i])) == inner[i]) next
+      n = 0; type = ""
+      while ((getline line < file) > 0) {
+        n++
+        sub(/\r$/, "", line)
+        if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+        if (line == "---") break
+        if (line ~ /^type:/) { type = unq(substr(line, 6)); break }
+      }
+      close(file)
+      if (type == "task") print substr(path, length(dir) + 1)
+    }' | LC_ALL=C sort)"
+  sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
+    "move it with second-brain move to $SB_P_PATH/$SB_TASKS_ROOT/<ID>/README.md, and tie it to its topic with a tag"
+}
+
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
 sb_doc_topic_exceptions() {
   sb_section "$SB_P_PROFILE" Topics 2>/dev/null | LC_ALL=C awk "$(sb_awk_lib)"'
@@ -669,7 +711,8 @@ sb_doc_rows() {
     [ -n "$path" ] || continue
     sb_doc_project "$name" "$path" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme topic_tags code_doc_map repos sprints unresolved_links bare_links line_endings; do
+      alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
+      line_endings; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

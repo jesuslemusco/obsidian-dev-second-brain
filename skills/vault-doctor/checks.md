@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
-the vault, then sixteen for each project. Every entry is a heading, a blank line and three lines,
+the vault, then seventeen for each project. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -112,6 +112,12 @@ the vault, then sixteen for each project. Every entry is a heading, a blank line
 - Means: a folder directly under the tasks root holds no `README.md`.
 - Why: the board lists only that README, so the folder's work is on no board and no command finds it by id.
 - Fix: a task: `second-brain task new <ID> --project <project> --title "<title>"` writes the README into the folder. Not a task: tell the user.
+
+### task-location
+
+- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, or deeper inside a task folder. Each offender is the note's path under the project.
+- Why: the board and the task commands read only the README directly inside a folder of the tasks root, so this task is on no board and no task command finds it by id.
+- Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first; it rewrites the links to the note. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
 
 ### topic-tags
 

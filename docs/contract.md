@@ -37,6 +37,8 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
 - `Path` is vault-relative, no leading or trailing slash. It is a folder in the vault, and no two
   rows share one.
 - `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row.
+- A project's folder may sit inside another project's folder. Each row is its own project, and the
+  notes of the inner one are not notes of the outer one.
 
 The file opens with frontmatter that holds `index_version`, a whole number:
 
@@ -379,6 +381,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `yaml-traps` | an unquoted alias holding a colon and a space, an unquoted lone dash value, an unquoted sprint id (fail) |
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
 | project | `no-readme` | a task folder without a README (warn) |
+| project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo listed in the profile has a recorded location whose folder is missing (warn). Nothing recorded is ok |
@@ -437,7 +440,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a
 function another library owns. Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`,
 `sb_fm_edit`, `sb_fm_keys`, `sb_section`, `sb_task_files`, `sb_task_scan`, `sb_sprint_current_id`,
-`sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`.
+`sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`.
 
 ## 8. Templates
 

@@ -410,18 +410,24 @@ doc Example
 rc_is "outside: a root that leaves the project gives exit 1" 1
 chk "outside: a tasks root with a .. part fails the profile" profile Example "fail | 1 | tasks_root:leaves-project"
 is "outside: the fix says what a root is" "$(fix_of profile)" \
-  "write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+  "write each root as a folder inside the project, with no .. part and no backslash; add a missing key or section as in the profile template"
 is "outside: nothing is read through it, and the project is checked under the default root" \
   "$(marks)/$(row board)/$(row task-location)" "0/ok | 0 | -/ok | 0 | -"
 doc Example --fix
 is "outside: --fix writes nothing through it" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 set_root tasks_root "'..\\..\\..\\outside-proj\\tasks'"
-set_root topics_root /outside-proj/docs
 set_root sprints_root ../../../outside-proj/sprints
 doc Example
-chk "outside: a backslash, a slash in front and a .. part, one root each" profile Example \
-  "fail | 3 | tasks_root:leaves-project, topics_root:leaves-project, sprints_root:leaves-project"
-is "outside: nothing is read through any of them" "$(marks)" "0"
+chk "outside: a backslash and a .. part, one root each" profile Example \
+  "fail | 2 | tasks_root:leaves-project, sprints_root:leaves-project"
+is "outside: nothing is read through either of them" "$(marks)" "0"
+reset
+set_root tasks_root /tasks/
+set_root topics_root //docs
+doc Example
+rc_is "roots: a slash in front of a root is no failure" 0
+is "roots: such a root is the folder every command reads, and it is checked" \
+  "$(row profile)/$(row board)/$(row hubs)/$(row task-location)" "ok | 0 | -/ok | 0 | -/ok | 0 | -/ok | 0 | -"
 reset
 
 # ---------------------------------------------------------------- hubs

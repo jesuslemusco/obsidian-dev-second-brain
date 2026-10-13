@@ -110,9 +110,10 @@ tags:
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `topics_root: "."` means topic folders sit at the project root.
 - `tasks_root`, `topics_root` and `sprints_root` are folders inside the project, written with
-  forward slashes. One that holds a `..` part or a backslash, or starts with `/`, leaves the
-  project: the doctor's `profile` check fails, and the doctor checks the project under that
-  root's default, so nothing is opened through the value.
+  forward slashes. A slash in front or behind is dropped by every command, so `/tasks` is
+  `tasks`. One that holds a `..` part or a backslash leaves the project: the doctor's `profile`
+  check fails, and the doctor checks the project under that root's default, so nothing is
+  opened through the value.
 - `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
   them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
   no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,

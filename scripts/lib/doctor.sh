@@ -37,11 +37,11 @@ sb_doc_report() {
 }
 
 # Set SB_DOC_FOLD to a relative path with its empty and "." parts folded out. Return 1 when the
-# path leaves the folder it starts in: a ".." part, a backslash, or a slash in front.
+# path leaves the folder it starts in: a ".." part or a backslash.
 sb_doc_fold() {
   local rest="$1" seg
   SB_DOC_FOLD=""
-  case "$rest" in /* | *\\*) return 1 ;; esac
+  case "$rest" in *\\*) return 1 ;; esac
   while [ -n "$rest" ]; do
     seg="${rest%%/*}"
     case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
@@ -296,11 +296,12 @@ sb_doc_check_skill_size() {
 }
 
 # Set SB_DOC_ROOT to a root of the profile, folded, or to its default when the key is absent.
-# A value that leaves the project gives the default too, and is kept for the profile check.
+# The value is read as every command reads it, with a slash in front or behind dropped. One
+# that leaves the project gives the default too, and is kept for the profile check.
 sb_doc_root() {
   local raw
   SB_DOC_ROOT="$2"
-  raw="$(sb_fm_get "$SB_P_PROFILE" "$1" 2>/dev/null)"
+  raw="$(sb_setting "$SB_P_PATH" "$1" "")"
   [ -n "$raw" ] || return 0
   if sb_doc_fold "$raw"; then
     SB_DOC_ROOT="${SB_DOC_FOLD:-.}"
@@ -414,7 +415,7 @@ sb_doc_check_profile() {
     return 0
   fi
   [ -z "$SB_DOC_LEAVES" ] ||
-    fix="write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+    fix="write each root as a folder inside the project, with no .. part and no backslash; add a missing key or section as in the profile template"
   bad="$SB_DOC_LEAVES$(LC_ALL=C awk '
     BEGIN {
       nk = split("aliases type project ticket_keys tracker persona tasks_root topics_root sprints_root " \

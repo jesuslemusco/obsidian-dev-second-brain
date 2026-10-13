@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
-the vault, then fifteen for each project. Every entry is a heading, a blank line and three lines,
+the vault, then sixteen for each project. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -70,6 +70,12 @@ the vault, then fifteen for each project. Every entry is a heading, a blank line
 - Means: `tasks.base` is missing from the tasks root.
 - Why: Obsidian shows the task board from that file, so the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs.
 - Fix: `second-brain scaffold project <name> --path <path>` again. It writes the board and overwrites nothing.
+
+### hubs
+
+- Means: a hub of the project is missing or empty: `README.md`, `claude/README.md`, or the `README.md` of the tasks root, of the topics root unless it is `.`, or of the sprints root when the project uses sprints.
+- Why: the index tells Claude to read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others. `second-brain scaffold project` creates all of them.
+- Fix: `second-brain scaffold project <name> --path <path>` again, with the name and the path of the index row. It writes each missing hub from its template and overwrites nothing, so it keeps an empty file: ask, then delete that one first. A hub that comes back is a new one, without the lines the old one had gained, such as the sprint links of the sprints hub.
 
 ### task-frontmatter
 

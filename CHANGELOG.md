@@ -29,6 +29,7 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The vault's `CLAUDE.md` carries a version, `index_version`, in frontmatter. The doctor's `index`
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
+- The doctor checks more of a project. `hubs` warns about a hub that is missing or empty.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
 

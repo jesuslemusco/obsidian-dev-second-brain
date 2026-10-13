@@ -310,6 +310,34 @@ doc Example
 chk "profile: a missing profile fails" profile Example "fail | 1 | profile.md"
 reset
 
+# ---------------------------------------------------------------- hubs
+doc Example
+chk "hubs: ok on a scaffolded project" hubs Example "ok | 0 | -"
+rm "$vault/$P/README.md"
+doc Example
+rc_is "hubs: a warning leaves exit 0" 0
+chk "hubs: a missing project hub warns, as its path under the project" hubs Example "warn | 1 | README.md"
+is "hubs: the fix names the scaffold command, and says what it does with an empty hub" "$(fix_of hubs)" \
+  "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first"
+reset
+rm "$vault/$P/claude/README.md" "$vault/$P/docs/README.md"
+: >"$T/README.md"
+: >"$vault/$P/sprints/README.md"
+doc Example
+chk "hubs: the Claude hub and the hubs of the three roots, missing or empty" hubs Example \
+  "warn | 4 | claude/README.md, tasks/README.md, docs/README.md, sprints/README.md"
+sb scaffold project Example --path "$P"
+doc Example
+chk "hubs: the scaffold writes the missing hubs again and keeps the empty ones" hubs Example "warn | 2 | tasks/README.md, sprints/README.md"
+reset
+sb scaffold project Flat --path projects/flat --keys FL --topics-root .
+doc Flat
+chk "hubs: ok with the topics at the project root, where there is no topics hub" hubs Flat "ok | 0 | -"
+rm "$vault/projects/flat/README.md"
+doc Flat
+chk "hubs: there the project hub is one offender, not two" hubs Flat "warn | 1 | README.md"
+reset
+
 # ---------------------------------------------------------------- task frontmatter and status
 doc Example
 chk "task-frontmatter: ok on new tasks" task-frontmatter Example "ok | 0 | -"
@@ -577,7 +605,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "24"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "25"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -614,8 +642,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 24 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "24 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 25 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "25 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -632,16 +660,16 @@ edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 # scope_rows <scope>: count the rows of one scope in the last run.
 scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
-is "two projects: fifteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "15/15"
+is "two projects: sixteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "16/16"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
+  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/15/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/16/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -671,6 +699,7 @@ chk "no sprints: the profile passes without a sprints hub" profile Kanban "ok | 
 chk "no sprints: the sprints check passes" sprints Kanban "ok | 0 | -"
 is "no sprints: the sprints row says why" "$(fix_of sprints Kanban)" "sprints are off"
 chk "no sprints: the board passes with no Current sprint view" board Kanban "ok | 0 | -"
+chk "no sprints: the hubs pass with no sprints hub" hubs Kanban "ok | 0 | -"
 edit "$K/tasks/KB-1/README.md" 's/^status: planned$/status: planned\
 sprint: "2026-03-01"/'
 is "no sprints: a sprint id left on a task" "$(grep -c '^sprint: "2026-03-01"$' "$K/tasks/KB-1/README.md")" "1"

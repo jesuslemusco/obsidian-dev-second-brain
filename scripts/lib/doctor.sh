@@ -380,6 +380,19 @@ sb_doc_check_board() {
   sb_doc_report fail board "$SB_P_NAME" "$bad" "run second-brain scaffold project again with the same name and path to write it"
 }
 
+# Check that each hub scaffold project writes is there, with something in it.
+sb_doc_check_hubs() {
+  local hubs h bad="" nl=$'\n'
+  hubs=("README.md" "claude/README.md" "$SB_TASKS_ROOT/README.md")
+  [ "$SB_TOPICS_ROOT" = "." ] || hubs[${#hubs[@]}]="$SB_TOPICS_ROOT/README.md"
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || hubs[${#hubs[@]}]="$SB_SPRINTS_ROOT/README.md"
+  for h in "${hubs[@]}"; do
+    [ -s "$SB_P_DIR/$h" ] || bad="$bad$h$nl"
+  done
+  sb_doc_report warn hubs "$SB_P_NAME" "$bad" \
+    "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first"
+}
+
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
 sb_doc_feed() {
   printf '%s\n%s\n' "$SB_DOC_FACTS" "$SB_DOC_SCAN"
@@ -655,7 +668,7 @@ sb_doc_rows() {
   while IFS=$'\t' read -r name path keys <&3; do
     [ -n "$path" ] || continue
     sb_doc_project "$name" "$path" "$keys"
-    for c in profile board task_frontmatter needs_a_status status_tag yaml_traps \
+    for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme topic_tags code_doc_map repos sprints unresolved_links bare_links line_endings; do
       "sb_doc_check_$c"
     done

@@ -53,10 +53,13 @@ nothing and rewrites no note body.
 Run `second-brain doctor <project>`. From its rows and from step 1, list what is off-standard.
 Fix none of it here.
 
-- Tasks that are not `<tasks_root>/<ID>/README.md`: step 1, `no-readme` and `task-frontmatter`.
+- Tasks that are not `<tasks_root>/<ID>/README.md`: `task-location` for a note that has
+  `type: task`, and step 1 for one that has no frontmatter yet. A task folder with no README:
+  `no-readme`.
+- A hub that is missing or empty: `hubs`.
 - Notes with no status, or one outside the five: `needs-a-status`.
 - Bare alias links such as `[[EX-123]]`: `unresolved-links`, and `bare-links` for `[[README]]`.
-- Missing aliases: `task-frontmatter`.
+- Missing aliases, or a task with no `type`: `task-frontmatter`.
 
 ## 5. Say what comes next
 

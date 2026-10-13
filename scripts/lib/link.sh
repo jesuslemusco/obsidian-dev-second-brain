@@ -79,7 +79,7 @@ sb_link_sources() {
   seen="$nl$SB_ROOT/claude$nl"
   while IFS=$'\t' read -r name path keys; do
     [ -n "$path" ] || continue
-    case "/$path/" in */../*) continue ;; esac
+    case "/$path/" in */../* | *\\*) continue ;; esac
     dir="$SB_ROOT/$path/claude"
     case "$seen" in *"$nl$dir$nl"*) continue ;; esac
     seen="$seen$dir$nl"

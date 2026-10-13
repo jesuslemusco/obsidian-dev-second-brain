@@ -85,6 +85,8 @@ fix_of() {
 }
 # chk <description> <check> <scope> <"result | count | offenders">
 chk() { is "$1" "$(row "$2" "$3")" "$4"; }
+# scope_rows <scope>: count the rows of one scope in the last run.
+scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
 # reset: put the scratch vault and link directory back as they were after the setup.
 reset() {
   rm -rf "$vault" "$home"
@@ -120,6 +122,21 @@ is "rows: a result is ok, warn or fail" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 
 chk "pointer: ok" pointer vault "ok | 0 | -"
 is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | grep -c . || true)" "0"
 
+# ---------------------------------------------------------------- the skill's entries
+# The skill reads an entry with one Grep and the four lines after its heading.
+CHECKS="$here/skills/vault-doctor/checks.md"
+is "checks.md: one entry for each check the doctor prints, in the order of its table" \
+  "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }')"
+is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
+  function entry() {
+    while (n > 0 && body[n] == "") n--
+    if (name != "" && (n != 4 || body[1] != "" || body[2] !~ /^- Means: [^ ]/ || body[3] !~ /^- Why: [^ ]/ || body[4] !~ /^- Fix: [^ ]/)) print name
+  }
+  /^### / { entry(); name = substr($0, 5); n = 0; next }
+  name != "" { body[++n] = $0 }
+  END { entry() }' "$CHECKS")" ""
+
 # ---------------------------------------------------------------- index, conventions, import
 chk "index: ok" index vault "ok | 0 | -"
 chk "conventions: ok" conventions vault "ok | 0 | -"
@@ -147,6 +164,99 @@ edit "$vault/obsidian-conventions.md" "s/^type: onboarding\$/type: onboarding\\
 conventions_version: $((tv + 1))/"
 doc
 chk "conventions: a note newer than the template is fine" conventions vault "ok | 0 | -"
+reset
+
+# ---------------------------------------------------------------- index rows and version
+# add_row <name> <path> <keys>: add one row to the index table.
+add_row() {
+  printf '| %s | %s | %s | A row the suite added. |\n' "$1" "$2" "$3" >>"$vault/CLAUDE.md"
+}
+# index_back: put the index back as it was after the setup.
+index_back() {
+  cp "$tmp/pristine/CLAUDE.md" "$vault/CLAUDE.md"
+}
+mkdir -p "$vault/projects/other" "$tmp/outside"
+add_row Ghost projects/ghost GH
+doc
+rc_is "index: a row to a folder that is gone gives exit 1" 1
+chk "index: a row whose path is no folder fails" index vault "fail | 1 | Ghost:no-folder"
+is "index: the fix says what a row needs" "$(fix_of index vault)" \
+  "give each row its own name, keys and path, and a path that is a folder in the vault"
+index_back
+add_row Out ../outside OUT
+doc
+chk "index: a path that leaves the vault is no folder, though one is there on disk" index vault "fail | 1 | Out:no-folder"
+index_back
+add_row EXAMPLE projects/other OT
+doc
+chk "index: a name on two rows, whatever the case, in the spelling of its first row" index vault "fail | 1 | Example:twice"
+index_back
+add_row Other projects/other 'OT, ex'
+doc
+chk "index: a key on two rows, whatever the case" index vault "fail | 1 | EX:twice"
+index_back
+add_row Other projects/example/ OT
+doc
+chk "index: a path on two rows" index vault "fail | 1 | projects/example:twice"
+index_back
+add_row Other projects/other 'OT, ot'
+doc
+chk "index: a key written twice on one row is no offender, and a second project is fine" index vault "ok | 0 | -"
+index_back
+mkdir -p "$vault/projects/third"
+add_row Other projects/other '-, OT,,'
+add_row Third projects/third '-,, TH'
+doc
+chk "index: a dash, and an empty item between commas, are no keys" index vault "ok | 0 | -"
+index_back
+mkdir -p "$vault/Projects/Third"
+add_row Two projects//example TW
+add_row Other projects/other OT
+add_row Other2 projects/./other O2
+add_row Third projects/third TH
+add_row Third2 Projects/Third T2
+doc
+chk "index: paths are one when they differ by //, by /./ or by letter case" index vault \
+  "fail | 3 | projects/example:twice, projects/other:twice, projects/third:twice"
+index_back
+: >"$vault/projects/afile"
+add_row File projects/afile FI
+doc
+chk "index: a path that is a file is no folder" index vault "fail | 1 | File:no-folder"
+index_back
+add_row 'A project with a rather long display name, fifty bytes' projects/ghost GH
+doc
+chk "index: a long offender is cut in its value and keeps its tag" index vault "fail | 1 | A project with a rather long display n...:no-folder"
+index_back
+add_row Ghost projects/ghost ex
+add_row example projects/example EX
+doc
+chk "index: the rows with no folder, then the names, the keys and the paths on two rows" index vault \
+  "fail | 4 | Ghost:no-folder, Example:twice, EX:twice, projects/example:twice"
+index_back
+ti="$(sed -n 's/^index_version: *//p' "$here/templates/vault-index.md.tmpl" | head -1)"
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: $((ti - 1))/"
+doc
+rc_is "index: an older index leaves exit 0" 0
+chk "index: an index older than the plugin's template warns, with its version" index vault "warn | 1 | CLAUDE.md:$((ti - 1))"
+is "index: the fix says what to bring in line, and gives the template's version" "$(fix_of index vault)" \
+  "the index is older than the plugin's template, version $ti: bring the text above ## Projects in line with the template, keep the table, and set index_version"
+edit "$vault/CLAUDE.md" '1,3d'
+doc
+chk "index: an index from before the version, with no frontmatter, warns" index vault "warn | 1 | CLAUDE.md:none"
+add_row Ghost projects/ghost GH
+doc
+chk "index: a failure wins over the warning, and the row holds its offenders alone" index vault "fail | 1 | Ghost:no-folder"
+index_back
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: $((ti + 1))/"
+doc
+chk "index: an index newer than the template is fine" index vault "ok | 0 | -"
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: 99999999999999999999999/"
+edit "$vault/obsidian-conventions.md" "s/^conventions_version: .*/conventions_version: 99999999999999999999999/"
+doc
+chk "index: a version too long to compare counts as newer" index vault "ok | 0 | -"
+chk "conventions: a version too long to compare counts as newer" conventions vault "ok | 0 | -"
+is "index, conventions: such a version gives no shell error" "$ERR" ""
 reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
@@ -197,6 +307,16 @@ doc
 chk "always-loaded-size: ok on a fresh vault" always-loaded-size vault "ok | 0 | -"
 chk "descriptions: ok with no skills" descriptions vault "ok | 0 | -"
 chk "skill-size: ok with no skills" skill-size vault "ok | 0 | -"
+mkdir -p "$vault/claude/skills/no-desc" "$vault/claude/agents"
+printf '%s\n' '---' 'name: no-desc' '---' 'Body.' >"$vault/claude/skills/no-desc/SKILL.md"
+printf '%s\n' '---' 'name: blank' 'description: ""' '---' 'Body.' >"$vault/claude/agents/blank.md"
+printf '%s\n' '---' 'name: fine' 'description: Short enough.' '---' 'Body.' >"$vault/claude/agents/fine.md"
+doc
+chk "descriptions: a skill with no description and an agent with an empty one warn, a short one does not" descriptions vault \
+  "warn | 2 | no-desc:none, blank:none"
+is "descriptions: the fix covers a missing and a long description" "$(fix_of descriptions vault)" \
+  "give each one a description of one sentence under 200 characters"
+reset
 awk 'BEGIN { for (i = 1; i <= 30; i++) print "- filler line " i }' >>"$vault/CLAUDE.md"
 awk 'BEGIN { for (i = 1; i <= 41; i++) print "- my line " i }' >"$home/CLAUDE.md"
 long="$(awk 'BEGIN { for (i = 1; i <= 250; i++) printf "x"; print "" }')"
@@ -231,6 +351,110 @@ chk "board: a missing board file fails" board Example "fail | 1 | tasks.base"
 rm "$vault/$P/claude/profile.md"
 doc Example
 chk "profile: a missing profile fails" profile Example "fail | 1 | profile.md"
+reset
+is "board: the Current sprint view filters on the sprint in progress" "$(grep -c 'sprint == "2026-01-14"' "$T/tasks.base")" "1"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+rc_is "board: a warning leaves exit 0" 0
+chk "board: a view that filters on another sprint than the one in progress warns, with its id" board Example "warn | 1 | tasks.base:2025-12-31"
+is "board: the fix names the sprint in progress" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14"
+reset
+edit "$T/tasks.base" "s/sprint == \"2026-01-14\"/sprint == '2026-01-14'/"
+doc Example
+chk "board: a filter in single quotes is not a missing view" board Example "warn | 1 | tasks.base:filter"
+is "board: the fix gives the form sprint open rewrites" "$(fix_of board)" \
+  "write the filter of the board's Current sprint view as sprint == \"2026-01-14\", the form sprint open rewrites"
+reset
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/"2026-01-14" == sprint/'
+doc Example
+chk "board: a filter with its sides swapped is not a missing view either" board Example "warn | 1 | tasks.base:filter"
+reset
+
+# ---------------------------------------------------------------- paths that leave the vault
+# A project outside the vault, with a mark in every file the doctor could open there.
+O="$tmp/outside-proj"
+mkdir -p "$O/claude" "$O/tasks/OUTMARK-1" "$O/sprints"
+cp "$vault/$P/claude/profile.md" "$O/claude/profile.md"
+sed 's/sprint == "2026-01-14"/sprint == "OUTMARK-2"/' "$T/tasks.base" >"$O/tasks/tasks.base"
+sed 's/^  - status\/active$/  - status\/done/' "$T/EX-1/README.md" >"$O/tasks/OUTMARK-1/README.md"
+sed 's/2026-01-14/2031-01-01/g' "$vault/$P/sprints/2026-01-14.md" >"$O/sprints/2031-01-01.md"
+cp "$O/tasks/OUTMARK-1/README.md" "$tmp/outside.before"
+# marks: count the lines of the last run, stdout and stderr, that hold something read out there.
+marks() { printf '%s\n%s\n' "$OUT" "$ERR" | grep -c -e OUTMARK -e 2031-01-01 || true; }
+# set_root <key> <raw value>: write one root of the profile as it is given.
+set_root() {
+  SB_K="$1" SB_V="$2" awk 'index($0, ENVIRON["SB_K"] ":") == 1 { print ENVIRON["SB_K"] ": " ENVIRON["SB_V"]; next } { print }' \
+    "$vault/$P/claude/profile.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$vault/$P/claude/profile.md"
+}
+add_row Out ../outside-proj OUT
+doc
+chk "outside: a row with a .. part fails the index" index vault "fail | 1 | Out:no-folder"
+is "outside: it gets no project rows, and nothing under it is read" "$(scope_rows Out)/$(marks)" "0/0"
+doc Out
+rc_is "outside: named, the row still gives exit 1" 1
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "9/0/0"
+doc --fix
+is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
+index_back
+mkdir -p "$vault/"'projects\example'
+add_row Back 'projects\example' BK
+add_row Whole . WH
+doc
+chk "outside: a path with a backslash, though a folder is there on disk, and the vault itself are no project folders" index vault \
+  "fail | 2 | Back:no-folder, Whole:no-folder"
+is "outside: neither gets project rows" "$(scope_rows Back)/$(scope_rows Whole)" "0/0"
+reset
+set_root tasks_root ../../../outside-proj/tasks
+doc Example
+rc_is "outside: a root that leaves the project gives exit 1" 1
+chk "outside: a tasks root with a .. part fails the profile" profile Example "fail | 1 | tasks_root:leaves-project"
+is "outside: the fix says what a root is" "$(fix_of profile)" \
+  "write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+is "outside: nothing is read through it, and the project is checked under the default root" \
+  "$(marks)/$(row board)/$(row task-location)" "0/ok | 0 | -/ok | 0 | -"
+doc Example --fix
+is "outside: --fix writes nothing through it" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
+set_root tasks_root "'..\\..\\..\\outside-proj\\tasks'"
+set_root topics_root /outside-proj/docs
+set_root sprints_root ../../../outside-proj/sprints
+doc Example
+chk "outside: a backslash, a slash in front and a .. part, one root each" profile Example \
+  "fail | 3 | tasks_root:leaves-project, topics_root:leaves-project, sprints_root:leaves-project"
+is "outside: nothing is read through any of them" "$(marks)" "0"
+reset
+
+# ---------------------------------------------------------------- hubs
+doc Example
+chk "hubs: ok on a scaffolded project" hubs Example "ok | 0 | -"
+rm "$vault/$P/README.md"
+doc Example
+rc_is "hubs: a warning leaves exit 0" 0
+chk "hubs: a missing project hub warns, as its path under the project" hubs Example "warn | 1 | README.md"
+is "hubs: the fix names the scaffold command, and says what it does with an empty hub" "$(fix_of hubs)" \
+  "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first"
+reset
+rm "$vault/$P/claude/README.md" "$vault/$P/docs/README.md"
+: >"$T/README.md"
+: >"$vault/$P/sprints/README.md"
+doc Example
+chk "hubs: the Claude hub and the hubs of the three roots, missing or empty" hubs Example \
+  "warn | 4 | claude/README.md, tasks/README.md, docs/README.md, sprints/README.md"
+sb scaffold project Example --path "$P"
+doc Example
+chk "hubs: the scaffold writes the missing hubs again and keeps the empty ones" hubs Example "warn | 2 | tasks/README.md, sprints/README.md"
+reset
+sb scaffold project Flat --path projects/flat --keys FL --topics-root .
+doc Flat
+chk "hubs: ok with the topics at the project root, where there is no topics hub" hubs Flat "ok | 0 | -"
+rm "$vault/projects/flat/README.md"
+doc Flat
+chk "hubs: there the project hub is one offender, not two" hubs Flat "warn | 1 | README.md"
+reset
+sb scaffold project Long --path projects/long --keys LG --topics-root a-rather-long-folder-for-the-docs/of-the-long-project
+rm "$vault/projects/long/a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
+doc Long
+chk "hubs: a long path is printed whole" hubs Long "warn | 1 | a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -304,6 +528,98 @@ mkdir -p "$T/EX-7/notes" "$T/EX-8"
 doc Example
 chk "no-readme: a task folder with no README, or an empty one, warns" no-readme Example "warn | 2 | EX-7, EX-8"
 reset
+
+# ---------------------------------------------------------------- task-location
+# stray <vault path> <raw type>: write a note with that type, wherever the path says.
+stray() {
+  mkdir -p "$vault/${1%/*}"
+  printf '%s\n' '---' "type: $2" '---' '' '# A note' >"$vault/$1"
+}
+doc Example
+chk "task-location: ok on new tasks" task-location Example "ok | 0 | -"
+stray "$P/docs/billing/EX-2.md" task
+doc Example
+rc_is "task-location: a warning leaves exit 0" 0
+chk "task-location: a task filed under its topic warns, as its path under the project" task-location Example "warn | 1 | docs/billing/EX-2.md"
+is "task-location: the fix names the move command and where a task goes" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+reset
+stray "$P/tasks/EX-3.md" '"task"'
+doc Example
+chk "task-location: a loose note in the tasks root, its type in quotes" task-location Example "warn | 1 | tasks/EX-3.md"
+reset
+stray "$P/tasks/EX-1/sub/README.md" "'task' # misfiled"
+doc Example
+chk "task-location: a README deeper in a task folder" task-location Example "warn | 1 | tasks/EX-1/sub/README.md"
+reset
+stray "$P/docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md" task
+stray "$P/docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md" task
+doc Example
+chk "task-location: two long paths are printed whole, so they are told apart" task-location Example \
+  "warn | 2 | docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md, docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md"
+reset
+stray "$P/zz/last.md" task
+printf '%s\r\n' '---' 'type: task' '---' '# CRLF' >"$vault/$P/docs/crlf.md"
+stray "$P/a-first.md" task
+printf '\357\273\277---\ntype: task\n---\n# BOM\n' >"$vault/$P/docs/bom.md"
+stray "$P/tasks/EX-9.md" task
+doc Example
+chk "task-location: the offenders come sorted by path" task-location Example \
+  "warn | 5 | a-first.md, docs/bom.md, docs/crlf.md, tasks/EX-9.md, zz/last.md"
+out_has "task-location: a note with CRLF line endings is read" "docs/crlf.md"
+out_has "task-location: a note that opens with a BOM is read" "docs/bom.md"
+reset
+stray "$P/docs/billing/notes.md" note
+stray "$P/.trash/EX-8.md" task
+stray "$P/docs/.drafts/EX-9.md" task
+printf '%s\n' '# No frontmatter' '' 'type: task' >"$vault/$P/docs/plain.md"
+printf '%s\n' '---' 'title: "A note"' '---' '' 'type: task' >"$vault/$P/docs/body.md"
+printf '%s\n' '---' 'type:task' '---' '# No blank after the colon' >"$vault/$P/docs/nospace.md"
+printf '%s\n' '---' 'type: task' '' '# The frontmatter never closes' >"$vault/$P/docs/open.md"
+sb scaffold project Child --path "$P/child" --keys CH
+sb task new CH-1 --project Child --title "A task of the project inside"
+stray "$P/child/docs/CH-2.md" task
+doc
+chk "task-location: another type, dot folders, body text and the tasks of a project inside are left alone" task-location Example "ok | 0 | -"
+is "task-location: reading stops at the line that closes the frontmatter" "$(printf '%s\n' "$OUT" | grep -c 'docs/body.md' || true)" "0"
+is "task-location: type:task with no blank is no property" "$(printf '%s\n' "$OUT" | grep -c 'docs/nospace.md' || true)" "0"
+is "task-location: frontmatter that never closes holds no type" "$(printf '%s\n' "$OUT" | grep -c 'docs/open.md' || true)" "0"
+chk "task-location: the project inside gets its own misfiled task" task-location Child "warn | 1 | docs/CH-2.md"
+chk "index: a project inside another is a row like any other" index vault "ok | 0 | -"
+doc Example
+chk "task-location: the project inside is left alone when the doctor is run for one project" task-location Example "ok | 0 | -"
+reset
+
+# ---------------------------------------------------------------- roots written another way
+set_root tasks_root '"."'
+cp -R "$T/EX-1" "$vault/$P/EX-1"
+rm "$vault/$P/README.md"
+doc Example
+chk "hubs: with the tasks at the project root, the project hub is one offender" hubs Example "warn | 1 | README.md"
+chk "task-location: with that root a task folder at the project root is in its place, and the old ones are not" task-location Example \
+  "warn | 3 | tasks/EX-1/README.md, tasks/EX-2/README.md, tasks/EX-3/README.md"
+is "task-location: the fix names the project folder, with no dot part" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/<ID>/README.md, and tie it to its topic with a tag"
+reset
+set_root tasks_root ./tasks//
+set_root topics_root tasks/
+rm "$T/README.md"
+stray "$P/docs/EX-9.md" task
+doc Example
+chk "hubs: two roots on one folder name its hub once" hubs Example "warn | 1 | tasks/README.md"
+chk "task-location: a tasks root written with ./ and // is the same folder" task-location Example "warn | 1 | docs/EX-9.md"
+is "task-location: the fix names that folder folded" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+chk "board: the board is found under a root written that way" board Example "ok | 0 | -"
+reset
+if [ -d "$vault/PROJECTS" ]; then
+  set_root tasks_root TASKS
+  doc Example
+  chk "task-location: where the file system ignores letter case, a tasks root in another case is the same folder" task-location Example "ok | 0 | -"
+  reset
+else
+  printf 'skip  task-location: this file system tells TASKS from tasks\n'
+fi
 
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
@@ -435,6 +751,7 @@ out_has "close: the carried task now points at the next sprint, which has no not
 doc Example
 rc_is "sprints: exit 0 after a close with a carry" 0
 chk "sprints: ok after a close with a carry" sprints Example "ok | 0 | -"
+chk "board: with no sprint in progress the view's old sprint id is not reported" board Example "ok | 0 | -"
 sb task set EX-3 sprint=2026-03-01
 sb task set EX-2 sprint=2026-01-28
 doc Example
@@ -500,7 +817,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "24"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "26"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -537,8 +854,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 24 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "24 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 26 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "26 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -553,18 +870,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-# scope_rows <scope>: count the rows of one scope in the last run.
-scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
-is "two projects: fifteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "15/15"
+is "two projects: seventeen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "17/17"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
+  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/15/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/17/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -594,6 +909,7 @@ chk "no sprints: the profile passes without a sprints hub" profile Kanban "ok | 
 chk "no sprints: the sprints check passes" sprints Kanban "ok | 0 | -"
 is "no sprints: the sprints row says why" "$(fix_of sprints Kanban)" "sprints are off"
 chk "no sprints: the board passes with no Current sprint view" board Kanban "ok | 0 | -"
+chk "no sprints: the hubs pass with no sprints hub" hubs Kanban "ok | 0 | -"
 edit "$K/tasks/KB-1/README.md" 's/^status: planned$/status: planned\
 sprint: "2026-03-01"/'
 is "no sprints: a sprint id left on a task" "$(grep -c '^sprint: "2026-03-01"$' "$K/tasks/KB-1/README.md")" "1"
@@ -604,10 +920,15 @@ doc Kanban
 chk "no sprints: turned on again, the leftover id is reported" sprints Kanban "fail | 1 | KB-1:2026-03-01"
 sb scaffold project Kanban --path projects/kanban --keys KB
 sb sprint open Kanban --end 2026-01-14
+doc Kanban
+chk "board: sprints turned on and a sprint opened, the board with no Current sprint view warns" board Kanban "warn | 1 | tasks.base:no-view"
+is "board: the fix says what to add, and names the sprint in progress" "$(fix_of board Kanban)" \
+  "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, 2026-01-14"
 edit "$K/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
 doc Kanban
 rc_is "no sprints: a sprint left in progress is no failure" 0
 chk "no sprints: a sprint left in progress is a warning" sprints Kanban "warn | 1 | 2026-01-14:in-progress"
+chk "no sprints: the board is not asked for a Current sprint view" board Kanban "ok | 0 | -"
 is "no sprints: the way to close it is given" "$(fix_of sprints Kanban)" \
   "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
 

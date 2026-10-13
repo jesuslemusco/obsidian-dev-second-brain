@@ -1,20 +1,30 @@
+---
+index_version: 1
+---
+
 # Vault index for Claude
 
 This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every session. It lists the
-projects kept in this vault.
+projects kept in this vault, and says where new skills and agents go.
 
-## How to use this
+## In every session
+
+- Create a new personal skill or agent in this vault, not straight in `~/.claude/skills` or
+  `~/.claude/agents`, unless the user names another place. It goes in `claude/` at the vault root
+  when it is useful in any project, and in `<Path>/claude/` when it belongs to one project below.
+  `claude/README.md` at the vault root says how to add and register one.
+- Plugin skills: `story-tracker` tracks tasks, `sprint` runs a sprint, `vault-setup` sets up the
+  vault or a project, `vault-doctor` checks them. Plugin agents: `scrum-master` for the sprint
+  cadence, `docs-keeper` for docs that follow the code.
+
+## Working on a project or on notes
+
+A task that touches no project below and no note in this vault needs nothing from here on.
 
 - When a task belongs to a project below, read `<Path>/README.md`, then `<Path>/claude/README.md`,
   before anything else. The second one holds the project's rules, skills and agents.
 - Before reading or writing notes, run `second-brain conventions` and follow it. The full note is
   `~/.claude/second-brain-vault/obsidian-conventions.md`.
-- Your own skills and agents live in `claude/` at the vault root and in each project's `claude/`
-  folder. `claude/README.md` says how to add one.
-- Plugin skills: `story-tracker` tracks tasks, `sprint` runs a sprint, `vault-setup` sets up the
-  vault or a project, `vault-doctor` checks them. Plugin agents: `scrum-master` for the sprint
-  cadence, `docs-keeper` for docs that follow the code.
-- If a task belongs to none of these projects, ignore this file.
 
 ## Rules that most often go wrong
 

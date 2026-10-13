@@ -1,8 +1,9 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
-the vault, then fifteen for each project. Every entry is a heading and three lines. Read an
-entry only when its check is not `ok`, and run a fix only after the user agrees to it.
+the vault, then seventeen for each project. Every entry is a heading, a blank line and three lines,
+`Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
+`ok`, and run a fix only after the user agrees to it.
 
 ### pointer
 
@@ -12,19 +13,15 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### index
 
-- Means: `CLAUDE.md` at the vault root is missing, or has no `## Projects` table.
-- Why: that table is the only list of projects, so none resolves by name, by ticket key or by working directory.
-- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row.
+- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`), which a path that is `.` or holds a `..` part or a backslash never is, and such a row gets no project rows; a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
+- Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has.
+- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row. A row: ask, then correct its path, change the name or the key another row has, or remove the row of a project that is gone. Older: ask first; then replace the text above `## Projects` with the text of `templates/vault-index.md.tmpl`, keep the lines the user added and the table, and set `index_version` to the template's.
 
 ### conventions
 
-- Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the
-  plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper
-  no longer has.
+- Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper no longer has.
 - Why: every skill and agent points to it for the rules on notes, tags and links, so they would write without them.
-- Fix, missing: `second-brain scaffold vault`. It creates the note and overwrites nothing.
-- Fix, older: ask first, because the user may have edited the note. On a yes, delete it and run
-  `second-brain scaffold vault`; otherwise bring it in line with the template by hand.
+- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older: ask first, because the user may have edited the note; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with the template by hand.
 
 ### import
 
@@ -52,9 +49,9 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### descriptions
 
-- Means: a skill or agent in the vault has a `description` over 200 characters.
-- Why: every registered description is loaded into every session, so a long one costs context each time.
-- Fix: cut the `description` in its frontmatter to one sentence: what it does and when to use it.
+- Means: a skill or agent in the vault has no `description` (`<name>:none`), or one over 200 characters (`<name>:<length>`).
+- Why: Claude Code decides from the description when to use a skill or an agent, so one without is never picked. Every registered description is loaded into every session, so a long one costs context each time.
+- Fix: write the `description` in its frontmatter as one sentence: what it does and when to use it. A long one: cut it to that.
 
 ### skill-size
 
@@ -64,15 +61,21 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### profile
 
-- Means: the project's `claude/profile.md` is missing, or lacks a frontmatter key or one of its seven sections.
-- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there.
-- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl` under the plugin root.
+- Means: the project's `claude/profile.md` is missing, lacks a frontmatter key or one of its seven sections, or has a root that leaves the project (`<key>:leaves-project`): `tasks_root`, `topics_root` or `sprints_root` with a `..` part, a backslash or a slash in front.
+- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there. A root that leaves the project sends them to read and write outside it; the doctor checks under that root's default and opens nothing through the value.
+- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl` under the plugin root. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
 
 ### board
 
-- Means: `tasks.base` is missing from the tasks root.
-- Why: Obsidian shows the task board from that file, so the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs.
-- Fix: `second-brain scaffold project <name> --path <path>` again. It writes the board and overwrites nothing.
+- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is in a form the helper does not read (`tasks.base:filter`), or the board has no such view (`tasks.base:no-view`).
+- Why: Obsidian shows the task board from that file, so with no file the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs and goes by the sprint in progress, so with another id in the view Obsidian shows another sprint than the helper reports.
+- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id, or `filter`: after a yes, write the filter line of the view in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites that form alone. Never add a second view by that name. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter.
+
+### hubs
+
+- Means: a hub of the project is missing or empty: `README.md`, `claude/README.md`, or the `README.md` of the tasks root, of the topics root unless it is `.`, or of the sprints root when the project uses sprints.
+- Why: the index tells Claude to read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others. `second-brain scaffold project` creates all of them.
+- Fix: `second-brain scaffold project <name> --path <path>` again, with the name and the path of the index row. It writes each missing hub from its template and overwrites nothing, so it keeps an empty file: ask, then delete that one first. A hub that comes back is a new one, without the lines the old one had gained, such as the sprint links of the sprints hub.
 
 ### task-frontmatter
 
@@ -109,6 +112,12 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 - Means: a folder directly under the tasks root holds no `README.md`.
 - Why: the board lists only that README, so the folder's work is on no board and no command finds it by id.
 - Fix: a task: `second-brain task new <ID> --project <project> --title "<title>"` writes the README into the folder. Not a task: tell the user.
+
+### task-location
+
+- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, or deeper inside a task folder. Each offender is the note's path under the project.
+- Why: the board and the task commands read only the README directly inside a folder of the tasks root, so this task is on no board and no task command finds it by id.
+- Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first; it rewrites the links to the note. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
 
 ### topic-tags
 

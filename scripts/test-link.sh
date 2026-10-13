@@ -483,6 +483,12 @@ sb link --check
 rc_is "project without a claude folder: exit 0" 0
 out_lacks "project without a claude folder: no row" "projects/bare"
 out_lacks "index row without a folder: no row" "projects/ghost"
+mkdir -p "$vault/"'back\slash/claude/skills/behind-skill'
+printf '%s\n' '---' 'name: behind-skill' 'description: A skill behind a backslash.' '---' >"$vault/"'back\slash/claude/skills/behind-skill/SKILL.md'
+printf '| Back | back\\slash | | A path with a backslash. |\n' >>"$vault/CLAUDE.md"
+sb link --check
+rc_is "index row with a backslash in its path: exit 0" 0
+out_lacks "index row with a backslash in its path: nothing under it is scanned" "behind-skill"
 
 case "$vault" in
   *" "*) pass "space in the vault path: the scratch vault has one" ;;

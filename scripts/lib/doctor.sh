@@ -2,27 +2,66 @@
 # doctor.sh - the health check: one row per check for the vault and each project, and the hook check.
 
 # Print one row: result | check | scope | count | offenders | fix. Offenders come one per line.
+# An offender is cut at 48 bytes, or at the width given last. A short tag after its last colon
+# is kept whole, so the cut falls in the value before it.
 sb_doc_row() {
-  local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}"
+  local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}" width="${6:-48}"
   scope="${scope//|//}"
   fix="${fix//|//}"
   if [ -z "$list" ]; then
     printf '%s | %s | %s | 0 | - | %s\n' "$result" "$check" "$scope" "$fix"
     return 0
   fi
-  printf '%s\n' "$list" | LC_ALL=C SB_HEAD="$result | $check | $scope" SB_FIX="$fix" awk "$(sb_awk_lib)"'
-    function tidy(s) { gsub(/[\t\r]/, " ", s); gsub(/[|]/, "/", s); gsub(/,/, ";", s); return cut(trim(s), 48) }
+  printf '%s\n' "$list" | LC_ALL=C SB_HEAD="$result | $check | $scope" SB_FIX="$fix" SB_W="$width" awk "$(sb_awk_lib)"'
+    function tidy(s,   i, tag) {
+      gsub(/[\t\r]/, " ", s); gsub(/[|]/, "/", s); gsub(/,/, ";", s); s = trim(s)
+      if (length(s) <= w) return s
+      for (i = length(s); i > 1 && substr(s, i, 1) != ":"; i--) continue
+      tag = substr(s, i)
+      if (i > 1 && length(tag) > 1 && length(tag) <= 21 && tag !~ / /) return cut(substr(s, 1, i - 1), w - length(tag)) tag
+      return cut(s, w)
+    }
+    BEGIN { w = ENVIRON["SB_W"] + 0 }
     $0 != "" { n++; if (n <= 5) out = out (n > 1 ? ", " : "") tidy($0) }
     END { print ENVIRON["SB_HEAD"] " | " (n + 0) " | " (n ? out : "-") " | " ENVIRON["SB_FIX"] }'
 }
 
 # Print an ok row when the offender list is empty, else a row at the given level with its fix.
+# A sixth argument is the width offenders are cut at.
 sb_doc_report() {
   if [ -z "$4" ]; then
     sb_doc_row ok "$2" "$3" "" "-"
   else
-    sb_doc_row "$1" "$2" "$3" "$4" "$5"
+    sb_doc_row "$1" "$2" "$3" "$4" "$5" "${6:-}"
   fi
+}
+
+# Set SB_DOC_FOLD to a relative path with its empty and "." parts folded out. Return 1 when the
+# path leaves the folder it starts in: a ".." part, a backslash, or a slash in front.
+sb_doc_fold() {
+  local rest="$1" seg
+  SB_DOC_FOLD=""
+  case "$rest" in /* | *\\*) return 1 ;; esac
+  while [ -n "$rest" ]; do
+    seg="${rest%%/*}"
+    case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+    case "$seg" in
+      '' | .) ;;
+      ..) return 1 ;;
+      *) SB_DOC_FOLD="${SB_DOC_FOLD:+$SB_DOC_FOLD/}$seg" ;;
+    esac
+  done
+  return 0
+}
+
+# Return 0 when an index path, as it is written, names a folder inside the vault; sets SB_DOC_FOLD.
+sb_doc_folder() {
+  sb_doc_fold "$1" && [ -n "$SB_DOC_FOLD" ]
+}
+
+# Return 0 when a version, all digits, is lower than another. One too long to compare is newer.
+sb_doc_older() {
+  [ "${#1}" -le 9 ] && [ "${#2}" -le 9 ] && [ "$1" -lt "$2" ]
 }
 
 # Check that the pointer resolves to a vault.
@@ -35,9 +74,10 @@ sb_doc_check_pointer() {
   sb_doc_report fail pointer vault "$bad" "run /obsidian-dev-second-brain:vault-setup init"
 }
 
-# Check that the index exists and holds the Projects table.
+# Check that the index exists and holds the Projects table, that each row leads to a folder and
+# shares no name, key or path with another, and that the index is not older than the template.
 sb_doc_check_index() {
-  local f="$SB_ROOT/CLAUDE.md" bad=""
+  local f="$SB_ROOT/CLAUDE.md" rows name path keys have want bad="" nl=$'\n'
   if [ ! -f "$f" ]; then
     sb_doc_row fail index vault "CLAUDE.md" "run /obsidian-dev-second-brain:vault-setup init"
     return 0
@@ -47,7 +87,53 @@ sb_doc_check_index() {
     /^#[#]? / { insec = (tolower($0) ~ /^##[ \t]+projects[ \t]*$/); next }
     insec && tolower($0) ~ /^[ \t]*\|[ \t]*project[ \t]*\|/ { found = 1; exit }
     END { exit(found ? 0 : 1) }' "$f" || bad="## Projects"
-  sb_doc_report fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
+  if [ -n "$bad" ]; then
+    sb_doc_row fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
+    return 0
+  fi
+  rows="$(sb_projects_tsv 2>/dev/null)"
+  # A path that leaves the vault is no folder of it, and is never looked for on disk.
+  while IFS=$'\t' read -r name path keys; do
+    [ -n "$path" ] || continue
+    if sb_doc_folder "$path" && [ -d "$SB_ROOT/$SB_DOC_FOLD" ]; then continue; fi
+    bad="$bad$name:no-folder$nl"
+  done <<EOF
+$rows
+EOF
+  # Names and paths are compared without letter case and keys in upper case, as the lookups
+  # compare them; "//" and "/./" in a path are folded first. A key holds a letter or a digit.
+  bad="$bad$(printf '%s\n' "$rows" | LC_ALL=C awk -F'\t' '
+    function see(kind, k, v) {
+      k = kind SUBSEP k
+      if (!(k in at)) { at[k] = NR; spell[k] = v; ord[kind, ++n[kind]] = k }
+      else if (at[k] != NR) twice[k] = 1
+    }
+    function fold(p) { p = "/" p "/"; while (sub(/\/\.?\//, "/", p)) continue; return tolower(p) }
+    $1 == "" { next }
+    {
+      see(1, tolower($1), $1)
+      m = split($3, key, ",")
+      for (i = 1; i <= m; i++) if (key[i] ~ /[A-Za-z0-9]/) see(2, toupper(key[i]), key[i])
+      see(3, fold($2), $2)
+    }
+    END {
+      for (c = 1; c <= 3; c++)
+        for (i = 1; i <= n[c]; i++) if (ord[c, i] in twice) print spell[ord[c, i]] ":twice"
+    }')"
+  if [ -n "$bad" ]; then
+    sb_doc_row fail index vault "$bad" "give each row its own name, keys and path, and a path that is a folder in the vault"
+    return 0
+  fi
+  have="$(sb_fm_get "$f" index_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/vault-index.md.tmpl" index_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  if [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }; then
+    sb_doc_row warn index vault "CLAUDE.md:${have:-none}" \
+      "the index is older than the plugin's template, version $want: bring the text above ## Projects in line with the template, keep the table, and set index_version"
+    return 0
+  fi
+  sb_doc_row ok index vault "" "-"
 }
 
 # Check that the conventions note exists, and that it is not older than the plugin's template.
@@ -62,7 +148,7 @@ sb_doc_check_conventions() {
   want="$(sb_fm_get "$(sb_plugin_root)/templates/obsidian-conventions.md.tmpl" conventions_version 2>/dev/null)"
   case "$have" in *[!0-9]*) have="" ;; esac
   case "$want" in *[!0-9]*) want="" ;; esac
-  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+  if [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }; then
     sb_doc_row warn conventions vault "obsidian-conventions.md:${have:-none}" \
       "the note is older than the plugin's template, version $want: delete it and run second-brain scaffold vault, or edit it by hand"
     return 0
@@ -143,9 +229,11 @@ sb_doc_piece_files() {
   seen="$nl"
   while IFS=$'\t' read -r name path keys <&3; do
     [ -n "$path" ] || continue
-    case "/$path/" in */../*) continue ;; esac
-    dir="$SB_ROOT/$path/claude"
-    [ "$path" != "." ] || dir="$SB_ROOT/claude"
+    dir="$SB_ROOT/claude"
+    if [ "$path" != "." ]; then
+      sb_doc_folder "$path" || continue
+      dir="$SB_ROOT/$SB_DOC_FOLD/claude"
+    fi
     case "$seen" in *"$nl$dir$nl"*) continue ;; esac
     seen="$seen$dir$nl"
     for f in "$dir"/skills/*/SKILL.md "$dir"/agents/*.md; do
@@ -190,11 +278,14 @@ sb_doc_piece_scan() {
     }'
 }
 
-# Check that no scanned skill or agent description is over 200 characters.
+# Check that every scanned skill or agent has a description, and none over 200 characters.
 sb_doc_check_descriptions() {
   local bad
-  bad="$(printf '%s\n' "$SB_DOC_PIECES" | awk -F'\t' '$3 > 200 { print $1 ":" $3 }')"
-  sb_doc_report warn descriptions vault "$bad" "shorten the description to one sentence under 200 characters"
+  bad="$(printf '%s\n' "$SB_DOC_PIECES" | awk -F'\t' '
+    NF < 4 { next }
+    $3 == 0 { print $1 ":none" }
+    $3 > 200 { print $1 ":" $3 }')"
+  sb_doc_report warn descriptions vault "$bad" "give each one a description of one sentence under 200 characters"
 }
 
 # Check that no scanned SKILL.md is over 150 lines.
@@ -204,6 +295,20 @@ sb_doc_check_skill_size() {
   sb_doc_report warn skill-size vault "$bad" "move the detail of one mode into a sibling file read only in that mode"
 }
 
+# Set SB_DOC_ROOT to a root of the profile, folded, or to its default when the key is absent.
+# A value that leaves the project gives the default too, and is kept for the profile check.
+sb_doc_root() {
+  local raw
+  SB_DOC_ROOT="$2"
+  raw="$(sb_fm_get "$SB_P_PROFILE" "$1" 2>/dev/null)"
+  [ -n "$raw" ] || return 0
+  if sb_doc_fold "$raw"; then
+    SB_DOC_ROOT="${SB_DOC_FOLD:-.}"
+  else
+    SB_DOC_LEAVES="$SB_DOC_LEAVES$1:leaves-project"$'\n'
+  fi
+}
+
 # Set the project globals for one index row, without exiting on a bad row.
 sb_doc_project() {
   SB_P_NAME="$1"
@@ -211,9 +316,13 @@ sb_doc_project() {
   SB_P_KEYS="${3:-}"
   SB_P_DIR="$SB_ROOT/$SB_P_PATH"
   SB_P_PROFILE="$SB_P_DIR/claude/profile.md"
-  SB_TASKS_ROOT="$(sb_setting "$SB_P_PATH" tasks_root tasks)"
-  SB_TOPICS_ROOT="$(sb_setting "$SB_P_PATH" topics_root docs)"
-  SB_SPRINTS_ROOT="$(sb_setting "$SB_P_PATH" sprints_root sprints)"
+  SB_DOC_LEAVES=""
+  sb_doc_root tasks_root tasks
+  SB_TASKS_ROOT="$SB_DOC_ROOT"
+  sb_doc_root topics_root docs
+  SB_TOPICS_ROOT="$SB_DOC_ROOT"
+  sb_doc_root sprints_root sprints
+  SB_SPRINTS_ROOT="$SB_DOC_ROOT"
   SB_DOC_SPRINTS=1
   sb_uses_sprints "$SB_P_PATH" || SB_DOC_SPRINTS=0
   SB_DOC_FILES="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT")"
@@ -296,14 +405,17 @@ sb_doc_facts() {
     }'
 }
 
-# Check that the profile exists and has every contract key and the seven sections.
+# Check that the profile exists, has every contract key and the seven sections, and that no
+# root leaves the project.
 sb_doc_check_profile() {
-  local bad
+  local bad fix="add them to claude/profile.md, as in the profile template"
   if [ ! -f "$SB_P_PROFILE" ]; then
     sb_doc_row fail profile "$SB_P_NAME" "profile.md" "run /obsidian-dev-second-brain:vault-setup adopt $SB_P_PATH"
     return 0
   fi
-  bad="$(LC_ALL=C awk '
+  [ -z "$SB_DOC_LEAVES" ] ||
+    fix="write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+  bad="$SB_DOC_LEAVES$(LC_ALL=C awk '
     BEGIN {
       nk = split("aliases type project ticket_keys tracker persona tasks_root topics_root sprints_root " \
         "sprint_length_days sprint_anchor_end base_branch branch_pattern environments repos achievements_skill tags", keys, " ")
@@ -322,14 +434,60 @@ sb_doc_check_profile() {
       for (i = 1; i <= nk; i++) if (!(keys[i] in has)) print keys[i]
       for (i = 1; i <= ns; i++) if (!(tolower(secs[i]) in sec)) print "## " secs[i]
     }' "$SB_P_PROFILE")"
-  sb_doc_report fail profile "$SB_P_NAME" "$bad" "add them to claude/profile.md, as in the profile template"
+  sb_doc_report fail profile "$SB_P_NAME" "$bad" "$fix"
 }
 
-# Check that the board file exists.
+# Check that the board file exists, and that its Current sprint view filters on the sprint in progress.
 sb_doc_check_board() {
-  local bad=""
-  [ -f "$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" ] || bad="tasks.base"
-  sb_doc_report fail board "$SB_P_NAME" "$bad" "run second-brain scaffold project again with the same name and path to write it"
+  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit
+  if [ ! -f "$base" ]; then
+    sb_doc_row fail board "$SB_P_NAME" "tasks.base" "run second-brain scaffold project again with the same name and path to write it"
+    return 0
+  fi
+  # The helper's own Current sprint board goes by the sprint in progress, so the view should too.
+  # It is read under the checked sprints root: sb_sprint_current_id takes the profile's own value.
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || cur="$(sb_sprint_files "$SB_P_DIR/$SB_SPRINTS_ROOT" | sb_sprint_scan |
+    awk -F'\t' '$3 == "in-progress" { print $2 }' | LC_ALL=C sort | tail -1)"
+  if [ -n "$cur" ]; then
+    lit="$(sb_board_sprint_literal "$base")"
+    if [ -z "$lit" ]; then
+      # No id was read: the view is there with a filter in another form, or it is not there.
+      if LC_ALL=C awk '
+        { sub(/\r$/, "") }
+        /^[ \t]*(-[ \t]+)?name:[ \t]*["\047]?Current sprint["\047]?[ \t]*$/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }' "$base"; then
+        sb_doc_row warn board "$SB_P_NAME" "tasks.base:filter" \
+          "write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
+      else
+        sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
+          "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+      fi
+      return 0
+    fi
+    if [ "$lit" != "$cur" ]; then
+      sb_doc_row warn board "$SB_P_NAME" "tasks.base:$lit" "set the filter of the board's Current sprint view to the sprint in progress, $cur"
+      return 0
+    fi
+  fi
+  sb_doc_row ok board "$SB_P_NAME" "" "-"
+}
+
+# Check that each hub scaffold project writes is there, with something in it. A hub that two
+# roots share, such as the project hub when a root is ".", is looked at once.
+sb_doc_check_hubs() {
+  local roots r h seen bad="" nl=$'\n'
+  roots=("." "claude" "$SB_TASKS_ROOT" "$SB_TOPICS_ROOT")
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || roots[${#roots[@]}]="$SB_SPRINTS_ROOT"
+  seen="$nl"
+  for r in "${roots[@]}"; do
+    h="$r/README.md"
+    h="${h#./}"
+    case "$seen" in *"$nl$h$nl"*) continue ;; esac
+    seen="$seen$h$nl"
+    [ -s "$SB_P_DIR/$h" ] || bad="$bad$h$nl"
+  done
+  sb_doc_report warn hubs "$SB_P_NAME" "$bad" \
+    "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first" 120
 }
 
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
@@ -422,6 +580,42 @@ sb_doc_check_no_readme() {
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
 }
 
+# Check that no note under the project is a task outside its own folder in the tasks root.
+sb_doc_check_task_location() {
+  local bad to="$SB_P_PATH/$SB_TASKS_ROOT"
+  # Three parts on stdin: the index paths, the task READMEs, the notes. A project folder inside
+  # this one holds its own tasks. Paths are matched without letter case, as some file systems do.
+  # A note has a type when its frontmatter closes and holds the key, a colon and a blank.
+  bad="$({
+    sb_projects_tsv 2>/dev/null | cut -f2
+    printf '\034\n%s\n\034\n' "$SB_DOC_FILES"
+    sb_md_files "$SB_P_DIR"
+  } | LC_ALL=C SB_R="$SB_ROOT/" SB_P="$SB_P_PATH" awk "$(sb_awk_lib)"'
+    function norm(p) { while (sub(/\/\.?\//, "/", p)) continue; return p }
+    BEGIN { part = 1; root = ENVIRON["SB_R"]; dir = norm(root ENVIRON["SB_P"] "/"); me = tolower(dir) }
+    $0 == "\034" { part++; next }
+    $0 == "" { next }
+    part == 1 { q = tolower(norm(root $0 "/")); if (q != me && substr(q, 1, length(me)) == me) inner[++ni] = q; next }
+    part == 2 { task[tolower(norm($0))] = 1; next }
+    {
+      file = $0; path = norm(file); low = tolower(path)
+      if (low in task) next
+      for (i = 1; i <= ni; i++) if (substr(low, 1, length(inner[i])) == inner[i]) next
+      n = 0; type = ""; closed = 0
+      while ((getline line < file) > 0) {
+        n++
+        sub(/\r$/, "", line)
+        if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+        if (line == "---") { closed = 1; break }
+        if (line ~ /^type:([ \t]|$)/) type = unq(substr(line, 6))
+      }
+      close(file)
+      if (closed && type == "task") print substr(path, length(dir) + 1)
+    }' | LC_ALL=C sort)"
+  sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
+    "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
+}
+
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
 sb_doc_topic_exceptions() {
   sb_section "$SB_P_PROFILE" Topics 2>/dev/null | LC_ALL=C awk "$(sb_awk_lib)"'
@@ -429,7 +623,7 @@ sb_doc_topic_exceptions() {
       tag = substr($0, 1, RSTART - 1); folder = trim(substr($0, RSTART + RLENGTH))
       sub(/^[ \t]*[-*][ \t]+/, "", tag); gsub(/`/, "", tag); gsub(/`/, "", folder)
       tag = trim(tag); sub(/^#/, "", tag); sub(/^(\.\/|\/)+/, "", folder); sub(/\/+$/, "", folder)
-      if (tag != "" && folder != "" && ("/" folder "/") !~ /\/\.\.\//) print tag "\t" folder
+      if (tag != "" && folder != "" && ("/" folder "/") !~ /\/\.\.\// && index(folder, "\\") == 0) print tag "\t" folder
     }'
 }
 
@@ -605,10 +799,12 @@ sb_doc_rows() {
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do
-    [ -n "$path" ] || continue
-    sb_doc_project "$name" "$path" "$keys"
-    for c in profile board task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme topic_tags code_doc_map repos sprints unresolved_links bare_links line_endings; do
+    # A row whose path leaves the vault gets no rows, and nothing under it is opened.
+    sb_doc_folder "$path" || continue
+    sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
+    for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
+      alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
+      line_endings; do
       "sb_doc_check_$c"
     done
   done 3<<EOF
@@ -647,8 +843,8 @@ sb_doc_json() {
 sb_doc_fix() {
   local name path keys id file status tag n=0
   while IFS=$'\t' read -r name path keys <&3; do
-    [ -n "$path" ] || continue
-    sb_doc_project "$name" "$path" "$keys"
+    sb_doc_folder "$path" || continue
+    sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     while IFS=$'\t' read -r id file status <&4; do
       [ -n "$file" ] || continue
       sb_fm_status_tag "$file" "$status" || continue

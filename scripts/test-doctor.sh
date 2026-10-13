@@ -224,6 +224,10 @@ add_row File projects/afile FI
 doc
 chk "index: a path that is a file is no folder" index vault "fail | 1 | File:no-folder"
 index_back
+add_row 'A project with a rather long display name, fifty bytes' projects/ghost GH
+doc
+chk "index: a long offender is cut in its value and keeps its tag" index vault "fail | 1 | A project with a rather long display n...:no-folder"
+index_back
 add_row Ghost projects/ghost ex
 add_row example projects/example EX
 doc
@@ -435,6 +439,11 @@ rm "$vault/projects/flat/README.md"
 doc Flat
 chk "hubs: there the project hub is one offender, not two" hubs Flat "warn | 1 | README.md"
 reset
+sb scaffold project Long --path projects/long --keys LG --topics-root a-rather-long-folder-for-the-docs/of-the-long-project
+rm "$vault/projects/long/a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
+doc Long
+chk "hubs: a long path is printed whole" hubs Long "warn | 1 | a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
+reset
 
 # ---------------------------------------------------------------- task frontmatter and status
 doc Example
@@ -530,6 +539,12 @@ reset
 stray "$P/tasks/EX-1/sub/README.md" "'task' # misfiled"
 doc Example
 chk "task-location: a README deeper in a task folder" task-location Example "warn | 1 | tasks/EX-1/sub/README.md"
+reset
+stray "$P/docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md" task
+stray "$P/docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md" task
+doc Example
+chk "task-location: two long paths are printed whole, so they are told apart" task-location Example \
+  "warn | 2 | docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md, docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md"
 reset
 stray "$P/docs/billing/notes.md" note
 stray "$P/.trash/EX-8.md" task

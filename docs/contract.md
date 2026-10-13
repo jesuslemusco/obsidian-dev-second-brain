@@ -370,6 +370,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn` or
   `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
   or `-`.
+- A long offender is cut and ends with `...`: at 48 bytes, or at 120 for the paths of `hubs` and
+  `task-location`. A short tag after its last colon, such as `:no-folder`, is kept whole: the
+  cut falls in the value before it.
 - A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
   fail row, with the fail offenders only.
 - The doctor follows no `..`. An index path or a profile root is judged as it is written, and

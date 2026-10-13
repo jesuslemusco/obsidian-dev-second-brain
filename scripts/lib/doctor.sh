@@ -2,26 +2,37 @@
 # doctor.sh - the health check: one row per check for the vault and each project, and the hook check.
 
 # Print one row: result | check | scope | count | offenders | fix. Offenders come one per line.
+# An offender is cut at 48 bytes, or at the width given last. A short tag after its last colon
+# is kept whole, so the cut falls in the value before it.
 sb_doc_row() {
-  local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}"
+  local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}" width="${6:-48}"
   scope="${scope//|//}"
   fix="${fix//|//}"
   if [ -z "$list" ]; then
     printf '%s | %s | %s | 0 | - | %s\n' "$result" "$check" "$scope" "$fix"
     return 0
   fi
-  printf '%s\n' "$list" | LC_ALL=C SB_HEAD="$result | $check | $scope" SB_FIX="$fix" awk "$(sb_awk_lib)"'
-    function tidy(s) { gsub(/[\t\r]/, " ", s); gsub(/[|]/, "/", s); gsub(/,/, ";", s); return cut(trim(s), 48) }
+  printf '%s\n' "$list" | LC_ALL=C SB_HEAD="$result | $check | $scope" SB_FIX="$fix" SB_W="$width" awk "$(sb_awk_lib)"'
+    function tidy(s,   i, tag) {
+      gsub(/[\t\r]/, " ", s); gsub(/[|]/, "/", s); gsub(/,/, ";", s); s = trim(s)
+      if (length(s) <= w) return s
+      for (i = length(s); i > 1 && substr(s, i, 1) != ":"; i--) continue
+      tag = substr(s, i)
+      if (i > 1 && length(tag) > 1 && length(tag) <= 21 && tag !~ / /) return cut(substr(s, 1, i - 1), w - length(tag)) tag
+      return cut(s, w)
+    }
+    BEGIN { w = ENVIRON["SB_W"] + 0 }
     $0 != "" { n++; if (n <= 5) out = out (n > 1 ? ", " : "") tidy($0) }
     END { print ENVIRON["SB_HEAD"] " | " (n + 0) " | " (n ? out : "-") " | " ENVIRON["SB_FIX"] }'
 }
 
 # Print an ok row when the offender list is empty, else a row at the given level with its fix.
+# A sixth argument is the width offenders are cut at.
 sb_doc_report() {
   if [ -z "$4" ]; then
     sb_doc_row ok "$2" "$3" "" "-"
   else
-    sb_doc_row "$1" "$2" "$3" "$4" "$5"
+    sb_doc_row "$1" "$2" "$3" "$4" "$5" "${6:-}"
   fi
 }
 
@@ -462,7 +473,7 @@ sb_doc_check_hubs() {
     [ -s "$SB_P_DIR/$h" ] || bad="$bad$h$nl"
   done
   sb_doc_report warn hubs "$SB_P_NAME" "$bad" \
-    "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first"
+    "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first" 120
 }
 
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
@@ -587,7 +598,7 @@ sb_doc_check_task_location() {
       if (type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
-    "move it with second-brain move to $SB_P_PATH/$SB_TASKS_ROOT/<ID>/README.md, and tie it to its topic with a tag"
+    "move it with second-brain move to $SB_P_PATH/$SB_TASKS_ROOT/<ID>/README.md, and tie it to its topic with a tag" 120
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.

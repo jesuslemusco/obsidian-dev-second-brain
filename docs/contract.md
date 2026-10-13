@@ -9,12 +9,14 @@ frontmatter below. Change this file first, then the code.
 | Word | Meaning |
 |---|---|
 | vault | The Obsidian vault root, the folder that holds `.obsidian/`. |
-| pointer | `~/.claude/second-brain-vault`, a symlink to the vault. The environment variable `SECOND_BRAIN_VAULT` overrides it (tests use this). |
+| link directory | `~/.claude`, or `SECOND_BRAIN_CLAUDE_HOME` when set (tests set it). Holds the pointer and the links to the vault's own skills and agents. |
+| pointer | `second-brain-vault` in the link directory, a link to the vault: a symlink on macOS and Linux, a directory junction on Windows. `second-brain pointer set` creates it. The environment variable `SECOND_BRAIN_VAULT` overrides it (tests use this). |
 | index | `<vault>/CLAUDE.md`. Always loaded by Claude through an import in `~/.claude/CLAUDE.md`. Holds the only list of projects. |
 | conventions | `<vault>/obsidian-conventions.md`. Skills point to it as `~/.claude/second-brain-vault/obsidian-conventions.md`. Its first section, "The short version", is the default read. |
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
 | profile | `<vault>/<project path>/claude/profile.md`. The one per-project settings note. |
-| helper | `bin/second-brain`. On the Bash PATH while the plugin is enabled. |
+| helper | `bin/second-brain`. On the Bash PATH while the plugin is enabled. It reads and writes the vault's files and never calls Obsidian, which is only the viewer. |
+| vault path | A path relative to the vault root, with forward slashes on every system. |
 
 Generic files (everything in this repo) never contain an absolute path, a project name, a ticket
 key or a person's name. `scripts/leak-check.sh` enforces part of that.
@@ -184,24 +186,31 @@ task folder (a folder-depth filter), shows `file.asLink(aliases[0])` as the task
 
 ## 7. The helper
 
-`second-brain <command> [args]`. Bash 3.2 and awk only; must run on macOS and Linux. Output is
-plain text meant to be read by Claude: short, stable, no colour.
+`second-brain <command> [args]`. Bash 3.2 and awk only; must run on macOS, on Linux, and on Windows
+in Git Bash, the shell Claude Code uses there. Output is plain text meant to be read by Claude:
+short, stable, no colour.
 
-Exit codes: `0` ok, `1` not found, `2` setup missing (no pointer or not a vault), `3` Obsidian CLI
-unavailable, `4` ambiguous, `5` bad usage, `6` already exists.
+Exit codes: `0` ok, `1` not found, `2` setup missing (no pointer or not a vault), `4` ambiguous,
+`5` bad usage, `6` already exists. `3` is retired: it meant the Obsidian CLI was unavailable.
 
 Rules that hold for every command:
 
 - An empty cell or value prints `-`. Callers read `-` as empty.
+- Every read and every write is a file operation on the vault. No command needs Obsidian to be
+  installed or running.
 - Wherever a command takes `<ID>`, the folder id or any alias of the task is accepted. Task commands
-  resolve it from the task READMEs on disk, never from Obsidian's index, so a write cannot land on
-  the wrong task while the index lags.
+  resolve it from the task READMEs on disk.
 - A lookup that finds nothing exits 1 (`find`, `topic`, `search`). A listing that finds nothing
-  exits 0 with no rows (`board`, `projects`).
-- Writes are file edits, never Obsidian CLI calls. They change only the lines they must and keep the
-  file's line endings.
-- Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_TODAY` (today's date, for
-  tests), `SECOND_BRAIN_OBSIDIAN` (CLI binary; `none` disables it), `SECOND_BRAIN_OB_TIMEOUT`.
+  exits 0 with no rows (`board`, `projects`, `backlinks`, `unresolved`).
+- Writes change only the lines they must and keep the file's line endings.
+- Wherever a command takes `<path>`, it is a vault path. One that leaves the vault, enters a dot
+  folder or holds a backslash is refused with exit 5, and so is an absolute path.
+- An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`, which
+  Git Bash and Windows programs both accept. An absolute path that is read (an argument, an
+  environment override, `repos_root`, a `repo_paths` entry) may be in that form, written with
+  backslashes, or in Git Bash's own form, `/c/...`.
+- Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_CLAUDE_HOME` (link
+  directory), `SECOND_BRAIN_TODAY` (today's date, for tests).
 
 | Command | Output | Notes |
 |---|---|---|
@@ -209,15 +218,14 @@ Rules that hold for every command:
 | `version` | the plugin version | read from `.claude-plugin/plugin.json` |
 | `conventions [section]` | one level-2 section of the vault's conventions note | default section `The short version`; the name is matched case-insensitively; exit 1 when the note or the section is missing |
 | `root` | absolute physical path of the vault | exit 2 when the pointer is missing or not a vault |
-| `context [--cwd DIR]` | at most 6 `key: value` lines: `vault`, `obsidian` (up, down, missing), `search` (ok, unreliable, unknown), `project`, `project_path`, `sprint` | always exits 0; unknown values print `none`. `sprint` is `off` for a project that does not use sprints. `search` is read from the line `- search: ok ...` or `- search: unreliable ...` in the conventions' `## Limits on this install` block, which `probe` writes |
+| `context [--cwd DIR]` | at most 4 `key: value` lines: `vault`, `project`, `project_path`, `sprint` | always exits 0; unknown values print `none`. `sprint` is `off` for a project that does not use sprints |
 | `projects` | one TSV row per project: name, path, keys | from the index table |
 | `project --name N` / `--key K` / `--cwd DIR` | one TSV row: name, path, keys | `K` is a key prefix or a full id (`EX` or `EX-123`). With no flag it uses the working directory. Exit 1 none, exit 4 several (prints them) |
 | `repo <project> [name]` | with no name, one TSV row per repo in the profile's order: name, path, state (`ok`, `missing`, or `unknown` when no location is recorded; path is then `-`). With a name, the path alone | paths are absolute, with `~` expanded. With a name: exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `profile <project> --keys` | profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | section name matched case-insensitively; exit 1 when absent |
-| `ob <args...>` | the Obsidian CLI's output | finds the binary (PATH, then the macOS app bundle); exit 3 when it is missing or the app is not running |
-| `board <project> [view] [--files]` | first line `source: board` or `source: files`, then one row per task (no rows for `Current sprint` when no sprint is in progress, whatever the source): `id | title | status | sprint | topics | branch | next | envs` | default view `Active` (status planned, in-progress or in-review). Asks Obsidian which notes the view holds, then reads their frontmatter; `--files` or a closed app reads the files directly. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `title` falls back to the note's first heading when the property is absent |
-| `find <ID-or-alias> [--project P]` | vault-relative path(s) | tries the task path, then `obsidian aliases`, then a frontmatter grep; exit 1 none |
+| `board <project> [view]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs` | default view `Active` (status planned, in-progress or in-review). Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `title` falls back to the note's first heading when the property is absent |
+| `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, topics, envs, summary line, newest status note | |
 | `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys, and for a sprint id on a project that does not use sprints (`sprint=` still removes one) |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; refuses `type/` and `status/` tags (exit 5) |
@@ -225,7 +233,12 @@ Rules that hold for every command:
 | `task new <ID> [--project P] [--title T] [--topics a,b] [--envs]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README or the id is another task's alias; a folder with no README gets one. Exit 5 for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
-| `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | `obsidian search:context` scoped with `path=`, retried once when empty; grep fallback |
+| `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks, and a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
+| `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
+| `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing. A note that cannot be read is named on stderr as `note: <path> could not be read` |
+| `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project. A note that cannot be read is named on stderr in the same way |
+| `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists. Exit 5 when `<from>` is the vault root, or is or holds what the helper finds at a fixed path (the index, the conventions note, an index project's folder or its profile), and when a name in `<to>` cannot be written in a link. `--dry-run` prints the same lines after a first line `dry run`, writes nothing, and exits as the move would. `--` ends the options, for a name that starts with a hyphen |
+| `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; `--` ends the options here too. The extension never changes: `<name>` may end with the file's own extension, in any letter case, or leave it out, and anything else is part of the name, so `api.v2` gives `api.v2.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
@@ -233,42 +246,114 @@ Rules that hold for every command:
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
 | `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`. A file that already exists is reported on stderr as `exists: <path>` |
 | `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
+| `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
+| `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
-| `probe` | the verdict line, `search: ok (...)` or `search: unreliable (...)` | records it in the conventions' limits block; exit 3 and no change when Obsidian is not up |
 | `session-check` | nothing when set up, else one line | always exits 0 |
+
+### Links between notes
+
+`backlinks`, `unresolved`, `move`, `rename`, the doctor's `unresolved-links` check and the snapshot
+share one reading of a note's links, in `scripts/lib/graph.sh`.
+
+- A link is a wikilink, `[[target]]`, or a markdown link to a file, `[text](target)`. A wikilink
+  may carry `#heading` or `#^block` after the target, `|text` after that, and a leading `!` for an
+  embed. A markdown target may be wrapped in `<>` or percent-encoded. One with a scheme (`https:`,
+  `mailto:`) or one that starts with `#` is not a link to a file.
+- Text in a fenced code block or an inline code span holds no links. Frontmatter does.
+- A link with an empty target, such as `[[#heading]]`, points inside its own note and is skipped.
+- A target is tried as written, then with `.md` added. Letter case is ignored (ASCII letters).
+- A target resolves to the first of these that exists: the file at that vault path; the file at
+  that path taken from the linking note's folder; the file whose vault path ends with the target
+  at a folder boundary. When several files match the last rule, the one in the linking note's
+  folder wins, then the one with the fewest folders in its path, then the first in byte order.
+- A target that starts with `./` or `../` is taken from the linking note's folder only. One that
+  starts with `/` is a vault path only.
+- A target that resolves to no file is unresolved.
+- The files of the vault are every file under the vault root outside dot folders (`.obsidian`,
+  `.trash`, `.second-brain`). Notes are the `.md` files among them; only notes are read for links.
+  A symlink inside the vault is not followed: what lies behind it is not a file of the vault.
+- A markdown link sits on one line. One whose text is wrapped over two lines is not read.
+
+What `move` and `rename` do to links:
+
+- Every link keeps leading to the file it led to. A link that resolved to a moved file is
+  rewritten to resolve to it at its new place. So is a link inside a moved note, and a link
+  anywhere that the moved file would capture at its new place, when it would otherwise resolve to
+  another file or to none. A link that still resolves to the same file is left as written.
+- A rewritten wikilink is the new file name alone when the old target was a file name alone and
+  the new name is unique in the vault; otherwise it is the new vault path. It has `.md` only when
+  the old target had it. `!`, `#heading` and `|text` are kept.
+- A rewritten markdown link keeps its form: a path taken from its note's folder stays one, a vault
+  path stays one, and `<>` or percent-encoding is kept.
+- In frontmatter, a link inside a single-quoted value is written, and read, with each apostrophe
+  of its target doubled, as YAML asks. Not covered: a quoted value that runs over several lines,
+  a block scalar, a quoted value behind a tag or an anchor, an unquoted link whose new name YAML
+  reads as structure, and a note whose opening `---` is never closed.
+- Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
+  moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
+- The links are worked out before anything is written; the files are moved, then the notes edited.
+- A destination is refused with exit 5 when a name the move creates, the new name or a folder
+  that does not exist yet, holds one of `# ^ [ ] | \ : * ? " < >`, a backtick or a control
+  character, or starts or ends with a blank: Obsidian forbids them, and a link could not spell
+  the name. So is a source or a destination that lies behind a symlinked folder.
+- Where the file system ignores letter case, `<from>` may be written in another case of ASCII
+  letters. A spelling that reaches the file only through a fold the helper does not make, a
+  Unicode form or the case of a letter outside ASCII, is refused with exit 1.
+- Nothing is moved or written unless every note of the vault can be read in full and every note
+  to rewrite can be written. A note that cannot is named on stderr and the command exits 1.
+- Every rewritten line is read again before anything is moved: each rewritten link must be found
+  and must resolve to its file. One that does not stops the command with exit 1, naming the note
+  and the line.
+- A note that changed while the command ran is left as it is and named on stderr as still
+  holding old links. The other notes are rewritten and the command exits 1.
+- The destination is looked at again right before the move and is never overwritten.
+- Not covered: a rename that changes only the letter case of a name, on a file system that
+  ignores case. It exits 6.
 
 ### link, doctor, snapshot
 
-Library files: `scripts/lib/link.sh` (`cmd_link`, `sb_link_scan`), `scripts/lib/doctor.sh`
-(`cmd_doctor`, `cmd_session_check`), `scripts/lib/snapshot.sh` (`cmd_snapshot`, `cmd_compare`,
-`cmd_probe`). Their private helpers are named `sb_link_*`, `sb_doc_*` and `sb_snap_*`.
+Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`),
+`scripts/lib/doctor.sh` (`cmd_doctor`, `cmd_session_check`), `scripts/lib/snapshot.sh`
+(`cmd_snapshot`, `cmd_compare`). Their private helpers are named `sb_link_*`, `sb_doc_*` and
+`sb_snap_*`.
 
-- The link directory is `~/.claude`, or `SECOND_BRAIN_CLAUDE_HOME` when set (tests set it).
+- On macOS and Linux every link is a symlink: one per skill folder in the link directory's
+  `skills/`, one per agent file in its `agents/`.
+- On Windows every link is a directory junction, which needs no special rights: one per skill
+  folder, and one per claude folder for its whole `agents` folder, because a junction cannot lead
+  to a file. The agents junction is named `second-brain-vault` for the vault's own `claude/` and
+  `second-brain-project-<project path with each slash as a hyphen>` for a project's. Claude Code
+  reads `agents/` through its sub-folders, so every agent file in a linked folder is found, and so
+  is any other `.md` file kept there.
+- `link` prints one row per agent on every system. On Windows each agent row carries the state of
+  its folder's junction. Two project paths that give the same junction name cannot both be linked:
+  the agents of the later one are `duplicate`.
+- A junction needs a folder on a local drive, so a vault on a network share cannot be linked.
+- A plain `ln -s` is never used on Windows, where Git Bash turns it into a copy.
 - `sb_link_scan` prints one row per item, no header: `name | kind | state | target`. `kind` is
   `skill` or `agent`. `state` is one of `linked`, `missing`, `wrong-target`, `name-mismatch`,
   `duplicate`, `dangling`, `foreign`. `cmd_link --check` prints the same rows.
-- A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn`,
-  `fail` or `skip` (the check needs Obsidian and it is not up). `scope` is `vault` or a project
-  name. `offenders` holds at most five, comma separated, or `-`.
+- A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn` or
+  `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
+  or `-`.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
 | vault | `index` | the index is missing or has no Projects table (fail) |
-| vault | `conventions` | the conventions note is missing (fail) |
+| vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |
-| vault | `obsidian-cli` | the CLI binary is missing or the app is not up (warn) |
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |
 | vault | `descriptions` | a scanned skill or agent description is over 200 characters (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | project | `profile` | the profile is missing, lacks a contract key, or lacks one of the seven sections (fail) |
-| project | `board` | the board file is missing, or a view does not answer (fail; skip the view part when Obsidian is down). `Current sprint` is not asked for when the project does not use sprints |
-| project | `index-fresh` | task READMEs on disk differ in number from the rows of view `All` (warn; skip when down) |
+| project | `board` | the board file is missing (fail) |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
 | project | `needs-a-status` | status missing or not one of the five (warn; never changed) |
 | project | `status-tag` | the `status/` tag disagrees with `status` (warn; the only check `--fix` repairs) |
@@ -279,13 +364,13 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `sb_link_scan`), `scripts/lib/
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo listed in the profile has a recorded location whose folder is missing (warn). Nothing recorded is ok |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
-| project | `unresolved-links` | Obsidian lists unresolved links from notes under the project (warn; skip when down) |
+| project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
 | project | `line-endings` | a task README with mixed line endings (warn) |
 
 - A snapshot is a folder `<vault>/.second-brain/snapshots/<name>/` holding `unresolved.txt`,
-  `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`. A file whose source
-  was unavailable holds the single line `unavailable`.
+  `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`, all read from
+  the vault's files.
 
 ### Code layout
 
@@ -293,7 +378,21 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `sb_link_scan`), `scripts/lib/
 the function `cmd_<command>` (dashes become underscores) with the remaining arguments. An unknown
 command prints usage and exits 5. A library file only defines functions.
 
-Shared functions, defined in `scripts/lib/core.sh`, `obsidian.sh` and `projects.sh`:
+Two more library files: `scripts/lib/graph.sh` (`cmd_outline`, `cmd_backlinks`, `cmd_unresolved`,
+`cmd_move`, `cmd_rename`; private helpers `sb_graph_*`) and `scripts/lib/platform.sh` (what differs
+between systems; private helpers `sb_plat_*`). `cmd_pointer` lives in `scripts/lib/link.sh`.
+
+Inside the helper every absolute path is in the shell's own form, which on Windows is Git Bash's
+`/c/...`. `sb_path_in` turns a path that was read into that form and `sb_path_out` turns one into
+the form that is printed. On macOS and Linux both print the path unchanged.
+
+Git Bash's `awk`, `grep` and `sed` read in text mode and drop the CR of every line. On Windows
+`platform.sh` defines shell functions with those three names that run the tools in binary mode,
+so a CRLF file is read and written byte for byte. They are the one exception to the `sb_*` naming
+rule. A library calls the three tools by their plain names, never through `env` or `command`.
+
+Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `graph.sh` and
+`projects.sh`:
 
 | Function | Does |
 |---|---|
@@ -303,12 +402,17 @@ Shared functions, defined in `scripts/lib/core.sh`, `obsidian.sh` and `projects.
 | `sb_fm_get <file> <key>` | prints a scalar frontmatter value, unquoted |
 | `sb_fm_list <file> <key>` | prints a list value, one item per line (block or inline form) |
 | `sb_fm_set <file> <key> <value>` | sets or removes (empty value) a scalar key, keeping line endings |
-| `sb_ob <args...>` | runs the Obsidian CLI, returns 3 when unavailable |
-| `sb_ob_up` | returns 0 when the CLI answers |
+| `sb_is_windows` | returns 0 when the helper runs in Git Bash on Windows |
+| `sb_path_in <path>` | prints an absolute path that was read, in the shell's own form |
+| `sb_path_out <path>` | prints an absolute path in the form the helper shows |
+| `sb_link_home` | prints the link directory |
+| `sb_mklink <target> <link>` | creates one link: a symlink, or on Windows a junction to a folder; returns 1 when it cannot |
+| `sb_rmlink <link>` | removes one link and never what it leads to |
+| `sb_graph_unresolved [vault folder]` | prints the `unresolved` rows for the vault or one folder, for other libraries to reuse |
 | `sb_projects_tsv` | name, path, keys per line |
 | `sb_project_path <name>` | prints the vault-relative path or returns 1 |
 | `sb_profile <name>` | prints the profile's absolute path or returns 1 |
-| `sb_repo_rows <project>` | prints the `repo` rows (name, path, state) for other libraries to reuse |
+| `sb_repo_rows <project>` | prints the `repo` rows (name, path, state) for other libraries to reuse, with paths in the shell's own form |
 | `sb_today` | prints today's date; honours `SECOND_BRAIN_TODAY` for tests |
 
 Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a
@@ -361,9 +465,13 @@ carries the full vault path for a `README.md` and the alias as display text.
   there is a ticket, else as a line starting `pending production:` in the profile's debt file.
 - Frontmatter is the source of truth. A status is never inferred from prose. A missing or
   non-standard status is reported as "Needs a status" and never set without asking.
-- Notes are moved and renamed with `second-brain ob move` / `ob rename`, never `mv`.
-- Read cheapest first: the helper, then part of a note (`ob outline`, then a ranged read), then a
-  scoped search, and a whole note last.
+- Notes are moved and renamed with `second-brain move` / `rename`, never `mv`.
+- No skill or agent runs `ln`, `mklink` or the Obsidian CLI. The pointer is made with
+  `second-brain pointer set` and the links with `second-brain link --apply`.
+- Read cheapest first: the helper, then part of a note (`second-brain outline`, then a ranged
+  read), then a scoped search, and a whole note last.
+- The plugin's hooks are written in shell form, a `command` string with no `args`, so that Claude
+  Code runs them through a shell on every system: Git Bash on Windows.
 
 ## 10. Writing rules for every file in this repo
 

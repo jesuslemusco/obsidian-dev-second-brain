@@ -1,119 +1,80 @@
 # obsidian-dev-second-brain
 
-A Claude Code plugin that makes an Obsidian vault the place where a developer's work is tracked:
-stories, sprints and project docs. It ships skills and agents that work for any project, and a
-helper that asks Obsidian's own index instead of reading whole files.
+A Claude Code plugin that keeps a developer's work in an [Obsidian](https://obsidian.md) vault:
+tickets, sprints and project docs, as plain markdown notes that Claude reads and updates for you.
 
-The plugin holds no project data. Your vault does.
+## What it is for
 
-## What you get
+- **Tickets.** Each ticket is one note with its status, branch, next step and a dated log. Ask
+  Claude to start one, update it, or tell you where things stand.
+- **Sprints.** Open a sprint, plan it, see its status, close it and carry work over. Sprints are
+  optional per project.
+- **Docs.** Keep a project's docs in step with its code.
+- **Fast answers.** A helper command, `second-brain`, answers from the vault's files in one call,
+  so Claude does not read whole notes to find one fact.
 
-| Piece | Kind | Does |
-|---|---|---|
-| `story-tracker` | skill | One README per ticket in the vault: start, update, recall, or list what is active. |
-| `sprint` | skill | Open a sprint, plan it, show its status, close it and carry work over. |
-| `vault-setup` | skill | Set up a vault, add a project, adopt an existing project, register your own skills. |
-| `vault-doctor` | skill | Check the vault and the registration against the standard. |
-| `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
-| `docs-keeper` | agent | Keeps a project's docs in step with its code. |
-| `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, scaffolding. |
+Your notes stay in your vault. The plugin holds no project data and needs no credentials.
 
-## Requirements
+## How it works
 
-- Claude Code.
-- Obsidian 1.12 or later, with its command line interface turned on (Settings, General). The
-  helper falls back to reading files when Obsidian is closed.
-- macOS or Linux. The setup relies on symlinks.
+- Your vault is a folder of markdown notes. Each project has a folder in it, and each ticket is
+  one note whose first lines hold its status, branch, sprint and next step.
+- A link on your machine points to the vault, and a short index of your projects is loaded into
+  every Claude session, so Claude knows where each project's notes are.
+- When you ask for something, a skill tells Claude the steps and the `second-brain` helper does
+  the reading and writing, straight on the files.
+- You read the result in Obsidian: the notes, the links between them, and a task board per
+  project that is a live table of its tickets.
+
+## What you need
+
+- [Claude Code](https://claude.com/claude-code).
+- [Obsidian](https://obsidian.md/download), version 1.9 or later, to read the vault and its task
+  boards. The plugin works on the files and never calls the app, so it does not have to be running.
+- macOS, Linux, or Windows with [Git for Windows](https://gitforwindows.org).
 
 ## Install
 
+In Claude Code:
+
 ```
-/plugin marketplace add <owner>/obsidian-dev-second-brain
+/plugin marketplace add jesuslemusco/obsidian-dev-second-brain
 /plugin install obsidian-dev-second-brain@second-brain
 ```
 
-From a local clone instead:
+Then set it up:
 
-```
-/plugin marketplace add /path/to/obsidian-dev-second-brain
-/plugin install obsidian-dev-second-brain@second-brain
-```
-
-To try it for one session without installing: `claude --plugin-dir /path/to/obsidian-dev-second-brain`.
-
-## The ten-minute path
-
-1. Open your vault in Obsidian.
-2. In Claude Code, run `/obsidian-dev-second-brain:vault-setup init` and give it the vault folder.
-   It creates the vault index, the conventions note and a pointer on your machine.
+1. Open the folder you want as your vault in Obsidian.
+2. Run `/obsidian-dev-second-brain:vault-setup init` and give it that folder.
 3. Run `/obsidian-dev-second-brain:vault-setup project <name>` to add a project.
-4. Ask Claude to start tracking a ticket. `story-tracker` creates the task and it shows on the board.
-5. Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
+4. Ask Claude to start tracking a ticket.
 
-## How it is laid out
+Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
 
-On your machine:
+## Your own skills and agents
 
-```
-~/.claude/second-brain-vault      a symlink to your vault; the only per-machine setting
-~/.claude/CLAUDE.md               one import line for the vault index
-```
+The vault can hold skills and agents of your own, next to the ones the plugin ships.
 
-In the vault:
+- **Global ones**, useful in any project, go in `claude/` at the vault root:
+  `claude/skills/<name>/SKILL.md` and `claude/agents/<name>.md`.
+- **Project ones** go in that project's folder: `<project>/claude/skills/<name>/SKILL.md` and
+  `<project>/claude/agents/<name>.md`. Start the name with the project, as in `example-deploy`,
+  because all names share one list.
+- The folder or file name must equal the `name` in its frontmatter.
+- List each one in the `claude/README.md` beside it, with a line on when to use it. Claude reads
+  that note before it works on the project.
+- After you add, rename or remove one, run `/obsidian-dev-second-brain:vault-setup link`. It links
+  each one into `~/.claude`, where Claude Code looks. The file in the vault stays the only copy.
 
-```
-CLAUDE.md                         the index: how to use the vault, and the list of projects
-obsidian-conventions.md           the rules: note metadata, topic tags, links, searching
-claude/                           your own global skills and agents
-<project>/
-  README.md
-  claude/profile.md               the project's settings, read by every skill and agent
-  tasks/<TICKET-ID>/README.md     one task per folder
-  tasks/tasks.base                the task board (Obsidian Bases)
-  docs/                           the project's docs, organised by topic
-  sprints/<YYYY-MM-DD>.md         one note per sprint, named by its end date
-```
+Skills and agents you keep straight in `~/.claude`, outside the vault, are never touched.
 
-A task says what it is about with topic tags. A topic tag is a folder path under the project's
-topics root, lowercased: with the default root `docs/`, the folder `docs/Billing/Invoices` is the
-tag `billing/invoices`. A task never lives inside the topic it is about.
+## More
 
-An existing project does not have to move its folders. Its profile says where its topics and
-sprint notes are.
+- [docs/guide.md](docs/guide.md): what the plugin ships, how a vault is laid out, notes on Windows,
+  and how to run the tests.
+- [docs/contract.md](docs/contract.md): every helper command and the format of the notes.
+- [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 
-Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
-`vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
-`Current sprint` view; its stories are tracked by status alone.
+## License
 
-## Why it is cheap to run
-
-- The always-loaded text is one short index. The rules live in one note that is read on demand.
-- Each skill is a short core plus one file per mode. Only the mode in use is read.
-- The helper returns the whole task board in one call, a note's frontmatter in one call, and a
-  note's outline with line numbers, so a section is read instead of a file.
-
-## What it does not do
-
-- It does not talk to your ticket tracker or to any live system. It needs no credentials.
-- It does not move or rename existing notes unless you ask, and then it does it through Obsidian so
-  links are rewritten.
-- It supports one vault per machine.
-- Windows is not supported.
-
-## Development
-
-```
-bash scripts/test.sh          builds a scratch vault and checks every helper command
-bash scripts/test-link.sh     checks symlink registration on a scratch vault
-bash scripts/test-doctor.sh   checks every doctor check on a scratch vault
-bash scripts/test-snapshot.sh checks snapshot, compare and probe
-bash scripts/leak-check.sh    fails if a generic file carries a home path or a session id
-claude plugin validate . --strict
-```
-
-`docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
-template placeholders. Change it first, then the code.
-
-## Licence
-
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

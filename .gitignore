@@ -7,3 +7,4 @@
 /.scratch/
 # local state from Claude Code tooling
 /.omc/
+/.claude/worktrees/

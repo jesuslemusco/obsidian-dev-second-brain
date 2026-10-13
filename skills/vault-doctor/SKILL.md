@@ -1,7 +1,7 @@
 ---
 name: vault-doctor
 description: Check the vault, its projects and the Claude registration against the second-brain standard.
-argument-hint: "[check [project] | fix | snapshot | compare | probe]"
+argument-hint: "[check [project] | fix | snapshot | compare]"
 disable-model-invocation: true
 allowed-tools: Read Grep Bash(second-brain *)
 ---
@@ -31,7 +31,7 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    `offenders` holds five at most.
 2. Exit 0: no check failed. Exit 1: one did, or the named project is not in the index, which
    prints no rows. Exit 2: no vault.
-3. Show the rows that are not `ok` as a table, grouped in this order: fail, warn, skip. Close
+3. Show the rows that are not `ok` as a table, the `fail` rows first, then the `warn` rows. Close
    with one line that counts the `ok` rows.
 4. Read the entries of those checks in `${CLAUDE_SKILL_DIR}/checks.md` with one Grep, not one per
    check: join the names with `|`, as in `^### (links|status-tag|sprints)$`, with 4 lines after
@@ -58,26 +58,18 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
   aliases, task ids and statuses, and the registered links. It does not cover tags or doctor rows.
 - Exit 0 with `no differences`: nothing it covers changed. Exit 1: a difference, or no snapshot
   by that name. Report every difference, and say which ones the change was meant to make.
-- A `not compared:` line names a part that had no source when the snapshot was taken, most often
-  because Obsidian was not running. Say that the comparison covers less.
-
-## probe
-
-- Run it after an Obsidian update: `second-brain probe`. It tests the Obsidian command line and
-  records the result in the conventions note, under `## Limits on this install`.
-- Report the verdict line it prints: `search: ok (...)` or `search: unreliable (...)`. From then
-  on `second-brain context` shows that value as `search:`.
-- Exit 3: Obsidian is not up, and nothing was changed. Say the probe did not run. Do not report
-  an older verdict.
+- An unresolved link is listed as `<note path>: <link>`, an alias as the alias and its note's
+  path. A note that moved shows each of its rows twice: once removed, once added.
+- A `not compared:` line names a file the snapshot folder lacks. Say that the comparison covers
+  less.
 
 ## Rules
 
-- A `skip` row means Obsidian was not running. It does not mean the check passed. Say so, and
-  offer to run again once Obsidian is open.
 - `needs-a-status` is never fixed by guessing. Ask for the status of each note, then set it with
   `second-brain task set <ID> status=<status>`.
 - Never run a bulk fix without a snapshot first. `doctor --fix` needs none: it changes status
   tags only, and its proof is the second doctor run.
-- Never delete a note and never use `mv`. A move goes through `second-brain ob move`.
+- Never delete a note and never use `mv`. A move goes through `second-brain move`, run with
+  `--dry-run` first.
 - The helper prints `-` for an empty cell. Read it as empty.
 - A template named in `checks.md` is under the plugin root, in `templates/`.

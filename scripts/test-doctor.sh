@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-doctor.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
+# and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/vault"
 home="$tmp/claude-home"
 mkdir -p "$vault/.obsidian" "$tmp/userdir" "$home"
@@ -16,8 +20,7 @@ export HOME="$tmp/userdir"
 export SECOND_BRAIN_VAULT="$vault"
 export SECOND_BRAIN_CLAUDE_HOME="$home"
 export SECOND_BRAIN_TODAY="2026-01-10"
-export SECOND_BRAIN_OBSIDIAN="none"
-unset CLAUDE_SESSION_ID SECOND_BRAIN_OB_TIMEOUT
+unset CLAUDE_SESSION_ID
 
 P="projects/example"
 T="$vault/$P/tasks"
@@ -64,6 +67,10 @@ out_has() {
 edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
 }
+# symlink <target> <link>: a real symlink on every system; on Windows a plain ln -s makes a copy.
+symlink() {
+  if sb_is_windows; then MSYS=winsymlinks:nativestrict ln -s "$1" "$2"; else ln -s "$1" "$2"; fi
+}
 # doc [args]: run doctor and keep its rows in OUT.
 doc() { run "$SB" doctor "$@"; }
 # row <check> [scope]: print "result | count | offenders" of one row of the last run.
@@ -106,9 +113,10 @@ cp -R "$vault" "$tmp/pristine"
 doc
 rc_is "fresh vault: exit 0" 0
 is "fresh vault: no fail row" "$(printf '%s\n' "$OUT" | grep '^fail ' || true)" ""
-is "fresh vault: the rows that are not ok, with no Obsidian and no import line" \
+is "fresh vault: the one row that is not ok, with no import line" \
   "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" { printf "%s:%s ", $1, $2 }')" \
-  "warn:import warn:obsidian-cli skip:index-fresh skip:unresolved-links "
+  "warn:import "
+is "rows: a result is ok, warn or fail" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" && $1 != "warn" && $1 != "fail"' | grep -c . || true)" "0"
 chk "pointer: ok" pointer vault "ok | 0 | -"
 is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | grep -c . || true)" "0"
 
@@ -125,37 +133,61 @@ doc
 chk "index: a missing index fails" index vault "fail | 1 | CLAUDE.md"
 chk "conventions: a missing note fails" conventions vault "fail | 1 | obsidian-conventions.md"
 reset
+tv="$(sed -n 's/^conventions_version: *//p' "$here/templates/obsidian-conventions.md.tmpl" | head -1)"
+edit "$vault/obsidian-conventions.md" "s/^conventions_version: .*/conventions_version: $((tv - 1))/"
+doc
+rc_is "conventions: an older note leaves exit 0" 0
+chk "conventions: a note older than the plugin's template warns, with its version" conventions vault "warn | 1 | obsidian-conventions.md:$((tv - 1))"
+is "conventions: the fix says to scaffold the note again or to edit it, and gives the template's version" "$(fix_of conventions vault)" \
+  "the note is older than the plugin's template, version $tv: delete it and run second-brain scaffold vault, or edit it by hand"
+edit "$vault/obsidian-conventions.md" '/^conventions_version:/d'
+doc
+chk "conventions: a note with no version warns" conventions vault "warn | 1 | obsidian-conventions.md:none"
+edit "$vault/obsidian-conventions.md" "s/^type: onboarding\$/type: onboarding\\
+conventions_version: $((tv + 1))/"
+doc
+chk "conventions: a note newer than the template is fine" conventions vault "ok | 0 | -"
+reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: an absolute import line is found" import vault "ok | 0 | -"
-ln -s "$vault" "$HOME/vault-link"
+symlink "$vault" "$HOME/vault-link"
 printf '# Mine\n\n@~/vault-link/CLAUDE.md  \r\n' >"$home/CLAUDE.md"
 doc
 chk "import: a line starting with ~ and going through a link is found" import vault "ok | 0 | -"
+if sb_is_windows; then
+  printf '# Mine\n\n@%s/CLAUDE.md\n' "$(cygpath -m "$vault")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line in the drive form is found" import vault "ok | 0 | -"
+  printf '# Mine\r\n\r\n@%s\\CLAUDE.md\r\n' "$(cygpath -w "$vault")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line written with backslashes, in a CRLF file, is found" import vault "ok | 0 | -"
+  printf '# Mine\n\n@~\\vault-link\\CLAUDE.md\n' >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows a line that starts with ~ and a backslash is found" import vault "ok | 0 | -"
+  printf '# Mine\n\n@%s\\CLAUDE.md\n' "$(cygpath -w "$tmp/userdir")" >"$home/CLAUDE.md"
+  doc
+  chk "import: on Windows another file written with backslashes does not count" import vault "warn | 1 | CLAUDE.md"
+fi
 printf '# Mine\n\n@~/elsewhere/CLAUDE.md\nsee @%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: another file does not count" import vault "warn | 1 | CLAUDE.md"
 reset
 
-# ---------------------------------------------------------------- links, double-registration, obsidian-cli
+# ---------------------------------------------------------------- links, double-registration
 doc
-chk "obsidian-cli: warns when the CLI is missing" obsidian-cli vault "warn | 1 | missing"
 chk "double-registration: ok with no links" double-registration vault "ok | 0 | -"
 mkdir -p "$vault/claude/skills/my-skill" "$home/skills" "$home/agents"
 printf '%s\n' '---' 'name: my-skill' 'description: A skill of my own.' '---' 'Body.' >"$vault/claude/skills/my-skill/SKILL.md"
 doc
-if [ -f "$here/scripts/lib/link.sh" ]; then
-  rc_is "links: an unlinked skill gives exit 1" 1
-  chk "links: an unlinked skill fails" links vault "fail | 1 | my-skill:missing"
-  ln -s "$vault/claude/skills/my-skill" "$home/skills/my-skill"
-  doc
-  chk "links: ok once it is linked" links vault "ok | 0 | -"
-else
-  chk "links: skip without the link library" links vault "skip | 0 | -"
-fi
-ln -s "$here/skills/story-tracker" "$home/skills/story-tracker"
-ln -s "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
-ln -s "$tmp/userdir" "$home/skills/elsewhere"
+rc_is "links: an unlinked skill gives exit 1" 1
+chk "links: an unlinked skill fails" links vault "fail | 1 | my-skill:missing"
+symlink "$vault/claude/skills/my-skill" "$home/skills/my-skill"
+doc
+chk "links: ok once it is linked" links vault "ok | 0 | -"
+symlink "$here/skills/story-tracker" "$home/skills/story-tracker"
+symlink "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
+symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
 chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/scrum-master.md"
 reset
@@ -188,9 +220,8 @@ reset
 doc Example
 rc_is "a named project: exit 0" 0
 chk "profile: ok on a scaffolded project" profile Example "ok | 0 | -"
-chk "board: ok, views left unchecked without Obsidian" board Example "ok | 0 | -"
-is "board: says the views were not checked" "$(fix_of board)" "views not checked"
-chk "index-fresh: skip without Obsidian" index-fresh Example "skip | 0 | -"
+chk "board: ok when the board file is there" board Example "ok | 0 | -"
+is "board: nothing to fix" "$(fix_of board)" "-"
 edit "$vault/$P/claude/profile.md" '/^persona:/d; /^## Live systems$/d'
 rm "$T/tasks.base"
 doc Example
@@ -420,15 +451,23 @@ reset
 
 # ---------------------------------------------------------------- links in tasks, line endings
 doc Example
-chk "unresolved-links: skip without Obsidian" unresolved-links Example "skip | 0 | -"
+chk "unresolved-links: ok on a scaffolded project" unresolved-links Example "ok | 0 | -"
 chk "bare-links: ok on new tasks" bare-links Example "ok | 0 | -"
 chk "line-endings: ok on new tasks" line-endings Example "ok | 0 | -"
 printf '%s\n' '' 'See [[README]] and [[profile|the profile]].' >>"$T/EX-1/README.md"
 printf '%s\n' '' "See [[$P/README|Example Hub]] and [[other-note]]." >>"$T/EX-2/README.md"
-printf '%s\n' '' 'A bare `[[README]]` does not resolve.' '```' '[[tasks.base]]' '```' >>"$T/EX-3/README.md"
+printf '%s\n' '' 'A bare `[[README]]` and a `[[gone-in-code]]` do not count.' '```' '[[tasks.base]]' '[[gone-in-a-fence]]' '```' >>"$T/EX-3/README.md"
+printf '%s\n' '' 'See [the plan](missing/plan.md) and [the site](https://example.com).' >>"$vault/$P/docs/README.md"
+printf '%s\n' '[[nowhere-at-all]]' >"$vault/outside.md"
 doc Example
 rc_is "bare-links: a warning leaves exit 0" 0
 chk "bare-links: a bare [[README]] warns, a pathed link and code do not" bare-links Example "warn | 1 | EX-1"
+n1="$(grep -n 'missing/plan' "$vault/$P/docs/README.md" | cut -d: -f1)"
+n2="$(grep -n 'other-note' "$T/EX-2/README.md" | cut -d: -f1)"
+chk "unresolved-links: each link to no file, as the note under the project and its line" unresolved-links Example \
+  "warn | 2 | docs/README.md:$n1, tasks/EX-2/README.md:$n2"
+is "unresolved-links: the fix names the command that lists them" "$(fix_of unresolved-links)" \
+  "give each link a path that exists; second-brain unresolved <project> lists them"
 reset
 # to_crlf <file> [last line]: give the file CRLF endings, down to a line number when one is given.
 to_crlf() {
@@ -461,7 +500,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "26"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "24"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -487,6 +526,7 @@ if command -v python3 >/dev/null 2>&1; then
   else
     fail "--json: parses as JSON" "$(cat "$tmp/stderr")"
   fi
+  # A Python built for Windows ends the lines it prints with CRLF; tr takes that away.
   got="$(python3 -c '
 import json, sys
 rows = json.load(sys.stdin)
@@ -496,12 +536,12 @@ print(by["alias-unique"]["offenders"][0])
 print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["offenders"])
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
-print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1)"
-  is "--json: 26 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "26 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
+  is "--json: 24 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "24 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
-  got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1)"
+  got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
   is "--json: the pointer row alone with no vault" "$got" "1 pointer fail"
 else
   printf 'skip  --json: python3 is not installed\n'
@@ -515,61 +555,31 @@ edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 # scope_rows <scope>: count the rows of one scope in the last run.
 scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
-is "two projects: sixteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "16/16"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -10 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions import links double-registration obsidian-cli always-loaded-size descriptions skill-size "
+is "two projects: fifteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "15/15"
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board index-fresh task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
+  "profile board task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "10/16/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/15/0"
 
-# ---------------------------------------------------------------- Obsidian answering, a stand-in
-stub="$tmp/stub"
-mkdir -p "$stub"
-cat >"$stub/obsidian" <<'EOF'
-#!/usr/bin/env bash
-# Stand-in for the Obsidian CLI: answers from files in STUB_DIR.
-printf '%s\n' "$*" >>"$STUB_DIR/calls.log"
-case "$1" in
-  vault) cat "$STUB_DIR/vault.txt" ;;
-  unresolved) cat "$STUB_DIR/unresolved.txt" ;;
-  base:query)
-    view="${3#view=}"
-    if [ -f "$STUB_DIR/view-$view.txt" ]; then cat "$STUB_DIR/view-$view.txt"; else printf 'Error: View not found: %s\n' "$view"; fi
-    ;;
-  *) printf 'Error: Command "%s" not found.\n' "$1" ;;
-esac
-EOF
-chmod +x "$stub/obsidian"
-export STUB_DIR="$stub"
-export SECOND_BRAIN_OBSIDIAN="$stub/obsidian"
-printf '%s\n' "$vault" >"$stub/vault.txt"
-for v in "Active" "Current sprint" "By topic" "Needs a status"; do : >"$stub/view-$v.txt"; done
-printf '%s\n' "$P/tasks/EX-1/README.md" "$P/tasks/EX-2/README.md" "$P/tasks/EX-3/README.md" >"$stub/view-All.txt"
-: >"$stub/unresolved.txt"
-doc Example
-chk "obsidian-cli: ok when the CLI answers for this vault" obsidian-cli vault "ok | 0 | -"
-chk "board: ok when every view answers" board Example "ok | 0 | -"
-is "board: nothing left to say once the views are checked" "$(fix_of board)" "-"
-chk "index-fresh: ok when view All holds every task README" index-fresh Example "ok | 0 | -"
-chk "unresolved-links: ok when Obsidian lists none" unresolved-links Example "ok | 0 | -"
-is "board: one query for each of the five views" "$(grep -c '^base:query ' "$stub/calls.log")" "5"
-rm "$stub/view-By topic.txt"
-printf '%s\n' "$P/tasks/EX-1/README.md" "$P/tasks/EX-2/README.md" >"$stub/view-All.txt"
-printf 'gone-note\t1\t%s\nother\t2\tsomewhere/else.md, %s\nthird\t1\tprojects/example-more/x.md\nfourth\t1\tprojects/two/README.md\n' \
-  "$P/tasks/EX-1/README.md" "$P/docs/README.md" >"$stub/unresolved.txt"
-: >"$stub/calls.log"
+# ---------------------------------------------------------------- unresolved links, two projects
+mkdir -p "$vault/projects/example-more"
+printf '%s\n' '[[gone-note]] and [[gone-note#part]]' '[[also-gone|text]]' >"$vault/$P/docs/first.md"
+printf '%s\n' '' '[[fourth]]' >>"$vault/projects/two/README.md"
+printf '%s\n' '[[third]]' >"$vault/projects/example-more/x.md"
+n="$(grep -c '' "$vault/projects/two/README.md")"
 doc
-rc_is "board: a view that does not answer gives exit 1" 1
-chk "board: the view that does not answer is named" board Example "fail | 1 | By topic"
-chk "index-fresh: the board holds fewer notes than the disk" index-fresh Example "warn | 1 | disk:3 board:2"
-chk "unresolved-links: links from notes under the project" unresolved-links Example "warn | 2 | gone-note, other"
-chk "unresolved-links: each project gets its own" unresolved-links Two "warn | 1 | fourth"
-is "unresolved-links: one CLI call for the whole run" "$(grep -c '^unresolved ' "$stub/calls.log")" "1"
-export SECOND_BRAIN_OBSIDIAN="none"
+chk "unresolved-links: one offender for each line of a note under the project, not of a look-alike folder" unresolved-links Example \
+  "warn | 2 | docs/first.md:1, docs/first.md:2"
+chk "unresolved-links: each project gets its own" unresolved-links Two "warn | 1 | README.md:$n"
+printf '%s\n' '# Gone note' >"$vault/gone-note.md"
+printf '%s\n' '# Also gone' >"$vault/$P/docs/also-gone.md"
+doc Example
+chk "unresolved-links: ok once the files exist, wherever they are in the vault" unresolved-links Example "ok | 0 | -"
 reset
 
 # ---------------------------------------------------------------- a project without sprints
@@ -583,15 +593,7 @@ is "no sprints: no fail row" "$(printf '%s\n' "$OUT" | grep '^fail ' || true)" "
 chk "no sprints: the profile passes without a sprints hub" profile Kanban "ok | 0 | -"
 chk "no sprints: the sprints check passes" sprints Kanban "ok | 0 | -"
 is "no sprints: the sprints row says why" "$(fix_of sprints Kanban)" "sprints are off"
-export SECOND_BRAIN_OBSIDIAN="$stub/obsidian"
-rm -f "$stub/view-Current sprint.txt"
-: >"$stub/view-By topic.txt"
-printf '%s\n' "projects/kanban/tasks/KB-1/README.md" >"$stub/view-All.txt"
-: >"$stub/unresolved.txt"
-: >"$stub/calls.log"
-doc Kanban
 chk "no sprints: the board passes with no Current sprint view" board Kanban "ok | 0 | -"
-is "no sprints: one query for each of the four views" "$(grep -c '^base:query ' "$stub/calls.log")" "4"
 edit "$K/tasks/KB-1/README.md" 's/^status: planned$/status: planned\
 sprint: "2026-03-01"/'
 is "no sprints: a sprint id left on a task" "$(grep -c '^sprint: "2026-03-01"$' "$K/tasks/KB-1/README.md")" "1"
@@ -600,8 +602,6 @@ chk "no sprints: a leftover sprint id is not reported" sprints Kanban "ok | 0 | 
 edit "$K/claude/profile.md" 's/^uses_sprints: false$/uses_sprints: true/'
 doc Kanban
 chk "no sprints: turned on again, the leftover id is reported" sprints Kanban "fail | 1 | KB-1:2026-03-01"
-chk "no sprints: turned on again, the missing view is named" board Kanban "fail | 1 | Current sprint"
-export SECOND_BRAIN_OBSIDIAN="none"
 sb scaffold project Kanban --path projects/kanban --keys KB
 sb sprint open Kanban --end 2026-01-14
 edit "$K/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
@@ -631,6 +631,11 @@ mkdir -p "$tmp/bare/.obsidian"
 run env SECOND_BRAIN_VAULT="$tmp/bare" "$SB" session-check
 rc_is "session-check: exit 0 for a vault with no index" 0
 out_has "session-check: one line for a vault with no index" "no vault is set up"
+run env -u SECOND_BRAIN_VAULT "$SB" session-check
+out_has "session-check: one line when the link directory holds no pointer" "no vault is set up"
+sb pointer set "$vault"
+run env -u SECOND_BRAIN_VAULT "$SB" session-check
+out_is "session-check: silent when the pointer of the link directory leads to the vault" ""
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

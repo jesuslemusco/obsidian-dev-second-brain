@@ -51,8 +51,9 @@ sb_scaffold_vault() {
   local dir="${1:-}"
   [ $# -le 1 ] || sb_die 5 "usage: second-brain scaffold vault [DIR]"
   if [ -n "$dir" ]; then
-    [ -d "$dir/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $dir (open it in Obsidian once)"
-    SB_SCAF_ROOT="$(cd -P "$dir" && pwd -P)" || sb_die 2 "cannot open $dir"
+    dir="$(sb_path_in "$dir")"
+    [ -d "$dir/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $(sb_path_out "$dir") (open it in Obsidian once)"
+    SB_SCAF_ROOT="$(cd -P "$dir" && pwd -P)" || sb_die 2 "cannot open $(sb_path_out "$dir")"
   else
     sb_need_root
     SB_SCAF_ROOT="$SB_ROOT"

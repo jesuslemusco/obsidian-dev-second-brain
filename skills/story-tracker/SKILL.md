@@ -52,9 +52,9 @@ criteria, the same Description and criteria as the README, and no other sections
   ticket in an environment set. That file is the story, and every command that takes an id
   accepts the alias. Never create a folder for an alias, or a second README for a tracked id.
 - The path is outside the profile's `tasks_root`: the story predates the layout. Say so and offer
-  to move it with `second-brain ob move`.
+  to move it with `second-brain move`.
 - Read cheapest first: `second-brain task head <ID>` (it shows the path, and `envs` for a set),
-  then `second-brain ob outline path=<path>` and a ranged read of one section. A whole README last.
+  then `second-brain outline <path>` and a ranged read of one section. A whole README last.
 
 ## Branch check (start, update, recall)
 
@@ -123,10 +123,10 @@ corrected assumption, a validation result): ask the user whether to log it. Neve
 - A bare alias link such as `[[EX-123]]` does not resolve, because every story is named
   `README.md`. Write the path form, `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`, with
   the pipe as `\|` inside a table cell.
-- After writing links, run `second-brain ob unresolved verbose`. None of your targets may be listed.
-- Move or rename a note only with `second-brain ob move` / `second-brain ob rename`, so the links
-  to it are rewritten. Exit 3 means Obsidian is not running: say the step could not run. Never
-  fall back to `mv`, and never rename a task folder.
+- After writing links, run `second-brain unresolved <project>`. None of your links may be listed.
+- Move or rename a note only with `second-brain move` / `second-brain rename`, so the links to
+  it are rewritten. Add `--dry-run` first to see what would change. Never fall back to `mv`,
+  and never rename a task folder.
 
 ## Story rules
 

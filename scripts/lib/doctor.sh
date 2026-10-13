@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 # doctor.sh - the health check: one row per check for the vault and each project, and the hook check.
 
-# Print the link directory: SECOND_BRAIN_CLAUDE_HOME, else the .claude folder in the home.
-sb_doc_home() {
-  local d="${SECOND_BRAIN_CLAUDE_HOME:-}"
-  [ -n "$d" ] || d="${HOME:-}/.claude"
-  printf '%s\n' "${d%/}"
-}
-
 # Print one row: result | check | scope | count | offenders | fix. Offenders come one per line.
 sb_doc_row() {
   local result="$1" check="$2" scope="$3" list="$4" fix="${5:--}"
@@ -57,23 +50,37 @@ sb_doc_check_index() {
   sb_doc_report fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
 }
 
-# Check that the conventions note exists.
+# Check that the conventions note exists, and that it is not older than the plugin's template.
+# An older note names its conventions_version after the file name, or "none" when it has none.
 sb_doc_check_conventions() {
-  local bad=""
-  [ -f "$SB_ROOT/obsidian-conventions.md" ] || bad="obsidian-conventions.md"
-  sb_doc_report fail conventions vault "$bad" "run second-brain scaffold vault to create it"
+  local f="$SB_ROOT/obsidian-conventions.md" have want
+  if [ ! -f "$f" ]; then
+    sb_doc_row fail conventions vault "obsidian-conventions.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  have="$(sb_fm_get "$f" conventions_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/obsidian-conventions.md.tmpl" conventions_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+    sb_doc_row warn conventions vault "obsidian-conventions.md:${have:-none}" \
+      "the note is older than the plugin's template, version $want: delete it and run second-brain scaffold vault, or edit it by hand"
+    return 0
+  fi
+  sb_doc_row ok conventions vault "" "-"
 }
 
 # Check that the link directory's CLAUDE.md imports the index.
 sb_doc_check_import() {
   local home f line p bad="CLAUDE.md"
-  home="$(sb_doc_home)"
+  home="$(sb_link_home)"
   f="$home/CLAUDE.md"
   if [ -f "$f" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in @*) ;; *) continue ;; esac
       p="${line#@}"
       p="${p%"${p##*[![:space:]]}"}"
+      p="$(sb_path_in "$p")"
       case "$p" in
         '~/'*) p="${HOME:-}/${p#??}" ;;
         /*) ;;
@@ -88,13 +95,9 @@ sb_doc_check_import() {
   sb_doc_report warn import vault "$bad" "add the line @~/.claude/second-brain-vault/CLAUDE.md to CLAUDE.md in the link directory"
 }
 
-# Check the links of the vault's own skills and agents; skip when the link library is absent.
+# Check the links of the vault's own skills and agents.
 sb_doc_check_links() {
   local bad
-  if ! type sb_link_scan >/dev/null 2>&1; then
-    sb_doc_row skip links vault "" "-"
-    return 0
-  fi
   bad="$(sb_link_scan 2>/dev/null | awk -F' [|] ' '
     $3 == "missing" || $3 == "wrong-target" || $3 == "dangling" || $3 == "name-mismatch" || $3 == "duplicate" { print $1 ":" $3 }')"
   sb_doc_report fail links vault "$bad" "run second-brain link --apply, then repair by hand what it leaves"
@@ -103,7 +106,7 @@ sb_doc_check_links() {
 # Check that no link in the link directory points inside the plugin.
 sb_doc_check_double_registration() {
   local home root slot t bad="" nl=$'\n'
-  home="$(sb_doc_home)"
+  home="$(sb_link_home)"
   root="$(cd -P "$(sb_plugin_root)" 2>/dev/null && pwd -P)" || root=""
   for slot in "$home"/skills/* "$home"/agents/*; do
     [ -L "$slot" ] && [ -n "$root" ] || continue
@@ -119,20 +122,10 @@ sb_doc_check_double_registration() {
   sb_doc_report warn double-registration vault "$bad" "remove the link: the enabled plugin registers it already"
 }
 
-# Check that the Obsidian CLI answers for this vault.
-sb_doc_check_obsidian_cli() {
-  local bad="" fix="open this vault in Obsidian"
-  if ! sb_ob_up; then
-    bad="${SB_OB_STATE:-missing}"
-    [ "$bad" = "down" ] || fix="install the Obsidian CLI (obsidian on PATH, or the app bundle on macOS)"
-  fi
-  sb_doc_report warn obsidian-cli vault "$bad" "$fix"
-}
-
 # Check the line counts of the two files that are always loaded.
 sb_doc_check_always_loaded_size() {
   local idx="$SB_ROOT/CLAUDE.md" mine n bad="" nl=$'\n'
-  mine="$(sb_doc_home)/CLAUDE.md"
+  mine="$(sb_link_home)/CLAUDE.md"
   if [ -f "$idx" ]; then
     n="$(awk 'END { print NR }' "$idx")"
     [ "$n" -le 60 ] || bad="index:$n$nl"
@@ -223,7 +216,6 @@ sb_doc_project() {
   SB_SPRINTS_ROOT="$(sb_setting "$SB_P_PATH" sprints_root sprints)"
   SB_DOC_SPRINTS=1
   sb_uses_sprints "$SB_P_PATH" || SB_DOC_SPRINTS=0
-  SB_DOC_ALL=""
   SB_DOC_FILES="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT")"
   SB_DOC_SCAN="$(printf '%s\n' "$SB_DOC_FILES" | sb_task_scan)"
   SB_DOC_FACTS="$(printf '%s\n' "$SB_DOC_FILES" | sb_doc_facts)"
@@ -333,39 +325,11 @@ sb_doc_check_profile() {
   sb_doc_report fail profile "$SB_P_NAME" "$bad" "add them to claude/profile.md, as in the profile template"
 }
 
-# Check that the board file exists and, when Obsidian is up, that each of its views answers.
+# Check that the board file exists.
 sb_doc_check_board() {
-  local base="$SB_P_PATH/$SB_TASKS_ROOT/tasks.base" view got bad="" nl=$'\n'
-  if [ ! -f "$SB_ROOT/$base" ]; then
-    sb_doc_row fail board "$SB_P_NAME" "tasks.base" "run second-brain scaffold project again with the same name and path to write it"
-    return 0
-  fi
-  if ! sb_ob_up; then
-    sb_doc_row ok board "$SB_P_NAME" "" "views not checked"
-    return 0
-  fi
-  for view in "Active" "Current sprint" "By topic" "Needs a status" "All"; do
-    if [ "$view" = "Current sprint" ] && [ "$SB_DOC_SPRINTS" -eq 0 ]; then continue; fi
-    got="$(sb_ob base:query "path=$base" "view=$view" format=paths)" || got="Error"
-    case "$got" in
-      Error* | *'not found'*) bad="$bad$view$nl" ;;
-      *) [ "$view" != "All" ] || SB_DOC_ALL="answered$nl$got" ;;
-    esac
-  done
-  sb_doc_report fail board "$SB_P_NAME" "$bad" "repair the view in tasks.base (the template lists every view)"
-}
-
-# Check that view All holds as many notes as there are task READMEs on disk.
-sb_doc_check_index_fresh() {
-  local disk rows bad=""
-  if ! sb_ob_up || [ -z "$SB_DOC_ALL" ]; then
-    sb_doc_row skip index-fresh "$SB_P_NAME" "" "-"
-    return 0
-  fi
-  disk="$(printf '%s\n' "$SB_DOC_FILES" | grep -c . || true)"
-  rows="$(printf '%s\n' "$SB_DOC_ALL" | grep -c '\.md$' || true)"
-  [ "$disk" -eq "$rows" ] || bad="disk:$disk board:$rows"
-  sb_doc_report warn index-fresh "$SB_P_NAME" "$bad" "run second-brain ob reload, wait a moment and check again"
+  local bad=""
+  [ -f "$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" ] || bad="tasks.base"
+  sb_doc_report fail board "$SB_P_NAME" "$bad" "run second-brain scaffold project again with the same name and path to write it"
 }
 
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
@@ -592,28 +556,21 @@ sb_doc_check_sprints() {
   sb_doc_report fail sprints "$SB_P_NAME" "$bad" "$fix"
 }
 
-# Check that Obsidian lists no unresolved link from a note under the project; one CLI call per run.
+# Check that no note under the project holds a link that resolves to no file; the vault is read once per run.
 sb_doc_check_unresolved_links() {
   local bad
-  if sb_ob_up && [ -z "$SB_DOC_UNRES_DONE" ]; then
-    SB_DOC_UNRES="$(sb_ob unresolved verbose)" || SB_DOC_UNRES="Error"
+  if [ -z "$SB_DOC_UNRES_DONE" ]; then
+    SB_DOC_UNRES="$(sb_graph_unresolved)"
     SB_DOC_UNRES_DONE=1
   fi
-  case "$SB_DOC_UNRES_DONE$SB_DOC_UNRES" in
-    '' | 1Error*)
-      sb_doc_row skip unresolved-links "$SB_P_NAME" "" "-"
-      return 0
-      ;;
-  esac
-  bad="$(printf '%s\n' "$SB_DOC_UNRES" | LC_ALL=C SB_P="$SB_P_PATH/" awk -F'\t' '
-    BEGIN { p = "," ENVIRON["SB_P"] }
-    NF >= 2 {
-      for (i = 2; i <= NF; i++) {
-        s = "," $i; gsub(/,[ \t]+/, ",", s)
-        if (index(s, p) > 0) { print $1; break }
-      }
+  # An offender is a place: the note's path under the project, and the line that holds the link.
+  bad="$(printf '%s\n' "$SB_DOC_UNRES" | LC_ALL=C SB_P="$SB_P_PATH/" awk '
+    BEGIN { p = tolower(ENVIRON["SB_P"]); n = length(p) }
+    tolower(substr($0, 1, n)) == p && match($0, /\.[Mm][Dd]:[0-9]+: /) {
+      place = substr($0, n + 1, RSTART + RLENGTH - 3 - n)
+      if (!seen[place]++) print place
     }')"
-  sb_doc_report warn unresolved-links "$SB_P_NAME" "$bad" "give each link a path that exists; second-brain ob unresolved verbose lists the notes"
+  sb_doc_report warn unresolved-links "$SB_P_NAME" "$bad" "give each link a path that exists; second-brain unresolved <project> lists them"
 }
 
 # Check that no task README links a repeated file name without a path.
@@ -643,14 +600,14 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions import links double_registration obsidian_cli \
+  for c in pointer index conventions import links double_registration \
     always_loaded_size descriptions skill_size; do
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do
     [ -n "$path" ] || continue
     sb_doc_project "$name" "$path" "$keys"
-    for c in profile board index_fresh task_frontmatter needs_a_status status_tag yaml_traps \
+    for c in profile board task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme topic_tags code_doc_map repos sprints unresolved_links bare_links line_endings; do
       "sb_doc_check_$c"
     done
@@ -754,7 +711,7 @@ cmd_doctor() {
 # Print one line when no vault is set up, for the SessionStart hook; always exit 0.
 cmd_session_check() {
   local v="${SECOND_BRAIN_VAULT:-}"
-  [ -n "$v" ] || v="${HOME:-}/.claude/second-brain-vault"
+  [ -n "$v" ] || v="$(sb_link_home)/second-brain-vault"
   if [ -d "$v/.obsidian" ] && [ -f "$v/CLAUDE.md" ]; then return 0; fi
   printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
   return 0

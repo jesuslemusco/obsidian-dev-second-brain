@@ -22,8 +22,11 @@ lookups:  help | version | root | context [--cwd DIR] | projects
           conventions [section]   (default: The short version)
           project --name N | --key K | --cwd DIR
           profile <project> --keys | <section> | repo <project> [name]
-          board <project> [view] [--files] | topic <project> <tag>
+          board <project> [view] | topic <project> <tag>
           find <ID-or-alias> [--project P] | search <project> "<text>" [--in SUBPATH]
+notes:    outline <path> | backlinks <path> | unresolved [project]
+          move <from> <to> [--dry-run] | rename <path> <name> [--dry-run]
+          (<path> is a vault path: from the vault root, with forward slashes)
 tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" [--session S]
           task tag <ID> add|remove <tag> | task alias <ID> add <alias>
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs]
@@ -35,11 +38,11 @@ sprints:  sprint current <project> | sprint next <project>
 setup:    scaffold vault [DIR]
           scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT]
               [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
+          pointer | pointer set <DIR> [--replace]
           link [--check | --apply] | doctor [project] [--json] [--fix]
-          snapshot [name] | compare [name] | probe | session-check
-other:    ob <obsidian cli args>
-exit codes: 0 ok, 1 not found, 2 setup missing, 3 Obsidian CLI unavailable,
-            4 ambiguous, 5 bad usage, 6 already exists
+          snapshot [name] | compare [name] | session-check
+exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
+            6 already exists
 EOF
 }
 
@@ -52,13 +55,13 @@ sb_plugin_root() {
   fi
 }
 
-# Print the physical vault root, or exit 2.
+# Print the physical vault root, or exit 2. The pointer is second-brain-vault in the link directory.
 sb_root() {
   local v="${SECOND_BRAIN_VAULT:-}"
-  [ -n "$v" ] || v="${HOME:-}/.claude/second-brain-vault"
-  [ -d "$v" ] || sb_die 2 "no vault found: the pointer ~/.claude/second-brain-vault is missing (run vault-setup init)"
-  [ -d "$v/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $v"
-  (cd -P "$v" 2>/dev/null && pwd -P) || sb_die 2 "cannot open the vault: $v"
+  if [ -n "$v" ]; then v="$(sb_path_in "$v")"; else v="$(sb_link_home)/second-brain-vault"; fi
+  [ -d "$v" ] || sb_die 2 "no vault found: the pointer second-brain-vault is missing from the link directory (run vault-setup init)"
+  [ -d "$v/.obsidian" ] || sb_die 2 "not a vault, it has no .obsidian folder: $(sb_path_out "$v")"
+  (cd -P "$v" 2>/dev/null && pwd -P) || sb_die 2 "cannot open the vault: $(sb_path_out "$v")"
 }
 
 # Set SB_ROOT once, or exit 2.
@@ -84,8 +87,11 @@ sb_today() {
 # Print the awk functions shared by the awk programs in this plugin.
 # Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
 # pattern in a UTF-8 locale, which stops the whole program.
+# The text is one quoted string that the shell prints itself, since most commands ask for it
+# several times and a process started to print it costs about 20 ms each time on Windows.
+# It can hold no single quote: awk spells that character "\047".
 sb_awk_lib() {
-  cat <<'AWK'
+  printf '%s\n' '
 function trim(s) { sub(/^[ \t\r]+/, "", s); sub(/[ \t\r]+$/, "", s); return s }
 function unq(s,   q, i, c, out, n) {
   s = trim(s)
@@ -101,12 +107,12 @@ function unq(s,   q, i, c, out, n) {
     }
     return out
   }
-  if (q == "'") {
+  if (q == "\047") {
     out = ""
     for (i = 2; i <= n; i++) {
       c = substr(s, i, 1)
-      if (c == "'") {
-        if (substr(s, i + 1, 1) == "'") { out = out "'"; i++; continue }
+      if (c == "\047") {
+        if (substr(s, i + 1, 1) == "\047") { out = out "\047"; i++; continue }
         return out
       }
       out = out c
@@ -133,7 +139,7 @@ function split_inline(s, items,   n, i, c, cur, q, len, k) {
       else if (c == q) q = ""
       continue
     }
-    if ((c == "\"" || c == "'") && trim(cur) == "") { q = c; cur = cur c; continue }
+    if ((c == "\"" || c == "\047") && trim(cur) == "") { q = c; cur = cur c; continue }
     if (c == ",") { cur = trim(cur); if (cur != "") items[++n] = unq(cur); cur = ""; continue }
     cur = cur c
   }
@@ -156,7 +162,7 @@ function yq(s, force,   need, l) {
   if (s == "") need = 1
   else if (s ~ /^[ \t]/ || s ~ /[ \t]$/ || s ~ /:$/) need = 1
   else if (index(s, ": ") > 0 || index(s, "#") > 0) need = 1
-  else if (index("-[]{}!&*|>@%?,\"'`", substr(s, 1, 1)) > 0) need = 1
+  else if (index("-[]{}!&*|>@%?,\"\047`", substr(s, 1, 1)) > 0) need = 1
   else if (s ~ /^[+.]?[0-9]/) need = 1
   else if (l == "true" || l == "false" || l == "null" || l == "yes" || l == "no" || l == "on" || l == "off" || l == "~") need = 1
   return need ? dq(s) : s
@@ -199,8 +205,7 @@ function date_days(s) {
 function date_ok(s) {
   if (s !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) return 0
   return civil_from_days(date_days(s)) == s
-}
-AWK
+}'
 }
 
 # Return 0 when the argument is a real YYYY-MM-DD date.
@@ -541,11 +546,12 @@ sb_fill_text() {
   local tmpl kv
   tmpl="$(sb_plugin_root)/templates/$1"
   shift
-  [ -f "$tmpl" ] || sb_die 2 "template missing: $tmpl"
+  [ -f "$tmpl" ] || sb_die 2 "template missing: $(sb_path_out "$tmpl")"
   local assigns
   assigns=("SBT__=1")
   for kv in "$@"; do assigns[${#assigns[@]}]="SBT_$kv"; done
-  env "${assigns[@]}" LC_ALL=C awk '
+  # The pairs are exported in a subshell, so that awk is called by its plain name.
+  (export "${assigns[@]}" && LC_ALL=C awk '
     {
       line = $0; out = ""; whole = 0; emptied = 0
       t = line; sub(/^[ \t]+/, "", t); sub(/[ \t]+$/, "", t)
@@ -567,7 +573,7 @@ sb_fill_text() {
       if (whole && emptied) next
       print out line
     }
-  ' "$tmpl"
+  ' "$tmpl")
 }
 
 # Fill a template into a new file. Returns 6 when the file exists; never overwrites.
@@ -659,7 +665,7 @@ cmd_version() {
 # Print the vault root.
 cmd_root() {
   sb_need_root
-  printf '%s\n' "$SB_ROOT"
+  sb_path_out "$SB_ROOT"
 }
 
 # Print one level-2 section of the vault's conventions note; the short version by default.

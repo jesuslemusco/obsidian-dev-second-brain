@@ -64,5 +64,5 @@ Fix none of it here.
   when the user asks. Its body is never rewritten.
 - A status is never guessed. A note without one stays "Needs a status" until the user names it.
 - A move is a separate, explicit step, taken only when the user asks: `second-brain snapshot`,
-  then `second-brain ob move path="<vault path>" to="<folder or new path>"` so Obsidian rewrites
-  the links, then `second-brain compare`. Never `mv`.
+  then `second-brain move "<vault path>" "<folder or new vault path>" --dry-run` to see what it
+  would rewrite, the same command without `--dry-run`, then `second-brain compare`. Never `mv`.

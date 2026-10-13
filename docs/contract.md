@@ -34,8 +34,24 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
 ```
 
 - `Project` is the display name, unique, matched case-insensitively.
-- `Path` is vault-relative, no leading or trailing slash.
-- `Keys` are ticket key prefixes, comma separated; may be empty.
+- `Path` is vault-relative, no leading or trailing slash. It is a folder in the vault, and no two
+  rows share one.
+- `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row.
+
+The file opens with frontmatter that holds `index_version`, a whole number:
+
+```markdown
+---
+index_version: 1
+---
+```
+
+- It is the version of `templates/vault-index.md.tmpl` that the text above `## Projects` follows.
+  The template's number goes up when that text changes.
+- The doctor's `index` check warns when the vault's number is missing or lower than the template's.
+- No command brings an index up to date, because it may hold the user's own lines. It is edited by
+  hand: the text above `## Projects` is brought in line with the template, the table is kept, and
+  `index_version` is set to the template's number.
 
 ## 3. The project
 
@@ -339,12 +355,14 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn` or
   `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
   or `-`.
+- A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
+  fail row, with the fail offenders only.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
-| vault | `index` | the index is missing or has no Projects table (fail) |
+| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path with a `..` part is never one), or has a name, a key or a path on two rows (`<value>:twice`, with names compared without letter case and keys in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |

@@ -35,9 +35,10 @@ sb_doc_check_pointer() {
   sb_doc_report fail pointer vault "$bad" "run /obsidian-dev-second-brain:vault-setup init"
 }
 
-# Check that the index exists and holds the Projects table.
+# Check that the index exists and holds the Projects table, that each row leads to a folder and
+# shares no name, key or path with another, and that the index is not older than the template.
 sb_doc_check_index() {
-  local f="$SB_ROOT/CLAUDE.md" bad=""
+  local f="$SB_ROOT/CLAUDE.md" rows name path keys have want bad="" nl=$'\n'
   if [ ! -f "$f" ]; then
     sb_doc_row fail index vault "CLAUDE.md" "run /obsidian-dev-second-brain:vault-setup init"
     return 0
@@ -47,7 +48,54 @@ sb_doc_check_index() {
     /^#[#]? / { insec = (tolower($0) ~ /^##[ \t]+projects[ \t]*$/); next }
     insec && tolower($0) ~ /^[ \t]*\|[ \t]*project[ \t]*\|/ { found = 1; exit }
     END { exit(found ? 0 : 1) }' "$f" || bad="## Projects"
-  sb_doc_report fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
+  if [ -n "$bad" ]; then
+    sb_doc_row fail index vault "$bad" "add the Projects table to the index (scaffold project adds it)"
+    return 0
+  fi
+  rows="$(sb_projects_tsv 2>/dev/null)"
+  # A path that leaves the vault is no folder of it, and is never looked for on disk.
+  while IFS=$'\t' read -r name path keys; do
+    [ -n "$path" ] || continue
+    case "/$path/" in
+      */../*) ;;
+      *) [ ! -d "$SB_ROOT/$path" ] || continue ;;
+    esac
+    bad="$bad$name:no-folder$nl"
+  done <<EOF
+$rows
+EOF
+  # Names are compared without letter case and keys in upper case, as the lookups compare them.
+  bad="$bad$(printf '%s\n' "$rows" | LC_ALL=C awk -F'\t' '
+    function see(kind, k, v) {
+      k = kind SUBSEP k
+      if (!(k in at)) { at[k] = NR; spell[k] = v; ord[kind, ++n[kind]] = k }
+      else if (at[k] != NR) twice[k] = 1
+    }
+    $1 == "" { next }
+    {
+      see(1, tolower($1), $1)
+      m = split($3, key, ",")
+      for (i = 1; i <= m; i++) if (key[i] != "") see(2, toupper(key[i]), key[i])
+      see(3, $2, $2)
+    }
+    END {
+      for (c = 1; c <= 3; c++)
+        for (i = 1; i <= n[c]; i++) if (ord[c, i] in twice) print spell[ord[c, i]] ":twice"
+    }')"
+  if [ -n "$bad" ]; then
+    sb_doc_row fail index vault "$bad" "give each row its own name, keys and path, and a path that is a folder in the vault"
+    return 0
+  fi
+  have="$(sb_fm_get "$f" index_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/vault-index.md.tmpl" index_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+    sb_doc_row warn index vault "CLAUDE.md:${have:-none}" \
+      "the index is older than the plugin's template, version $want: bring the text above ## Projects in line with the template, keep the table, and set index_version"
+    return 0
+  fi
+  sb_doc_row ok index vault "" "-"
 }
 
 # Check that the conventions note exists, and that it is not older than the plugin's template.

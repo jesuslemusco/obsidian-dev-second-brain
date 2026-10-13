@@ -13,9 +13,9 @@ the vault, then fifteen for each project. Every entry is a heading, a blank line
 
 ### index
 
-- Means: `CLAUDE.md` at the vault root is missing, or has no `## Projects` table.
-- Why: that table is the only list of projects, so none resolves by name, by ticket key or by working directory.
-- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row.
+- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`); a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
+- Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has.
+- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row. A row: ask, then correct its path, change the name or the key another row has, or remove the row of a project that is gone. Older: ask first; then replace the text above `## Projects` with the text of `templates/vault-index.md.tmpl`, keep the lines the user added and the table, and set `index_version` to the template's.
 
 ### conventions
 

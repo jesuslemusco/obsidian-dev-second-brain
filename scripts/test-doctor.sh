@@ -163,6 +163,68 @@ conventions_version: $((tv + 1))/"
 doc
 chk "conventions: a note newer than the template is fine" conventions vault "ok | 0 | -"
 reset
+
+# ---------------------------------------------------------------- index rows and version
+# add_row <name> <path> <keys>: add one row to the index table.
+add_row() {
+  printf '| %s | %s | %s | A row the suite added. |\n' "$1" "$2" "$3" >>"$vault/CLAUDE.md"
+}
+# index_back: put the index back as it was after the setup.
+index_back() {
+  cp "$tmp/pristine/CLAUDE.md" "$vault/CLAUDE.md"
+}
+mkdir -p "$vault/projects/other" "$tmp/outside"
+add_row Ghost projects/ghost GH
+doc
+rc_is "index: a row to a folder that is gone gives exit 1" 1
+chk "index: a row whose path is no folder fails" index vault "fail | 1 | Ghost:no-folder"
+is "index: the fix says what a row needs" "$(fix_of index vault)" \
+  "give each row its own name, keys and path, and a path that is a folder in the vault"
+index_back
+add_row Out ../outside OUT
+doc
+chk "index: a path that leaves the vault is no folder, though one is there on disk" index vault "fail | 1 | Out:no-folder"
+index_back
+add_row EXAMPLE projects/other OT
+doc
+chk "index: a name on two rows, whatever the case, in the spelling of its first row" index vault "fail | 1 | Example:twice"
+index_back
+add_row Other projects/other 'OT, ex'
+doc
+chk "index: a key on two rows, whatever the case" index vault "fail | 1 | EX:twice"
+index_back
+add_row Other projects/example/ OT
+doc
+chk "index: a path on two rows" index vault "fail | 1 | projects/example:twice"
+index_back
+add_row Other projects/other 'OT, ot'
+doc
+chk "index: a key written twice on one row is no offender, and a second project is fine" index vault "ok | 0 | -"
+index_back
+add_row Ghost projects/ghost ex
+add_row example projects/example EX
+doc
+chk "index: the rows with no folder, then the names, the keys and the paths on two rows" index vault \
+  "fail | 4 | Ghost:no-folder, Example:twice, EX:twice, projects/example:twice"
+index_back
+ti="$(sed -n 's/^index_version: *//p' "$here/templates/vault-index.md.tmpl" | head -1)"
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: $((ti - 1))/"
+doc
+rc_is "index: an older index leaves exit 0" 0
+chk "index: an index older than the plugin's template warns, with its version" index vault "warn | 1 | CLAUDE.md:$((ti - 1))"
+is "index: the fix says what to bring in line, and gives the template's version" "$(fix_of index vault)" \
+  "the index is older than the plugin's template, version $ti: bring the text above ## Projects in line with the template, keep the table, and set index_version"
+edit "$vault/CLAUDE.md" '1,3d'
+doc
+chk "index: an index from before the version, with no frontmatter, warns" index vault "warn | 1 | CLAUDE.md:none"
+add_row Ghost projects/ghost GH
+doc
+chk "index: a failure wins over the warning, and the row holds its offenders alone" index vault "fail | 1 | Ghost:no-folder"
+index_back
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: $((ti + 1))/"
+doc
+chk "index: an index newer than the template is fine" index vault "ok | 0 | -"
+reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: an absolute import line is found" import vault "ok | 0 | -"

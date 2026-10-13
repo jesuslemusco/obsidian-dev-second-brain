@@ -39,6 +39,9 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
 - `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row.
 - A project's folder may sit inside another project's folder. Each row is its own project, and the
   notes of the inner one are not notes of the outer one.
+- A path names no project folder when, with `//` and `/./` folded, it is `.`, holds a `..` part
+  or holds a backslash. The doctor reports such a row in `index`, prints no project rows for it,
+  and opens and writes nothing under it.
 
 The file opens with frontmatter that holds `index_version`, a whole number:
 
@@ -103,6 +106,10 @@ tags:
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `topics_root: "."` means topic folders sit at the project root.
+- `tasks_root`, `topics_root` and `sprints_root` are folders inside the project, written with
+  forward slashes. One that holds a `..` part or a backslash, or starts with `/`, leaves the
+  project: the doctor's `profile` check fails, and the doctor checks the project under that
+  root's default, so nothing is opened through the value.
 - `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
   them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
   no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,
@@ -270,7 +277,7 @@ Rules that hold for every command:
 | `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
-| `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
+| `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check` | nothing when set up, else one line | always exits 0 |
@@ -363,12 +370,15 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   or `-`.
 - A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
   fail row, with the fail offenders only.
+- The doctor follows no `..`. An index path or a profile root is judged as it is written, and
+  nothing is opened through one that holds a `..` part or a backslash. A project folder that is
+  a link inside the vault is the user's own choice, and what lies behind it is read.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
-| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path with a `..` part is never one), or has a name, a key or a path on two rows (`<value>:twice`, with names compared without letter case and keys in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
+| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names compared without letter case and keys in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
@@ -376,7 +386,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |
 | vault | `descriptions` | a scanned skill or agent has no description (`<name>:none`), or one over 200 characters (`<name>:<length>`) (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
-| project | `profile` | the profile is missing, lacks a contract key, or lacks one of the seven sections (fail) |
+| project | `profile` | the profile is missing, lacks a contract key, lacks one of the seven sections, or has a root that leaves the project (`<key>:leaves-project`) (fail) |
 | project | `board` | the board file is missing (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`) or it has no such view (`tasks.base:no-view`) (warn). With no sprint in progress, or for a project that does not use sprints, the view is not looked at |
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |

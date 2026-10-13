@@ -25,6 +25,29 @@ sb_doc_report() {
   fi
 }
 
+# Set SB_DOC_FOLD to a relative path with its empty and "." parts folded out. Return 1 when the
+# path leaves the folder it starts in: a ".." part, a backslash, or a slash in front.
+sb_doc_fold() {
+  local rest="$1" seg
+  SB_DOC_FOLD=""
+  case "$rest" in /* | *\\*) return 1 ;; esac
+  while [ -n "$rest" ]; do
+    seg="${rest%%/*}"
+    case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+    case "$seg" in
+      '' | .) ;;
+      ..) return 1 ;;
+      *) SB_DOC_FOLD="${SB_DOC_FOLD:+$SB_DOC_FOLD/}$seg" ;;
+    esac
+  done
+  return 0
+}
+
+# Return 0 when an index path, as it is written, names a folder inside the vault; sets SB_DOC_FOLD.
+sb_doc_folder() {
+  sb_doc_fold "$1" && [ -n "$SB_DOC_FOLD" ]
+}
+
 # Check that the pointer resolves to a vault.
 sb_doc_check_pointer() {
   local bad=""
@@ -56,10 +79,7 @@ sb_doc_check_index() {
   # A path that leaves the vault is no folder of it, and is never looked for on disk.
   while IFS=$'\t' read -r name path keys; do
     [ -n "$path" ] || continue
-    case "/$path/" in
-      */../*) ;;
-      *) [ ! -d "$SB_ROOT/$path" ] || continue ;;
-    esac
+    if sb_doc_folder "$path" && [ -d "$SB_ROOT/$SB_DOC_FOLD" ]; then continue; fi
     bad="$bad$name:no-folder$nl"
   done <<EOF
 $rows
@@ -191,9 +211,11 @@ sb_doc_piece_files() {
   seen="$nl"
   while IFS=$'\t' read -r name path keys <&3; do
     [ -n "$path" ] || continue
-    case "/$path/" in */../*) continue ;; esac
-    dir="$SB_ROOT/$path/claude"
-    [ "$path" != "." ] || dir="$SB_ROOT/claude"
+    dir="$SB_ROOT/claude"
+    if [ "$path" != "." ]; then
+      sb_doc_folder "$path" || continue
+      dir="$SB_ROOT/$SB_DOC_FOLD/claude"
+    fi
     case "$seen" in *"$nl$dir$nl"*) continue ;; esac
     seen="$seen$dir$nl"
     for f in "$dir"/skills/*/SKILL.md "$dir"/agents/*.md; do
@@ -255,6 +277,20 @@ sb_doc_check_skill_size() {
   sb_doc_report warn skill-size vault "$bad" "move the detail of one mode into a sibling file read only in that mode"
 }
 
+# Set SB_DOC_ROOT to a root of the profile, folded, or to its default when the key is absent.
+# A value that leaves the project gives the default too, and is kept for the profile check.
+sb_doc_root() {
+  local raw
+  SB_DOC_ROOT="$2"
+  raw="$(sb_fm_get "$SB_P_PROFILE" "$1" 2>/dev/null)"
+  [ -n "$raw" ] || return 0
+  if sb_doc_fold "$raw"; then
+    SB_DOC_ROOT="${SB_DOC_FOLD:-.}"
+  else
+    SB_DOC_LEAVES="$SB_DOC_LEAVES$1:leaves-project"$'\n'
+  fi
+}
+
 # Set the project globals for one index row, without exiting on a bad row.
 sb_doc_project() {
   SB_P_NAME="$1"
@@ -262,9 +298,13 @@ sb_doc_project() {
   SB_P_KEYS="${3:-}"
   SB_P_DIR="$SB_ROOT/$SB_P_PATH"
   SB_P_PROFILE="$SB_P_DIR/claude/profile.md"
-  SB_TASKS_ROOT="$(sb_setting "$SB_P_PATH" tasks_root tasks)"
-  SB_TOPICS_ROOT="$(sb_setting "$SB_P_PATH" topics_root docs)"
-  SB_SPRINTS_ROOT="$(sb_setting "$SB_P_PATH" sprints_root sprints)"
+  SB_DOC_LEAVES=""
+  sb_doc_root tasks_root tasks
+  SB_TASKS_ROOT="$SB_DOC_ROOT"
+  sb_doc_root topics_root docs
+  SB_TOPICS_ROOT="$SB_DOC_ROOT"
+  sb_doc_root sprints_root sprints
+  SB_SPRINTS_ROOT="$SB_DOC_ROOT"
   SB_DOC_SPRINTS=1
   sb_uses_sprints "$SB_P_PATH" || SB_DOC_SPRINTS=0
   SB_DOC_FILES="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT")"
@@ -347,14 +387,17 @@ sb_doc_facts() {
     }'
 }
 
-# Check that the profile exists and has every contract key and the seven sections.
+# Check that the profile exists, has every contract key and the seven sections, and that no
+# root leaves the project.
 sb_doc_check_profile() {
-  local bad
+  local bad fix="add them to claude/profile.md, as in the profile template"
   if [ ! -f "$SB_P_PROFILE" ]; then
     sb_doc_row fail profile "$SB_P_NAME" "profile.md" "run /obsidian-dev-second-brain:vault-setup adopt $SB_P_PATH"
     return 0
   fi
-  bad="$(LC_ALL=C awk '
+  [ -z "$SB_DOC_LEAVES" ] ||
+    fix="write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+  bad="$SB_DOC_LEAVES$(LC_ALL=C awk '
     BEGIN {
       nk = split("aliases type project ticket_keys tracker persona tasks_root topics_root sprints_root " \
         "sprint_length_days sprint_anchor_end base_branch branch_pattern environments repos achievements_skill tags", keys, " ")
@@ -373,7 +416,7 @@ sb_doc_check_profile() {
       for (i = 1; i <= nk; i++) if (!(keys[i] in has)) print keys[i]
       for (i = 1; i <= ns; i++) if (!(tolower(secs[i]) in sec)) print "## " secs[i]
     }' "$SB_P_PROFILE")"
-  sb_doc_report fail profile "$SB_P_NAME" "$bad" "add them to claude/profile.md, as in the profile template"
+  sb_doc_report fail profile "$SB_P_NAME" "$bad" "$fix"
 }
 
 # Check that the board file exists, and that its Current sprint view filters on the sprint in progress.
@@ -384,7 +427,9 @@ sb_doc_check_board() {
     return 0
   fi
   # The helper's own Current sprint board goes by the sprint in progress, so the view should too.
-  [ "$SB_DOC_SPRINTS" -eq 0 ] || cur="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
+  # It is read under the checked sprints root: sb_sprint_current_id takes the profile's own value.
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || cur="$(sb_sprint_files "$SB_P_DIR/$SB_SPRINTS_ROOT" | sb_sprint_scan |
+    awk -F'\t' '$3 == "in-progress" { print $2 }' | LC_ALL=C sort | tail -1)"
   if [ -n "$cur" ]; then
     lit="$(sb_board_sprint_literal "$base")"
     if [ -z "$lit" ]; then
@@ -506,13 +551,6 @@ sb_doc_check_no_readme() {
 # Check that no note under the project is a task outside its own folder in the tasks root.
 sb_doc_check_task_location() {
   local bad
-  # A path that leaves the vault is not walked.
-  case "/$SB_P_PATH/" in
-    */../*)
-      sb_doc_row ok task-location "$SB_P_NAME" "" "-"
-      return 0
-      ;;
-  esac
   # Three parts on stdin: the index paths, the task READMEs, the notes. A project folder inside
   # this one holds its own tasks. Paths are matched without letter case, as some file systems do.
   bad="$({
@@ -552,7 +590,7 @@ sb_doc_topic_exceptions() {
       tag = substr($0, 1, RSTART - 1); folder = trim(substr($0, RSTART + RLENGTH))
       sub(/^[ \t]*[-*][ \t]+/, "", tag); gsub(/`/, "", tag); gsub(/`/, "", folder)
       tag = trim(tag); sub(/^#/, "", tag); sub(/^(\.\/|\/)+/, "", folder); sub(/\/+$/, "", folder)
-      if (tag != "" && folder != "" && ("/" folder "/") !~ /\/\.\.\//) print tag "\t" folder
+      if (tag != "" && folder != "" && ("/" folder "/") !~ /\/\.\.\// && index(folder, "\\") == 0) print tag "\t" folder
     }'
 }
 
@@ -728,8 +766,9 @@ sb_doc_rows() {
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do
-    [ -n "$path" ] || continue
-    sb_doc_project "$name" "$path" "$keys"
+    # A row whose path leaves the vault gets no rows, and nothing under it is opened.
+    sb_doc_folder "$path" || continue
+    sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
       line_endings; do
@@ -771,8 +810,8 @@ sb_doc_json() {
 sb_doc_fix() {
   local name path keys id file status tag n=0
   while IFS=$'\t' read -r name path keys <&3; do
-    [ -n "$path" ] || continue
-    sb_doc_project "$name" "$path" "$keys"
+    sb_doc_folder "$path" || continue
+    sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     while IFS=$'\t' read -r id file status <&4; do
       [ -n "$file" ] || continue
       sb_fm_status_tag "$file" "$status" || continue

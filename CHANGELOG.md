@@ -34,6 +34,10 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`
   view that filters on another sprint or is not there. `descriptions` warns about a skill or an
   agent of the vault with no description.
+- The doctor opens nothing outside the vault. An index row whose path is `.` or holds a `..`
+  part or a backslash fails `index` and gets no project rows, and `doctor --fix` writes nothing
+  under it. A `tasks_root`, `topics_root` or `sprints_root` that leaves the project fails
+  `profile`, and the project is checked under that root's default.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
 

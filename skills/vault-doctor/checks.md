@@ -13,7 +13,7 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 
 ### index
 
-- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`); a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
+- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`), which a path that is `.` or holds a `..` part or a backslash never is, and such a row gets no project rows; a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
 - Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has.
 - Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row. A row: ask, then correct its path, change the name or the key another row has, or remove the row of a project that is gone. Older: ask first; then replace the text above `## Projects` with the text of `templates/vault-index.md.tmpl`, keep the lines the user added and the table, and set `index_version` to the template's.
 
@@ -61,9 +61,9 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 
 ### profile
 
-- Means: the project's `claude/profile.md` is missing, or lacks a frontmatter key or one of its seven sections.
-- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there.
-- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl` under the plugin root.
+- Means: the project's `claude/profile.md` is missing, lacks a frontmatter key or one of its seven sections, or has a root that leaves the project (`<key>:leaves-project`): `tasks_root`, `topics_root` or `sprints_root` with a `..` part, a backslash or a slash in front.
+- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there. A root that leaves the project sends them to read and write outside it; the doctor checks under that root's default and opens nothing through the value.
+- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl` under the plugin root. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
 
 ### board
 

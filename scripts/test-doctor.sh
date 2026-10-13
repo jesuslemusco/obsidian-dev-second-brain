@@ -85,6 +85,8 @@ fix_of() {
 }
 # chk <description> <check> <scope> <"result | count | offenders">
 chk() { is "$1" "$(row "$2" "$3")" "$4"; }
+# scope_rows <scope>: count the rows of one scope in the last run.
+scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
 # reset: put the scratch vault and link directory back as they were after the setup.
 reset() {
   rm -rf "$vault" "$home"
@@ -326,6 +328,57 @@ rc_is "board: a warning leaves exit 0" 0
 chk "board: a view that filters on another sprint than the one in progress warns, with its id" board Example "warn | 1 | tasks.base:2025-12-31"
 is "board: the fix names the sprint in progress" "$(fix_of board)" \
   "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14"
+reset
+
+# ---------------------------------------------------------------- paths that leave the vault
+# A project outside the vault, with a mark in every file the doctor could open there.
+O="$tmp/outside-proj"
+mkdir -p "$O/claude" "$O/tasks/OUTMARK-1" "$O/sprints"
+cp "$vault/$P/claude/profile.md" "$O/claude/profile.md"
+sed 's/sprint == "2026-01-14"/sprint == "OUTMARK-2"/' "$T/tasks.base" >"$O/tasks/tasks.base"
+sed 's/^  - status\/active$/  - status\/done/' "$T/EX-1/README.md" >"$O/tasks/OUTMARK-1/README.md"
+sed 's/2026-01-14/2031-01-01/g' "$vault/$P/sprints/2026-01-14.md" >"$O/sprints/2031-01-01.md"
+cp "$O/tasks/OUTMARK-1/README.md" "$tmp/outside.before"
+# marks: count the lines of the last run, stdout and stderr, that hold something read out there.
+marks() { printf '%s\n%s\n' "$OUT" "$ERR" | grep -c -e OUTMARK -e 2031-01-01 || true; }
+# set_root <key> <raw value>: write one root of the profile as it is given.
+set_root() {
+  SB_K="$1" SB_V="$2" awk 'index($0, ENVIRON["SB_K"] ":") == 1 { print ENVIRON["SB_K"] ": " ENVIRON["SB_V"]; next } { print }' \
+    "$vault/$P/claude/profile.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$vault/$P/claude/profile.md"
+}
+add_row Out ../outside-proj OUT
+doc
+chk "outside: a row with a .. part fails the index" index vault "fail | 1 | Out:no-folder"
+is "outside: it gets no project rows, and nothing under it is read" "$(scope_rows Out)/$(marks)" "0/0"
+doc Out
+rc_is "outside: named, the row still gives exit 1" 1
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "9/0/0"
+doc --fix
+is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
+index_back
+mkdir -p "$vault/"'projects\example'
+add_row Back 'projects\example' BK
+doc
+chk "outside: a row whose path holds a backslash is no folder, though one is there on disk" index vault "fail | 1 | Back:no-folder"
+is "outside: it gets no project rows either" "$(scope_rows Back)" "0"
+reset
+set_root tasks_root ../../../outside-proj/tasks
+doc Example
+rc_is "outside: a root that leaves the project gives exit 1" 1
+chk "outside: a tasks root with a .. part fails the profile" profile Example "fail | 1 | tasks_root:leaves-project"
+is "outside: the fix says what a root is" "$(fix_of profile)" \
+  "write each root as a folder inside the project, with no .. part, no backslash and no slash in front; add a missing key or section as in the profile template"
+is "outside: nothing is read through it, and the project is checked under the default root" \
+  "$(marks)/$(row board)/$(row task-location)" "0/ok | 0 | -/ok | 0 | -"
+doc Example --fix
+is "outside: --fix writes nothing through it" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
+set_root tasks_root "'..\\..\\..\\outside-proj\\tasks'"
+set_root topics_root /outside-proj/docs
+set_root sprints_root ../../../outside-proj/sprints
+doc Example
+chk "outside: a backslash, a slash in front and a .. part, one root each" profile Example \
+  "fail | 3 | tasks_root:leaves-project, topics_root:leaves-project, sprints_root:leaves-project"
+is "outside: nothing is read through any of them" "$(marks)" "0"
 reset
 
 # ---------------------------------------------------------------- hubs
@@ -715,8 +768,6 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-# scope_rows <scope>: count the rows of one scope in the last run.
-scope_rows() { printf '%s\n' "$OUT" | grep -c " | $1 | " || true; }
 is "two projects: seventeen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "17/17"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "

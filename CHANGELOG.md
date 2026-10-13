@@ -29,10 +29,11 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The vault's `CLAUDE.md` carries a version, `index_version`, in frontmatter. The doctor's `index`
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
-- The doctor checks more of a project. `hubs` warns about a hub that is missing or empty.
+- The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`
-  view that filters on another sprint or is not there.
+  view that filters on another sprint or is not there. `descriptions` warns about a skill or an
+  agent of the vault with no description.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
 

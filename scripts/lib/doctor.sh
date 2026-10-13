@@ -238,11 +238,14 @@ sb_doc_piece_scan() {
     }'
 }
 
-# Check that no scanned skill or agent description is over 200 characters.
+# Check that every scanned skill or agent has a description, and none over 200 characters.
 sb_doc_check_descriptions() {
   local bad
-  bad="$(printf '%s\n' "$SB_DOC_PIECES" | awk -F'\t' '$3 > 200 { print $1 ":" $3 }')"
-  sb_doc_report warn descriptions vault "$bad" "shorten the description to one sentence under 200 characters"
+  bad="$(printf '%s\n' "$SB_DOC_PIECES" | awk -F'\t' '
+    NF < 4 { next }
+    $3 == 0 { print $1 ":none" }
+    $3 > 200 { print $1 ":" $3 }')"
+  sb_doc_report warn descriptions vault "$bad" "give each one a description of one sentence under 200 characters"
 }
 
 # Check that no scanned SKILL.md is over 150 lines.

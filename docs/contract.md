@@ -374,7 +374,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |
-| vault | `descriptions` | a scanned skill or agent description is over 200 characters (warn) |
+| vault | `descriptions` | a scanned skill or agent has no description (`<name>:none`), or one over 200 characters (`<name>:<length>`) (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | project | `profile` | the profile is missing, lacks a contract key, or lacks one of the seven sections (fail) |
 | project | `board` | the board file is missing (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`) or it has no such view (`tasks.base:no-view`) (warn). With no sprint in progress, or for a project that does not use sprints, the view is not looked at |

@@ -49,9 +49,9 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 
 ### descriptions
 
-- Means: a skill or agent in the vault has a `description` over 200 characters.
-- Why: every registered description is loaded into every session, so a long one costs context each time.
-- Fix: cut the `description` in its frontmatter to one sentence: what it does and when to use it.
+- Means: a skill or agent in the vault has no `description` (`<name>:none`), or one over 200 characters (`<name>:<length>`).
+- Why: Claude Code decides from the description when to use a skill or an agent, so one without is never picked. Every registered description is loaded into every session, so a long one costs context each time.
+- Fix: write the `description` in its frontmatter as one sentence: what it does and when to use it. A long one: cut it to that.
 
 ### skill-size
 

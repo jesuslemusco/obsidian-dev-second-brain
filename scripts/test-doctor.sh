@@ -274,6 +274,16 @@ doc
 chk "always-loaded-size: ok on a fresh vault" always-loaded-size vault "ok | 0 | -"
 chk "descriptions: ok with no skills" descriptions vault "ok | 0 | -"
 chk "skill-size: ok with no skills" skill-size vault "ok | 0 | -"
+mkdir -p "$vault/claude/skills/no-desc" "$vault/claude/agents"
+printf '%s\n' '---' 'name: no-desc' '---' 'Body.' >"$vault/claude/skills/no-desc/SKILL.md"
+printf '%s\n' '---' 'name: blank' 'description: ""' '---' 'Body.' >"$vault/claude/agents/blank.md"
+printf '%s\n' '---' 'name: fine' 'description: Short enough.' '---' 'Body.' >"$vault/claude/agents/fine.md"
+doc
+chk "descriptions: a skill with no description and an agent with an empty one warn, a short one does not" descriptions vault \
+  "warn | 2 | no-desc:none, blank:none"
+is "descriptions: the fix covers a missing and a long description" "$(fix_of descriptions vault)" \
+  "give each one a description of one sentence under 200 characters"
+reset
 awk 'BEGIN { for (i = 1; i <= 30; i++) print "- filler line " i }' >>"$vault/CLAUDE.md"
 awk 'BEGIN { for (i = 1; i <= 41; i++) print "- my line " i }' >"$home/CLAUDE.md"
 long="$(awk 'BEGIN { for (i = 1; i <= 250; i++) printf "x"; print "" }')"

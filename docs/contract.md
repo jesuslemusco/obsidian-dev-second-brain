@@ -377,8 +377,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
   fail row, with the fail offenders only.
 - The doctor follows no `..`. An index path or a profile root is judged as it is written, and
-  nothing is opened through one that holds a `..` part or a backslash. A project folder that is
-  a link inside the vault is the user's own choice, and what lies behind it is read.
+  nothing is opened through one that holds a `..` part or a backslash, or through a root that
+  starts with `/`. A link inside the vault is the user's own choice: the doctor does not check
+  where a project folder that is one leads.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
@@ -416,6 +417,8 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - Not covered: a tasks root spelled in the profile with a letter outside ASCII in another
   Unicode form than the folder has on disk. macOS still finds the tasks through it, and
   `task-location` may then report each of them.
+- Not covered: the notes behind a project folder that is a link. `task-location` and
+  `unresolved-links` go by the files of the vault, and a link is not followed there.
 - A snapshot is a folder `<vault>/.second-brain/snapshots/<name>/` holding `unresolved.txt`,
   `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`, all read from
   the vault's files.

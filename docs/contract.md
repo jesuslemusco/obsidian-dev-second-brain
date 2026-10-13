@@ -409,6 +409,12 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
 | project | `line-endings` | a task README with mixed line endings (warn) |
 
+- `task-location` takes a note's type from frontmatter that opens on the first line and closes.
+  The key is `type:` followed by a blank: `type:task` is no property, and frontmatter that
+  never closes holds none.
+- Not covered: a tasks root spelled in the profile with a letter outside ASCII in another
+  Unicode form than the folder has on disk. macOS still finds the tasks through it, and
+  `task-location` may then report each of them.
 - A snapshot is a folder `<vault>/.second-brain/snapshots/<name>/` holding `unresolved.txt`,
   `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`, all read from
   the vault's files.

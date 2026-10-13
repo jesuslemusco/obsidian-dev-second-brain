@@ -585,6 +585,7 @@ sb_doc_check_task_location() {
   local bad to="$SB_P_PATH/$SB_TASKS_ROOT"
   # Three parts on stdin: the index paths, the task READMEs, the notes. A project folder inside
   # this one holds its own tasks. Paths are matched without letter case, as some file systems do.
+  # A note has a type when its frontmatter closes and holds the key, a colon and a blank.
   bad="$({
     sb_projects_tsv 2>/dev/null | cut -f2
     printf '\034\n%s\n\034\n' "$SB_DOC_FILES"
@@ -600,16 +601,16 @@ sb_doc_check_task_location() {
       file = $0; path = norm(file); low = tolower(path)
       if (low in task) next
       for (i = 1; i <= ni; i++) if (substr(low, 1, length(inner[i])) == inner[i]) next
-      n = 0; type = ""
+      n = 0; type = ""; closed = 0
       while ((getline line < file) > 0) {
         n++
         sub(/\r$/, "", line)
         if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
-        if (line == "---") break
-        if (line ~ /^type:/) { type = unq(substr(line, 6)); break }
+        if (line == "---") { closed = 1; break }
+        if (line ~ /^type:([ \t]|$)/) type = unq(substr(line, 6))
       }
       close(file)
-      if (type == "task") print substr(path, length(dir) + 1)
+      if (closed && type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
     "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120

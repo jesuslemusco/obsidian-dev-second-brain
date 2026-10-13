@@ -556,15 +556,32 @@ doc Example
 chk "task-location: two long paths are printed whole, so they are told apart" task-location Example \
   "warn | 2 | docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md, docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md"
 reset
+stray "$P/zz/last.md" task
+printf '%s\r\n' '---' 'type: task' '---' '# CRLF' >"$vault/$P/docs/crlf.md"
+stray "$P/a-first.md" task
+printf '\357\273\277---\ntype: task\n---\n# BOM\n' >"$vault/$P/docs/bom.md"
+stray "$P/tasks/EX-9.md" task
+doc Example
+chk "task-location: the offenders come sorted by path" task-location Example \
+  "warn | 5 | a-first.md, docs/bom.md, docs/crlf.md, tasks/EX-9.md, zz/last.md"
+out_has "task-location: a note with CRLF line endings is read" "docs/crlf.md"
+out_has "task-location: a note that opens with a BOM is read" "docs/bom.md"
+reset
 stray "$P/docs/billing/notes.md" note
 stray "$P/.trash/EX-8.md" task
 stray "$P/docs/.drafts/EX-9.md" task
 printf '%s\n' '# No frontmatter' '' 'type: task' >"$vault/$P/docs/plain.md"
+printf '%s\n' '---' 'title: "A note"' '---' '' 'type: task' >"$vault/$P/docs/body.md"
+printf '%s\n' '---' 'type:task' '---' '# No blank after the colon' >"$vault/$P/docs/nospace.md"
+printf '%s\n' '---' 'type: task' '' '# The frontmatter never closes' >"$vault/$P/docs/open.md"
 sb scaffold project Child --path "$P/child" --keys CH
 sb task new CH-1 --project Child --title "A task of the project inside"
 stray "$P/child/docs/CH-2.md" task
 doc
 chk "task-location: another type, dot folders, body text and the tasks of a project inside are left alone" task-location Example "ok | 0 | -"
+is "task-location: reading stops at the line that closes the frontmatter" "$(printf '%s\n' "$OUT" | grep -c 'docs/body.md' || true)" "0"
+is "task-location: type:task with no blank is no property" "$(printf '%s\n' "$OUT" | grep -c 'docs/nospace.md' || true)" "0"
+is "task-location: frontmatter that never closes holds no type" "$(printf '%s\n' "$OUT" | grep -c 'docs/open.md' || true)" "0"
 chk "task-location: the project inside gets its own misfiled task" task-location Child "warn | 1 | docs/CH-2.md"
 chk "index: a project inside another is a row like any other" index vault "ok | 0 | -"
 doc Example
@@ -593,6 +610,14 @@ is "task-location: the fix names that folder folded" "$(fix_of task-location)" \
   "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
 chk "board: the board is found under a root written that way" board Example "ok | 0 | -"
 reset
+if [ -d "$vault/PROJECTS" ]; then
+  set_root tasks_root TASKS
+  doc Example
+  chk "task-location: where the file system ignores letter case, a tasks root in another case is the same folder" task-location Example "ok | 0 | -"
+  reset
+else
+  printf 'skip  task-location: this file system tells TASKS from tasks\n'
+fi
 
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.

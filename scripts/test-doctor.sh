@@ -309,6 +309,14 @@ rm "$vault/$P/claude/profile.md"
 doc Example
 chk "profile: a missing profile fails" profile Example "fail | 1 | profile.md"
 reset
+is "board: the Current sprint view filters on the sprint in progress" "$(grep -c 'sprint == "2026-01-14"' "$T/tasks.base")" "1"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+rc_is "board: a warning leaves exit 0" 0
+chk "board: a view that filters on another sprint than the one in progress warns, with its id" board Example "warn | 1 | tasks.base:2025-12-31"
+is "board: the fix names the sprint in progress" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14"
+reset
 
 # ---------------------------------------------------------------- hubs
 doc Example
@@ -578,6 +586,7 @@ out_has "close: the carried task now points at the next sprint, which has no not
 doc Example
 rc_is "sprints: exit 0 after a close with a carry" 0
 chk "sprints: ok after a close with a carry" sprints Example "ok | 0 | -"
+chk "board: with no sprint in progress the view's old sprint id is not reported" board Example "ok | 0 | -"
 sb task set EX-3 sprint=2026-03-01
 sb task set EX-2 sprint=2026-01-28
 doc Example
@@ -748,10 +757,15 @@ doc Kanban
 chk "no sprints: turned on again, the leftover id is reported" sprints Kanban "fail | 1 | KB-1:2026-03-01"
 sb scaffold project Kanban --path projects/kanban --keys KB
 sb sprint open Kanban --end 2026-01-14
+doc Kanban
+chk "board: sprints turned on and a sprint opened, the board with no Current sprint view warns" board Kanban "warn | 1 | tasks.base:no-view"
+is "board: the fix says what to add, and names the sprint in progress" "$(fix_of board Kanban)" \
+  "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, 2026-01-14"
 edit "$K/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
 doc Kanban
 rc_is "no sprints: a sprint left in progress is no failure" 0
 chk "no sprints: a sprint left in progress is a warning" sprints Kanban "warn | 1 | 2026-01-14:in-progress"
+chk "no sprints: the board is not asked for a Current sprint view" board Kanban "ok | 0 | -"
 is "no sprints: the way to close it is given" "$(fix_of sprints Kanban)" \
   "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
 

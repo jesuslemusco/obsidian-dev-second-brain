@@ -202,6 +202,10 @@ task folder (a folder-depth filter), shows `file.asLink(aliases[0])` as the task
 `Current sprint` view filters on one literal sprint id that `sprint open` rewrites. A project with
 `uses_sprints: false` is scaffolded without the `Current sprint` view and the sprint columns.
 
+`board <project> "Current sprint"` goes by the sprint in progress, not by that literal. When the
+two differ, Obsidian shows another sprint than the helper reports; the doctor's `board` check
+warns about it.
+
 ## 7. The helper
 
 `second-brain <command> [args]`. Bash 3.2 and awk only; must run on macOS, on Linux, and on Windows
@@ -373,7 +377,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `descriptions` | a scanned skill or agent description is over 200 characters (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | project | `profile` | the profile is missing, lacks a contract key, or lacks one of the seven sections (fail) |
-| project | `board` | the board file is missing (fail) |
+| project | `board` | the board file is missing (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`) or it has no such view (`tasks.base:no-view`) (warn). With no sprint in progress, or for a project that does not use sprints, the view is not looked at |
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
 | project | `needs-a-status` | status missing or not one of the five (warn; never changed) |
@@ -440,7 +444,8 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a
 function another library owns. Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`,
 `sb_fm_edit`, `sb_fm_keys`, `sb_section`, `sb_task_files`, `sb_task_scan`, `sb_sprint_current_id`,
-`sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`.
+`sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`,
+`sb_board_sprint_literal`.
 
 ## 8. Templates
 

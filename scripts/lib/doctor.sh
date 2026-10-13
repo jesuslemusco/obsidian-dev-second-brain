@@ -373,11 +373,28 @@ sb_doc_check_profile() {
   sb_doc_report fail profile "$SB_P_NAME" "$bad" "add them to claude/profile.md, as in the profile template"
 }
 
-# Check that the board file exists.
+# Check that the board file exists, and that its Current sprint view filters on the sprint in progress.
 sb_doc_check_board() {
-  local bad=""
-  [ -f "$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" ] || bad="tasks.base"
-  sb_doc_report fail board "$SB_P_NAME" "$bad" "run second-brain scaffold project again with the same name and path to write it"
+  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit
+  if [ ! -f "$base" ]; then
+    sb_doc_row fail board "$SB_P_NAME" "tasks.base" "run second-brain scaffold project again with the same name and path to write it"
+    return 0
+  fi
+  # The helper's own Current sprint board goes by the sprint in progress, so the view should too.
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || cur="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
+  if [ -n "$cur" ]; then
+    lit="$(sb_board_sprint_literal "$base")"
+    if [ -z "$lit" ]; then
+      sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
+        "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+      return 0
+    fi
+    if [ "$lit" != "$cur" ]; then
+      sb_doc_row warn board "$SB_P_NAME" "tasks.base:$lit" "set the filter of the board's Current sprint view to the sprint in progress, $cur"
+      return 0
+    fi
+  fi
+  sb_doc_row ok board "$SB_P_NAME" "" "-"
 }
 
 # Check that each hub scaffold project writes is there, with something in it.

@@ -399,9 +399,11 @@ is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tas
 index_back
 mkdir -p "$vault/"'projects\example'
 add_row Back 'projects\example' BK
+add_row Whole . WH
 doc
-chk "outside: a row whose path holds a backslash is no folder, though one is there on disk" index vault "fail | 1 | Back:no-folder"
-is "outside: it gets no project rows either" "$(scope_rows Back)" "0"
+chk "outside: a path with a backslash, though a folder is there on disk, and the vault itself are no project folders" index vault \
+  "fail | 2 | Back:no-folder, Whole:no-folder"
+is "outside: neither gets project rows" "$(scope_rows Back)/$(scope_rows Whole)" "0/0"
 reset
 set_root tasks_root ../../../outside-proj/tasks
 doc Example

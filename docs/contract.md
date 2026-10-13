@@ -35,8 +35,9 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
 
 - `Project` is the display name, unique, matched case-insensitively.
 - `Path` is vault-relative, no leading or trailing slash. It is a folder in the vault, and no two
-  rows share one.
-- `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row.
+  rows share one: paths are compared without letter case, with `//` and `/./` folded.
+- `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row. An
+  item with no letter or digit, such as `-`, is no key.
 - A project's folder may sit inside another project's folder. Each row is its own project, and the
   notes of the inner one are not notes of the outer one.
 - A path names no project folder when, with `//` and `/./` folded, it is `.`, holds a `..` part
@@ -54,6 +55,7 @@ index_version: 1
 - It is the version of `templates/vault-index.md.tmpl` that the text above `## Projects` follows.
   The template's number goes up when that text changes.
 - The doctor's `index` check warns when the vault's number is missing or lower than the template's.
+  A number too long to compare counts as newer. The same holds for `conventions_version`.
 - No command brings an index up to date, because it may hold the user's own lines. It is edited by
   hand: the text above `## Projects` is brought in line with the template, the table is kept, and
   `index_version` is set to the template's number.
@@ -378,7 +380,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
-| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names compared without letter case and keys in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
+| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names and paths compared without letter case, `//` and `/./` in a path folded, and keys compared in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |

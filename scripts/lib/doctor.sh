@@ -48,6 +48,11 @@ sb_doc_folder() {
   sb_doc_fold "$1" && [ -n "$SB_DOC_FOLD" ]
 }
 
+# Return 0 when a version, all digits, is lower than another. One too long to compare is newer.
+sb_doc_older() {
+  [ "${#1}" -le 9 ] && [ "${#2}" -le 9 ] && [ "$1" -lt "$2" ]
+}
+
 # Check that the pointer resolves to a vault.
 sb_doc_check_pointer() {
   local bad=""
@@ -84,19 +89,21 @@ sb_doc_check_index() {
   done <<EOF
 $rows
 EOF
-  # Names are compared without letter case and keys in upper case, as the lookups compare them.
+  # Names and paths are compared without letter case and keys in upper case, as the lookups
+  # compare them; "//" and "/./" in a path are folded first. A key holds a letter or a digit.
   bad="$bad$(printf '%s\n' "$rows" | LC_ALL=C awk -F'\t' '
     function see(kind, k, v) {
       k = kind SUBSEP k
       if (!(k in at)) { at[k] = NR; spell[k] = v; ord[kind, ++n[kind]] = k }
       else if (at[k] != NR) twice[k] = 1
     }
+    function fold(p) { p = "/" p "/"; while (sub(/\/\.?\//, "/", p)) continue; return tolower(p) }
     $1 == "" { next }
     {
       see(1, tolower($1), $1)
       m = split($3, key, ",")
-      for (i = 1; i <= m; i++) if (key[i] != "") see(2, toupper(key[i]), key[i])
-      see(3, $2, $2)
+      for (i = 1; i <= m; i++) if (key[i] ~ /[A-Za-z0-9]/) see(2, toupper(key[i]), key[i])
+      see(3, fold($2), $2)
     }
     END {
       for (c = 1; c <= 3; c++)
@@ -110,7 +117,7 @@ EOF
   want="$(sb_fm_get "$(sb_plugin_root)/templates/vault-index.md.tmpl" index_version 2>/dev/null)"
   case "$have" in *[!0-9]*) have="" ;; esac
   case "$want" in *[!0-9]*) want="" ;; esac
-  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+  if [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }; then
     sb_doc_row warn index vault "CLAUDE.md:${have:-none}" \
       "the index is older than the plugin's template, version $want: bring the text above ## Projects in line with the template, keep the table, and set index_version"
     return 0
@@ -130,7 +137,7 @@ sb_doc_check_conventions() {
   want="$(sb_fm_get "$(sb_plugin_root)/templates/obsidian-conventions.md.tmpl" conventions_version 2>/dev/null)"
   case "$have" in *[!0-9]*) have="" ;; esac
   case "$want" in *[!0-9]*) want="" ;; esac
-  if [ -n "$want" ] && { [ -z "$have" ] || [ "$have" -lt "$want" ]; }; then
+  if [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }; then
     sb_doc_row warn conventions vault "obsidian-conventions.md:${have:-none}" \
       "the note is older than the plugin's template, version $want: delete it and run second-brain scaffold vault, or edit it by hand"
     return 0

@@ -203,6 +203,27 @@ add_row Other projects/other 'OT, ot'
 doc
 chk "index: a key written twice on one row is no offender, and a second project is fine" index vault "ok | 0 | -"
 index_back
+mkdir -p "$vault/projects/third"
+add_row Other projects/other '-, OT,,'
+add_row Third projects/third '-,, TH'
+doc
+chk "index: a dash, and an empty item between commas, are no keys" index vault "ok | 0 | -"
+index_back
+mkdir -p "$vault/Projects/Third"
+add_row Two projects//example TW
+add_row Other projects/other OT
+add_row Other2 projects/./other O2
+add_row Third projects/third TH
+add_row Third2 Projects/Third T2
+doc
+chk "index: paths are one when they differ by //, by /./ or by letter case" index vault \
+  "fail | 3 | projects/example:twice, projects/other:twice, projects/third:twice"
+index_back
+: >"$vault/projects/afile"
+add_row File projects/afile FI
+doc
+chk "index: a path that is a file is no folder" index vault "fail | 1 | File:no-folder"
+index_back
 add_row Ghost projects/ghost ex
 add_row example projects/example EX
 doc
@@ -226,6 +247,12 @@ index_back
 edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: $((ti + 1))/"
 doc
 chk "index: an index newer than the template is fine" index vault "ok | 0 | -"
+edit "$vault/CLAUDE.md" "s/^index_version: .*/index_version: 99999999999999999999999/"
+edit "$vault/obsidian-conventions.md" "s/^conventions_version: .*/conventions_version: 99999999999999999999999/"
+doc
+chk "index: a version too long to compare counts as newer" index vault "ok | 0 | -"
+chk "conventions: a version too long to compare counts as newer" conventions vault "ok | 0 | -"
+is "index, conventions: such a version gives no shell error" "$ERR" ""
 reset
 printf '# Mine\n\n@%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc

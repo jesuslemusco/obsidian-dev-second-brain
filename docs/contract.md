@@ -38,8 +38,9 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
   rows share one: paths are compared without letter case, with `//` and `/./` folded.
 - `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row. An
   item with no letter or digit, such as `-`, is no key.
-- A project's folder may sit inside another project's folder. Each row is its own project, and the
-  notes of the inner one are not notes of the outer one.
+- A project's folder may sit inside another project's folder. Each row is its own project. The
+  doctor's `task-location` check leaves the notes of the inner project to that project; a check
+  that goes by the path alone, such as `unresolved-links`, lists them under both.
 - A path names no project folder when, with `//` and `/./` folded, it is `.`, holds a `..` part
   or holds a backslash. The doctor reports such a row in `index`, prints no project rows for it,
   and opens and writes nothing under it.

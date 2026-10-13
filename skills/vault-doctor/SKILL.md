@@ -69,7 +69,8 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
   `second-brain task set <ID> status=<status>`.
 - Never run a bulk fix without a snapshot first. `doctor --fix` needs none: it changes status
   tags only, and its proof is the second doctor run.
-- Never delete a note and never use `mv`. A move goes through `second-brain move`, run with
-  `--dry-run` first.
+- Never delete a note. The one exception is a file that a fix in `checks.md` says to delete, and
+  then only after the user agrees to that fix.
+- Never use `mv`. A move goes through `second-brain move`, run with `--dry-run` first.
 - The helper prints `-` for an empty cell. Read it as empty.
 - A template named in `checks.md` is under the plugin root, in `templates/`.

@@ -360,6 +360,16 @@ chk "board: a view that filters on another sprint than the one in progress warns
 is "board: the fix names the sprint in progress" "$(fix_of board)" \
   "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14"
 reset
+edit "$T/tasks.base" "s/sprint == \"2026-01-14\"/sprint == '2026-01-14'/"
+doc Example
+chk "board: a filter in single quotes is not a missing view" board Example "warn | 1 | tasks.base:filter"
+is "board: the fix gives the form sprint open rewrites" "$(fix_of board)" \
+  "write the filter of the board's Current sprint view as sprint == \"2026-01-14\", the form sprint open rewrites"
+reset
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/"2026-01-14" == sprint/'
+doc Example
+chk "board: a filter with its sides swapped is not a missing view either" board Example "warn | 1 | tasks.base:filter"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.

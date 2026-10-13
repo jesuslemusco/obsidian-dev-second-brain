@@ -32,8 +32,8 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`
-  view that filters on another sprint or is not there. `descriptions` warns about a skill or an
-  agent of the vault with no description.
+  view that filters on another sprint, has a filter the helper cannot read, or is not there.
+  `descriptions` warns about a skill or an agent of the vault with no description.
 - The doctor opens nothing outside the vault. An index row whose path is `.` or holds a `..`
   part or a backslash fails `index` and gets no project rows, and `doctor --fix` writes nothing
   under it. A `tasks_root`, `topics_root` or `sprints_root` that leaves the project fails

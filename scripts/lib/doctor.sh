@@ -451,8 +451,17 @@ sb_doc_check_board() {
   if [ -n "$cur" ]; then
     lit="$(sb_board_sprint_literal "$base")"
     if [ -z "$lit" ]; then
-      sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
-        "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+      # No id was read: the view is there with a filter in another form, or it is not there.
+      if LC_ALL=C awk '
+        { sub(/\r$/, "") }
+        /^[ \t]*(-[ \t]+)?name:[ \t]*["\047]?Current sprint["\047]?[ \t]*$/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }' "$base"; then
+        sb_doc_row warn board "$SB_P_NAME" "tasks.base:filter" \
+          "write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
+      else
+        sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
+          "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+      fi
       return 0
     fi
     if [ "$lit" != "$cur" ]; then

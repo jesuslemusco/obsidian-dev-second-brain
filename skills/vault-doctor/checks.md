@@ -67,9 +67,9 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 
 ### board
 
-- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`) or the board has no such view (`tasks.base:no-view`).
+- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is in a form the helper does not read (`tasks.base:filter`), or the board has no such view (`tasks.base:no-view`).
 - Why: Obsidian shows the task board from that file, so with no file the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs and goes by the sprint in progress, so with another id in the view Obsidian shows another sprint than the helper reports.
-- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id: after a yes, set the filter line of the view in `tasks.base` to `sprint == "<id>"`, with the sprint in progress that the row's fix names. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter.
+- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id, or `filter`: after a yes, write the filter line of the view in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites that form alone. Never add a second view by that name. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter.
 
 ### hubs
 

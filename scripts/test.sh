@@ -261,6 +261,9 @@ line_is "index: version property" "$vault/CLAUDE.md" "index_version: 1"
 is "index: what holds in every session comes before what holds for a project" \
   "$(($(lineno "$vault/CLAUDE.md" '## In every session') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: a new skill is not created straight in the link directory" "$vault/CLAUDE.md" '~/.claude/skills'
+every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.md")"
+is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | grep -c -F '~/.claude/second-brain-vault/')" "1"
+is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
 line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"

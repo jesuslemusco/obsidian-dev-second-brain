@@ -30,8 +30,10 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
 - The index says first what holds in every session: a new personal skill or agent is created in
-  the vault, not straight in `~/.claude/skills` or `~/.claude/agents`. Its closing line, to
-  ignore the file for a task outside the projects, is gone: it cancelled that rule.
+  the vault, at `~/.claude/second-brain-vault/`, not straight in `~/.claude/skills` or
+  `~/.claude/agents`, and is registered with `second-brain link --apply`. Its closing line, to
+  ignore the file for a task outside the projects, is gone: it cancelled that rule. The rules
+  for notes say that they are for notes.
 - The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`

@@ -29,6 +29,9 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The vault's `CLAUDE.md` carries a version, `index_version`, in frontmatter. The doctor's `index`
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
+- The index says first what holds in every session: a new personal skill or agent is created in
+  the vault, not straight in `~/.claude/skills` or `~/.claude/agents`. Its closing line, to
+  ignore the file for a task outside the projects, is gone: it cancelled that rule.
 - The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`
@@ -48,10 +51,11 @@ Upgrading a vault that was set up with 0.1.0:
   still names the removed commands. The doctor warns about it. Delete `obsidian-conventions.md`
   and run `second-brain scaffold vault` to get the new one, or edit it by hand.
 - The vault's `CLAUDE.md` has no `index_version`, so the doctor warns about it. Bring the text
-  above `## Projects` in line with `templates/vault-index.md.tmpl`, whose rule about moving notes
-  names `second-brain move` and `second-brain rename`. Keep your own lines and the table, and put
-  the template's frontmatter, with its `index_version`, at the top. The `vault-doctor` skill does
-  this after asking.
+  above `## Projects` in line with `templates/vault-index.md.tmpl`: it opens with
+  `## In every session`, which says where new skills and agents go, it no longer says to ignore
+  the file, and its rule about moving notes names `second-brain move` and `second-brain rename`.
+  Keep your own lines and the table, and put the template's frontmatter, with its
+  `index_version`, at the top. The `vault-doctor` skill does this after asking.
 - A snapshot taken with 0.1.0 does not compare with one taken now.
 
 ## 0.1.0 - unreleased

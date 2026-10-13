@@ -1,8 +1,9 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
-the vault, then fifteen for each project. Every entry is a heading and three lines. Read an
-entry only when its check is not `ok`, and run a fix only after the user agrees to it.
+the vault, then fifteen for each project. Every entry is a heading, a blank line and three lines,
+`Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
+`ok`, and run a fix only after the user agrees to it.
 
 ### pointer
 
@@ -18,13 +19,9 @@ entry only when its check is not `ok`, and run a fix only after the user agrees 
 
 ### conventions
 
-- Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the
-  plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper
-  no longer has.
+- Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper no longer has.
 - Why: every skill and agent points to it for the rules on notes, tags and links, so they would write without them.
-- Fix, missing: `second-brain scaffold vault`. It creates the note and overwrites nothing.
-- Fix, older: ask first, because the user may have edited the note. On a yes, delete it and run
-  `second-brain scaffold vault`; otherwise bring it in line with the template by hand.
+- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older: ask first, because the user may have edited the note; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with the template by hand.
 
 ### import
 

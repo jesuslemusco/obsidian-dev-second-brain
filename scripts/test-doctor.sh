@@ -120,6 +120,21 @@ is "rows: a result is ok, warn or fail" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 
 chk "pointer: ok" pointer vault "ok | 0 | -"
 is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | grep -c . || true)" "0"
 
+# ---------------------------------------------------------------- the skill's entries
+# The skill reads an entry with one Grep and the four lines after its heading.
+CHECKS="$here/skills/vault-doctor/checks.md"
+is "checks.md: one entry for each check the doctor prints, in the order of its table" \
+  "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }')"
+is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
+  function entry() {
+    while (n > 0 && body[n] == "") n--
+    if (name != "" && (n != 4 || body[1] != "" || body[2] !~ /^- Means: [^ ]/ || body[3] !~ /^- Why: [^ ]/ || body[4] !~ /^- Fix: [^ ]/)) print name
+  }
+  /^### / { entry(); name = substr($0, 5); n = 0; next }
+  name != "" { body[++n] = $0 }
+  END { entry() }' "$CHECKS")" ""
+
 # ---------------------------------------------------------------- index, conventions, import
 chk "index: ok" index vault "ok | 0 | -"
 chk "conventions: ok" conventions vault "ok | 0 | -"

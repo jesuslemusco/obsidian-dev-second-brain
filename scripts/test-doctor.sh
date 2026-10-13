@@ -561,6 +561,29 @@ doc Example
 chk "task-location: the project inside is left alone when the doctor is run for one project" task-location Example "ok | 0 | -"
 reset
 
+# ---------------------------------------------------------------- roots written another way
+set_root tasks_root '"."'
+cp -R "$T/EX-1" "$vault/$P/EX-1"
+rm "$vault/$P/README.md"
+doc Example
+chk "hubs: with the tasks at the project root, the project hub is one offender" hubs Example "warn | 1 | README.md"
+chk "task-location: with that root a task folder at the project root is in its place, and the old ones are not" task-location Example \
+  "warn | 3 | tasks/EX-1/README.md, tasks/EX-2/README.md, tasks/EX-3/README.md"
+is "task-location: the fix names the project folder, with no dot part" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/<ID>/README.md, and tie it to its topic with a tag"
+reset
+set_root tasks_root ./tasks//
+set_root topics_root tasks/
+rm "$T/README.md"
+stray "$P/docs/EX-9.md" task
+doc Example
+chk "hubs: two roots on one folder name its hub once" hubs Example "warn | 1 | tasks/README.md"
+chk "task-location: a tasks root written with ./ and // is the same folder" task-location Example "warn | 1 | docs/EX-9.md"
+is "task-location: the fix names that folder folded" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+chk "board: the board is found under a root written that way" board Example "ok | 0 | -"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {

@@ -463,13 +463,18 @@ sb_doc_check_board() {
   sb_doc_row ok board "$SB_P_NAME" "" "-"
 }
 
-# Check that each hub scaffold project writes is there, with something in it.
+# Check that each hub scaffold project writes is there, with something in it. A hub that two
+# roots share, such as the project hub when a root is ".", is looked at once.
 sb_doc_check_hubs() {
-  local hubs h bad="" nl=$'\n'
-  hubs=("README.md" "claude/README.md" "$SB_TASKS_ROOT/README.md")
-  [ "$SB_TOPICS_ROOT" = "." ] || hubs[${#hubs[@]}]="$SB_TOPICS_ROOT/README.md"
-  [ "$SB_DOC_SPRINTS" -eq 0 ] || hubs[${#hubs[@]}]="$SB_SPRINTS_ROOT/README.md"
-  for h in "${hubs[@]}"; do
+  local roots r h seen bad="" nl=$'\n'
+  roots=("." "claude" "$SB_TASKS_ROOT" "$SB_TOPICS_ROOT")
+  [ "$SB_DOC_SPRINTS" -eq 0 ] || roots[${#roots[@]}]="$SB_SPRINTS_ROOT"
+  seen="$nl"
+  for r in "${roots[@]}"; do
+    h="$r/README.md"
+    h="${h#./}"
+    case "$seen" in *"$nl$h$nl"*) continue ;; esac
+    seen="$seen$h$nl"
     [ -s "$SB_P_DIR/$h" ] || bad="$bad$h$nl"
   done
   sb_doc_report warn hubs "$SB_P_NAME" "$bad" \
@@ -568,7 +573,7 @@ sb_doc_check_no_readme() {
 
 # Check that no note under the project is a task outside its own folder in the tasks root.
 sb_doc_check_task_location() {
-  local bad
+  local bad to="$SB_P_PATH/$SB_TASKS_ROOT"
   # Three parts on stdin: the index paths, the task READMEs, the notes. A project folder inside
   # this one holds its own tasks. Paths are matched without letter case, as some file systems do.
   bad="$({
@@ -598,7 +603,7 @@ sb_doc_check_task_location() {
       if (type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
-    "move it with second-brain move to $SB_P_PATH/$SB_TASKS_ROOT/<ID>/README.md, and tie it to its topic with a tag" 120
+    "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.

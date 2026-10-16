@@ -608,6 +608,36 @@ rc_is "task head: no id gives exit 5" 5
 sb task bogus
 rc_is "task: unknown subcommand gives exit 5" 5
 
+# ---------------------------------------------------------------- task docs
+cp "$T2" "$tmp/t2.saved"
+cp "$T3" "$tmp/t3.saved"
+edit "$T2" 's/^## Status notes$/## Docs to update\
+\
+- [ ] docs\/billing.md - say totals round once\
+- [x] README.md - already done\
+  - [ ] docs\/api.md - the rounding field\
+\
+## Status notes/'
+edit "$T3" 's/^## Status notes$/## Docs to update\
+\
+- [x] docs\/billing.md - all ticked\
+\
+## Status notes/'
+sb task docs EX-2,EX-3 EX-1
+rc_is "task docs: exit 0" 0
+out_is "task docs: only the task with unticked lines, its path, then those lines" "EX-2 $P/tasks/EX-2/README.md
+- [ ] docs/billing.md - say totals round once
+  - [ ] docs/api.md - the rounding field"
+sb task docs EX-3 --project Example
+rc_is "task docs: every line ticked exits 0" 0
+out_is "task docs: every line ticked prints nothing" ""
+sb task docs EX-404
+rc_is "task docs: unknown task gives exit 1" 1
+sb task docs
+rc_is "task docs: no id gives exit 5" 5
+cp "$tmp/t2.saved" "$T2"
+cp "$tmp/t3.saved" "$T3"
+
 # ---------------------------------------------------------------- an alias as the id
 sb task set EX-70 "next=Promote to qa"
 rc_is "task set: a later environment's id finds the set" 0

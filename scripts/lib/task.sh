@@ -533,17 +533,45 @@ EOF
   sb_rel "$file"
 }
 
+# Print each task that has unticked lines under "## Docs to update": its id and path, then the lines.
+sb_task_docs() {
+  local ids="" project="" id lines usage="usage: second-brain task docs <ID>[,<ID>...] [--project P]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] || sb_die 5 "--project needs a value"
+        project="$2"
+        shift 2
+        ;;
+      -*) sb_die 5 "$usage" ;;
+      *)
+        ids="$ids,$1"
+        shift
+        ;;
+    esac
+  done
+  ids="$(printf '%s' "$ids" | tr ',' '\n' | grep -v '^$' || true)"
+  [ -n "$ids" ] || sb_die 5 "$usage"
+  for id in $ids; do
+    sb_need_task "$id" "$project"
+    lines="$(sb_section "$SB_T_FILE" "Docs to update" | grep '^[ \t]*- \[ \]' || true)"
+    [ -n "$lines" ] || continue
+    printf '%s %s\n%s\n' "$SB_T_ID" "$SB_T_REL" "$lines"
+  done
+}
+
 # Dispatch the task subcommands.
 cmd_task() {
   local sub="${1:-}"
   [ $# -gt 0 ] && shift
   case "$sub" in
     head) sb_task_head "$@" ;;
+    docs) sb_task_docs "$@" ;;
     set) sb_task_set "$@" ;;
     new) sb_task_new "$@" ;;
     note) sb_task_note "$@" ;;
     tag) sb_task_tag "$@" ;;
     alias) sb_task_alias "$@" ;;
-    *) sb_die 5 "usage: second-brain task head | set | note | tag | alias | new <ID> ..." ;;
+    *) sb_die 5 "usage: second-brain task head | docs | set | note | tag | alias | new <ID> ..." ;;
   esac
 }

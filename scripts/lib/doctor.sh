@@ -673,7 +673,8 @@ sb_doc_unmapped() {
   LC_ALL=C awk "$(sb_awk_lib)"'
     function add(v) { if (v != "") repo[++nr] = v }
     { sub(/\r$/, "") }
-    FNR == 1 { fileno++; key = ""; sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
+    # fileno is the place of the file among the arguments, so an empty first file still counts.
+    FNR == 1 { do fileno++; while (fileno < ARGC && ARGV[fileno] != FILENAME); key = ""; sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
     fileno == 1 {
       if (st != 1) next
       if ($0 == "---") st = 2

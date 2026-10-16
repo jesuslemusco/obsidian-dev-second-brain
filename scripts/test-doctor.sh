@@ -771,6 +771,11 @@ mkdir -p "$vault/$P/docs/more"
 doc Example
 chk "subprojects: a repo in two subprojects, whatever the case, and a subproject with no repos" subprojects Example \
   "warn | 4 | more/example-infra:no-location, EXAMPLE-INFRA:twice, ops/EXAMPLE-INFRA:no-location, web:no-repos"
+rm -f "$SUBS/more.md" "$SUBS/ops.md" "$SUBS/web.md"
+: >"$SUBS/blank.md"
+doc Example
+chk "subprojects: an empty note lends the profile's repos to nobody" subprojects Example \
+  "warn | 3 | blank:type, blank:no-repos, blank:no-docs"
 reset
 
 # ---------------------------------------------------------------- sprints

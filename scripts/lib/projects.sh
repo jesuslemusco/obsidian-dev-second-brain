@@ -213,9 +213,9 @@ sb_repo_paths() {
     function add(k, v,   j) {
       if (v == "") return
       if (k == "repos") {
-        if (fileno > 1 && (v in listed)) return
+        if (fileno > 1 && (tolower(v) in listed)) return
         repo[++nr] = v
-        listed[v] = 1
+        listed[tolower(v)] = 1
       }
       else { j = index(v, "="); if (j > 1) other[trim(substr(v, 1, j - 1))] = trim(substr(v, j + 1)) }
     }
@@ -227,7 +227,8 @@ sb_repo_paths() {
       return p
     }
     { sub(/\r$/, "") }
-    FNR == 1 { fileno++; key = ""; sub(/^\357\273\277/, ""); done = ($0 != "---"); next }
+    # fileno is the place of the file among the arguments, so an empty file still counts.
+    FNR == 1 { do fileno++; while (fileno < ARGC && ARGV[fileno] != FILENAME); key = ""; sub(/^\357\273\277/, ""); done = ($0 != "---"); next }
     done { next }
     $0 == "---" { done = 1; next }
     /^[A-Za-z0-9_][A-Za-z0-9_-]*:/ {

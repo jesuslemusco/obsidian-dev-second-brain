@@ -351,8 +351,8 @@ sb_scaffold_subproject() {
   done
   if [ -z "$project" ] || [ -z "$name" ]; then sb_die 5 "$usage"; fi
   case "$name" in
-    .* | -* | *' ' | ' '* | *'/'* | *'|'* | *'['* | *']'* | *'"'* | *'#'* | *'^'* | *'\'* | *"$nl"* | *"$cr"* | *"$tab"*)
-      sb_die 5 "a subproject name is a folder name: no slash, none of | [ ] \" # ^ and the backslash, no blank at either end, not starting with . or -"
+    .* | -* | *' ' | ' '* | *'/'* | *'|'* | *'['* | *']'* | *'"'* | *'#'* | *'^'* | *'\'* | *':'* | *'*'* | *'?'* | *'<'* | *'>'* | *"$nl"* | *"$cr"* | *"$tab"*)
+      sb_die 5 "a subproject name is a folder name: no slash, none of | [ ] \" # ^ : * ? < > and the backslash, no blank at either end, not starting with . or -"
       ;;
   esac
   sb_need_project "$project"
@@ -365,6 +365,10 @@ sb_scaffold_subproject() {
   while IFS= read -r r; do
     [ -n "$r" ] || continue
     case "$r" in *[!A-Za-z0-9._-]*) sb_die 5 "not a repository folder name: $r" ;; esac
+    # A repo named twice, in any letter case, is listed once.
+    case ",$(printf '%s' "$list" | tr '[:upper:]' '[:lower:]' | tr -d ' ')," in
+      *",$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]'),"*) continue ;;
+    esac
     while IFS= read -r f; do
       [ -n "$f" ] || continue
       n="$(sb_sub_name "$f")"

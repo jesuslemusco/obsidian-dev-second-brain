@@ -269,9 +269,13 @@ is "pull request format: the rules, word for word" "$(section_of "$vault/claude/
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
-  "  root; a project's own \`<Path>/claude/pull-request.md\` wins."
-file_has "index: the pull request rule names the vault note" "$vault/CLAUDE.md" \
-  '- Write a pull request description in the format of `claude/pull-request.md` at the vault'
+  "  \`<Path>/claude/pull-request.md\` wins."
+line_is "index: the pull request rule names the vault note through the pointer" "$vault/CLAUDE.md" \
+  "  \`~/.claude/second-brain-vault/claude/pull-request.md\`; a project's own"
+line_is "index: the pull request rule opens its bullet" "$vault/CLAUDE.md" \
+  "- Write a pull request description in the format of"
+file_has "vault Claude hub: names the pull request format note" "$vault/claude/README.md" \
+  '`pull-request.md` here is the format of every pull request'
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"

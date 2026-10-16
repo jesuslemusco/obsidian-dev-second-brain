@@ -68,6 +68,13 @@ The vault can hold skills and agents of your own, next to the ones the plugin sh
 
 Skills and agents you keep straight in `~/.claude`, outside the vault, are never touched.
 
+## Pull request descriptions
+
+Every pull request description Claude writes uses four headings, in this order: `What was
+changed?`, `What was added?`, `Dependencies:` and `Risks:`, with a few one-line bullets in plain
+English under each. The format is the note `claude/pull-request.md` in your vault: edit it to
+change the format. A project that keeps its own `<project>/claude/pull-request.md` uses that one.
+
 ## More
 
 - [docs/guide.md](docs/guide.md): what the plugin ships, how a vault is laid out, notes on Windows,

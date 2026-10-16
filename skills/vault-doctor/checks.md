@@ -1,6 +1,6 @@
 # Doctor checks
 
-One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
+One entry per check, named as `second-brain doctor` prints it, in the order of its table: ten for
 the vault, then seventeen for each project. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
@@ -22,6 +22,12 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 - Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper no longer has.
 - Why: every skill and agent points to it for the rules on notes, tags and links, so they would write without them.
 - Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older: ask first, because the user may have edited the note; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with the template by hand.
+
+### pull-request
+
+- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn).
+- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own.
+- Fix: `second-brain scaffold vault` creates the note and overwrites nothing.
 
 ### import
 

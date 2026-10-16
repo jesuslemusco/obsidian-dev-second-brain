@@ -57,6 +57,8 @@ Upgrading a vault that was set up with 0.1.0:
   Keep your own lines and the table, and put the template's frontmatter, with its
   `index_version`, at the top. The `vault-doctor` skill does this after asking.
 - A snapshot taken with 0.1.0 does not compare with one taken now.
+- CI uses `actions/checkout@v7`, which runs on Node.js 24, in place of `@v4`, which runs on
+  Node.js 20.
 
 ## 0.1.0 - unreleased
 

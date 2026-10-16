@@ -768,6 +768,46 @@ sb_doc_check_unresolved_links() {
   sb_doc_report warn unresolved-links "$SB_P_NAME" "$bad" "give each link a path that exists; second-brain unresolved <project> lists them"
 }
 
+# Check that each depends_on link leads to a note, and that no tasks of the project wait on each other in a ring.
+sb_doc_check_depends_on() {
+  local bad
+  bad="$(printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' '
+    function rel(p) { if (substr(p, 1, length(root)) == root) p = substr(p, length(root) + 1); sub(/\.md$/, "", p); return tolower(p) }
+    function found(t,   f, l, r) {
+      if (("/" t "/") ~ /\/\.\.\// || index(t, "\\") || substr(t, 1, 1) == "/" || t == "") return 0
+      f = root t ".md"; r = (getline l < f); close(f)
+      return r >= 0
+    }
+    function visit(u,   i, v, j) {
+      color[u] = 1; stack[++depth] = u
+      for (i = 1; i <= ne[u]; i++) {
+        v = edge[u, i]
+        if (color[v] == 1) { for (j = depth; j >= 1; j--) { ring[stack[j]] = 1; if (stack[j] == v) break } }
+        else if (!color[v]) visit(v)
+      }
+      depth--; color[u] = 2
+    }
+    BEGIN { root = ENVIRON["SB_R"] }
+    NF >= 13 {
+      u = rel($1); nodes[++n] = u; id[u] = $2; dep[u] = $13
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        u = nodes[i]
+        if (dep[u] == "-") continue
+        m = split(dep[u], d, ","); miss = 0
+        for (k = 1; k <= m; k++) {
+          if (!found(d[k])) miss = 1
+          if (tolower(d[k]) in id) edge[u, ++ne[u]] = tolower(d[k])
+        }
+        if (miss) print id[u] ":missing"
+      }
+      for (i = 1; i <= n; i++) if (!color[nodes[i]]) visit(nodes[i])
+      for (i = 1; i <= n; i++) if (nodes[i] in ring) print id[nodes[i]] ":cycle"
+    }')"
+  sb_doc_report warn depends-on "$SB_P_NAME" "$bad" "link each depends_on item to a task README that exists; break a cycle with second-brain task dep <ID> remove <ID>"
+}
+
 # Check that no task README links a repeated file name without a path.
 sb_doc_check_bare_links() {
   local bad
@@ -805,7 +845,7 @@ sb_doc_rows() {
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
-      line_endings; do
+      line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

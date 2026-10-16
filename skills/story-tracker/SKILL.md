@@ -26,6 +26,8 @@ Run these yourself, before anything else. Chain them in one Bash call where that
    `none`, exit 1 or exit 4: show `second-brain projects` and ask.
 3. `second-brain profile <project> --keys` prints the settings the steps below name. Exit 1: the
    profile is missing; say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, and stop.
+   The subproject (the `subproject:` line, the task's `subproject` key, or the user's word): its
+   settings win, from `second-brain subproject <project> <name>`. Write its name on a new story.
 4. `second-brain profile <project> stories`: what this project does differently. Exit 1 here only
    means there is no Stories section; carry on. Read other sections only when a step names them.
 
@@ -67,8 +69,8 @@ commit, before you reason about, recall or review a ticket.
   missing) and ask the user where it is. Never guess a path. What each repository holds is in
   `second-brain profile <project> repos`.
 - Run git as `git -C "<repo path>"`. Get the current branch and its HEAD commit, and list every
-  local or remote branch whose name carries the ticket id (`branch -a --list '*<ID>*'`). The
-  profile keys `base_branch` and `branch_pattern` give the base and the naming.
+  local or remote branch whose name carries the ticket id (`branch -a --list '*<ID>*'`).
+  `base_branch` and `branch_pattern` give the base and the naming: the subproject's when there is one.
 - No id given: derive it from the branch with `branch_pattern`. Still unknown: ask, never invent.
 - The branch does not match the ticket: you are looking at the wrong code. Read the right ref
   without switching (`git -C "<repo path>" show <branch>:<file>`), or tell the user.

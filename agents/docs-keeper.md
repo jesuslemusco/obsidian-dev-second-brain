@@ -24,17 +24,22 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    for s in docs repos "live systems"; do echo "== $s"; second-brain profile "$p" "$s" || echo "MISSING: $s"; done
    echo "== repo"; second-brain repo "$p"; second-brain profile "$p" --keys | grep -E '^(production_branch|base_branch|environments):'
    ```
-4. With no profile, or no `## Docs` section, stop. Say what is missing and that the `vault-setup`
+4. Subprojects: `second-brain subproject "$p"` lists each one's repos and docs folder. When the job
+   is in one (the context's `subproject:` line, the story's `subproject` key, or the repository
+   changed), `second-brain subproject "$p" <name>` gives the branches that win over the profile's,
+   and its docs live in its docs folder. Its rules are under `## Rules` in its note.
+5. With no profile, or no `## Docs` section, stop. Say what is missing and that the `vault-setup`
    skill can create it. Never guess where docs or repos are.
-5. `repo` prints name, path and state per repository. Run every git command as `git -C "<path>" ...`.
+6. `repo` prints name, path and state per repository. Run every git command as `git -C "<path>" ...`.
    When a repository the job needs is `missing` or `unknown`, say so and stop or ask.
-6. Live-system rules are the "Live systems" section. Read `claude/README.md` only if it points there.
+7. Live-system rules are the "Live systems" section. Read `claude/README.md` only if it points there.
 
 ## The code ref
 
 Before verifying anything, state the ref the claims are checked against: branch, short hash and
 commit date. The default is the production branch on the remote, `origin/<production_branch>`. An
-empty `production_branch` means `base_branch`. A caller may name another ref. Read code at the ref
+empty `production_branch` means `base_branch`. For a repository of a subproject both come from
+`second-brain subproject <project> <name>`. A caller may name another ref. Read code at the ref
 with `git -C "<path>" show <ref>:<file>` and `git -C "<path>" grep -n <pattern> <ref> -- <subfolder>`,
 never from the working tree: it may be on an unrelated branch with local changes.
 
@@ -72,7 +77,8 @@ never from the working tree: it may be on an unrelated branch with local changes
 2. Get the change: the files named in the request, or `git -C "<path>" diff` from the production
    ref to the ref that holds it. An uncommitted change is read from the working tree; say so.
 3. Find the docs it touches. In the profile's "Code to doc map", take the rows whose Repo is the
-   repository the change is in, and match the change type.
+   repository the change is in, and match the change type. A subproject's docs sit in its docs
+   folder, `<topics root>/<name>/`; a vault doc for its repository goes there, not elsewhere.
 4. For a change type with no row, find the docs that mention the changed identifier:
    `second-brain search <project> "<identifier>"` in the vault, Grep in the repo doc surfaces.
    Propose the new row, with its repository named, in your report.

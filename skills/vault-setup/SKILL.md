@@ -1,16 +1,17 @@
 ---
 name: vault-setup
 description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
-argument-hint: "[init | project <name> | adopt <path> | repo <project> | link]"
+argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | link]"
 disable-model-invocation: true
 allowed-tools: Read Glob Bash(second-brain *)
 ---
 
 # Vault setup
 
-Five modes: init sets up a vault, project adds a project, adopt brings an existing project onto
-the standard, repo adds a repository to a project, link registers the vault's own skills and
-agents. The first argument is the mode. With none, ask which.
+Six modes: init sets up a vault, project adds a project, adopt brings an existing project onto
+the standard, repo adds a repository to a project, subproject adds a subproject (repos with their
+own branches and docs folder), link registers the vault's own skills and agents. The first
+argument is the mode. With none, ask which.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
@@ -95,11 +96,13 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 8. Offer to list the folders under the topics root, `ls -d "<vault>/<path>/<topics_root>"/*/`, so
    the user can confirm the topics.
 
-## adopt <path> and repo <project>
+## adopt <path>, repo <project> and subproject <project>
 
 Each has its own file: read it only in that mode, and follow it. Adopt, for a project that
 already holds notes: `${CLAUDE_SKILL_DIR}/adopt.md`. Repo, to add a repository to an existing
 project: `${CLAUDE_SKILL_DIR}/repo.md`. Project and adopt use its section 2, once per repository.
+Subproject: `${CLAUDE_SKILL_DIR}/subproject.md`; offer it in project and adopt when the user names
+repositories that differ in branches or docs.
 
 ## link
 
@@ -126,7 +129,7 @@ project: `${CLAUDE_SKILL_DIR}/repo.md`. Project and adopt use its section 2, onc
 
 ## Finish (every mode)
 
-Run `second-brain doctor`, or `second-brain doctor <project>` after project, adopt and repo. A row
+Run `second-brain doctor`, or `second-brain doctor <project>` after the modes that name one. A row
 is `result | check | scope | count | offenders | fix`. Report every row that is not `ok`, with its
 fix.
 

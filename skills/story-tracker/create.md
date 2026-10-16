@@ -55,7 +55,8 @@ Ground the ticket in the code before writing. No code edits, no new file except 
   another ref, say so. Another repository the ticket touches: `second-brain repo <project> <name>`
   gives its path; on exit 1 say which case it is and ask, never guess a path.
 - Work has started: `git -C "<repo path>" log --oneline <base>..<branch>` and
-  `git -C "<repo path>" diff <base>...<branch>`, with the profile's `base_branch`. Never diff a
+  `git -C "<repo path>" diff <base>...<branch>`, with the `base_branch` of the subproject when the
+  story has one, else the profile's. Never diff a
   bare `HEAD`; it may be another ticket's branch.
 - Read the files the ticket touches. Search for the functions and components it names. Confirm
   they exist and behave as the ticket assumes.
@@ -67,7 +68,8 @@ Ground the ticket in the code before writing. No code edits, no new file except 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`. Topics are tags,
    comma separated: the folder `docs/billing/invoices` under the topics root `docs` is
    `billing/invoices`. Add `--project <P>` when the id's key does not name one project, and
-   `--envs` for an environment set (read `env-split.md`). A folder with no README gets one.
+   `--envs` for an environment set (read `env-split.md`), and `--subproject <name>` when the
+   story is in a subproject. A folder with no README gets one.
 2. Exit 6: the story exists, or the id is another story's alias; switch to update mode. Exit 5
    with `--envs`: the profile lists no environments. A `note: no folder for the topic tag ...` on
    stderr: run `second-brain task tag EX-123 remove <tag>` and ask the user.

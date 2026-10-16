@@ -45,6 +45,7 @@ claude/                           your own global skills and agents
 <project>/
   README.md
   claude/profile.md               the project's settings, read by every skill and agent
+  claude/subprojects/<name>.md    one note per subproject, when the project has several repos
   tasks/<TICKET-ID>/README.md     one task per folder
   tasks/tasks.base                the task board (Obsidian Bases)
   docs/                           the project's docs, organised by topic
@@ -57,6 +58,13 @@ tag `billing/invoices`. A task never lives inside the topic it is about.
 
 An existing project does not have to move its folders. Its profile says where its topics and
 sprint notes are.
+
+A project made of several repos, such as an app and its infrastructure, can split them into
+subprojects. Each one is a note, `claude/subprojects/<name>.md`, that lists its repos and may set
+its own branches and environments; what it leaves empty comes from the profile. Its docs live in
+`docs/<name>/`, and its rules in the note's `## Rules` section. The project keeps one ticket key and
+one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
+`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one.
 
 Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
 `vault-setup` when you say the project runs none, leaves out the sprints hub and the board's

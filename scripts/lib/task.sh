@@ -552,12 +552,16 @@ sb_task_docs() {
   done
   ids="$(printf '%s' "$ids" | tr ',' '\n' | grep -v '^$' || true)"
   [ -n "$ids" ] || sb_die 5 "$usage"
-  for id in $ids; do
+  # A line inside a fenced code block is an example, not a doc edit.
+  while IFS= read -r id; do
     sb_need_task "$id" "$project"
-    lines="$(sb_section "$SB_T_FILE" "Docs to update" | grep '^[ \t]*- \[ \]' || true)"
+    lines="$(sb_section "$SB_T_FILE" "Docs to update" |
+      LC_ALL=C awk '/^[[:blank:]]*(```|~~~)/ { fence = !fence; next } !fence && /^[[:blank:]]*- \[ \]/')"
     [ -n "$lines" ] || continue
     printf '%s %s\n%s\n' "$SB_T_ID" "$SB_T_REL" "$lines"
-  done
+  done <<EOF
+$ids
+EOF
 }
 
 # Dispatch the task subcommands.

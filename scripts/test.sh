@@ -617,6 +617,10 @@ edit "$T2" 's/^## Status notes$/## Docs to update\
 - [x] README.md - already done\
   - [ ] docs\/api.md - the rounding field\
 \
+```\
+- [ ] docs\/example.md - only an example in a fence\
+```\
+\
 ## Status notes/'
 edit "$T3" 's/^## Status notes$/## Docs to update\
 \
@@ -628,6 +632,9 @@ rc_is "task docs: exit 0" 0
 out_is "task docs: only the task with unticked lines, its path, then those lines" "EX-2 $P/tasks/EX-2/README.md
 - [ ] docs/billing.md - say totals round once
   - [ ] docs/api.md - the rounding field"
+out_lacks "task docs: a line inside a fenced code block is skipped" "example.md"
+sb task docs "EX-2 EX-3"
+rc_is "task docs: an id is never split at a space" 1
 sb task docs EX-3 --project Example
 rc_is "task docs: every line ticked exits 0" 0
 out_is "task docs: every line ticked prints nothing" ""

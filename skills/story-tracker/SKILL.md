@@ -42,8 +42,9 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 Ticket text, in draft mode or when the user asks for text to paste into the tracker: fill
 `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, from the story when there is one, and
-reply with plain text in the tracker's markup. Never write it freehand. One screen, about 40 lines, at most 4 findings and 4 acceptance
-criteria, the same Description and criteria as the README, and no other sections.
+reply with plain text in the tracker's markup. Never write it freehand. One screen, about 40
+lines, at most 4 findings and 4 acceptance criteria, the same Description and criteria as the
+README, when there is one, and no other sections.
 
 ## Find the story
 

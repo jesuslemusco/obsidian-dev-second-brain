@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `story-tracker` has a `draft` mode. It writes a ticket's summary, description and acceptance
+  criteria from the ticket template, with or without an id, and writes no file until the id
+  arrives. Its description names ticket text, so a request to write a ticket loads it.
+- The vault index says ticket text is never written freehand and names `story-tracker`. The
+  `sprint` skill sends a request to write a ticket there.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

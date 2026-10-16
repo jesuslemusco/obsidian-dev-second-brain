@@ -324,6 +324,91 @@ its link below, newest first.
   return 0
 }
 
+# Create a subproject of a project: its settings note and its docs folder with a hub.
+sb_scaffold_subproject() {
+  local project="" name="" repos="" r f n owner list="" docs topics_hub alias up uplink line
+  local nl=$'\n' cr=$'\r' tab=$'\t'
+  local usage="usage: second-brain scaffold subproject <project> <name> [--repos R1,R2]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repos)
+        [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
+        repos="$2"
+        shift 2
+        ;;
+      -*) sb_die 5 "$usage" ;;
+      *)
+        if [ -z "$project" ]; then
+          project="$1"
+        elif [ -z "$name" ]; then
+          name="$1"
+        else
+          sb_die 5 "$usage"
+        fi
+        shift
+        ;;
+    esac
+  done
+  if [ -z "$project" ] || [ -z "$name" ]; then sb_die 5 "$usage"; fi
+  case "$name" in
+    .* | -* | *' ' | ' '* | *'/'* | *'|'* | *'['* | *']'* | *'"'* | *'#'* | *'^'* | *'\'* | *"$nl"* | *"$cr"* | *"$tab"*)
+      sb_die 5 "a subproject name is a folder name: no slash, none of | [ ] \" # ^ and the backslash, no blank at either end, not starting with . or -"
+      ;;
+  esac
+  sb_need_project "$project"
+  sb_need_profile
+  SB_SCAF_ROOT="$SB_ROOT"
+  if sb_sub_resolve "$name" && [ "$SB_S_NAME" != "$name" ]; then
+    sb_die 6 "the subproject $SB_S_NAME already exists in $SB_P_NAME"
+  fi
+  # Each repository belongs to one subproject.
+  while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    case "$r" in *[!A-Za-z0-9._-]*) sb_die 5 "not a repository folder name: $r" ;; esac
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      n="$(sb_sub_name "$f")"
+      [ "$n" != "$name" ] || continue
+      owner="$(sb_fm_list "$f" repos 2>/dev/null | grep -ixF -- "$r" | head -1)"
+      [ -z "$owner" ] || sb_die 6 "the repository $r already belongs to the subproject $n"
+    done <<EOF
+$(sb_sub_files "$SB_P_PATH")
+EOF
+    list="${list:+$list, }$r"
+  done <<EOF
+$(printf '%s\n' "$repos" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+EOF
+  docs="$(sb_sub_docs "$name")"
+  if [ "$SB_TOPICS_ROOT" = "." ]; then
+    topics_hub="$SB_P_PATH/README.md"
+    alias="$(sb_fm_list "$SB_ROOT/$topics_hub" aliases 2>/dev/null | head -1)"
+    [ -n "$alias" ] || alias="$SB_P_NAME Hub"
+    up="[[$SB_P_PATH/README|$alias]]"
+  else
+    topics_hub="$SB_P_PATH/$SB_TOPICS_ROOT/README.md"
+    alias="$(sb_fm_list "$SB_ROOT/$topics_hub" aliases 2>/dev/null | head -1)"
+    [ -n "$alias" ] || alias="$SB_P_NAME Docs Hub"
+    up="[[$SB_P_PATH/$SB_TOPICS_ROOT/README|$alias]]"
+  fi
+  alias="$(sb_fm_list "$SB_P_DIR/claude/README.md" aliases 2>/dev/null | head -1)"
+  [ -n "$alias" ] || alias="$SB_P_NAME Claude Hub"
+  uplink="[[$SB_P_PATH/claude/README|$alias]]"
+  alias="$(sb_fm_list "$SB_P_PROFILE" aliases 2>/dev/null | head -1)"
+  [ -n "$alias" ] || alias="$SB_P_NAME Profile"
+  sb_scaffold_file subproject.md.tmpl "$SB_P_PATH/claude/subprojects/$name.md" "PROJECT=$SB_P_NAME" \
+    "SUBPROJECT=$name" "REPOS=$list" "UP_LINK=$uplink" "PROFILE_LINK=[[$SB_P_PATH/claude/profile|$alias]]" \
+    "DOCS_LINK=[[$docs/README|$SB_P_NAME $name Docs]]"
+  sb_scaffold_file subproject-docs.md.tmpl "$docs/README.md" "PROJECT=$SB_P_NAME" "SUBPROJECT=$name" \
+    "UP_LINK=$up" "NOTE_LINK=[[$SB_P_PATH/claude/subprojects/$name|$SB_P_NAME $name Subproject]]"
+  # The topics hub links down to the new docs folder, once.
+  line="- [[$docs/README|$SB_P_NAME $name Docs]] - the docs of the $name subproject"
+  if [ "$SB_TOPICS_ROOT" != "." ] && [ -f "$SB_ROOT/$topics_hub" ] && ! grep -qF "[[$docs/README|" "$SB_ROOT/$topics_hub"; then
+    sb_body_insert "$SB_ROOT/$topics_hub" "## Topics" list "$line" ||
+      sb_note "add the docs folder to $topics_hub: $line"
+  fi
+  return 0
+}
+
 # Dispatch the scaffold subcommands.
 cmd_scaffold() {
   local sub="${1:-}"
@@ -331,6 +416,7 @@ cmd_scaffold() {
   case "$sub" in
     vault) sb_scaffold_vault "$@" ;;
     project) sb_scaffold_project "$@" ;;
-    *) sb_die 5 "usage: second-brain scaffold vault [DIR] | scaffold project <name> --path P [--keys K1,K2] ..." ;;
+    subproject) sb_scaffold_subproject "$@" ;;
+    *) sb_die 5 "usage: second-brain scaffold vault [DIR] | scaffold project <name> --path P [--keys K1,K2] ... | scaffold subproject <project> <name> [--repos R1,R2]" ;;
   esac
 }

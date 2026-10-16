@@ -1,0 +1,31 @@
+---
+aliases:
+  - "{{PROJECT}} {{SUBPROJECT}} Subproject"
+type: subproject
+project: "{{PROJECT}}"
+repos: [{{REPOS}}]
+base_branch: ""
+production_branch: ""
+branch_pattern: ""
+environments: []
+repo_paths: []
+tags:
+  - type/subproject
+---
+
+> Up: {{UP_LINK}}
+
+# {{PROJECT}} {{SUBPROJECT}} subproject
+
+The settings note of the {{SUBPROJECT}} subproject of {{PROJECT}}: its repositories, its branches
+and its rules. Read it with `second-brain subproject "{{PROJECT}}" "{{SUBPROJECT}}"`, which fills in
+the profile's values.
+
+- `repos` lists the subproject's repositories. The first one is the default for branch checks.
+- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` are the
+  profile's keys. One left empty takes the value in {{PROFILE_LINK}}.
+- Its docs live in {{DOCS_LINK}}.
+
+## Rules
+
+- <A rule Claude must follow in this subproject, one per bullet.>

@@ -131,6 +131,7 @@ sb_task_head() {
           else if (key == "sprint") sprint = unq(v)
           else if (key == "branch") branch = unq(v)
           else if (key == "epic") epic = unq(v)
+          else if (key == "subproject") subp = unq(v)
           else if (key == "next") nxt = unq(v)
           else if (key == "title") title = unq(v)
           else if (key == "tags") {
@@ -164,7 +165,9 @@ sb_task_head() {
       print "id: " id
       print "path: " ENVIRON["SB_REL"]
       show("title", title); show("status", status); show("next", nxt)
-      show("sprint", sprint); show("branch", branch); show("epic", epic); show("topics", topics)
+      show("sprint", sprint); show("branch", branch); show("epic", epic)
+      if (subp != "") show("subproject", subp)
+      show("topics", topics)
       show("envs", envs); show("summary", cut(summary, 300)); show("last_note", cut(note, 300))
     }
   ' "$SB_T_FILE"
@@ -229,6 +232,13 @@ sb_task_set() {
   while [ "$i" -lt "$n" ]; do
     # Removing a leftover sprint id is still allowed where sprints are off.
     case "${pairs[$i]}" in sprint=?*) sb_need_sprints ;; esac
+    # A subproject is one of the project's, written as its note is named.
+    case "${pairs[$i]}" in
+      subproject=?*)
+        sb_need_sub "${pairs[$i]#subproject=}"
+        pairs[$i]="subproject=$SB_S_NAME"
+        ;;
+    esac
     i=$((i + 1))
   done
   i=0
@@ -443,17 +453,18 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub=""
   local tab=$'\t' nl=$'\n'
-  usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs]"
+  usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
     case "$1" in
-      --project | --title | --topics)
+      --project | --title | --topics | --subproject)
         [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
         case "$1" in
           --project) project="$2" ;;
           --title) title="$2" ;;
           --topics) topics="$2" ;;
+          --subproject) sub="$2" ;;
         esac
         shift 2
         ;;
@@ -488,8 +499,11 @@ sb_task_new() {
   if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $SB_P_PATH/$SB_TASKS_ROOT/$id"; fi
   other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$id" | head -1)"
   [ -z "$other" ] || sb_die 6 "$id is already an alias of $(sb_rel "$other")"
+  [ -z "$sub" ] || sb_need_sub "$sub"
   if [ "$envs" -eq 1 ]; then
-    envlist="$(sb_fm_list "$SB_P_PROFILE" environments)"
+    # A subproject's own environments win over the profile's.
+    [ -z "$sub" ] || envlist="$(sb_fm_list "$SB_S_FILE" environments)"
+    [ -n "$envlist" ] || envlist="$(sb_fm_list "$SB_P_PROFILE" environments)"
     [ -n "$envlist" ] || sb_die 5 "--envs needs the environments list in the profile, and it is empty"
   fi
   title="$(printf '%s' "$title" | tr '\n\r\t' '   ')"
@@ -519,6 +533,7 @@ EOF
   [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
   [ "$(sb_yaml_quote "$id")" = "$id" ] || sb_fm_edit "$file" listswap aliases "$id" "$id"
+  [ -z "$sub" ] || sb_fm_set "$file" subproject "$SB_S_NAME"
   if [ "$envs" -eq 1 ]; then
     # Only the first environment has a ticket yet; the others are added as their tickets appear.
     for env in $envlist; do

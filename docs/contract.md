@@ -64,6 +64,12 @@ index_version: 1
   `index_version` is set to the template's number.
 - The first line under `## In every session` is the answer style: short, plain English, the answer
   first, unless the user or their own instructions say otherwise. A test pins its text.
+- The text says where a rule the user asks Claude to save goes. A rule about one project goes
+  under `## Rules` in `<Path>/claude/README.md`, or in its subproject's note. Only a rule for every
+  project goes in `~/.claude/CLAUDE.md`. When Claude cannot tell which, it asks.
+- It says to read the subproject's note with the project's `claude/README.md` when
+  `second-brain context` prints a `subproject` line, so the subproject's rules load with the
+  project's.
 
 ## 3. The project
 
@@ -455,6 +461,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
+| vault | `global-rules` | a line of the link directory's `CLAUDE.md` names an index project: its name as a whole word, as written, or its path in any letter case (`<project>:<line number>`, or `<project>:@<line number>` for an `@` import line, whose fix is to remove it) (warn). A whole word has no letter, digit, `_` or `-` on either side. The import line of the index and the table rows under a `## Projects` heading are not read, nor the files the `CLAUDE.md` imports |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |

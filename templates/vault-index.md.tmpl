@@ -17,6 +17,8 @@ projects kept in this vault, and says where new skills and agents go.
   and one that belongs to a project below goes in `<Path>/claude/`. Then run
   `second-brain link --apply`, or Claude Code never loads it. `claude/README.md` in the vault has
   the steps.
+- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or its subproject's
+  note; only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
 - Plugin skills: `story-tracker` writes ticket text and tracks tasks, `sprint` runs a sprint,
   `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
   Plugin agents: `scrum-master` for the sprint cadence,
@@ -31,8 +33,8 @@ A request that touches no project below and no note in this vault needs nothing 
 this file.
 
 - When a request belongs to a project below, read `<Path>/README.md`, then
-  `<Path>/claude/README.md`, before anything else. The second one holds the project's rules, skills
-  and agents.
+  `<Path>/claude/README.md` (its rules, skills, agents) and
+  the `claude/subprojects/<name>.md` that `second-brain context` names, before anything else.
 - Before reading or writing notes, run `second-brain conventions` and follow it. The full note is
   `~/.claude/second-brain-vault/obsidian-conventions.md`.
 

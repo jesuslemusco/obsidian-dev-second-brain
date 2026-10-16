@@ -293,6 +293,35 @@ doc
 chk "import: another file does not count" import vault "warn | 1 | CLAUDE.md"
 reset
 
+# ---------------------------------------------------------------- global-rules
+doc
+chk "global-rules: ok with no CLAUDE.md in the link directory" global-rules vault "ok | 0 | -"
+printf '# Mine\n\n@%s/CLAUDE.md\n- Answer in short, plain English.\n- For example, say the file.\n' "$vault" >"$home/CLAUDE.md"
+doc
+chk "global-rules: ok for the import and rules for every project" global-rules vault "ok | 0 | -"
+mkdir -p "$HOME/projects"
+symlink "$vault" "$HOME/$P"
+printf '# Mine\n\n@~/%s/CLAUDE.md\n\n## Projects\n\n| Project | Path | Keys | Use when |\n|---|---|---|---|\n| Example | %s | EX | Anything. |\n' "$P" "$P" >"$home/CLAUDE.md"
+doc
+chk "global-rules: the import and a Projects table naming the project are not offenders" global-rules vault "ok | 0 | -"
+printf '# Mine\n\n- In Example, run the tests first.\r\n- Notes live in %s/notes.\n- Example-api is not the project.\n' "$(printf '%s' "$P" | tr 'a-z' 'A-Z')" >"$home/CLAUDE.md"
+doc
+chk "global-rules: a line naming the project by name or path warns" global-rules vault "warn | 2 | Example:3, Example:4"
+is "global-rules: the fix moves the line to the project's rules" "$(fix_of global-rules vault)" \
+  "move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+rc_is "global-rules: a warn alone keeps exit 0" 0
+printf 'Example runs the tests first.\n%s keeps its notes.\n' "$P" >"$home/CLAUDE.md"
+doc
+chk "global-rules: a line that starts with the name or the path warns" global-rules vault "warn | 2 | Example:1, Example:2"
+printf '# Mine\n\n@~/%s/claude/README.md\n' "$P" >"$home/CLAUDE.md"
+doc
+chk "global-rules: an import of a project's file warns, marked with @" global-rules vault "warn | 1 | Example:@3"
+case "$(fix_of global-rules vault)" in
+  *"remove an @ import of a project's file"*) pass "global-rules: an import gets its own fix" ;;
+  *) fail "global-rules: an import gets its own fix" "fix: $(fix_of global-rules vault)" ;;
+esac
+reset
+
 # ---------------------------------------------------------------- links, double-registration
 doc
 chk "double-registration: ok with no links" double-registration vault "ok | 0 | -"
@@ -408,7 +437,7 @@ is "outside: it gets no project rows, and nothing under it is read" "$(scope_row
 chk "outside: the skill in its claude folder is not scanned" descriptions vault "ok | 0 | -"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
-is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "10/0/0"
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "11/0/0"
 doc --fix
 is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 index_back
@@ -970,7 +999,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "28"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "29"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1007,8 +1036,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 28 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "28 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 29 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "29 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1024,15 +1053,15 @@ sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 is "two projects: eighteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "18/18"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -10 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions pull-request import links double-registration always-loaded-size descriptions skill-size "
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "10/18/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/18/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

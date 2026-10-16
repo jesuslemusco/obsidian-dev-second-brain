@@ -291,6 +291,10 @@ file_has "index: story-tracker is named as the skill that writes ticket text" "$
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
   "$(($(lineno "$vault/CLAUDE.md" '## Rules that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"
+file_has "index: a rule about one project goes under the project's Rules" "$vault/CLAUDE.md" 'A rule about one project goes under `## Rules` in `<Path>/claude/README.md`'
+is "index: the rule placement holds in every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
+file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
 line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"

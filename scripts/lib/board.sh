@@ -10,8 +10,9 @@ sb_task_files() {
 }
 
 # Read file paths on stdin; print one TSV row of frontmatter per readable file.
-# Fields: path, id, status, sprint, topics, branch, next, title, carried_from, type, envs, heading.
-# Empty is "-". envs is env:id:status,...; heading is the first heading, read when title is absent.
+# Fields: path, id, status, sprint, topics, branch, next, title, carried_from, type, envs, heading,
+# depends_on. Empty is "-". envs is env:id:status,...; heading is the first heading, read when title
+# is absent; depends_on is the vault paths its links lead to, without .md, comma separated.
 sb_task_scan() {
   LC_ALL=C awk "$(sb_awk_lib)"'
     function clean(s) { gsub(/[\t\r]/, " ", s); return (s == "" ? "-" : s) }
@@ -22,11 +23,12 @@ sb_task_scan() {
         if (substr(v, 1, 5) == "type/" || substr(v, 1, 7) == "status/") return
         topics = (topics == "" ? v : topics "," v)
       } else if (k == "carried_from") carried = (carried == "" ? v : carried "," v)
+      else if (k == "depends_on") { v = dep_target(v); if (v != "") deps = (deps == "" ? v : deps "," v) }
     }
     {
       path = $0
       if (path == "") next
-      status = ""; sprint = ""; branch = ""; nxt = ""; title = ""; type = ""; topics = ""; carried = ""
+      status = ""; sprint = ""; branch = ""; nxt = ""; title = ""; type = ""; topics = ""; carried = ""; deps = ""
       envs = ""; h1 = ""; key = ""; lineno = 0; readable = 0; st = 0; after = 0
       n = split(path, part, "/")
       id = (n >= 2 ? part[n - 1] : path)
@@ -56,13 +58,13 @@ sb_task_scan() {
           else if (key == "next") nxt = unq(v)
           else if (key == "title") title = unq(v)
           else if (key == "type") type = unq(v)
-          else if (key == "tags" || key == "carried_from") {
+          else if (key == "tags" || key == "carried_from" || key == "depends_on") {
             if (substr(v, 1, 1) == "[") { n = split_inline(v, it); for (k = 1; k <= n; k++) additem(key, it[k]) }
             else additem(key, unq(v))
           }
           continue
         }
-        if ((key == "tags" || key == "carried_from") && line ~ /^[ \t]*-([ \t]|$)/) {
+        if ((key == "tags" || key == "carried_from" || key == "depends_on") && line ~ /^[ \t]*-([ \t]|$)/) {
           v = line; sub(/^[ \t]*-[ \t]*/, "", v); additem(key, unq(v))
         } else if (key == "envs" && line ~ /^[ \t]+[^ \t#]/) {
           v = trim(line); i = index(v, ":")
@@ -71,9 +73,48 @@ sb_task_scan() {
       }
       close(path)
       if (!readable) next
-      print path "\t" clean(id) "\t" clean(status) "\t" clean(sprint) "\t" clean(topics) "\t" clean(branch) "\t" clean(nxt) "\t" clean(title) "\t" clean(carried) "\t" clean(type) "\t" clean(envs) "\t" clean(h1)
+      print path "\t" clean(id) "\t" clean(status) "\t" clean(sprint) "\t" clean(topics) "\t" clean(branch) "\t" clean(nxt) "\t" clean(title) "\t" clean(carried) "\t" clean(type) "\t" clean(envs) "\t" clean(h1) "\t" clean(deps)
     }
   '
+}
+
+# Read scan rows on stdin; turn the depends_on paths into id:status pairs. The id is the folder of
+# the task README; the status comes from the scan, or from the note, or is "missing" with no note.
+sb_board_deps() {
+  LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' "$(sb_awk_lib)"'
+    function rel(p) { if (substr(p, 1, length(root)) == root) p = substr(p, length(root) + 1); sub(/\.md$/, "", p); return tolower(p) }
+    function status_of(t,   f, l, n, st) {
+      if (tolower(t) in st_of) return st_of[tolower(t)]
+      f = root t ".md"; n = 0; st = "missing"
+      # A path that leaves the vault is never opened.
+      if (("/" t "/") ~ /\/\.\.\// || index(t, "\\") || substr(t, 1, 1) == "/") return st
+      while ((getline l < f) > 0) {
+        n++; sub(/\r$/, "", l)
+        if (n == 1) { sub(/^\357\273\277/, "", l); st = "-"; if (l != "---") break; continue }
+        if (l == "---") break
+        if (l ~ /^status:/) { st = unq(substr(l, 8)); if (st == "") st = "-"; break }
+      }
+      close(f)
+      st_of[tolower(t)] = st
+      return st
+    }
+    BEGIN { OFS = "\t"; root = ENVIRON["SB_R"] }
+    { row[NR] = $0; st_of[rel($1)] = $3 }
+    END {
+      for (r = 1; r <= NR; r++) {
+        $0 = row[r]
+        if ($13 != "-" && $13 != "") {
+          m = split($13, d, ","); out = ""
+          for (i = 1; i <= m; i++) {
+            k = split(d[i], seg, "/"); did = seg[k]
+            if (k >= 2 && tolower(did) == "readme") did = seg[k - 1]
+            out = out (i > 1 ? "," : "") did ":" status_of(d[i])
+          }
+          $13 = out
+        }
+        print
+      }
+    }'
 }
 
 # Read scan rows on stdin; keep the rows of one view, sorted the way the view sorts.
@@ -98,13 +139,14 @@ sb_board_filter() {
   ' | LC_ALL=C sort | awk '{ i = index($0, "\034"); print substr($0, i + 1) }'
 }
 
-# Read scan rows on stdin; print board rows: id | title | status | sprint | topics | branch | next | envs.
+# Read scan rows on stdin; print board rows:
+# id | title | status | sprint | topics | branch | next | envs | depends_on.
 sb_board_rows() {
   awk -F'\t' '
     function cell(s) { gsub(/\|/, "/", s); return s }
     {
       title = ($8 != "-" ? $8 : $12)
-      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11)
+      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11) " | " cell($13)
     }
   '
 }
@@ -161,7 +203,7 @@ cmd_board() {
     ! sb_uses_sprints "$SB_P_PATH" || cur="$(sb_sprint_current_id "$SB_P_PATH")"
     [ -n "$cur" ] || return 0
   fi
-  sb_task_files "$dir" | sb_task_scan | sb_board_filter "$view" "$cur" | sb_board_rows
+  sb_task_files "$dir" | sb_task_scan | sb_board_deps | sb_board_filter "$view" "$cur" | sb_board_rows
   return 0
 }
 

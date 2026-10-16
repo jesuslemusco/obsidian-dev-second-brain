@@ -145,7 +145,7 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
   "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
@@ -320,6 +320,7 @@ line_is "profile: sprints are on by default" "$vault/$P/claude/profile.md" "uses
 line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder(\"$P/tasks\")"
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
+line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 for v in Active "Current sprint" "By topic" "Needs a status" All; do
   line_is "board: view $v" "$vault/$P/tasks/tasks.base" "    name: $v"
 done
@@ -706,18 +707,77 @@ sb task alias no-alias add "Other name" --project "Example Two"
 out_is "task alias: a note with no aliases gets the folder id first" "no-alias
 Other name"
 
+# ---------------------------------------------------------------- task dep
+T5="$vault/$P/tasks/EX-5/README.md"
+sb task dep EX-5 add EX-2
+rc_is "task dep add: exit 0" 0
+out_is "task dep add: prints the resulting links" "[[$P/tasks/EX-2/README|EX-2]]"
+line_is "task dep add: the link is a quoted path link" "$T5" "  - \"[[$P/tasks/EX-2/README|EX-2]]\""
+is "task dep add: depends_on lands after carried_from" "$(($(lineno "$T5" 'depends_on:') - $(lineno "$T5" 'carried_from:')))" "1"
+cp "$T5" "$tmp/t5.before"
+sb task dep EX-5 add EX-2
+is "task dep add: a task it has is not added twice" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 add EX-3
+out_is "task dep add: appended last" "[[$P/tasks/EX-2/README|EX-2]]
+[[$P/tasks/EX-3/README|EX-3]]"
+sb task dep EX-5 add EX-70
+out_has "task dep add: an alias links the task's folder" "[[$P/tasks/EX-7/README|EX-7]]"
+sb task dep EX-5 remove EX-7
+out_is "task dep remove: by folder id" "[[$P/tasks/EX-2/README|EX-2]]
+[[$P/tasks/EX-3/README|EX-3]]"
+cp "$T5" "$tmp/t5.before"
+sb task dep EX-5 remove EX-1
+rc_is "task dep remove: a task it lacks, exit 0" 0
+is "task dep remove: a task it lacks changes nothing" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 add EX-5
+rc_is "task dep: the task itself gives exit 5" 5
+sb task dep EX-5 add EX-55
+rc_is "task dep: the task itself by an alias gives exit 5" 5
+sb task dep EX-5 add EX-404
+rc_is "task dep: an unknown task gives exit 1" 1
+sb task dep EX-404 add EX-2
+rc_is "task dep: an unknown task to edit gives exit 1" 1
+is "task dep: nothing written on refusal" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 block EX-2
+rc_is "task dep: unknown action gives exit 5" 5
+sb task dep EX-5 add
+rc_is "task dep: no task named gives exit 5" 5
+sb task set EX-5 depends_on=x
+rc_is "task set: depends_on is a list, exit 5" 5
+err_has "task set: depends_on points to task dep" "task dep"
+sb task dep EX-2 add TWO-1
+out_is "task dep add: a task of another project" "[[$P2/tasks/TWO-1/README|TWO-1]]"
+sb task dep EX-2 remove TWO-1
+out_is "task dep remove: the last one prints a dash" "-"
+line_is "task dep remove: an empty list stays" "$T2" "depends_on: []"
+edit "$T2" "s#^depends_on: \[\]\$#depends_on: [\"[[$P/tasks/EX-3/README.md|third]]\"]#"
+file_has "task dep remove: the hand-written link is there first" "$T2" "README.md|third]]"
+sb task dep EX-2 remove EX-3
+out_is "task dep remove: matches a hand-written link by its path" "-"
+sb task dep EX-6 add EX-2
+is "task dep: CRLF kept" "$(grep -c "$CR\$" "$T6")" "$(grep -c '' "$T6")"
+line_is "task dep: CRLF line written" "$T6" "  - \"[[$P/tasks/EX-2/README|EX-2]]\"$CR"
+sb task dep EX-6 remove EX-2
+
 # ---------------------------------------------------------------- board
 edit "$vault/$P/tasks/EX-7/README.md" 's/^status: planned$/status: active/'
 sb board Example
 rc_is "board: exit 0" 0
 out_lacks "board: no source line" "source:"
-out_has "board: row format" 'EX-1 | Fix: totals "rounded" twice | in-review | 2026-10-14 | billing/invoices | feature/EX-1-fix | Check: the #1 thing | -'
+out_has "board: row format" 'EX-1 | Fix: totals "rounded" twice | in-review | 2026-10-14 | billing/invoices | feature/EX-1-fix | Check: the #1 thing | - | -'
 is "board Active: planned, in-progress and in-review only" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-5 EX-1 EX-6 EX-2 "
 sb board Example All
 is "board All: every task folder" "$(lines "$OUT")" "8"
-is "board: every row has eight cells" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 8' | grep -c . || true)" "0"
+is "board: every row has nine cells" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 9' | grep -c . || true)" "0"
 out_has "board: envs column for an environment set" "EX-7 | Per environment | active | - | - | none yet | Promote to qa | dev:EX-7:done,qa:EX-70:planned"
 out_has "board: title from the heading when the property is absent" "legacy-task | Legacy task | - | - | - | - | - | -"
+is "board: depends_on column, each task with its status" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-3:done"
+cp "$T5" "$tmp/t5.before"
+edit "$T5" "s#^  - \"\[\[$P/tasks/EX-3/README|EX-3\]\]\"\$#  - \"[[$P/tasks/EX-99/README|EX-99]]\"#"
+sb board Example
+is "board: a link to no note shows missing" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-99:missing"
+cp "$tmp/t5.before" "$T5"
+sb board Example All
 sb board Example needs a status
 is "board Needs a status: missing or non-standard status" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-7 legacy-task "
 sb board Example "By topic"
@@ -1125,7 +1185,7 @@ sb task tag RT-1 add knowledge/API
 out_is "other roots: a tag is the path under the topics root" "api"
 is "other roots: an existing topic folder gives no warning" "$ERR" ""
 sb board Roots
-out_is "other roots: board reads the tasks root" "RT-1 | First | planned | - | api | none yet | Frame the story | -"
+out_is "other roots: board reads the tasks root" "RT-1 | First | planned | - | api | none yet | Frame the story | - | -"
 sb sprint open Roots --end 2026-10-21
 out_is "other roots: sprint open writes under the sprints root" "$R/cadence/sprints/2026-10-21.md"
 line_is "other roots: sprint hub line" "$vault/$R/cadence/sprints/README.md" "- [[$R/cadence/sprints/2026-10-21|Roots Sprint 2026-10-21]] - 2026-10-08 to 2026-10-21"

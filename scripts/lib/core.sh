@@ -29,6 +29,7 @@ notes:    outline <path> | backlinks <path> | unresolved [project]
           (<path> is a vault path: from the vault root, with forward slashes)
 tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" [--session S]
           task tag <ID> add|remove <tag> | task alias <ID> add <alias>
+          task dep <ID> add|remove <ID>
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs]
           (<ID> is the folder id or any alias; every task command takes --project P)
 sprints:  sprint current <project> | sprint next <project>
@@ -166,6 +167,12 @@ function yq(s, force,   need, l) {
   else if (s ~ /^[+.]?[0-9]/) need = 1
   else if (l == "true" || l == "false" || l == "null" || l == "yes" || l == "no" || l == "on" || l == "off" || l == "~") need = 1
   return need ? dq(s) : s
+}
+function dep_target(s) {
+  s = trim(s)
+  if (substr(s, 1, 2) == "[[") { s = substr(s, 3); sub(/\]\][ \t]*$/, "", s) }
+  sub(/[|#].*$/, "", s); s = trim(s); sub(/\.md$/, "", s)
+  return s
 }
 function mapfield(s, name,   v) {
   if (!match(s, name ":[ \t]*[^,}]*")) return ""
@@ -337,7 +344,7 @@ sb_fm_edit() {
       }
     }
     function insert_at(   m, order, i, idx, j) {
-      m = split("aliases title status next branch epic envs sprint carried_from type", order, " ")
+      m = split("aliases title status next branch epic envs sprint carried_from depends_on type", order, " ")
       idx = 0
       for (i = 1; i <= m; i++) if (order[i] == key) idx = i
       if (idx) for (j = idx - 1; j >= 1; j--) if (order[j] in kend) return kend[order[j]] + 1

@@ -207,6 +207,7 @@ sb_task_set() {
       '' | *[!A-Za-z0-9_-]*) sb_die 5 "not a property name: $key" ;;
       jira_id) sb_die 5 "the helper never writes jira_id; the ticket id is the folder name and the first alias" ;;
       aliases | tags | envs | carried_from) sb_die 5 "task set changes scalar properties only; edit $key in the note" ;;
+      depends_on) sb_die 5 "task set changes scalar properties only; use second-brain task dep for depends_on" ;;
       status)
         case "$value" in
           planned | in-progress | in-review | done | abandoned) ;;
@@ -415,6 +416,51 @@ sb_task_alias() {
   sb_fm_list "$SB_T_FILE" aliases
 }
 
+# Add or remove a task in another task's depends_on list; print the links that result.
+sb_task_dep() {
+  local id="" action="" dep="" project="" target link depfile found
+  local usage="usage: second-brain task dep <ID> add|remove <ID> [--project P]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] || sb_die 5 "--project needs a value"
+        project="$2"
+        shift 2
+        ;;
+      *)
+        if [ -z "$id" ]; then
+          id="$1"
+        elif [ -z "$action" ]; then
+          action="$1"
+        elif [ -z "$dep" ]; then
+          dep="$1"
+        else
+          sb_die 5 "$usage"
+        fi
+        shift
+        ;;
+    esac
+  done
+  case "$action" in add | remove) ;; *) sb_die 5 "$usage" ;; esac
+  [ -n "$dep" ] || sb_die 5 "$usage"
+  # The task depended on first: its path and folder id make the link.
+  sb_need_task "$dep" "$project"
+  depfile="$SB_T_FILE"
+  target="${SB_T_REL%.md}"
+  link="[[$target|$SB_T_ID]]"
+  sb_need_task "$id" "$project"
+  [ "$SB_T_FILE" != "$depfile" ] || sb_die 5 "a task cannot depend on itself: $SB_T_ID"
+  found="$(sb_fm_list "$SB_T_FILE" depends_on | LC_ALL=C SB_W="$target" awk "$(sb_awk_lib)"'
+    tolower(dep_target($0)) == tolower(ENVIRON["SB_W"]) { print; exit }')"
+  if [ "$action" = "add" ]; then
+    [ -n "$found" ] || sb_fm_edit "$SB_T_FILE" listadd depends_on "$link" 1 || sb_die 1 "cannot edit $SB_T_REL"
+  else
+    [ -z "$found" ] || sb_fm_edit "$SB_T_FILE" listdel depends_on "$found" || sb_die 1 "cannot edit $SB_T_REL"
+  fi
+  found="$(sb_fm_list "$SB_T_FILE" depends_on)"
+  if [ -n "$found" ]; then printf '%s\n' "$found"; else printf '%s\n' "-"; fi
+}
+
 # Print the folder a topic tag maps to under a folder, or return 1.
 sb_topic_dir() {
   local dir="$1" rest="$2" part entry found name
@@ -544,6 +590,7 @@ cmd_task() {
     note) sb_task_note "$@" ;;
     tag) sb_task_tag "$@" ;;
     alias) sb_task_alias "$@" ;;
-    *) sb_die 5 "usage: second-brain task head | set | note | tag | alias | new <ID> ..." ;;
+    dep) sb_task_dep "$@" ;;
+    *) sb_die 5 "usage: second-brain task head | set | note | tag | alias | dep | new <ID> ..." ;;
   esac
 }

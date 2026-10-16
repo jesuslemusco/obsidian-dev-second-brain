@@ -1456,7 +1456,7 @@ sb scaffold subproject Multi tools --repos MULTI-INFRA
 rc_is "scaffold subproject: a repository of another subproject gives exit 6" 6
 err_has "scaffold subproject: the message names the owner" "already belongs to the subproject infra"
 absent "scaffold subproject: nothing is written on a refusal" "$vault/$M/claude/subprojects/tools.md"
-for bad in "a/b" ".hidden" "-x" "a|b" "a#b"; do
+for bad in "a/b" ".hidden" "-x" "a|b" "a#b" "a:b" "a*b" "a?b" "a<b" "a>b"; do
   sb scaffold subproject Multi "$bad"
   rc_is "scaffold subproject: the name $bad gives exit 5" 5
 done
@@ -1477,7 +1477,7 @@ base_branch: develop
 production_branch: release
 branch_pattern: feature/<ID>-<slug>
 environments: dev, prod
-repo_paths: -"
+repo_paths: multi-infra=$oT/mcode/multi-infra"
 SF="$vault/$M/claude/subprojects/infra.md"
 edit "$SF" 's|^base_branch: ""$|base_branch: main|; s|^branch_pattern: ""$|branch_pattern: "infra/<ID>"|; s|^environments: \[\]$|environments:\
   - staging\
@@ -1491,7 +1491,7 @@ base_branch: main
 production_branch: release
 branch_pattern: infra/<ID>
 environments: staging, live
-repo_paths: -"
+repo_paths: multi-infra=$oT/mcode/multi-infra"
 
 sb repo Multi
 out_is "repo: the subproject's repositories follow the profile's" "multi-app${TAB}$oT/mcode/multi-app${TAB}ok
@@ -1519,15 +1519,41 @@ out_is "repo: a subproject's repo_paths entry gives the location" "$oT/far/multi
 sb subproject Multi --cwd "$tmp/far/multi-tools/lib"
 out_has "subproject --cwd: found through the note's repo_paths" "subproject: tools"
 sb subproject Multi tools
-out_has "subproject name: its own repo_paths" "repo_paths: multi-tools=$tmp/far/multi-tools"
+out_has "subproject name: its own repo_paths" "repo_paths: multi-tools=$oT/far/multi-tools"
 sb scaffold subproject Multi loose --repos multi-loose
 edit "$MF" 's|^repos_root: .*$|repos_root: ""|'
 sb subproject Multi --cwd "$tmp/loose/multi-loose/x"
 rc_is "subproject --cwd: with no location recorded, the folder name decides" 0
 out_has "subproject --cwd: the folder name names the subproject" "subproject: loose"
+sb subproject Multi loose
+out_has "subproject name: no location recorded gives no repo_paths" "repo_paths: -"
+mkdir -p "$tmp/loose/multi-loose/vendor/multi-app/y"
+sb subproject Multi --cwd "$tmp/loose/multi-loose/vendor/multi-app/y"
+rc_is "subproject --cwd: a deeper folder named for a repo of the profile alone gives exit 1" 1
+sb context --cwd "$tmp/loose/multi-loose/vendor/multi-app/y"
+out_lacks "context: no subproject line under a deeper repo of the profile alone" "subproject:"
 sb subproject Multi --cwd "$tmp/far"
 rc_is "subproject --cwd: a folder in no repository gives exit 1" 1
 edit "$MF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/mcode\"|"
+sb scaffold subproject Multi tasks --repos tasks
+sb subproject Multi --cwd "$vault/$M/tasks"
+rc_is "subproject --cwd: a folder of the vault is in no subproject, whatever its name" 1
+sb context --cwd "$vault/$M/tasks"
+out_lacks "context: no subproject line in a folder of the vault" "subproject:"
+out_has "context: the vault folder still gives the project" "project: Multi"
+sb scaffold subproject Multi dup --repos "dup-a, DUP-A ,dup-b"
+line_is "scaffold subproject: a repo named twice, in any case, is written once" "$vault/$M/claude/subprojects/dup.md" "repos: [dup-a, dup-b]"
+printf '%s\n' '---' 'type: subproject' 'repos: [MULTI-APP]' '---' >"$vault/$M/claude/subprojects/again.md"
+sb repo Multi
+is "repo: a subproject repo that the profile lists in another case is listed once" "$(printf '%s\n' "$OUT" | grep -ic '^multi-app')" "1"
+rm -f "$vault/$M/claude/subprojects/again.md"
+cp "$MF" "$tmp/multi-profile"
+: >"$MF"
+printf '%s\n' '---' 'type: subproject' "repos_root: \"$tmp/mcode\"" 'repos: [rr-x]' '---' >"$vault/$M/claude/subprojects/rr.md"
+sb repo Multi
+out_has "repo: an empty profile gives no repos_root, not a note's" "rr-x${TAB}-${TAB}unknown"
+rm -f "$vault/$M/claude/subprojects/rr.md"
+cp "$tmp/multi-profile" "$MF"
 
 sb task new MU-1 --project Multi --title "Infra work" --subproject INFRA --envs
 rc_is "task new --subproject: exit 0" 0

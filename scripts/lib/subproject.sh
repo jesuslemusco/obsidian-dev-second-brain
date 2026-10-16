@@ -77,13 +77,30 @@ sb_sub_value() {
 
 # Print the effective settings of the subproject in SB_S_FILE as "key: value" lines.
 sb_sub_show() {
-  local k
+  local k r rn rp rs rows paths=""
   printf 'subproject: %s\n' "$SB_S_NAME"
   printf 'note: %s\n' "$(sb_rel "$SB_S_FILE")"
   printf 'docs: %s\n' "$(sb_sub_docs "$SB_S_NAME")"
-  for k in repos base_branch production_branch branch_pattern environments repo_paths; do
+  for k in repos base_branch production_branch branch_pattern environments; do
     printf '%s: %s\n' "$k" "$(sb_sub_value "$SB_S_FILE" "$k")"
   done
+  # Where each of its repos is, as the repo command finds it: the note's entry, the profile's, or
+  # repos_root.
+  rows="$(sb_repo_rows_at "$SB_P_PATH")"
+  while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    while IFS=$'\t' read -r rn rp rs; do
+      if [ "$(printf '%s' "$rn" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]')" ]; then
+        [ "$rp" = "-" ] || paths="${paths:+$paths, }$r=$(sb_path_out "$rp")"
+        break
+      fi
+    done <<EOF2
+$rows
+EOF2
+  done <<EOF
+$(sb_fm_list "$SB_S_FILE" repos 2>/dev/null)
+EOF
+  printf 'repo_paths: %s\n' "${paths:--}"
 }
 
 # Print the names of the subprojects of a project path whose repository holds a directory.
@@ -93,6 +110,8 @@ sb_sub_by_cwd() {
   local ppath="$1" phys f n r table="" best="" bestlen=0 rname rpath state rphys
   local tab=$'\t' nl=$'\n'
   phys="$(cd "$2" 2>/dev/null && pwd -P)" || return 0
+  # A folder of the vault is no repository: its names never name a subproject.
+  case "$phys/" in "$SB_ROOT"/*) return 0 ;; esac
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     n="$(sb_sub_name "$f")"
@@ -105,6 +124,12 @@ EOF2
 $(sb_sub_files "$ppath")
 EOF
   [ -n "$table" ] || return 0
+  # The profile's repos go in too, with no subproject, so that the deepest name match can be one.
+  while IFS= read -r r; do
+    [ -n "$r" ] && table="$table$r$tab$nl"
+  done <<EOF
+$(sb_fm_list "$SB_ROOT/$ppath/claude/profile.md" repos 2>/dev/null)
+EOF
   while IFS=$'\t' read -r rname rpath state; do
     [ "$state" = "ok" ] || continue
     rphys="$(cd -P "$rpath" 2>/dev/null && pwd -P)" || continue
@@ -131,13 +156,14 @@ EOF
     { repo[NR] = tolower($1); gsub(/ /, "_", repo[NR]); sp[NR] = $2; raw[NR] = tolower($1) }
     END {
       if (nb) {
-        for (j = 1; j <= NR; j++) if ((raw[j] in want) && !(sp[j] in seen)) { print sp[j]; seen[sp[j]] = 1 }
+        for (j = 1; j <= NR; j++) if (sp[j] != "" && (raw[j] in want) && !(sp[j] in seen)) { print sp[j]; seen[sp[j]] = 1 }
         exit
       }
+      # The deepest folder that carries a repo name decides, even when that repo is the profile alone.
       for (i = np; i >= 1; i--) {
         if (part[i] == "") continue
         c = tolower(part[i]); gsub(/ /, "_", c); hit = 0
-        for (j = 1; j <= NR; j++) if (repo[j] == c && !(sp[j] in seen)) { print sp[j]; seen[sp[j]] = 1; hit = 1 }
+        for (j = 1; j <= NR; j++) if (repo[j] == c) { hit = 1; if (sp[j] != "" && !(sp[j] in seen)) { print sp[j]; seen[sp[j]] = 1 } }
         if (hit) exit
       }
     }'

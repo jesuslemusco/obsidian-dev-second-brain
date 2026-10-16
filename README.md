@@ -18,7 +18,7 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
 ## How it works
 
 - Your vault is a folder of markdown notes. Each project has a folder in it, and each ticket is
-  one note whose first lines hold its status, branch, sprint and next step.
+  one note whose first lines hold its status, branch, sprint, next step and the tickets it waits on.
 - A link on your machine points to the vault, and a short index of your projects is loaded into
   every Claude session, so Claude knows where each project's notes are.
 - When you ask for something, a skill tells Claude the steps and the `second-brain` helper does

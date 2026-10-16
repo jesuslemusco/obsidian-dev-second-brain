@@ -69,6 +69,9 @@ pull the real outcome and impact from there, not from a summary you paraphrase. 
 achievement wording with the user before it is written if there is any ambiguity about what
 counts as the delivered outcome.
 
+When `story-tracker` says `docs-keeper` is due and you cannot start it, carry it in your final
+report as an action for the caller: "start `docs-keeper` Workflow 5 for <ID>, <README path>".
+
 ## Step 5 - Close
 
 Run the `sprint` skill in close mode. The user decides, task by task: carry over, backlog or

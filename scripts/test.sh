@@ -641,6 +641,43 @@ rc_is "task head: no id gives exit 5" 5
 sb task bogus
 rc_is "task: unknown subcommand gives exit 5" 5
 
+# ---------------------------------------------------------------- task docs
+cp "$T2" "$tmp/t2.saved"
+cp "$T3" "$tmp/t3.saved"
+edit "$T2" 's/^## Status notes$/## Docs to update\
+\
+- [ ] docs\/billing.md - say totals round once\
+- [x] README.md - already done\
+  - [ ] docs\/api.md - the rounding field\
+\
+```\
+- [ ] docs\/example.md - only an example in a fence\
+```\
+\
+## Status notes/'
+edit "$T3" 's/^## Status notes$/## Docs to update\
+\
+- [x] docs\/billing.md - all ticked\
+\
+## Status notes/'
+sb task docs EX-2,EX-3 EX-1
+rc_is "task docs: exit 0" 0
+out_is "task docs: only the task with unticked lines, its path, then those lines" "EX-2 $P/tasks/EX-2/README.md
+- [ ] docs/billing.md - say totals round once
+  - [ ] docs/api.md - the rounding field"
+out_lacks "task docs: a line inside a fenced code block is skipped" "example.md"
+sb task docs "EX-2 EX-3"
+rc_is "task docs: an id is never split at a space" 1
+sb task docs EX-3 --project Example
+rc_is "task docs: every line ticked exits 0" 0
+out_is "task docs: every line ticked prints nothing" ""
+sb task docs EX-404
+rc_is "task docs: unknown task gives exit 1" 1
+sb task docs
+rc_is "task docs: no id gives exit 5" 5
+cp "$tmp/t2.saved" "$T2"
+cp "$tmp/t3.saved" "$T3"
+
 # ---------------------------------------------------------------- an alias as the id
 sb task set EX-70 "next=Promote to qa"
 rc_is "task set: a later environment's id finds the set" 0
@@ -1476,6 +1513,35 @@ case "$draft_row" in
   *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
 esac
 file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
+
+# ---------------------------------------------------------------- docs-keeper on a ticket marked done
+DK="$here/agents/docs-keeper.md"
+desc="$(sed -n 's/^description: //p' "$DK")"
+is "docs-keeper: the description is under 200 characters" "$((${#desc} < 200))" "1"
+case "$desc" in *"a ticket is marked done"*) pass "docs-keeper: the description names a ticket marked done" ;;
+  *) fail "docs-keeper: the description names a ticket marked done" "in: $desc" ;; esac
+line_is "docs-keeper: Workflow 5 is there" "$DK" "## Workflow 5 - Ticket marked done"
+file_has "docs-keeper: Workflow 5 runs step 7 on the docs to update" "$DK" 'run step 7 of Workflow 1 on them'
+file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'The "Code to doc map" names the docs to check.'
+file_has "docs-keeper: Workflow 5 sends a gap to the debt file" "$DK" "A gap found but not fixed goes to the profile's debt file"
+file_has "docs-keeper: Workflow 5 gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
+file_has "docs-keeper: Workflow 5 stops when every line is ticked" "$DK" 'With every line already ticked: go to step 6. Do not check the map again.'
+file_has "docs-keeper: Workflow 5 diffs the merge commit" "$DK" 'diff <merge>^1 <merge>'
+file_has "docs-keeper: Workflow 5 diffs a branch not merged yet" "$DK" 'diff origin/<production_branch>...<branch>'
+file_has "docs-keeper: Workflow 5 stops when the change is not found" "$DK" 'report that the change was not found and stop'
+file_has "docs-keeper: Workflow 5 reads the head with the project" "$DK" '`second-brain task head <ID> --project <project>`'
+file_has "docs-keeper: Workflow 5 adds a status note" "$DK" 'Add a status note to the ticket naming what was updated'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: a story in production starts docs-keeper" "$ST" 'start the `docs-keeper` agent'
+file_has "story-tracker: it hands over the ticket id and the README path" "$ST" 'with the project, the ticket id and the README path'
+file_lacks "story-tracker: no longer tells Claude not to start it" "$ST" 'Do not start it yourself.'
+file_has "story-tracker: a session that cannot start an agent names docs-keeper" "$ST" 'When the session cannot start an agent, say so and'
+file_has "sprint close: reports done tasks with unticked docs through the helper" "$here/skills/sprint/close.md" '`second-brain task docs <done ids> --project <project>`'
+file_lacks "sprint close: no Grep" "$here/skills/sprint/close.md" 'Grep'
+file_has "scrum-master: carries docs-keeper as an action for the caller" "$here/agents/scrum-master.md" 'start `docs-keeper` Workflow 5 for <ID>, <README path>'
+file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.md" 'Do not start it here: the close only reports.'
+file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
+file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

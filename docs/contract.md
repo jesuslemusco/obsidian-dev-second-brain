@@ -264,6 +264,7 @@ Rules that hold for every command:
 | `board <project> [view]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs` | default view `Active` (status planned, in-progress or in-review). Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, topics, envs, summary line, newest status note | |
+| `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
 | `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys, and for a sprint id on a project that does not use sprints (`sprint=` still removes one) |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; refuses `type/` and `status/` tags (exit 5) |
 | `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoting when needed; the first alias never changes; exit 6 when the alias already names another task. Renaming a slug-named task to its ticket id (a new first alias and folder name) is not covered yet and is done by hand |
@@ -522,6 +523,13 @@ carries the full vault path for a `README.md` and the alias as display text.
   against is the production branch on the remote. Until a change is confirmed, the planned doc
   edits are recorded as pending and not made: under `## Docs to update` in the task README when
   there is a ticket, else as a line starting `pending production:` in the profile's debt file.
+- **A ticket marked done starts `docs-keeper`.** When `story-tracker` sets a story `done` in a
+  project with no environments, or sets its last environment `done`, it starts the `docs-keeper`
+  agent with the ticket id and the README path. The agent makes the edits under
+  `## Docs to update` and ticks them; with no such section it checks the ticket's change against
+  the "Code to doc map". A gap it does not fix goes to the debt file, and it adds a status note
+  to the ticket. The sprint close only reports done tasks with unticked doc lines, from
+  `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose. A missing or
   non-standard status is reported as "Needs a status" and never set without asking.
 - Notes are moved and renamed with `second-brain move` / `rename`, never `mv`.

@@ -32,9 +32,9 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 ### global-rules
 
-- Means: a line of `~/.claude/CLAUDE.md` names a project of the index, by its name as a whole word or by its path (`<project>:<line number>`). The import of the index and the rows of a `## Projects` table are not read.
+- Means: a line of `~/.claude/CLAUDE.md` names a project of the index, by its name as a whole word or by its path (`<project>:<line number>`), or is an `@` import that names one (`<project>:@<line number>`). The import of the index and the rows of a `## Projects` table are not read, and neither are the files `CLAUDE.md` imports.
 - Why: that file is loaded in every session, so a rule about one project loads in all the others, and the project's own rules never get it.
-- Fix: after a yes from the user, move the line under `## Rules` in the project's `claude/README.md`, or in its subproject's note `claude/subprojects/<name>.md` when the rule is about one subproject. A line that holds for every project stays: say so and leave it.
+- Fix: after a yes from the user, move the line under `## Rules` in the project's `claude/README.md`, or in its subproject's note `claude/subprojects/<name>.md` when the rule is about one subproject. An import: remove the line, because the index already tells Claude to read the project's rules. A line that holds for every project stays: say so and leave it.
 
 ### links
 

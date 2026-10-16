@@ -189,9 +189,10 @@ sb_doc_check_import() {
 
 # Check that the link directory's CLAUDE.md holds no line that names a project of the index: its
 # name as a whole word, as written, or its path in any letter case. The import of the index and
-# the rows of a Projects table are not read. An offender is <project>:<line number>.
+# the rows of a Projects table are not read, nor the files it imports. An offender is
+# <project>:<line number>, or <project>:@<line number> for an import line.
 sb_doc_check_global_rules() {
-  local home f line n=0 skip="" rows bad="" nl=$'\n'
+  local home f line n=0 skip="" rows bad="" fix nl=$'\n'
   home="$(sb_link_home)"
   f="$home/CLAUDE.md"
   rows="$(sb_projects_tsv 2>/dev/null)"
@@ -211,7 +212,7 @@ sb_doc_check_global_rules() {
       function word(t, w,   i, off, rest, pre, post) {
         rest = t; off = 0
         while ((i = index(rest, w)) > 0) {
-          pre = substr(t, off + i - 1, 1); post = substr(t, off + i + length(w), 1)
+          pre = (off + i > 1) ? substr(t, off + i - 1, 1) : ""; post = substr(t, off + i + length(w), 1)
           if (pre !~ /[A-Za-z0-9_-]/ && post !~ /[A-Za-z0-9_-]/) return 1
           off += i; rest = substr(rest, i + 1)
         }
@@ -224,11 +225,15 @@ sb_doc_check_global_rules() {
       {
         for (i = 1; i <= np; i++) {
           if (name[i] == "") continue
-          if (word($0, name[i]) || (path[i] !~ /^[.\/]*$/ && word(tolower($0), path[i]))) { print name[i] ":" FNR; next }
+          if (word($0, name[i]) || (path[i] !~ /^[.\/]*$/ && word(tolower($0), path[i]))) { print name[i] ":" (/^@/ ? "@" : "") FNR; next }
         }
       }' "$f")"
   fi
-  sb_doc_report warn global-rules vault "$bad" "move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+  fix="move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+  case "$bad" in
+    *:@*) fix="$fix; remove an @ import of a project's file: the index already leads to the project's rules" ;;
+  esac
+  sb_doc_report warn global-rules vault "$bad" "$fix"
 }
 
 # Check the links of the vault's own skills and agents.

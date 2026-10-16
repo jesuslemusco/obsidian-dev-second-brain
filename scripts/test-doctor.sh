@@ -302,6 +302,16 @@ chk "global-rules: a line naming the project by name or path warns" global-rules
 is "global-rules: the fix moves the line to the project's rules" "$(fix_of global-rules vault)" \
   "move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
 rc_is "global-rules: a warn alone keeps exit 0" 0
+printf 'Example runs the tests first.\n%s keeps its notes.\n' "$P" >"$home/CLAUDE.md"
+doc
+chk "global-rules: a line that starts with the name or the path warns" global-rules vault "warn | 2 | Example:1, Example:2"
+printf '# Mine\n\n@~/%s/claude/README.md\n' "$P" >"$home/CLAUDE.md"
+doc
+chk "global-rules: an import of a project's file warns, marked with @" global-rules vault "warn | 1 | Example:@3"
+case "$(fix_of global-rules vault)" in
+  *"remove an @ import of a project's file"*) pass "global-rules: an import gets its own fix" ;;
+  *) fail "global-rules: an import gets its own fix" "fix: $(fix_of global-rules vault)" ;;
+esac
 reset
 
 # ---------------------------------------------------------------- links, double-registration

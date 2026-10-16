@@ -97,8 +97,11 @@ commit, before you reason about, recall or review a ticket.
   planned edit as a `- [ ]` line (the doc path and what will change) under `## Docs to update`,
   created just before `## Status notes` when absent. Those edits wait for production.
 - The story reaches production (its last environment set to `done`, or the story set to `done`
-  in a project with no environments) with unticked lines under `## Docs to update`: say so and
-  name the `docs-keeper` agent as the one that makes those edits now. Do not start it yourself.
+  in a project with no environments): start the `docs-keeper` agent
+  (`obsidian-dev-second-brain:docs-keeper`) with the project, the ticket id and the README path,
+  and ask it for Workflow 5, a ticket marked done. Start it with or without a `## Docs to update`
+  section. Do not make the doc edits yourself. When the session cannot start an agent, say so and
+  name `docs-keeper` as the one to run now.
 - Topic tags stay true: `second-brain task tag <ID> add <tag>` when the story reaches another
   topic whose folder exists, `remove <tag>` when it moves off one.
 - A README with no task frontmatter: never rewrite its body. Run

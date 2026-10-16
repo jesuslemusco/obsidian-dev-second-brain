@@ -1,6 +1,6 @@
 ---
 name: docs-keeper
-description: Keeps a project's docs in step with its code, in the repos and in the vault - use after a change that alters behaviour, or to audit docs for drift.
+description: Keeps a project's docs in step with its code, in the repos and in the vault - use when a ticket is marked done, after a change that alters behaviour, or to audit drift.
 tools: Bash, Read, Glob, Grep, Edit, Write
 model: sonnet
 ---
@@ -107,6 +107,21 @@ never from the working tree: it may be on an unrelated branch with local changes
    create graph edges - Dataview-rendered links do not.
 4. Give each child an up-link to the hub. Preserve existing frontmatter; only add missing keys.
 
+## Workflow 5 - Ticket marked done
+
+The caller, usually the `story-tracker` skill, gives the project, the ticket id and its README path.
+
+1. Read the ticket: `second-brain task head <ID>`, then its `## Docs to update` section and its
+   `**Branch:**` line. The ticket set to `done`, or its last environment set to `done`, is the
+   production confirmation of principle 2.
+2. With unticked lines under `## Docs to update`: run step 7 of Workflow 1 on them.
+3. With no such section, or none unticked: take the ticket's branch or merged pull request as the
+   change, and run Workflow 1 from step 2. The "Code to doc map" names the docs to check. Update
+   what the change made wrong, or report that nothing needs an edit.
+4. A gap found but not fixed goes to the profile's debt file, as one dated line naming the ticket.
+5. Add a status note to the ticket naming what was updated, ticked and left as debt:
+   `second-brain task note <ID> "<text>" --project <project>`.
+
 ## Working in the vault
 
 Cheapest first. A whole note is the last resort. The conventions are not restated here.
@@ -135,4 +150,5 @@ Open with the code ref: repository, branch, short hash, and whether it is the de
 auditing: a list of discrepancies, each with the doc location, the wrong claim, the correct value,
 and the `file:line` evidence. When editing: summarize what changed and which other surfaces still
 need the same update, and say that each changed region was re-read. When a change is not in
-production yet: the pending list and where it was recorded. Name any proposed map row or debt line.
+production yet: the pending list and where it was recorded. For a ticket marked done: the status
+note written on it. Name any proposed map row or debt line.

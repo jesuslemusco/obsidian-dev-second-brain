@@ -57,7 +57,7 @@ step() {
 ask() {
   (cd "$work" && claude -p "$2" --plugin-dir "$plugin" --model haiku --max-budget-usd 0.50 \
     --output-format stream-json --verbose --include-hook-events --no-session-persistence \
-    --allowedTools "Bash(second-brain *)" >"$1" 2>"$1.err")
+    --allowedTools "Bash(second-brain *)" Skill >"$1" 2>"$1.err")
   printf 'claude exit %s, %s lines\n' "$?" "$(wc -l <"$1" | tr -d ' ')"
 }
 # field <out file> <jq filter>: print what the filter selects.
@@ -118,9 +118,23 @@ holds "agents: the plugin's agents are loaded" "$agents" "scrum-master"
 holds "bin: second-brain runs from the Bash tool" "$(field "$tmp/second.jsonl" "$tool_out")" "vault: "
 holds "import: the index is read through the pointer" "$(field "$tmp/second.jsonl" 'select(.type == "result") | .result')" "$token"
 
+printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
+# With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
+sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&
+  mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
+holds "trigger: the profile has a persona" "$(bash "$SB" profile Example --keys)" "developer"
+ask "$tmp/third.jsonl" "For the Example project: give me summary, description and AC for a new ticket, no id.
+The ticket: the task board should show each task's branch."
+holds "trigger: the request loads story-tracker" \
+  "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-tracker"
+got="$(field "$tmp/third.jsonl" 'select(.type == "result") | .result')"
+case "${got#"${got%%[![:space:]]*}"}" in
+  '*As a*'*) pass "trigger: the ticket text starts with *As a*" ;;
+  *) fail "trigger: the ticket text starts with *As a*" "got: $got" ;;
+esac
 if [ "$n_fail" -gt 0 ]; then
   printf '\n== what Claude Code printed ==\n'
-  for f in "$tmp/first.jsonl" "$tmp/second.jsonl"; do
+  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl"; do
     printf -- '-- %s --\n' "${f##*/}"
     cat "$f.err" 2>/dev/null
     field "$f" "$init_of | {skills, agents, plugins}"

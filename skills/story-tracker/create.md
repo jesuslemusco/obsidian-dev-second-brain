@@ -1,6 +1,7 @@
 # Start a story
 
-Start mode only, after Step 0, the find (nothing found) and the branch check in `SKILL.md`.
+Start mode, after Step 0, the find (nothing found) and the branch check in `SKILL.md`. Draft
+mode reads section 1 alone, after Step 0.
 
 ## 1. Lock down the framing
 

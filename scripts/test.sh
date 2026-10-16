@@ -287,6 +287,10 @@ every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.m
 is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | tr '\n' ' ' | grep -c -E 'The vault is +`~/\.claude/second-brain-vault/`')" "1"
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
+file_has "index: story-tracker is named as the skill that writes ticket text" "$vault/CLAUDE.md" "\`story-tracker\` writes ticket text and tracks tasks"
+file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
+is "index: the ticket text rule sits under the rules that most often go wrong" \
+  "$(($(lineno "$vault/CLAUDE.md" '## Rules that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"
 line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
@@ -1457,6 +1461,21 @@ rc_is "sprint close: a sprint with no tasks closes" 0
 file_has "sprint close: the board keeps the closed sprint's literal" "$vault/work/four/tasks/tasks.base" 'sprint == date("2026-11-11")'
 sb board Four "Current sprint"
 out_is "board Current sprint: no rows once the sprint is closed, whatever the board's literal says" ""
+
+# ---------------------------------------------------------------- ticket text goes to story-tracker
+ST="$here/skills/story-tracker/SKILL.md"
+st_desc="$(grep -m1 '^description: ' "$ST")"
+st_desc="${st_desc#description: }"
+for word in "ticket text" summary description "acceptance criteria" draft; do
+  case "$st_desc" in *"$word"*) pass "story-tracker: the description names $word" ;; *) fail "story-tracker: the description names $word" "in: $st_desc" ;; esac
+done
+is "story-tracker: the description is under the doctor's 200 characters" "$((${#st_desc} < 200))" "1"
+draft_row="$(grep '^| draft |' "$ST")"
+case "$draft_row" in
+  *"with or without an id"*ticket-description.md.tmpl*"reply with the text"*"Write no file until the id arrives"*) pass "story-tracker: a draft mode row fills the template and writes no file" ;;
+  *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
+esac
+file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

@@ -8,7 +8,7 @@ format is in the [contract](contract.md).
 
 | Piece | Kind | Does |
 |---|---|---|
-| `story-tracker` | skill | One README per ticket in the vault: start, update, recall, or list what is active. |
+| `story-tracker` | skill | Writes ticket text, and keeps one README per ticket in the vault: draft, start, update, recall, or list what is active. |
 | `sprint` | skill | Open a sprint, plan it, show its status, close it and carry work over. |
 | `vault-setup` | skill | Set up a vault, add a project, adopt an existing project, register your own skills. |
 | `vault-doctor` | skill | Check the vault and the registration against the standard. |

@@ -17,9 +17,9 @@ projects kept in this vault, and says where new skills and agents go.
   and one that belongs to a project below goes in `<Path>/claude/`. Then run
   `second-brain link --apply`, or Claude Code never loads it. `claude/README.md` in the vault has
   the steps.
-- Plugin skills: `story-tracker` tracks tasks, `sprint` runs a sprint, `vault-setup` sets up the
-  vault or a project, `vault-doctor` checks them. Plugin agents: `scrum-master` for the sprint
-  cadence, `docs-keeper` for docs that follow the code.
+- Plugin skills: `story-tracker` writes ticket text and tracks tasks, `sprint` runs a sprint,
+  `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
+  Plugin agents: `scrum-master` for the sprint cadence, `docs-keeper` for docs that follow the code.
 - Write a pull request description in the format of
   `~/.claude/second-brain-vault/claude/pull-request.md`; a project's own
   `<Path>/claude/pull-request.md` wins.
@@ -43,6 +43,8 @@ this file.
   `[[<vault path or unique file name>|<alias>]]`.
 - Move and rename notes with the helper (`second-brain move`, `second-brain rename`), never `mv`.
 - Frontmatter is the truth. Read a status from the `status` property, never from prose.
+- Ticket text is never written freehand. Use `story-tracker`: it opens with `*As a* <persona>,` /
+  `*I need to* ...,` / `*so that* ...` and holds at most 4 acceptance criteria.
 
 ## Projects
 

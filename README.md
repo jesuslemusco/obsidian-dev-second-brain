@@ -6,7 +6,7 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
 ## What it is for
 
 - **Tickets.** Each ticket is one note with its status, branch, next step and a dated log. Ask
-  Claude to start one, update it, or tell you where things stand.
+  Claude to draft a ticket's text, start one, update it, or tell you where things stand.
 - **Sprints.** Open a sprint, plan it, see its status, close it and carry work over. Sprints are
   optional per project.
 - **Docs.** Keep a project's docs in step with its code.

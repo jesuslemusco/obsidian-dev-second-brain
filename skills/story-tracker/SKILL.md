@@ -1,6 +1,6 @@
 ---
 name: story-tracker
-description: Track ticket stories as one README per task folder in the Obsidian vault - start, update, recall, or list what is active.
+description: Write ticket text (summary, description, acceptance criteria) and track stories as one README per task in the Obsidian vault - draft, start, update, recall, list.
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
@@ -33,16 +33,18 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 | Mode | When | Do |
 |---|---|---|
+| draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, reply with the text. Write no file until the id arrives, then go to start |
 | start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then "Edit an existing story" |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
 | status | "What is active", a standup summary, the stories on a topic or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. Read-only, no branch check |
 | environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
 
-Ticket text, only when the user asks for text to paste into the tracker: fill
-`${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl` from the story and reply with plain
-text in the tracker's markup. One screen, about 40 lines, at most 4 findings and 4 acceptance
-criteria, the same Description and criteria as the README, and no other sections.
+Ticket text, in draft mode or when the user asks for text to paste into the tracker: fill
+`${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, from the story when there is one, and
+reply with plain text in the tracker's markup. Never write it freehand. One screen, about 40
+lines, at most 4 findings and 4 acceptance criteria, the same Description and criteria as the
+README, when there is one, and no other sections.
 
 ## Find the story
 

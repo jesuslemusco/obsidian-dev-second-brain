@@ -87,6 +87,8 @@ edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
 }
 lineno() { grep -nF -- "$2" "$1" | head -1 | cut -d: -f1; }
+# section_of <file> <heading>: the non-blank lines under one level-2 heading, up to the next.
+section_of() { awk -v h="## $2" '/^## / { on = ($0 == h); next } on && NF' "$1"; }
 # shown <path>: the path as the helper prints it; on Windows that is the drive form.
 shown() {
   if sb_is_windows; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
@@ -145,7 +147,7 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
   "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
@@ -250,19 +252,50 @@ out_has "context: vault none" "vault: none"
 # ---------------------------------------------------------------- scaffold vault
 sb scaffold vault
 rc_is "scaffold vault: exit 0" 0
-out_is "scaffold vault: lists the three files" "CLAUDE.md
+out_is "scaffold vault: lists the four files" "CLAUDE.md
 obsidian-conventions.md
-claude/README.md"
+claude/README.md
+claude/pull-request.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
+is "pull request format: the four headings, in order" "$(grep '^## [WDR]' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "## What was changed?|## What was added?|## Dependencies:|## Risks:|"
+is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
+  "- Use the four headings below, in this order, and no others.
+- Write short plain English: a few bullets under each heading, one line each.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write \`- None.\`"
+file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
+  'A project that keeps its own'
+line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
+  "  \`<Path>/claude/pull-request.md\` wins."
+line_is "index: the pull request rule names the vault note through the pointer" "$vault/CLAUDE.md" \
+  "  \`~/.claude/second-brain-vault/claude/pull-request.md\`; a project's own"
+line_is "index: the pull request rule opens its bullet" "$vault/CLAUDE.md" \
+  "- Write a pull request description in the format of"
+file_has "vault Claude hub: names the pull request format note" "$vault/claude/README.md" \
+  '`pull-request.md` here is the format of every pull request'
+is "index: the pull request rule is in the section for every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 1"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 2"
 is "index: what holds in every session comes before what holds for a project" \
   "$(($(lineno "$vault/CLAUDE.md" '## In every session') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: a new skill is not created straight in the link directory" "$vault/CLAUDE.md" '~/.claude/skills'
+every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.md")"
+is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | tr '\n' ' ' | grep -c -E 'The vault is +`~/\.claude/second-brain-vault/`')" "1"
+is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
+file_has "index: story-tracker is named as the skill that writes ticket text" "$vault/CLAUDE.md" "\`story-tracker\` writes ticket text and tracks tasks"
+file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
+is "index: the ticket text rule sits under the rules that most often go wrong" \
+  "$(($(lineno "$vault/CLAUDE.md" '## Rules for notes that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"
+file_has "index: a rule about one project goes under the project's Rules" "$vault/CLAUDE.md" 'A rule about one project goes under `## Rules` in `<Path>/claude/README.md`'
+is "index: the rule placement holds in every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
+file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 3"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -295,6 +328,10 @@ sb scaffold vault
 rc_is "scaffold vault again: exit 0" 0
 out_is "scaffold vault again: creates nothing" ""
 file_has "scaffold vault again: does not overwrite" "$vault/claude/README.md" "my own line"
+printf -- '- my own pull request rule\n' >>"$vault/claude/pull-request.md"
+sb scaffold vault
+err_has "scaffold vault again: names the pull request note that exists" "exists: claude/pull-request.md"
+file_has "scaffold vault again: does not overwrite the pull request note" "$vault/claude/pull-request.md" "my own pull request rule"
 mkdir -p "$tmp/vault2/.obsidian"
 sb scaffold vault "$tmp/vault2"
 exists "scaffold vault DIR: writes into that vault" "$tmp/vault2/CLAUDE.md"
@@ -320,6 +357,7 @@ line_is "profile: sprints are on by default" "$vault/$P/claude/profile.md" "uses
 line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder(\"$P/tasks\")"
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
+line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 for v in Active "Current sprint" "By topic" "Needs a status" All; do
   line_is "board: view $v" "$vault/$P/tasks/tasks.base" "    name: $v"
 done
@@ -608,6 +646,43 @@ rc_is "task head: no id gives exit 5" 5
 sb task bogus
 rc_is "task: unknown subcommand gives exit 5" 5
 
+# ---------------------------------------------------------------- task docs
+cp "$T2" "$tmp/t2.saved"
+cp "$T3" "$tmp/t3.saved"
+edit "$T2" 's/^## Status notes$/## Docs to update\
+\
+- [ ] docs\/billing.md - say totals round once\
+- [x] README.md - already done\
+  - [ ] docs\/api.md - the rounding field\
+\
+```\
+- [ ] docs\/example.md - only an example in a fence\
+```\
+\
+## Status notes/'
+edit "$T3" 's/^## Status notes$/## Docs to update\
+\
+- [x] docs\/billing.md - all ticked\
+\
+## Status notes/'
+sb task docs EX-2,EX-3 EX-1
+rc_is "task docs: exit 0" 0
+out_is "task docs: only the task with unticked lines, its path, then those lines" "EX-2 $P/tasks/EX-2/README.md
+- [ ] docs/billing.md - say totals round once
+  - [ ] docs/api.md - the rounding field"
+out_lacks "task docs: a line inside a fenced code block is skipped" "example.md"
+sb task docs "EX-2 EX-3"
+rc_is "task docs: an id is never split at a space" 1
+sb task docs EX-3 --project Example
+rc_is "task docs: every line ticked exits 0" 0
+out_is "task docs: every line ticked prints nothing" ""
+sb task docs EX-404
+rc_is "task docs: unknown task gives exit 1" 1
+sb task docs
+rc_is "task docs: no id gives exit 5" 5
+cp "$tmp/t2.saved" "$T2"
+cp "$tmp/t3.saved" "$T3"
+
 # ---------------------------------------------------------------- an alias as the id
 sb task set EX-70 "next=Promote to qa"
 rc_is "task set: a later environment's id finds the set" 0
@@ -706,18 +781,91 @@ sb task alias no-alias add "Other name" --project "Example Two"
 out_is "task alias: a note with no aliases gets the folder id first" "no-alias
 Other name"
 
+# ---------------------------------------------------------------- task dep
+T5="$vault/$P/tasks/EX-5/README.md"
+sb task dep EX-5 add EX-2
+rc_is "task dep add: exit 0" 0
+out_is "task dep add: prints the resulting links" "[[$P/tasks/EX-2/README|EX-2]]"
+line_is "task dep add: the link is a quoted path link" "$T5" "  - \"[[$P/tasks/EX-2/README|EX-2]]\""
+is "task dep add: depends_on lands after carried_from" "$(($(lineno "$T5" 'depends_on:') - $(lineno "$T5" 'carried_from:')))" "1"
+cp "$T5" "$tmp/t5.before"
+sb task dep EX-5 add EX-2
+is "task dep add: a task it has is not added twice" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 add EX-3
+out_is "task dep add: appended last" "[[$P/tasks/EX-2/README|EX-2]]
+[[$P/tasks/EX-3/README|EX-3]]"
+sb task dep EX-5 add EX-70
+out_has "task dep add: an alias links the task's folder" "[[$P/tasks/EX-7/README|EX-7]]"
+sb task dep EX-5 remove EX-7
+out_is "task dep remove: by folder id" "[[$P/tasks/EX-2/README|EX-2]]
+[[$P/tasks/EX-3/README|EX-3]]"
+cp "$T5" "$tmp/t5.before"
+sb task dep EX-5 remove EX-1
+rc_is "task dep remove: a task it lacks, exit 0" 0
+is "task dep remove: a task it lacks changes nothing" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 add EX-5
+rc_is "task dep: the task itself gives exit 5" 5
+sb task dep EX-5 add EX-55
+rc_is "task dep: the task itself by an alias gives exit 5" 5
+sb task dep EX-5 add EX-404
+rc_is "task dep: an unknown task gives exit 1" 1
+sb task dep EX-404 add EX-2
+rc_is "task dep: an unknown task to edit gives exit 1" 1
+is "task dep: nothing written on refusal" "$(cmp -s "$tmp/t5.before" "$T5"; echo $?)" "0"
+sb task dep EX-5 block EX-2
+rc_is "task dep: unknown action gives exit 5" 5
+sb task dep EX-5 add
+rc_is "task dep: no task named gives exit 5" 5
+sb task set EX-5 depends_on=x
+rc_is "task set: depends_on is a list, exit 5" 5
+err_has "task set: depends_on points to task dep" "task dep"
+sb task dep EX-2 add TWO-1
+out_is "task dep add: a task of another project" "[[$P2/tasks/TWO-1/README|TWO-1]]"
+sb task dep EX-2 remove TWO-1
+out_is "task dep remove: the last one prints a dash" "-"
+line_is "task dep remove: an empty list stays" "$T2" "depends_on: []"
+edit "$T2" "s#^depends_on: \[\]\$#depends_on: [\"[[$P/tasks/EX-3/README.md|third]]\"]#"
+file_has "task dep remove: the hand-written link is there first" "$T2" "README.md|third]]"
+sb task dep EX-2 remove EX-3
+out_is "task dep remove: matches a hand-written link by its path" "-"
+edit "$T2" "s#^depends_on: \[\]\$#depends_on: [\"[[$P/tasks/EX-3/README|EX-3]]\"]#"
+sb task dep EX-2 add EX-1
+out_is "task dep add: to an inline list" "[[$P/tasks/EX-3/README|EX-3]]
+[[$P/tasks/EX-1/README|EX-1]]"
+line_is "task dep add: the inline item stays quoted" "$T2" "  - \"[[$P/tasks/EX-3/README|EX-3]]\""
+line_is "task dep add: the new item after it" "$T2" "  - \"[[$P/tasks/EX-1/README|EX-1]]\""
+file_lacks "task dep add: no inline list left" "$T2" "depends_on: ["
+sb task dep EX-2 remove EX-3
+sb task dep EX-2 remove EX-1
+out_is "task dep remove: both gone" "-"
+sb task dep EX-6 add EX-2
+is "task dep: CRLF kept" "$(grep -c "$CR\$" "$T6")" "$(grep -c '' "$T6")"
+line_is "task dep: CRLF line written" "$T6" "  - \"[[$P/tasks/EX-2/README|EX-2]]\"$CR"
+sb task dep EX-6 remove EX-2
+
 # ---------------------------------------------------------------- board
 edit "$vault/$P/tasks/EX-7/README.md" 's/^status: planned$/status: active/'
 sb board Example
 rc_is "board: exit 0" 0
 out_lacks "board: no source line" "source:"
-out_has "board: row format" 'EX-1 | Fix: totals "rounded" twice | in-review | 2026-10-14 | billing/invoices | feature/EX-1-fix | Check: the #1 thing | -'
+out_has "board: row format" 'EX-1 | Fix: totals "rounded" twice | in-review | 2026-10-14 | billing/invoices | feature/EX-1-fix | Check: the #1 thing | - | -'
 is "board Active: planned, in-progress and in-review only" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-5 EX-1 EX-6 EX-2 "
 sb board Example All
 is "board All: every task folder" "$(lines "$OUT")" "8"
-is "board: every row has eight cells" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 8' | grep -c . || true)" "0"
+is "board: every row has nine cells" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 9' | grep -c . || true)" "0"
 out_has "board: envs column for an environment set" "EX-7 | Per environment | active | - | - | none yet | Promote to qa | dev:EX-7:done,qa:EX-70:planned"
 out_has "board: title from the heading when the property is absent" "legacy-task | Legacy task | - | - | - | - | - | -"
+is "board: depends_on column, each task with its status" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-3:done"
+cp "$T5" "$tmp/t5.before"
+edit "$T5" "s#^  - \"\[\[$P/tasks/EX-3/README|EX-3\]\]\"\$#  - \"[[$P/tasks/EX-99/README|EX-99]]\"#"
+sb board Example
+is "board: a link to no note shows missing" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-99:missing"
+cp "$tmp/t5.before" "$T5"
+edit "$T5" "s#^  - \"\[\[$P/tasks/EX-2/README|EX-2\]\]\"\$#  - \"[[$P/tasks/ex-2/readme|ex-2]]\"#"
+sb board Example
+is "board: a link in other letter case shows the task's own id" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-3:done"
+cp "$tmp/t5.before" "$T5"
+sb board Example All
 sb board Example needs a status
 is "board Needs a status: missing or non-standard status" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "EX-7 legacy-task "
 sb board Example "By topic"
@@ -1125,7 +1273,7 @@ sb task tag RT-1 add knowledge/API
 out_is "other roots: a tag is the path under the topics root" "api"
 is "other roots: an existing topic folder gives no warning" "$ERR" ""
 sb board Roots
-out_is "other roots: board reads the tasks root" "RT-1 | First | planned | - | api | none yet | Frame the story | -"
+out_is "other roots: board reads the tasks root" "RT-1 | First | planned | - | api | none yet | Frame the story | - | -"
 sb sprint open Roots --end 2026-10-21
 out_is "other roots: sprint open writes under the sprints root" "$R/cadence/sprints/2026-10-21.md"
 line_is "other roots: sprint hub line" "$vault/$R/cadence/sprints/README.md" "- [[$R/cadence/sprints/2026-10-21|Roots Sprint 2026-10-21]] - 2026-10-08 to 2026-10-21"
@@ -1412,8 +1560,175 @@ out_is "sprints turned off again: a sprint left in progress lists nothing" ""
 sb context --cwd "$vault/$N"
 out_has "sprints turned off again: context says off" "sprint: off"
 
+# ---------------------------------------------------------------- subprojects
+M="work/multi"
+MF="$vault/$M/claude/profile.md"
+mkdir -p "$tmp/mcode/multi-app/src" "$tmp/mcode/multi-infra/mod/deep" "$tmp/far/multi-tools/lib" "$tmp/loose/multi-loose/x"
+sb scaffold project Multi --path "$M" --keys MU
+edit "$MF" "s|^repos: \\[\\]\$|repos: [multi-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/mcode\"|"
+edit "$MF" 's|^base_branch: main$|base_branch: develop|; s|^production_branch: ""$|production_branch: release|; s|^environments: \[\]$|environments: [dev, prod]|'
+sb subproject Multi
+rc_is "subproject: a project with none exits 0" 0
+out_is "subproject: and lists nothing" ""
+sb context --cwd "$tmp/mcode/multi-app/src"
+is "subproject: with none, context keeps its four lines" "$(lines "$OUT")" "4"
+out_lacks "subproject: with none, context has no subproject line" "subproject:"
+sb repo Multi
+out_is "subproject: with none, repo lists the profile's repos" "multi-app${TAB}$oT/mcode/multi-app${TAB}ok"
+sb subproject
+rc_is "subproject: no project gives exit 5" 5
+sb subproject Multi infra extra
+rc_is "subproject: too many arguments give exit 5" 5
+sb subproject Nope
+rc_is "subproject: an unknown project gives exit 1" 1
+sb subproject Multi infra
+rc_is "subproject: an unknown subproject gives exit 1" 1
+err_has "subproject: the message says how to list them" "second-brain subproject Multi"
+
+sb scaffold subproject Multi infra --repos multi-infra
+rc_is "scaffold subproject: exit 0" 0
+out_is "scaffold subproject: prints the note and the docs hub" "$M/claude/subprojects/infra.md
+$M/docs/infra/README.md"
+line_is "scaffold subproject: the note's type" "$vault/$M/claude/subprojects/infra.md" "type: subproject"
+line_is "scaffold subproject: the note's repos" "$vault/$M/claude/subprojects/infra.md" "repos: [multi-infra]"
+line_is "scaffold subproject: the note has a Rules section" "$vault/$M/claude/subprojects/infra.md" "## Rules"
+line_is "scaffold subproject: the docs hub links up to the topics hub" "$vault/$M/docs/infra/README.md" "> Up: [[$M/docs/README|Multi Docs Hub]]"
+line_is "scaffold subproject: the topics hub links down to it" "$vault/$M/docs/README.md" "- [[$M/docs/infra/README|Multi infra Docs]] - the docs of the infra subproject"
+sb scaffold subproject Multi infra
+rc_is "scaffold subproject: again, exit 0" 0
+err_has "scaffold subproject: again, it overwrites nothing" "exists: $M/claude/subprojects/infra.md"
+is "scaffold subproject: again, the topics hub keeps one line" "$(grep -c "docs/infra/README|" "$vault/$M/docs/README.md")" "1"
+sb scaffold subproject Multi INFRA
+rc_is "scaffold subproject: the same name in another case gives exit 6" 6
+sb scaffold subproject Multi tools --repos MULTI-INFRA
+rc_is "scaffold subproject: a repository of another subproject gives exit 6" 6
+err_has "scaffold subproject: the message names the owner" "already belongs to the subproject infra"
+absent "scaffold subproject: nothing is written on a refusal" "$vault/$M/claude/subprojects/tools.md"
+for bad in "a/b" ".hidden" "-x" "a|b" "a#b" "a:b" "a*b" "a?b" "a<b" "a>b"; do
+  sb scaffold subproject Multi "$bad"
+  rc_is "scaffold subproject: the name $bad gives exit 5" 5
+done
+sb scaffold subproject Multi tools --repos "multi tools"
+rc_is "scaffold subproject: a repository name with a blank gives exit 5" 5
+sb scaffold subproject Nope tools
+rc_is "scaffold subproject: an unknown project gives exit 1" 1
+
+sb subproject Multi
+out_is "subproject: one row per subproject: name, repos, docs folder" "infra${TAB}multi-infra${TAB}$M/docs/infra"
+sb subproject Multi Infra
+rc_is "subproject name: matched without case" 0
+out_is "subproject name: every key falls back to the profile while the note leaves it empty" "subproject: infra
+note: $M/claude/subprojects/infra.md
+docs: $M/docs/infra
+repos: multi-infra
+base_branch: develop
+production_branch: release
+branch_pattern: feature/<ID>-<slug>
+environments: dev, prod
+repo_paths: multi-infra=$oT/mcode/multi-infra"
+SF="$vault/$M/claude/subprojects/infra.md"
+edit "$SF" 's|^base_branch: ""$|base_branch: main|; s|^branch_pattern: ""$|branch_pattern: "infra/<ID>"|; s|^environments: \[\]$|environments:\
+  - staging\
+  - live|'
+sb subproject Multi infra
+out_is "subproject name: its own values win, the rest fall back" "subproject: infra
+note: $M/claude/subprojects/infra.md
+docs: $M/docs/infra
+repos: multi-infra
+base_branch: main
+production_branch: release
+branch_pattern: infra/<ID>
+environments: staging, live
+repo_paths: multi-infra=$oT/mcode/multi-infra"
+
+sb repo Multi
+out_is "repo: the subproject's repositories follow the profile's" "multi-app${TAB}$oT/mcode/multi-app${TAB}ok
+multi-infra${TAB}$oT/mcode/multi-infra${TAB}ok"
+sb project --cwd "$tmp/mcode/multi-infra/mod/deep"
+out_is "project --cwd: a subproject's repository resolves to its project" "Multi${TAB}$M${TAB}MU"
+sb subproject Multi --cwd "$tmp/mcode/multi-infra/mod/deep"
+rc_is "subproject --cwd: exit 0 inside its repository" 0
+out_has "subproject --cwd: the settings of the subproject" "subproject: infra"
+sb subproject Multi --cwd "$tmp/mcode/multi-app/src"
+rc_is "subproject --cwd: a repository of the profile alone is in no subproject, exit 1" 1
+sb context --cwd "$tmp/mcode/multi-infra/mod"
+is "context: five lines in a subproject's repository" "$(lines "$OUT")" "5"
+out_has "context: the subproject line, after project_path" "project_path: $M
+subproject: infra
+sprint:"
+sb context --cwd "$tmp/mcode/multi-app"
+out_lacks "context: no subproject line in the profile's own repository" "subproject:"
+
+sb scaffold subproject Multi tools --repos multi-tools
+SF2="$vault/$M/claude/subprojects/tools.md"
+edit "$SF2" "s|^repo_paths: \\[\\]\$|repo_paths: [\"multi-tools=$tmp/far/multi-tools\"]|"
+sb repo Multi multi-tools
+out_is "repo: a subproject's repo_paths entry gives the location" "$oT/far/multi-tools"
+sb subproject Multi --cwd "$tmp/far/multi-tools/lib"
+out_has "subproject --cwd: found through the note's repo_paths" "subproject: tools"
+sb subproject Multi tools
+out_has "subproject name: its own repo_paths" "repo_paths: multi-tools=$oT/far/multi-tools"
+sb scaffold subproject Multi loose --repos multi-loose
+edit "$MF" 's|^repos_root: .*$|repos_root: ""|'
+sb subproject Multi --cwd "$tmp/loose/multi-loose/x"
+rc_is "subproject --cwd: with no location recorded, the folder name decides" 0
+out_has "subproject --cwd: the folder name names the subproject" "subproject: loose"
+sb subproject Multi loose
+out_has "subproject name: no location recorded gives no repo_paths" "repo_paths: -"
+mkdir -p "$tmp/loose/multi-loose/vendor/multi-app/y"
+sb subproject Multi --cwd "$tmp/loose/multi-loose/vendor/multi-app/y"
+rc_is "subproject --cwd: a deeper folder named for a repo of the profile alone gives exit 1" 1
+sb context --cwd "$tmp/loose/multi-loose/vendor/multi-app/y"
+out_lacks "context: no subproject line under a deeper repo of the profile alone" "subproject:"
+sb subproject Multi --cwd "$tmp/far"
+rc_is "subproject --cwd: a folder in no repository gives exit 1" 1
+edit "$MF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/mcode\"|"
+sb scaffold subproject Multi tasks --repos tasks
+sb subproject Multi --cwd "$vault/$M/tasks"
+rc_is "subproject --cwd: a folder of the vault is in no subproject, whatever its name" 1
+sb context --cwd "$vault/$M/tasks"
+out_lacks "context: no subproject line in a folder of the vault" "subproject:"
+out_has "context: the vault folder still gives the project" "project: Multi"
+sb scaffold subproject Multi dup --repos "dup-a, DUP-A ,dup-b"
+line_is "scaffold subproject: a repo named twice, in any case, is written once" "$vault/$M/claude/subprojects/dup.md" "repos: [dup-a, dup-b]"
+printf '%s\n' '---' 'type: subproject' 'repos: [MULTI-APP]' '---' >"$vault/$M/claude/subprojects/again.md"
+sb repo Multi
+is "repo: a subproject repo that the profile lists in another case is listed once" "$(printf '%s\n' "$OUT" | grep -ic '^multi-app')" "1"
+rm -f "$vault/$M/claude/subprojects/again.md"
+cp "$MF" "$tmp/multi-profile"
+: >"$MF"
+printf '%s\n' '---' 'type: subproject' "repos_root: \"$tmp/mcode\"" 'repos: [rr-x]' '---' >"$vault/$M/claude/subprojects/rr.md"
+sb repo Multi
+out_has "repo: an empty profile gives no repos_root, not a note's" "rr-x${TAB}-${TAB}unknown"
+rm -f "$vault/$M/claude/subprojects/rr.md"
+cp "$tmp/multi-profile" "$MF"
+
+sb task new MU-1 --project Multi --title "Infra work" --subproject INFRA --envs
+rc_is "task new --subproject: exit 0" 0
+TM="$vault/$M/tasks/MU-1/README.md"
+line_is "task new --subproject: the key holds the note's own spelling" "$TM" "subproject: infra"
+line_is "task new --subproject --envs: the subproject's first environment" "$TM" "  staging: { id: MU-1, status: planned }"
+is "task new --subproject: the key sits after epic" "$(($(lineno "$TM" 'subproject:') - $(lineno "$TM" 'epic:')))" "1"
+sb task head MU-1
+out_has "task head: shows the subproject" "subproject: infra"
+sb task new MU-2 --project Multi --subproject nope
+rc_is "task new --subproject: an unknown subproject gives exit 1" 1
+absent "task new --subproject: and writes no README" "$vault/$M/tasks/MU-2/README.md"
+sb task new MU-2 --project Multi --title "App work"
+sb task head MU-2
+out_lacks "task head: no subproject line on a task with none" "subproject:"
+sb task set MU-2 subproject=Tools
+out_is "task set subproject: written as the note is named" "subproject: tools"
+is "task set subproject: the key sits after epic" "$(($(lineno "$vault/$M/tasks/MU-2/README.md" 'subproject:') - $(lineno "$vault/$M/tasks/MU-2/README.md" 'epic:')))" "1"
+sb task set MU-2 subproject=nope
+rc_is "task set subproject: an unknown subproject gives exit 1" 1
+line_is "task set subproject: the old value stays" "$vault/$M/tasks/MU-2/README.md" "subproject: tools"
+sb task set MU-2 subproject=
+out_is "task set subproject: an empty value removes the key" "subproject: (removed)"
+
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"
+is "index template: the answer-style rule is pinned" "$(sed -n '/^## In every session/,/^## Working/p' "$here/templates/vault-index.md.tmpl" | tr '\n' ' ' | grep -c 'Answer in short, plain English. Lead with the answer. The user, or their own instructions, may *say otherwise.')" "1"
 is "templates: only UPPER_SNAKE placeholders" "$(cat "$here"/templates/*.tmpl | grep -o '{{[^}]*}}' | grep -vc '^{{[A-Z][A-Z0-9_]*}}$' || true)" "0"
 bad_links="$(find "$vault" -name '.*' -prune -o -type f -name '*.md' -print | while IFS= read -r f; do check_links "$f"; done)"
 is "generated notes: every link carries a path that exists" "$bad_links" ""
@@ -1427,6 +1742,50 @@ rc_is "sprint close: a sprint with no tasks closes" 0
 file_has "sprint close: the board keeps the closed sprint's literal" "$vault/work/four/tasks/tasks.base" 'sprint == date("2026-11-11")'
 sb board Four "Current sprint"
 out_is "board Current sprint: no rows once the sprint is closed, whatever the board's literal says" ""
+
+# ---------------------------------------------------------------- ticket text goes to story-tracker
+ST="$here/skills/story-tracker/SKILL.md"
+st_desc="$(grep -m1 '^description: ' "$ST")"
+st_desc="${st_desc#description: }"
+for word in "ticket text" summary description "acceptance criteria" draft; do
+  case "$st_desc" in *"$word"*) pass "story-tracker: the description names $word" ;; *) fail "story-tracker: the description names $word" "in: $st_desc" ;; esac
+done
+is "story-tracker: the description is under the doctor's 200 characters" "$((${#st_desc} < 200))" "1"
+draft_row="$(grep '^| draft |' "$ST")"
+case "$draft_row" in
+  *"with or without an id"*ticket-description.md.tmpl*"reply with the text"*"Write no file until the id arrives"*) pass "story-tracker: a draft mode row fills the template and writes no file" ;;
+  *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
+esac
+file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
+
+# ---------------------------------------------------------------- docs-keeper on a ticket marked done
+DK="$here/agents/docs-keeper.md"
+desc="$(sed -n 's/^description: //p' "$DK")"
+is "docs-keeper: the description is under 200 characters" "$((${#desc} < 200))" "1"
+case "$desc" in *"a ticket is marked done"*) pass "docs-keeper: the description names a ticket marked done" ;;
+  *) fail "docs-keeper: the description names a ticket marked done" "in: $desc" ;; esac
+line_is "docs-keeper: Workflow 5 is there" "$DK" "## Workflow 5 - Ticket marked done"
+file_has "docs-keeper: Workflow 5 runs step 7 on the docs to update" "$DK" 'run step 7 of Workflow 1 on them'
+file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'The "Code to doc map" names the docs to check.'
+file_has "docs-keeper: Workflow 5 sends a gap to the debt file" "$DK" "A gap found but not fixed goes to the profile's debt file"
+file_has "docs-keeper: Workflow 5 gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
+file_has "docs-keeper: Workflow 5 stops when every line is ticked" "$DK" 'With every line already ticked: go to step 6. Do not check the map again.'
+file_has "docs-keeper: Workflow 5 diffs the merge commit" "$DK" 'diff <merge>^1 <merge>'
+file_has "docs-keeper: Workflow 5 diffs a branch not merged yet" "$DK" 'diff origin/<production_branch>...<branch>'
+file_has "docs-keeper: Workflow 5 stops when the change is not found" "$DK" 'report that the change was not found and stop'
+file_has "docs-keeper: Workflow 5 reads the head with the project" "$DK" '`second-brain task head <ID> --project <project>`'
+file_has "docs-keeper: Workflow 5 adds a status note" "$DK" 'Add a status note to the ticket naming what was updated'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: a story in production starts docs-keeper" "$ST" 'start the `docs-keeper` agent'
+file_has "story-tracker: it hands over the ticket id and the README path" "$ST" 'with the project, the ticket id and the README path'
+file_lacks "story-tracker: no longer tells Claude not to start it" "$ST" 'Do not start it yourself.'
+file_has "story-tracker: a session that cannot start an agent names docs-keeper" "$ST" 'When the session cannot start an agent, say so and'
+file_has "sprint close: reports done tasks with unticked docs through the helper" "$here/skills/sprint/close.md" '`second-brain task docs <done ids> --project <project>`'
+file_lacks "sprint close: no Grep" "$here/skills/sprint/close.md" 'Grep'
+file_has "scrum-master: carries docs-keeper as an action for the caller" "$here/agents/scrum-master.md" 'start `docs-keeper` Workflow 5 for <ID>, <README path>'
+file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.md" 'Do not start it here: the close only reports.'
+file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
+file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

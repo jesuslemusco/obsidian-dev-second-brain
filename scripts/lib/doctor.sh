@@ -156,29 +156,91 @@ sb_doc_check_conventions() {
   sb_doc_row ok conventions vault "" "-"
 }
 
+# Check that the vault's pull request format note exists.
+sb_doc_check_pull_request() {
+  local list=""
+  [ -f "$SB_ROOT/claude/pull-request.md" ] || list="claude/pull-request.md"
+  sb_doc_report warn pull-request vault "$list" "run second-brain scaffold vault to create it"
+}
+
+# Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
+sb_doc_imports_index() {
+  local line="$1" home="$2" p
+  case "$line" in @*) ;; *) return 1 ;; esac
+  p="${line#@}"
+  p="${p%"${p##*[![:space:]]}"}"
+  p="$(sb_path_in "$p")"
+  case "$p" in
+    '~/'*) p="${HOME:-}/${p#??}" ;;
+    /*) ;;
+    *) p="$home/$p" ;;
+  esac
+  [ "$p" -ef "$SB_ROOT/CLAUDE.md" ]
+}
+
 # Check that the link directory's CLAUDE.md imports the index.
 sb_doc_check_import() {
-  local home f line p bad="CLAUDE.md"
+  local home f line bad="CLAUDE.md"
   home="$(sb_link_home)"
   f="$home/CLAUDE.md"
   if [ -f "$f" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
-      case "$line" in @*) ;; *) continue ;; esac
-      p="${line#@}"
-      p="${p%"${p##*[![:space:]]}"}"
-      p="$(sb_path_in "$p")"
-      case "$p" in
-        '~/'*) p="${HOME:-}/${p#??}" ;;
-        /*) ;;
-        *) p="$home/$p" ;;
-      esac
-      if [ "$p" -ef "$SB_ROOT/CLAUDE.md" ]; then
+      if sb_doc_imports_index "$line" "$home"; then
         bad=""
         break
       fi
     done <"$f"
   fi
   sb_doc_report warn import vault "$bad" "add the line @~/.claude/second-brain-vault/CLAUDE.md to CLAUDE.md in the link directory"
+}
+
+# Check that the link directory's CLAUDE.md holds no line that names a project of the index: its
+# name as a whole word, as written, or its path in any letter case. The import of the index and
+# the rows of a Projects table are not read, nor the files it imports. An offender is
+# <project>:<line number>, or <project>:@<line number> for an import line.
+sb_doc_check_global_rules() {
+  local home f line n=0 skip="" rows bad="" fix nl=$'\n'
+  home="$(sb_link_home)"
+  f="$home/CLAUDE.md"
+  rows="$(sb_projects_tsv 2>/dev/null)"
+  if [ -f "$f" ] && [ -n "$rows" ] && ! [ "$f" -ef "$SB_ROOT/CLAUDE.md" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      n=$((n + 1))
+      if sb_doc_imports_index "$line" "$home"; then skip="$skip$n$nl"; fi
+    done <"$f"
+    bad="$(SB_ROWS="$rows" SB_SKIP="$skip" LC_ALL=C awk '
+      BEGIN {
+        np = split(ENVIRON["SB_ROWS"], r, "\n")
+        for (i = 1; i <= np; i++) { split(r[i], c, "\t"); name[i] = c[1]; path[i] = tolower(c[2]) }
+        ns = split(ENVIRON["SB_SKIP"], s, "\n")
+        for (i = 1; i <= ns; i++) if (s[i] != "") skip[s[i]] = 1
+      }
+      # Return 1 when w is in t with no letter, digit, "_" or "-" on either side.
+      function word(t, w,   i, off, rest, pre, post) {
+        rest = t; off = 0
+        while ((i = index(rest, w)) > 0) {
+          pre = (off + i > 1) ? substr(t, off + i - 1, 1) : ""; post = substr(t, off + i + length(w), 1)
+          if (pre !~ /[A-Za-z0-9_-]/ && post !~ /[A-Za-z0-9_-]/) return 1
+          off += i; rest = substr(rest, i + 1)
+        }
+        return 0
+      }
+      { sub(/\r$/, "") }
+      /^#[#]? / { insec = (tolower($0) ~ /^##[ \t]+projects[ \t]*$/) }
+      FNR in skip { next }
+      insec && /^[ \t]*\|/ { next }
+      {
+        for (i = 1; i <= np; i++) {
+          if (name[i] == "") continue
+          if (word($0, name[i]) || (path[i] !~ /^[.\/]*$/ && word(tolower($0), path[i]))) { print name[i] ":" (/^@/ ? "@" : "") FNR; next }
+        }
+      }' "$f")"
+  fi
+  fix="move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+  case "$bad" in
+    *:@*) fix="$fix; remove an @ import of a project's file: the index already leads to the project's rules" ;;
+  esac
+  sb_doc_report warn global-rules vault "$bad" "$fix"
 }
 
 # Check the links of the vault's own skills and agents.
@@ -666,14 +728,17 @@ EOF
   sb_doc_report warn topic-tags "$SB_P_NAME" "$bad" "create the folder, fix the tag, or add \"- <tag> -> <folder>\" under ## Topics in the profile"
 }
 
-# Check that each repository in the profile has a row in the Code to doc map of its Docs section.
-sb_doc_check_code_doc_map() {
-  local bad=""
-  [ ! -f "$SB_P_PROFILE" ] || bad="$(LC_ALL=C awk "$(sb_awk_lib)"'
+# Print the repositories in the frontmatter of a note, the profile or a subproject note, that have
+# no row in the Code to doc map of the profile's Docs section.
+sb_doc_unmapped() {
+  [ -f "$1" ] && [ -f "$SB_P_PROFILE" ] || return 0
+  LC_ALL=C awk "$(sb_awk_lib)"'
     function add(v) { if (v != "") repo[++nr] = v }
     { sub(/\r$/, "") }
-    NR == 1 { sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
-    st == 1 {
+    # fileno is the place of the file among the arguments, so an empty first file still counts.
+    FNR == 1 { do fileno++; while (fileno < ARGC && ARGV[fileno] != FILENAME); key = ""; sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
+    fileno == 1 {
+      if (st != 1) next
       if ($0 == "---") st = 2
       else if ($0 ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
         i = index($0, ":"); key = substr($0, 1, i - 1); v = trim(substr($0, i + 1))
@@ -683,6 +748,7 @@ sb_doc_check_code_doc_map() {
       } else if (key == "repos" && $0 ~ /^[ \t]*-([ \t]|$)/) { v = $0; sub(/^[ \t]*-[ \t]*/, "", v); add(unq(v)) }
       next
     }
+    st == 1 { if ($0 == "---") st = 2; next }
     /^[ \t]*(```|~~~)/ { fence = !fence; next }
     fence { next }
     /^#+[ \t]/ {
@@ -701,7 +767,13 @@ sb_doc_check_code_doc_map() {
       if (c == "repo") hdr = 1
       else if (hdr && c != "" && c != "<repo>" && c !~ /^:?-+:?$/) has[c] = 1
     }
-    END { for (r = 1; r <= nr; r++) if (!(tolower(repo[r]) in has)) print repo[r] }' "$SB_P_PROFILE")"
+    END { for (r = 1; r <= nr; r++) if (!(tolower(repo[r]) in has)) print repo[r] }' "$1" "$SB_P_PROFILE"
+}
+
+# Check that each repository in the profile has a row in the Code to doc map of its Docs section.
+sb_doc_check_code_doc_map() {
+  local bad
+  bad="$(sb_doc_unmapped "$SB_P_PROFILE")"
   sb_doc_report warn code-doc-map "$SB_P_NAME" "$bad" "add a row for the repository under \"Code to doc map\" in the profile's Docs section"
 }
 
@@ -710,6 +782,51 @@ sb_doc_check_repos() {
   local bad
   bad="$(sb_repo_rows "$SB_P_NAME" 2>/dev/null | awk -F'\t' '$3 == "missing" { print $1 }')"
   sb_doc_report warn repos "$SB_P_NAME" "$bad" "correct repos_root or the repo_paths entry in the profile, then run second-brain repo <project>"
+}
+
+# Check each subproject note: its type, its repositories (listed, found, in one subproject only,
+# each with a map row) and its docs folder. A project with no subproject gets no row.
+sb_doc_check_subprojects() {
+  local files f n r lr rows unmapped rn rp rs state seen bad="" nl=$'\n'
+  files="$(sb_sub_files "$SB_P_PATH")"
+  [ -n "$files" ] || return 0
+  rows="$(sb_repo_rows_at "$SB_P_PATH")"
+  seen="$nl"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    n="$(sb_sub_name "$f")"
+    [ "$(sb_fm_get "$f" type 2>/dev/null)" = "subproject" ] || bad="$bad$n:type$nl"
+    [ -n "$(sb_fm_list "$f" repos 2>/dev/null)" ] || bad="$bad$n:no-repos$nl"
+    [ -d "$SB_ROOT/$(sb_sub_docs "$n")" ] || bad="$bad$n:no-docs$nl"
+    unmapped="$nl$(sb_doc_unmapped "$f")$nl"
+    while IFS= read -r r; do
+      [ -n "$r" ] || continue
+      lr="$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]')"
+      case "$seen" in *"$nl$lr$nl"*) bad="$bad$r:twice$nl" ;; esac
+      seen="$seen$lr$nl"
+      case "$unmapped" in *"$nl$r$nl"*) bad="$bad$n/$r:no-map-row$nl" ;; esac
+      state="unknown"
+      while IFS=$'\t' read -r rn rp rs; do
+        if [ "$rn" = "$r" ]; then
+          state="$rs"
+          break
+        fi
+      done <<EOF2
+$rows
+EOF2
+      case "$state" in
+        ok) ;;
+        missing) bad="$bad$n/$r:missing$nl" ;;
+        *) bad="$bad$n/$r:no-location$nl" ;;
+      esac
+    done <<EOF2
+$(sb_fm_list "$f" repos 2>/dev/null)
+EOF2
+  done <<EOF
+$files
+EOF
+  sb_doc_report warn subprojects "$SB_P_NAME" "$bad" \
+    "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
 }
 
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
@@ -768,6 +885,61 @@ sb_doc_check_unresolved_links() {
   sb_doc_report warn unresolved-links "$SB_P_NAME" "$bad" "give each link a path that exists; second-brain unresolved <project> lists them"
 }
 
+# Check that each depends_on link leads to a note, and that no tasks of the project wait on each other in a ring.
+# A ring is a strongly connected group of two tasks or more, or a task that waits on itself. Tarjan's
+# algorithm finds them with a stack of its own, since a deep recursion overflows some awks.
+sb_doc_check_depends_on() {
+  local bad
+  if ! bad="$(printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' '
+    function rel(p) { if (substr(p, 1, length(root)) == root) p = substr(p, length(root) + 1); sub(/\.md$/, "", p); return tolower(p) }
+    function found(t,   f, l, r) {
+      if (tolower(t) in node) return 1
+      if (("/" t "/") ~ /\/\.\.\// || index(t, "\\") || substr(t, 1, 1) == "/" || t == "") return 0
+      f = root t ".md"; r = (getline l < f); close(f)
+      return r >= 0
+    }
+    BEGIN { root = ENVIRON["SB_R"] }
+    NF >= 13 { n++; node[rel($1)] = n; id[n] = $2; dep[n] = $13 }
+    END {
+      for (u = 1; u <= n; u++) {
+        if (dep[u] == "-") continue
+        m = split(dep[u], d, ","); miss = 0
+        for (k = 1; k <= m; k++) {
+          if (!found(d[k])) miss = 1
+          t = tolower(d[k])
+          if (t in node) { v = node[t]; edge[u, ++ne[u]] = v; if (v == u) ring[u] = 1 }
+        }
+        if (miss) print id[u] ":missing"
+      }
+      cnt = 0; sp = 0
+      for (s = 1; s <= n; s++) {
+        if (s in num) continue
+        top = 1; cs[1] = s; ci[1] = 0; num[s] = low[s] = ++cnt; st[++sp] = s; on[s] = 1
+        while (top > 0) {
+          u = cs[top]
+          if (ci[top] < ne[u]) {
+            v = edge[u, ++ci[top]]
+            if (!(v in num)) { num[v] = low[v] = ++cnt; st[++sp] = v; on[v] = 1; cs[++top] = v; ci[top] = 0 }
+            else if (on[v] && num[v] < low[u]) low[u] = num[v]
+            continue
+          }
+          if (low[u] == num[u]) {
+            for (j = sp; st[j] != u; j--) continue
+            for (k = sp; k >= j; k--) { on[st[k]] = 0; if (sp > j) ring[st[k]] = 1 }
+            sp = j - 1
+          }
+          top--
+          if (top > 0 && low[u] < low[cs[top]]) low[cs[top]] = low[u]
+        }
+      }
+      for (u = 1; u <= n; u++) if (u in ring) print id[u] ":cycle"
+    }')"; then
+    sb_doc_row fail depends-on "$SB_P_NAME" "awk:error" "the check could not run; run second-brain doctor again, and report the error if it stays"
+    return 0
+  fi
+  sb_doc_report warn depends-on "$SB_P_NAME" "$bad" "link each depends_on item to a task README that exists; break a cycle with second-brain task dep <ID> remove <ID>"
+}
+
 # Check that no task README links a repeated file name without a path.
 sb_doc_check_bare_links() {
   local bad
@@ -795,7 +967,7 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions import links double_registration \
+  for c in pointer index conventions pull_request import global_rules links double_registration \
     always_loaded_size descriptions skill_size; do
     "sb_doc_check_$c"
   done
@@ -804,8 +976,8 @@ sb_doc_rows() {
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
-      line_endings; do
+      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects sprints unresolved_links bare_links \
+      line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

@@ -1,5 +1,5 @@
 ---
-index_version: 1
+index_version: 2
 ---
 
 # Vault index for Claude
@@ -9,31 +9,43 @@ projects kept in this vault, and says where new skills and agents go.
 
 ## In every session
 
+- Answer in short, plain English. Lead with the answer. The user, or their own instructions, may
+  say otherwise.
 - Create a new personal skill or agent in this vault, not straight in `~/.claude/skills` or
-  `~/.claude/agents`, unless the user names another place. It goes in `claude/` at the vault root
-  when it is useful in any project, and in `<Path>/claude/` when it belongs to one project below.
-  `claude/README.md` at the vault root says how to add and register one.
-- Plugin skills: `story-tracker` tracks tasks, `sprint` runs a sprint, `vault-setup` sets up the
-  vault or a project, `vault-doctor` checks them. Plugin agents: `scrum-master` for the sprint
-  cadence, `docs-keeper` for docs that follow the code.
+  `~/.claude/agents`, unless the user names another place. The vault is
+  `~/.claude/second-brain-vault/`: `claude/` there for any project, `<Path>/claude/` for one below.
+  Then run `second-brain link --apply`, or Claude Code never loads it (steps: `claude/README.md`).
+- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or its subproject's
+  note; only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
+- Plugin skills: `story-tracker` writes ticket text and tracks tasks, `sprint` runs a sprint,
+  `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
+  Plugin agents: `scrum-master` for the sprint cadence,
+  `docs-keeper` for docs that follow the code and for a ticket marked done.
+- Write a pull request description in the format of
+  `~/.claude/second-brain-vault/claude/pull-request.md`; a project's own
+  `<Path>/claude/pull-request.md` wins.
 
 ## Working on a project or on notes
 
-A task that touches no project below and no note in this vault needs nothing from here on.
+A request that touches no project below and no note in this vault needs nothing from the rest of
+this file.
 
-- When a task belongs to a project below, read `<Path>/README.md`, then `<Path>/claude/README.md`,
-  before anything else. The second one holds the project's rules, skills and agents.
+- When a request belongs to a project below, read `<Path>/README.md`, then
+  `<Path>/claude/README.md` (its rules, skills, agents) and
+  the `claude/subprojects/<name>.md` that `second-brain context` names, before anything else.
 - Before reading or writing notes, run `second-brain conventions` and follow it. The full note is
   `~/.claude/second-brain-vault/obsidian-conventions.md`.
 
-## Rules that most often go wrong
+## Rules for notes that most often go wrong
 
-- A task is always `<project>/tasks/<TICKET-ID>/README.md`. Never file it inside the topic it is
-  about; tie it to the topic with a tag that is the folder path, lowercased.
+- A task note is always `<project>/tasks/<TICKET-ID>/README.md`. Never file it inside the topic
+  it is about; tie it to the topic with a tag that is the folder path, lowercased.
 - A bare `[[Alias]]` does not resolve. Links carry a path:
   `[[<vault path or unique file name>|<alias>]]`.
 - Move and rename notes with the helper (`second-brain move`, `second-brain rename`), never `mv`.
 - Frontmatter is the truth. Read a status from the `status` property, never from prose.
+- Ticket text is never written freehand. Use `story-tracker`: it opens with `*As a* <persona>,` /
+  `*I need to* ...,` / `*so that* ...` and holds at most 4 acceptance criteria.
 
 ## Projects
 

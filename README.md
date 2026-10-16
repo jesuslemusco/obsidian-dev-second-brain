@@ -6,10 +6,12 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
 ## What it is for
 
 - **Tickets.** Each ticket is one note with its status, branch, next step and a dated log. Ask
-  Claude to start one, update it, or tell you where things stand.
+  Claude to draft a ticket's text, start one, update it, or tell you where things stand.
 - **Sprints.** Open a sprint, plan it, see its status, close it and carry work over. Sprints are
   optional per project.
-- **Docs.** Keep a project's docs in step with its code.
+- **Docs.** Keep a project's docs in step with its code. Marking a ticket done updates its docs.
+- **Several repos.** A project made of several repos can split them into subprojects, each with
+  its own branches, docs folder and rules, under one ticket key and one board.
 - **Fast answers.** A helper command, `second-brain`, answers from the vault's files in one call,
   so Claude does not read whole notes to find one fact.
 
@@ -18,7 +20,7 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
 ## How it works
 
 - Your vault is a folder of markdown notes. Each project has a folder in it, and each ticket is
-  one note whose first lines hold its status, branch, sprint and next step.
+  one note whose first lines hold its status, branch, sprint, next step and the tickets it waits on.
 - A link on your machine points to the vault, and a short index of your projects is loaded into
   every Claude session, so Claude knows where each project's notes are.
 - When you ask for something, a skill tells Claude the steps and the `second-brain` helper does
@@ -67,6 +69,13 @@ The vault can hold skills and agents of your own, next to the ones the plugin sh
   each one into `~/.claude`, where Claude Code looks. The file in the vault stays the only copy.
 
 Skills and agents you keep straight in `~/.claude`, outside the vault, are never touched.
+
+## Pull request descriptions
+
+Every pull request description Claude writes uses four headings, in this order: `What was
+changed?`, `What was added?`, `Dependencies:` and `Risks:`, with a few one-line bullets in plain
+English under each. The format is the note `claude/pull-request.md` in your vault: edit it to
+change the format. A project that keeps its own `<project>/claude/pull-request.md` uses that one.
 
 ## More
 

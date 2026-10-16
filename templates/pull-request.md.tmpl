@@ -1,0 +1,41 @@
+---
+aliases:
+  - Pull Request Format
+type: onboarding
+tags:
+  - type/onboarding
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Pull request format
+
+Every pull request description Claude writes follows this format. A project that keeps its own
+`<project>/claude/pull-request.md` uses that one instead. Edit this note to change the format.
+
+## The rules
+
+- Use the four headings below, in this order, and no others.
+- Write short plain English: a few bullets under each heading, one line each.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write `- None.`
+
+## The format
+
+```markdown
+## What was changed?
+
+- <behaviour that works differently now, one line each>
+
+## What was added?
+
+- <new files, commands, checks or options, one line each>
+
+## Dependencies:
+
+- <what must be merged, installed or set first, or "None.">
+
+## Risks:
+
+- <what could break and for whom, or "None.">
+```

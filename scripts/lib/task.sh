@@ -131,6 +131,7 @@ sb_task_head() {
           else if (key == "sprint") sprint = unq(v)
           else if (key == "branch") branch = unq(v)
           else if (key == "epic") epic = unq(v)
+          else if (key == "subproject") subp = unq(v)
           else if (key == "next") nxt = unq(v)
           else if (key == "title") title = unq(v)
           else if (key == "tags") {
@@ -164,7 +165,9 @@ sb_task_head() {
       print "id: " id
       print "path: " ENVIRON["SB_REL"]
       show("title", title); show("status", status); show("next", nxt)
-      show("sprint", sprint); show("branch", branch); show("epic", epic); show("topics", topics)
+      show("sprint", sprint); show("branch", branch); show("epic", epic)
+      if (subp != "") show("subproject", subp)
+      show("topics", topics)
       show("envs", envs); show("summary", cut(summary, 300)); show("last_note", cut(note, 300))
     }
   ' "$SB_T_FILE"
@@ -207,6 +210,7 @@ sb_task_set() {
       '' | *[!A-Za-z0-9_-]*) sb_die 5 "not a property name: $key" ;;
       jira_id) sb_die 5 "the helper never writes jira_id; the ticket id is the folder name and the first alias" ;;
       aliases | tags | envs | carried_from) sb_die 5 "task set changes scalar properties only; edit $key in the note" ;;
+      depends_on) sb_die 5 "task set changes scalar properties only; use second-brain task dep for depends_on" ;;
       status)
         case "$value" in
           planned | in-progress | in-review | done | abandoned) ;;
@@ -229,6 +233,13 @@ sb_task_set() {
   while [ "$i" -lt "$n" ]; do
     # Removing a leftover sprint id is still allowed where sprints are off.
     case "${pairs[$i]}" in sprint=?*) sb_need_sprints ;; esac
+    # A subproject is one of the project's, written as its note is named.
+    case "${pairs[$i]}" in
+      subproject=?*)
+        sb_need_sub "${pairs[$i]#subproject=}"
+        pairs[$i]="subproject=$SB_S_NAME"
+        ;;
+    esac
     i=$((i + 1))
   done
   i=0
@@ -415,6 +426,51 @@ sb_task_alias() {
   sb_fm_list "$SB_T_FILE" aliases
 }
 
+# Add or remove a task in another task's depends_on list; print the links that result.
+sb_task_dep() {
+  local id="" action="" dep="" project="" target link depfile found
+  local usage="usage: second-brain task dep <ID> add|remove <ID> [--project P]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] || sb_die 5 "--project needs a value"
+        project="$2"
+        shift 2
+        ;;
+      *)
+        if [ -z "$id" ]; then
+          id="$1"
+        elif [ -z "$action" ]; then
+          action="$1"
+        elif [ -z "$dep" ]; then
+          dep="$1"
+        else
+          sb_die 5 "$usage"
+        fi
+        shift
+        ;;
+    esac
+  done
+  case "$action" in add | remove) ;; *) sb_die 5 "$usage" ;; esac
+  [ -n "$dep" ] || sb_die 5 "$usage"
+  # The task depended on first: its path and folder id make the link.
+  sb_need_task "$dep" "$project"
+  depfile="$SB_T_FILE"
+  target="${SB_T_REL%.md}"
+  link="[[$target|$SB_T_ID]]"
+  sb_need_task "$id" "$project"
+  [ "$SB_T_FILE" != "$depfile" ] || sb_die 5 "a task cannot depend on itself: $SB_T_ID"
+  found="$(sb_fm_list "$SB_T_FILE" depends_on | LC_ALL=C SB_W="$target" awk "$(sb_awk_lib)"'
+    tolower(dep_target($0)) == tolower(ENVIRON["SB_W"]) { print; exit }')"
+  if [ "$action" = "add" ]; then
+    [ -n "$found" ] || sb_fm_edit "$SB_T_FILE" listadd depends_on "$link" 1 || sb_die 1 "cannot edit $SB_T_REL"
+  else
+    [ -z "$found" ] || sb_fm_edit "$SB_T_FILE" listdel depends_on "$found" || sb_die 1 "cannot edit $SB_T_REL"
+  fi
+  found="$(sb_fm_list "$SB_T_FILE" depends_on)"
+  if [ -n "$found" ]; then printf '%s\n' "$found"; else printf '%s\n' "-"; fi
+}
+
 # Print the folder a topic tag maps to under a folder, or return 1.
 sb_topic_dir() {
   local dir="$1" rest="$2" part entry found name
@@ -443,17 +499,18 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub=""
   local tab=$'\t' nl=$'\n'
-  usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs]"
+  usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
     case "$1" in
-      --project | --title | --topics)
+      --project | --title | --topics | --subproject)
         [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
         case "$1" in
           --project) project="$2" ;;
           --title) title="$2" ;;
           --topics) topics="$2" ;;
+          --subproject) sub="$2" ;;
         esac
         shift 2
         ;;
@@ -488,8 +545,11 @@ sb_task_new() {
   if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $SB_P_PATH/$SB_TASKS_ROOT/$id"; fi
   other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$id" | head -1)"
   [ -z "$other" ] || sb_die 6 "$id is already an alias of $(sb_rel "$other")"
+  [ -z "$sub" ] || sb_need_sub "$sub"
   if [ "$envs" -eq 1 ]; then
-    envlist="$(sb_fm_list "$SB_P_PROFILE" environments)"
+    # A subproject's own environments win over the profile's.
+    [ -z "$sub" ] || envlist="$(sb_fm_list "$SB_S_FILE" environments)"
+    [ -n "$envlist" ] || envlist="$(sb_fm_list "$SB_P_PROFILE" environments)"
     [ -n "$envlist" ] || sb_die 5 "--envs needs the environments list in the profile, and it is empty"
   fi
   title="$(printf '%s' "$title" | tr '\n\r\t' '   ')"
@@ -519,6 +579,7 @@ EOF
   [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
   [ "$(sb_yaml_quote "$id")" = "$id" ] || sb_fm_edit "$file" listswap aliases "$id" "$id"
+  [ -z "$sub" ] || sb_fm_set "$file" subproject "$SB_S_NAME"
   if [ "$envs" -eq 1 ]; then
     # Only the first environment has a ticket yet; the others are added as their tickets appear.
     for env in $envlist; do
@@ -533,17 +594,50 @@ EOF
   sb_rel "$file"
 }
 
+# Print each task that has unticked lines under "## Docs to update": its id and path, then the lines.
+sb_task_docs() {
+  local ids="" project="" id lines usage="usage: second-brain task docs <ID>[,<ID>...] [--project P]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] || sb_die 5 "--project needs a value"
+        project="$2"
+        shift 2
+        ;;
+      -*) sb_die 5 "$usage" ;;
+      *)
+        ids="$ids,$1"
+        shift
+        ;;
+    esac
+  done
+  ids="$(printf '%s' "$ids" | tr ',' '\n' | grep -v '^$' || true)"
+  [ -n "$ids" ] || sb_die 5 "$usage"
+  # A line inside a fenced code block is an example, not a doc edit.
+  while IFS= read -r id; do
+    sb_need_task "$id" "$project"
+    lines="$(sb_section "$SB_T_FILE" "Docs to update" |
+      LC_ALL=C awk '/^[[:blank:]]*(```|~~~)/ { fence = !fence; next } !fence && /^[[:blank:]]*- \[ \]/')"
+    [ -n "$lines" ] || continue
+    printf '%s %s\n%s\n' "$SB_T_ID" "$SB_T_REL" "$lines"
+  done <<EOF
+$ids
+EOF
+}
+
 # Dispatch the task subcommands.
 cmd_task() {
   local sub="${1:-}"
   [ $# -gt 0 ] && shift
   case "$sub" in
     head) sb_task_head "$@" ;;
+    docs) sb_task_docs "$@" ;;
     set) sb_task_set "$@" ;;
     new) sb_task_new "$@" ;;
     note) sb_task_note "$@" ;;
     tag) sb_task_tag "$@" ;;
     alias) sb_task_alias "$@" ;;
-    *) sb_die 5 "usage: second-brain task head | set | note | tag | alias | new <ID> ..." ;;
+    dep) sb_task_dep "$@" ;;
+    *) sb_die 5 "usage: second-brain task head | docs | set | note | tag | alias | dep | new <ID> ..." ;;
   esac
 }

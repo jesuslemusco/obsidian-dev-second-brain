@@ -1,6 +1,6 @@
 ---
 name: story-tracker
-description: Track ticket stories as one README per task folder in the Obsidian vault - start, update, recall, or list what is active.
+description: Write ticket text (summary, description, acceptance criteria) and track stories as one README per task in the Obsidian vault - draft, start, update, recall, list.
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
@@ -26,6 +26,8 @@ Run these yourself, before anything else. Chain them in one Bash call where that
    `none`, exit 1 or exit 4: show `second-brain projects` and ask.
 3. `second-brain profile <project> --keys` prints the settings the steps below name. Exit 1: the
    profile is missing; say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, and stop.
+   The subproject (the `subproject:` line, the task's `subproject` key, or the user's word): its
+   settings win, from `second-brain subproject <project> <name>`. Write its name on a new story.
 4. `second-brain profile <project> stories`: what this project does differently. Exit 1 here only
    means there is no Stories section; carry on. Read other sections only when a step names them.
 
@@ -33,16 +35,18 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 | Mode | When | Do |
 |---|---|---|
+| draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, reply with the text. Write no file until the id arrives, then go to start |
 | start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then "Edit an existing story" |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
 | status | "What is active", a standup summary, the stories on a topic or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. Read-only, no branch check |
 | environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
 
-Ticket text, only when the user asks for text to paste into the tracker: fill
-`${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl` from the story and reply with plain
-text in the tracker's markup. One screen, about 40 lines, at most 4 findings and 4 acceptance
-criteria, the same Description and criteria as the README, and no other sections.
+Ticket text, in draft mode or when the user asks for text to paste into the tracker: fill
+`${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, from the story when there is one, and
+reply with plain text in the tracker's markup. Never write it freehand. One screen, about 40
+lines, at most 4 findings and 4 acceptance criteria, the same Description and criteria as the
+README, when there is one, and no other sections.
 
 ## Find the story
 
@@ -67,8 +71,8 @@ commit, before you reason about, recall or review a ticket.
   missing) and ask the user where it is. Never guess a path. What each repository holds is in
   `second-brain profile <project> repos`.
 - Run git as `git -C "<repo path>"`. Get the current branch and its HEAD commit, and list every
-  local or remote branch whose name carries the ticket id (`branch -a --list '*<ID>*'`). The
-  profile keys `base_branch` and `branch_pattern` give the base and the naming.
+  local or remote branch whose name carries the ticket id (`branch -a --list '*<ID>*'`).
+  `base_branch` and `branch_pattern` give the base and the naming: the subproject's when there is one.
 - No id given: derive it from the branch with `branch_pattern`. Still unknown: ask, never invent.
 - The branch does not match the ticket: you are looking at the wrong code. Read the right ref
   without switching (`git -C "<repo path>" show <branch>:<file>`), or tell the user.
@@ -97,10 +101,15 @@ commit, before you reason about, recall or review a ticket.
   planned edit as a `- [ ]` line (the doc path and what will change) under `## Docs to update`,
   created just before `## Status notes` when absent. Those edits wait for production.
 - The story reaches production (its last environment set to `done`, or the story set to `done`
-  in a project with no environments) with unticked lines under `## Docs to update`: say so and
-  name the `docs-keeper` agent as the one that makes those edits now. Do not start it yourself.
+  in a project with no environments): start the `docs-keeper` agent
+  (`obsidian-dev-second-brain:docs-keeper`) with the project, the ticket id and the README path,
+  and ask it for Workflow 5, a ticket marked done. Start it with or without a `## Docs to update`
+  section. Do not make the doc edits yourself. When the session cannot start an agent, say so and
+  name `docs-keeper` as the one to run now.
 - Topic tags stay true: `second-brain task tag <ID> add <tag>` when the story reaches another
   topic whose folder exists, `remove <tag>` when it moves off one.
+- Dependencies stay true: `second-brain task dep <ID> add <other ID>` when the story waits on
+  another task, `remove <other ID>` when it no longer does. Never a `**Depends on:**` body line.
 - A README with no task frontmatter: never rewrite its body. Run
   `second-brain task alias <ID> add <ID>` (the folder id becomes the first alias),
   `second-brain task set <ID> type=task title="..." next="..."` and

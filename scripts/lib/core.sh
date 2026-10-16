@@ -22,6 +22,7 @@ lookups:  help | version | root | context [--cwd DIR] | projects
           conventions [section]   (default: The short version)
           project --name N | --key K | --cwd DIR
           profile <project> --keys | <section> | repo <project> [name]
+          subproject <project> [name | --cwd DIR]
           board <project> [view] | topic <project> <tag>
           find <ID-or-alias> [--project P] | search <project> "<text>" [--in SUBPATH]
 notes:    outline <path> | backlinks <path> | unresolved [project]
@@ -29,7 +30,9 @@ notes:    outline <path> | backlinks <path> | unresolved [project]
           (<path> is a vault path: from the vault root, with forward slashes)
 tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" [--session S]
           task tag <ID> add|remove <tag> | task alias <ID> add <alias>
-          task new <ID> [--project P] [--title T] [--topics a,b] [--envs]
+          task docs <ID>[,<ID>...]   (unticked lines under ## Docs to update)
+          task dep <ID> add|remove <ID>
+          task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]
@@ -38,6 +41,7 @@ sprints:  sprint current <project> | sprint next <project>
 setup:    scaffold vault [DIR]
           scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT]
               [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
+          scaffold subproject <project> <name> [--repos R1,R2]
           pointer | pointer set <DIR> [--replace]
           link [--check | --apply] | doctor [project] [--json] [--fix]
           snapshot [name] | compare [name] | session-check
@@ -166,6 +170,12 @@ function yq(s, force,   need, l) {
   else if (s ~ /^[+.]?[0-9]/) need = 1
   else if (l == "true" || l == "false" || l == "null" || l == "yes" || l == "no" || l == "on" || l == "off" || l == "~") need = 1
   return need ? dq(s) : s
+}
+function dep_target(s) {
+  s = trim(s)
+  if (substr(s, 1, 2) == "[[") { s = substr(s, 3); sub(/\]\][ \t]*$/, "", s) }
+  sub(/[|#].*$/, "", s); s = trim(s); sub(/\.md$/, "", s)
+  return s
 }
 function mapfield(s, name,   v) {
   if (!match(s, name ":[ \t]*[^,}]*")) return ""
@@ -337,7 +347,7 @@ sb_fm_edit() {
       }
     }
     function insert_at(   m, order, i, idx, j) {
-      m = split("aliases title status next branch epic envs sprint carried_from type", order, " ")
+      m = split("aliases title status next branch epic subproject envs sprint carried_from depends_on type", order, " ")
       idx = 0
       for (i = 1; i <= m; i++) if (order[i] == key) idx = i
       if (idx) for (j = idx - 1; j >= 1; j--) if (order[j] in kend) return kend[order[j]] + 1

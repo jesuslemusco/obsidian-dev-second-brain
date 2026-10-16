@@ -80,7 +80,7 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 
 1. Plan needs a sprint in progress. With none, offer open.
 2. Run `second-brain board <project>` for the Active view. Each row is
-   `id | title | status | sprint | topics | branch | next | envs`.
+   `id | title | status | sprint | topics | branch | next | envs | depends_on`.
 3. Show two short groups: in this sprint, and backlog (`sprint` is `-`). Carried tasks are
    already in the sprint. Do not ask about them one by one.
 4. Ask which tasks join and which leave.
@@ -124,4 +124,6 @@ Read `${CLAUDE_SKILL_DIR}/close.md` and follow it. Read it only in this mode.
 - Task files belong to the story-tracker skill. This skill touches a task only through
   `second-brain task set`, `second-brain task note` and the sprint commands that move tasks.
 - Ask, do not invent: a date, a goal, a ticket id, a reason.
+- A request to write a ticket (its summary, description or acceptance criteria, with or without
+  an id) goes to the story-tracker skill in `draft` mode. This skill never writes ticket text.
 - The helper prints `-` for an empty cell or value. Read it as empty.

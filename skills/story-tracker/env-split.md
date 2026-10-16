@@ -1,8 +1,9 @@
 # Environment sets
 
 One goal tracked as a ticket per environment. The environment names and their order are the
-profile's `environments`; `second-brain profile <project> environments` says what differs between
-them. The examples use dev, qa and prod.
+profile's `environments`, or the subproject's when the story has one and it sets them;
+`second-brain profile <project> environments` says what differs between them. The examples use
+dev, qa and prod.
 
 ## One file for the whole set
 

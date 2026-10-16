@@ -21,6 +21,8 @@ properties:
     displayName: Sprint
   note.carried_from:
     displayName: Carried from
+  note.depends_on:
+    displayName: Depends on
   note.epic:
     displayName: Epic
   note.branch:
@@ -45,6 +47,7 @@ views:
       - sprint
       - formula.topics
       - branch
+      - depends_on
       - file.mtime
   - type: table
     name: Current sprint
@@ -60,6 +63,7 @@ views:
       - next
       - formula.topics
       - branch
+      - depends_on
       - carried_from
   - type: table
     name: By topic
@@ -106,4 +110,5 @@ views:
       - formula.topics
       - epic
       - branch
+      - depends_on
       - file.mtime

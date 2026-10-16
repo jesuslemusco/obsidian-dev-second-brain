@@ -6,7 +6,9 @@ a story, set a status or repair a field here.
 ## Gather the rows
 
 One call: `second-brain board <project> [view]`. Every line is one story:
-`id | title | status | sprint | topics | branch | next | envs`.
+`id | title | status | sprint | topics | branch | next | envs | depends_on`. `depends_on` is `-` or
+`EX-1:done,EX-2:planned`: each task it depends on, with that task's status, or `missing` when the
+link leads to no note.
 
 | The user asks for | Do |
 |---|---|
@@ -43,6 +45,8 @@ N active, N done/abandoned.
 ```
 
 - Sort by status (`in-progress`, `in-review`, `planned`, then `done` and `abandoned`), then by id.
+- A story that is `in-progress` while a task in its `depends_on` cell is not `done` waits on it:
+  add a line under `Status:`, as `Waiting on: EX-123 (planned)`, one per such task.
 - One phrase per field. Extra fields only when the user asks for them: `Sprint:` from the row,
   `Epic:` and `Last updated:` from `second-brain task head <ID>`.
 - A row whose `envs` is not `-` is an environment set: ONE block, counted once, with the set's

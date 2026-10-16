@@ -8,12 +8,12 @@ format is in the [contract](contract.md).
 
 | Piece | Kind | Does |
 |---|---|---|
-| `story-tracker` | skill | One README per ticket in the vault: start, update, recall, or list what is active. |
+| `story-tracker` | skill | Writes ticket text, and keeps one README per ticket in the vault: draft, start, update, recall, or list what is active. |
 | `sprint` | skill | Open a sprint, plan it, show its status, close it and carry work over. |
 | `vault-setup` | skill | Set up a vault, add a project, adopt an existing project, register your own skills. |
 | `vault-doctor` | skill | Check the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
-| `docs-keeper` | agent | Keeps a project's docs in step with its code. |
+| `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
 | `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
 
 ## Other ways to install
@@ -42,9 +42,11 @@ In the vault:
 CLAUDE.md                         the index: how to use the vault, and the list of projects
 obsidian-conventions.md           the rules: note metadata, topic tags, links, searching
 claude/                           your own global skills and agents
+claude/pull-request.md            the format of every pull request description Claude writes
 <project>/
   README.md
   claude/profile.md               the project's settings, read by every skill and agent
+  claude/subprojects/<name>.md    one note per subproject, when the project has several repos
   tasks/<TICKET-ID>/README.md     one task per folder
   tasks/tasks.base                the task board (Obsidian Bases)
   docs/                           the project's docs, organised by topic
@@ -58,9 +60,26 @@ tag `billing/invoices`. A task never lives inside the topic it is about.
 An existing project does not have to move its folders. Its profile says where its topics and
 sprint notes are.
 
+A project made of several repos, such as an app and its infrastructure, can split them into
+subprojects. Each one is a note, `claude/subprojects/<name>.md`, that lists its repos and may set
+its own branches and environments; what it leaves empty comes from the profile. Its docs live in
+`docs/<name>/`, and its rules in the note's `## Rules` section. The project keeps one ticket key and
+one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
+`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one.
+
+A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
+its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in
+`~/.claude/CLAUDE.md`, and Claude asks when it cannot tell. `vault-doctor` warns about a line of
+`~/.claude/CLAUDE.md` that names a project.
+
 Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
 `vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
 `Current sprint` view; its stories are tracked by status alone.
+
+A task can say which tasks it waits on. `second-brain task dep EX-2 add EX-1` writes a link to
+EX-1 in the `depends_on` list of EX-2. The board shows the list in its `Depends on` column, the
+status overview flags a task in progress that waits on one not done, and the doctor warns about a
+link to no task and about tasks that wait on each other in a ring.
 
 ## On Windows
 

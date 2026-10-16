@@ -1,7 +1,8 @@
 # Doctor checks
 
-One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
-the vault, then seventeen for each project. Every entry is a heading, a blank line and three lines,
+One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
+the vault, then eighteen for each project, and `subprojects` as well for a project that has a
+subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -23,11 +24,23 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 - Why: every skill and agent points to it for the rules on notes, tags and links, so they would write without them.
 - Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older: ask first, because the user may have edited the note; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with the template by hand.
 
+### pull-request
+
+- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn).
+- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own.
+- Fix: `second-brain scaffold vault` creates the note and overwrites nothing.
+
 ### import
 
 - Means: `~/.claude/CLAUDE.md` holds no `@` import of the vault's `CLAUDE.md`.
 - Why: the index is then not in context, so a session does not know the projects until a skill is run by name.
 - Fix: after a yes from the user, add the line `@~/.claude/second-brain-vault/CLAUDE.md` to `~/.claude/CLAUDE.md`.
+
+### global-rules
+
+- Means: a line of `~/.claude/CLAUDE.md` names a project of the index, by its name as a whole word or by its path (`<project>:<line number>`), or is an `@` import that names one (`<project>:@<line number>`). The import of the index and the rows of a `## Projects` table are not read, and neither are the files `CLAUDE.md` imports.
+- Why: that file is loaded in every session, so a rule about one project loads in all the others, and the project's own rules never get it.
+- Fix: after a yes from the user, move the line under `## Rules` in the project's `claude/README.md`, or in its subproject's note `claude/subprojects/<name>.md` when the rule is about one subproject. An import: remove the line, because the index already tells Claude to read the project's rules. A line that holds for every project stays: say so and leave it.
 
 ### links
 
@@ -133,9 +146,15 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 
 ### repos
 
-- Means: a repository listed in the profile has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
+- Means: a repository of the project, listed in the profile or in a subproject note, has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
 - Why: skills run git in that folder for branch checks and doc audits, so they would check no code, or stop to ask where it is.
 - Fix: correct `repos_root` or the `repo_paths` entry in the profile, then confirm with `second-brain repo <project>`.
+
+### subprojects
+
+- Means: a note in `claude/subprojects/` is off: its `type` is not `subproject` (`<name>:type`), it lists no repos (`<name>:no-repos`), it has no docs folder `<topics root>/<name>/` (`<name>:no-docs`), a repo of it has no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo's folder is missing (`<name>/<repo>:missing`) or no location is recorded for it (`<name>/<repo>:no-location`), or two subprojects list one repo (`<repo>:twice`). Only a project with a subproject gets this row.
+- Why: a working directory resolves to a subproject through its repos, the branch check reads its settings from the note, and docs-keeper finds its docs through the map row and the docs folder. A repo in two subprojects resolves to neither.
+- Fix: a type or repos: edit the note's frontmatter, `type: subproject` and `repos: [<repo>]`. No docs: `second-brain scaffold subproject <project> <name>` writes the docs hub and overwrites nothing. A map row: add `| <repo> | <change> | <topics root>/<name>/... |` under `### Code to doc map` in the profile, after asking which docs follow it. A location: `repos_root` in the profile, or `"<repo>=<path>"` in the note's `repo_paths`. Twice: ask which subproject keeps the repo, then remove it from the other note.
 
 ### sprints
 
@@ -160,3 +179,9 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 - Means: a task README holds both LF and CRLF line endings.
 - Why: a value that ends in a stray carriage return can fail to match in a search or a script, and every diff of the file is noisy.
 - Fix: `second-brain snapshot` first, then one ending for the whole file. To LF: `perl -pi -e 's/\r$//' "<file>"`.
+
+### depends-on
+
+- Means: a task's `depends_on` holds a link to no note, or to a path outside the vault (`<ID>:missing`), or tasks of the project wait on each other in a ring (`<ID>:cycle`, once for each task in it, and for a task that waits on itself). A link matches a task without letter case. `awk:error` (fail): the check could not run.
+- Why: the board shows such a dependency as `missing`, and in a ring no task can start first, so the work it records is blocked for good.
+- Fix: ask which task it waits on, then `second-brain task dep <ID> remove <ID>` and `second-brain task dep <ID> add <ID>`. A link the helper cannot match: edit the line in the note. A ring: ask which dependency is wrong and remove it.

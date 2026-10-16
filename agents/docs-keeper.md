@@ -1,6 +1,6 @@
 ---
 name: docs-keeper
-description: Keeps a project's docs in step with its code, in the repos and in the vault - use after a change that alters behaviour, or to audit docs for drift.
+description: Keeps a project's docs in step with its code, in the repos and in the vault - use when a ticket is marked done, after a change that alters behaviour, or to audit drift.
 tools: Bash, Read, Glob, Grep, Edit, Write
 model: sonnet
 ---
@@ -24,17 +24,22 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    for s in docs repos "live systems"; do echo "== $s"; second-brain profile "$p" "$s" || echo "MISSING: $s"; done
    echo "== repo"; second-brain repo "$p"; second-brain profile "$p" --keys | grep -E '^(production_branch|base_branch|environments):'
    ```
-4. With no profile, or no `## Docs` section, stop. Say what is missing and that the `vault-setup`
+4. Subprojects: `second-brain subproject "$p"` lists each one's repos and docs folder. When the job
+   is in one (the context's `subproject:` line, the story's `subproject` key, or the repository
+   changed), `second-brain subproject "$p" <name>` gives the branches that win over the profile's,
+   and its docs live in its docs folder. Its rules are under `## Rules` in its note.
+5. With no profile, or no `## Docs` section, stop. Say what is missing and that the `vault-setup`
    skill can create it. Never guess where docs or repos are.
-5. `repo` prints name, path and state per repository. Run every git command as `git -C "<path>" ...`.
+6. `repo` prints name, path and state per repository. Run every git command as `git -C "<path>" ...`.
    When a repository the job needs is `missing` or `unknown`, say so and stop or ask.
-6. Live-system rules are the "Live systems" section. Read `claude/README.md` only if it points there.
+7. Live-system rules are the "Live systems" section. Read `claude/README.md` only if it points there.
 
 ## The code ref
 
 Before verifying anything, state the ref the claims are checked against: branch, short hash and
 commit date. The default is the production branch on the remote, `origin/<production_branch>`. An
-empty `production_branch` means `base_branch`. A caller may name another ref. Read code at the ref
+empty `production_branch` means `base_branch`. For a repository of a subproject both come from
+`second-brain subproject <project> <name>`. A caller may name another ref. Read code at the ref
 with `git -C "<path>" show <ref>:<file>` and `git -C "<path>" grep -n <pattern> <ref> -- <subfolder>`,
 never from the working tree: it may be on an unrelated branch with local changes.
 
@@ -72,7 +77,8 @@ never from the working tree: it may be on an unrelated branch with local changes
 2. Get the change: the files named in the request, or `git -C "<path>" diff` from the production
    ref to the ref that holds it. An uncommitted change is read from the working tree; say so.
 3. Find the docs it touches. In the profile's "Code to doc map", take the rows whose Repo is the
-   repository the change is in, and match the change type.
+   repository the change is in, and match the change type. A subproject's docs sit in its docs
+   folder, `<topics root>/<name>/`; a vault doc for its repository goes there, not elsewhere.
 4. For a change type with no row, find the docs that mention the changed identifier:
    `second-brain search <project> "<identifier>"` in the vault, Grep in the repo doc surfaces.
    Propose the new row, with its repository named, in your report.
@@ -107,6 +113,29 @@ never from the working tree: it may be on an unrelated branch with local changes
    create graph edges - Dataview-rendered links do not.
 4. Give each child an up-link to the hub. Preserve existing frontmatter; only add missing keys.
 
+## Workflow 5 - Ticket marked done
+
+The caller, usually the `story-tracker` skill, gives the project, the ticket id and its README path.
+
+1. Read the ticket: `second-brain task head <ID> --project <project>`, then its
+   `## Docs to update` section and its `**Branch:**` line. The ticket set to `done`, or its last
+   environment set to `done`, is the production confirmation of principle 2.
+2. With unticked lines under `## Docs to update`: run step 7 of Workflow 1 on them, then go to
+   step 5.
+3. With every line already ticked: go to step 6. Do not check the map again.
+4. With no such section: get the change. Its branch is usually merged already, so a diff from the
+   production ref to the branch is empty. Find the merge commit on the production ref, by the
+   ticket id or the pull request: `git -C "<path>" log origin/<production_branch> --merges
+   --grep "<ID>" --format='%h %s'`, and diff `git -C "<path>" diff <merge>^1 <merge>`. A branch
+   not merged yet: `git -C "<path>" diff origin/<production_branch>...<branch>`. With neither,
+   report that the change was not found and stop. Then run Workflow 1 steps 3-5, as confirmed.
+   The "Code to doc map" names the docs to check. Update what the change made wrong, or report
+   that nothing needs an edit.
+5. A gap found but not fixed goes to the profile's debt file, as one line:
+   `<YYYY-MM-DD> <ID>: <doc path> - <the gap>`.
+6. Add a status note to the ticket naming what was updated, ticked and left as debt:
+   `second-brain task note <ID> "<text>" --project <project>`.
+
 ## Working in the vault
 
 Cheapest first. A whole note is the last resort. The conventions are not restated here.
@@ -135,4 +164,5 @@ Open with the code ref: repository, branch, short hash, and whether it is the de
 auditing: a list of discrepancies, each with the doc location, the wrong claim, the correct value,
 and the `file:line` evidence. When editing: summarize what changed and which other surfaces still
 need the same update, and say that each changed region was re-read. When a change is not in
-production yet: the pending list and where it was recorded. Name any proposed map row or debt line.
+production yet: the pending list and where it was recorded. For a ticket marked done: the status
+note written on it. Name any proposed map row or debt line.

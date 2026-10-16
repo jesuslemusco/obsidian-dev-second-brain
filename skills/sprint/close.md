@@ -33,8 +33,9 @@ close first.
    It reads the outcome from those files. If the value is `-`, skip this step. If the session
    does not offer the named skill, say so and go on.
 9. Report the summary: done, carried, backlog, abandoned. Under done, list the tasks whose docs
-   are still waiting: one Grep for `^## Docs to update` over the done tasks' READMEs, then read
-   just that section, and name each task with unticked `- [ ]` lines. Recommend the `docs-keeper`
-   agent for them. Do not start it here: the close only reports. Offer to open the next sprint.
+   are still waiting: `second-brain task docs <done ids> --project <project>`, with the ids of the
+   `done:` line, prints each task with unticked `- [ ]` lines and its path. Recommend the
+   `docs-keeper` agent for them. Do not start it here: the close only reports. Offer to open the
+   next sprint.
 10. Carried tasks now point at the `next:` id before that sprint's note exists. That is expected
     and the doctor does not flag it. The fix is to open the next sprint, never to re-point by hand.

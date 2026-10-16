@@ -522,7 +522,8 @@ carries the full vault path for a `README.md` and the alias as display text.
   agent with the ticket id and the README path. The agent makes the edits under
   `## Docs to update` and ticks them; with no such section it checks the ticket's change against
   the "Code to doc map". A gap it does not fix goes to the debt file, and it adds a status note
-  to the ticket. The sprint close only reports done tasks with unticked doc lines.
+  to the ticket. The sprint close only reports done tasks with unticked doc lines, from
+  `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose. A missing or
   non-standard status is reported as "Needs a status" and never set without asking.
 - Notes are moved and renamed with `second-brain move` / `rename`, never `mv`.

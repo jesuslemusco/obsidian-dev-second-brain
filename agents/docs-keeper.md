@@ -111,15 +111,23 @@ never from the working tree: it may be on an unrelated branch with local changes
 
 The caller, usually the `story-tracker` skill, gives the project, the ticket id and its README path.
 
-1. Read the ticket: `second-brain task head <ID>`, then its `## Docs to update` section and its
-   `**Branch:**` line. The ticket set to `done`, or its last environment set to `done`, is the
-   production confirmation of principle 2.
-2. With unticked lines under `## Docs to update`: run step 7 of Workflow 1 on them.
-3. With no such section, or none unticked: take the ticket's branch or merged pull request as the
-   change, and run Workflow 1 from step 2. The "Code to doc map" names the docs to check. Update
-   what the change made wrong, or report that nothing needs an edit.
-4. A gap found but not fixed goes to the profile's debt file, as one dated line naming the ticket.
-5. Add a status note to the ticket naming what was updated, ticked and left as debt:
+1. Read the ticket: `second-brain task head <ID> --project <project>`, then its
+   `## Docs to update` section and its `**Branch:**` line. The ticket set to `done`, or its last
+   environment set to `done`, is the production confirmation of principle 2.
+2. With unticked lines under `## Docs to update`: run step 7 of Workflow 1 on them, then go to
+   step 5.
+3. With every line already ticked: go to step 6. Do not check the map again.
+4. With no such section: get the change. Its branch is usually merged already, so a diff from the
+   production ref to the branch is empty. Find the merge commit on the production ref, by the
+   ticket id or the pull request: `git -C "<path>" log origin/<production_branch> --merges
+   --grep "<ID>" --format='%h %s'`, and diff `git -C "<path>" diff <merge>^1 <merge>`. A branch
+   not merged yet: `git -C "<path>" diff origin/<production_branch>...<branch>`. With neither,
+   report that the change was not found and stop. Then run Workflow 1 steps 3-5, as confirmed.
+   The "Code to doc map" names the docs to check. Update what the change made wrong, or report
+   that nothing needs an edit.
+5. A gap found but not fixed goes to the profile's debt file, as one line:
+   `<YYYY-MM-DD> <ID>: <doc path> - <the gap>`.
+6. Add a status note to the ticket naming what was updated, ticked and left as debt:
    `second-brain task note <ID> "<text>" --project <project>`.
 
 ## Working in the vault

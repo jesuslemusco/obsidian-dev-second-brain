@@ -8,8 +8,11 @@
   `## Docs to update`, or, with no such section, checks the ticket's change against the
   "Code to doc map". A gap it does not fix goes to the debt file, and the ticket gets a status
   note naming what was updated.
-- The sprint close lists the done tasks whose `## Docs to update` lines are still unticked. It
-  recommends `docs-keeper` for them and does not start it.
+- New command `second-brain task docs <ID>[,<ID>...]` prints each task with unticked lines under
+  `## Docs to update`, its path and those lines.
+- The sprint close lists the done tasks whose `## Docs to update` lines are still unticked, with
+  `task docs`. It recommends `docs-keeper` for them and does not start it. The `scrum-master`
+  agent cannot start `docs-keeper` either, so it reports it as an action for the caller.
 - The vault index names a ticket marked done as a `docs-keeper` trigger. A vault set up earlier
   keeps its old line until the index template is applied again.
 

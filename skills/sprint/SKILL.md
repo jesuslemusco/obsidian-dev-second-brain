@@ -2,7 +2,7 @@
 name: sprint
 description: Run a project's sprint from the Obsidian vault - open, plan, daily status, close and carry over.
 argument-hint: "[open | plan | status | close] [project]"
-allowed-tools: Read Bash(second-brain *)
+allowed-tools: Read Grep Bash(second-brain *)
 ---
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.

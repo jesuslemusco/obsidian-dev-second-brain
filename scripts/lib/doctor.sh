@@ -156,29 +156,79 @@ sb_doc_check_conventions() {
   sb_doc_row ok conventions vault "" "-"
 }
 
+# Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
+sb_doc_imports_index() {
+  local line="$1" home="$2" p
+  case "$line" in @*) ;; *) return 1 ;; esac
+  p="${line#@}"
+  p="${p%"${p##*[![:space:]]}"}"
+  p="$(sb_path_in "$p")"
+  case "$p" in
+    '~/'*) p="${HOME:-}/${p#??}" ;;
+    /*) ;;
+    *) p="$home/$p" ;;
+  esac
+  [ "$p" -ef "$SB_ROOT/CLAUDE.md" ]
+}
+
 # Check that the link directory's CLAUDE.md imports the index.
 sb_doc_check_import() {
-  local home f line p bad="CLAUDE.md"
+  local home f line bad="CLAUDE.md"
   home="$(sb_link_home)"
   f="$home/CLAUDE.md"
   if [ -f "$f" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
-      case "$line" in @*) ;; *) continue ;; esac
-      p="${line#@}"
-      p="${p%"${p##*[![:space:]]}"}"
-      p="$(sb_path_in "$p")"
-      case "$p" in
-        '~/'*) p="${HOME:-}/${p#??}" ;;
-        /*) ;;
-        *) p="$home/$p" ;;
-      esac
-      if [ "$p" -ef "$SB_ROOT/CLAUDE.md" ]; then
+      if sb_doc_imports_index "$line" "$home"; then
         bad=""
         break
       fi
     done <"$f"
   fi
   sb_doc_report warn import vault "$bad" "add the line @~/.claude/second-brain-vault/CLAUDE.md to CLAUDE.md in the link directory"
+}
+
+# Check that the link directory's CLAUDE.md holds no line that names a project of the index: its
+# name as a whole word, as written, or its path in any letter case. The import of the index and
+# the rows of a Projects table are not read. An offender is <project>:<line number>.
+sb_doc_check_global_rules() {
+  local home f line n=0 skip="" rows bad="" nl=$'\n'
+  home="$(sb_link_home)"
+  f="$home/CLAUDE.md"
+  rows="$(sb_projects_tsv 2>/dev/null)"
+  if [ -f "$f" ] && [ -n "$rows" ] && ! [ "$f" -ef "$SB_ROOT/CLAUDE.md" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      n=$((n + 1))
+      if sb_doc_imports_index "$line" "$home"; then skip="$skip$n$nl"; fi
+    done <"$f"
+    bad="$(SB_ROWS="$rows" SB_SKIP="$skip" LC_ALL=C awk '
+      BEGIN {
+        np = split(ENVIRON["SB_ROWS"], r, "\n")
+        for (i = 1; i <= np; i++) { split(r[i], c, "\t"); name[i] = c[1]; path[i] = tolower(c[2]) }
+        ns = split(ENVIRON["SB_SKIP"], s, "\n")
+        for (i = 1; i <= ns; i++) if (s[i] != "") skip[s[i]] = 1
+      }
+      # Return 1 when w is in t with no letter, digit, "_" or "-" on either side.
+      function word(t, w,   i, off, rest, pre, post) {
+        rest = t; off = 0
+        while ((i = index(rest, w)) > 0) {
+          pre = substr(t, off + i - 1, 1); post = substr(t, off + i + length(w), 1)
+          if (pre !~ /[A-Za-z0-9_-]/ && post !~ /[A-Za-z0-9_-]/) return 1
+          off += i; rest = substr(rest, i + 1)
+        }
+        return 0
+      }
+      { sub(/\r$/, "") }
+      /^#[#]? / { insec = (tolower($0) ~ /^##[ \t]+projects[ \t]*$/) }
+      FNR in skip { next }
+      insec && /^[ \t]*\|/ { next }
+      {
+        for (i = 1; i <= np; i++) {
+          if (name[i] == "") continue
+          if (word($0, name[i]) || (path[i] !~ /^[.\/]*$/ && word(tolower($0), path[i]))) { print name[i] ":" FNR; next }
+        }
+      }' "$f")"
+  fi
+  sb_doc_report warn global-rules vault "$bad" "move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
 }
 
 # Check the links of the vault's own skills and agents.
@@ -850,7 +900,7 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions import links double_registration \
+  for c in pointer index conventions import global_rules links double_registration \
     always_loaded_size descriptions skill_size; do
     "sb_doc_check_$c"
   done

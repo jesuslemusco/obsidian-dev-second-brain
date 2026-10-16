@@ -1,6 +1,6 @@
 # Doctor checks
 
-One entry per check, named as `second-brain doctor` prints it, in the order of its table: nine for
+One entry per check, named as `second-brain doctor` prints it, in the order of its table: ten for
 the vault, then seventeen for each project, and `subprojects` as well for a project that has a
 subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
@@ -29,6 +29,12 @@ subproject. Every entry is a heading, a blank line and three lines,
 - Means: `~/.claude/CLAUDE.md` holds no `@` import of the vault's `CLAUDE.md`.
 - Why: the index is then not in context, so a session does not know the projects until a skill is run by name.
 - Fix: after a yes from the user, add the line `@~/.claude/second-brain-vault/CLAUDE.md` to `~/.claude/CLAUDE.md`.
+
+### global-rules
+
+- Means: a line of `~/.claude/CLAUDE.md` names a project of the index, by its name as a whole word or by its path (`<project>:<line number>`). The import of the index and the rows of a `## Projects` table are not read.
+- Why: that file is loaded in every session, so a rule about one project loads in all the others, and the project's own rules never get it.
+- Fix: after a yes from the user, move the line under `## Rules` in the project's `claude/README.md`, or in its subproject's note `claude/subprojects/<name>.md` when the rule is about one subproject. A line that holds for every project stays: say so and leave it.
 
 ### links
 

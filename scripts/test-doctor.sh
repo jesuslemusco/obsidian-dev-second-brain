@@ -370,12 +370,17 @@ edit "$T/tasks.base" 's/sprint == "2026-01-14"/"2026-01-14" == sprint/'
 doc Example
 chk "board: a filter with its sides swapped is not a missing view either" board Example "warn | 1 | tasks.base:filter"
 reset
+edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
+doc Example
+chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.
 O="$tmp/outside-proj"
-mkdir -p "$O/claude" "$O/tasks/OUTMARK-1" "$O/sprints"
+mkdir -p "$O/claude/skills/OUTMARK-3" "$O/tasks/OUTMARK-1" "$O/sprints"
 cp "$vault/$P/claude/profile.md" "$O/claude/profile.md"
+printf '%s\n' '---' 'name: OUTMARK-3' '---' 'A skill with no description.' >"$O/claude/skills/OUTMARK-3/SKILL.md"
 sed 's/sprint == "2026-01-14"/sprint == "OUTMARK-2"/' "$T/tasks.base" >"$O/tasks/tasks.base"
 sed 's/^  - status\/active$/  - status\/done/' "$T/EX-1/README.md" >"$O/tasks/OUTMARK-1/README.md"
 sed 's/2026-01-14/2031-01-01/g' "$vault/$P/sprints/2026-01-14.md" >"$O/sprints/2031-01-01.md"
@@ -391,6 +396,7 @@ add_row Out ../outside-proj OUT
 doc
 chk "outside: a row with a .. part fails the index" index vault "fail | 1 | Out:no-folder"
 is "outside: it gets no project rows, and nothing under it is read" "$(scope_rows Out)/$(marks)" "0/0"
+chk "outside: the skill in its claude folder is not scanned" descriptions vault "ok | 0 | -"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
 is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "9/0/0"
@@ -428,6 +434,16 @@ doc Example
 rc_is "roots: a slash in front of a root is no failure" 0
 is "roots: such a root is the folder every command reads, and it is checked" \
   "$(row profile)/$(row board)/$(row hubs)/$(row task-location)" "ok | 0 | -/ok | 0 | -/ok | 0 | -/ok | 0 | -"
+reset
+edit "$vault/$P/claude/profile.md" '/^tasks_root:/d'
+doc Example
+chk "roots: a root key that is absent is a missing key of the profile" profile Example "fail | 1 | tasks_root"
+is "roots: the folder checked is then its default, not the project folder" "$(row board)/$(row task-location)" "ok | 0 | -/ok | 0 | -"
+reset
+edit "$vault/CLAUDE.md" "s#| $P |#| projects//example |#"
+printf '%s\n' '[[gone-for-good]]' >"$vault/$P/docs/broken.md"
+doc
+chk "a row written with a doubled slash: the project is checked under the folded path" unresolved-links Example "warn | 1 | docs/broken.md:1"
 reset
 
 # ---------------------------------------------------------------- hubs
@@ -529,6 +545,17 @@ add_alias EX-3 'EX-3'
 doc Example
 chk "alias-unique: a task alias that a hub carries" alias-unique Example "fail | 1 | Example Tasks Hub"
 reset
+v40="$(awk 'BEGIN { for (i = 1; i <= 40; i++) printf "v"; print "" }')"
+t20="$(awk 'BEGIN { for (i = 1; i <= 20; i++) printf "t"; print "" }')"
+for id in EX-1 EX-2; do
+  add_alias "$id" "\"$v40:tttt tttt\""
+  add_alias "$id" "\"$v40:${t20}t\""
+  add_alias "$id" "\"$v40:$t20\""
+done
+doc Example
+chk "rows: what follows the last colon is a tag at 20 bytes, and no tag at 21 or with a blank" alias-unique Example \
+  "fail | 3 | $(printf '%s\n' "$v40" | cut -c1-27)...:$t20, $v40:ttttttt..., $v40:tttt tt..."
+reset
 mkdir -p "$T/EX-7/notes" "$T/EX-8"
 : >"$T/EX-8/README.md"
 doc Example
@@ -564,7 +591,8 @@ doc Example
 chk "task-location: two long paths are printed whole, so they are told apart" task-location Example \
   "warn | 2 | docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-21-first.md, docs/a-rather-long-topic-folder/with-a-long-sub-folder/EX-22-second.md"
 reset
-stray "$P/zz/last.md" task
+mkdir -p "$vault/$P/zz"
+printf '%s\n' '---' 'type: note' 'type: task' '---' '# Two type lines' >"$vault/$P/zz/last.md"
 printf '%s\r\n' '---' 'type: task' '---' '# CRLF' >"$vault/$P/docs/crlf.md"
 stray "$P/a-first.md" task
 printf '\357\273\277---\ntype: task\n---\n# BOM\n' >"$vault/$P/docs/bom.md"
@@ -574,6 +602,7 @@ chk "task-location: the offenders come sorted by path" task-location Example \
   "warn | 5 | a-first.md, docs/bom.md, docs/crlf.md, tasks/EX-9.md, zz/last.md"
 out_has "task-location: a note with CRLF line endings is read" "docs/crlf.md"
 out_has "task-location: a note that opens with a BOM is read" "docs/bom.md"
+out_has "task-location: of two type lines the last one counts" "zz/last.md"
 reset
 stray "$P/docs/billing/notes.md" note
 stray "$P/.trash/EX-8.md" task
@@ -582,6 +611,7 @@ printf '%s\n' '# No frontmatter' '' 'type: task' >"$vault/$P/docs/plain.md"
 printf '%s\n' '---' 'title: "A note"' '---' '' 'type: task' >"$vault/$P/docs/body.md"
 printf '%s\n' '---' 'type:task' '---' '# No blank after the colon' >"$vault/$P/docs/nospace.md"
 printf '%s\n' '---' 'type: task' '' '# The frontmatter never closes' >"$vault/$P/docs/open.md"
+printf '%s\n' '---' 'type: task' 'type: note' '---' '# Two type lines' >"$vault/$P/docs/first.md"
 sb scaffold project Child --path "$P/child" --keys CH
 sb task new CH-1 --project Child --title "A task of the project inside"
 stray "$P/child/docs/CH-2.md" task
@@ -590,6 +620,7 @@ chk "task-location: another type, dot folders, body text and the tasks of a proj
 is "task-location: reading stops at the line that closes the frontmatter" "$(printf '%s\n' "$OUT" | grep -c 'docs/body.md' || true)" "0"
 is "task-location: type:task with no blank is no property" "$(printf '%s\n' "$OUT" | grep -c 'docs/nospace.md' || true)" "0"
 is "task-location: frontmatter that never closes holds no type" "$(printf '%s\n' "$OUT" | grep -c 'docs/open.md' || true)" "0"
+is "task-location: a first type line gives way to a later one" "$(printf '%s\n' "$OUT" | grep -c 'docs/first.md' || true)" "0"
 chk "task-location: the project inside gets its own misfiled task" task-location Child "warn | 1 | docs/CH-2.md"
 chk "index: a project inside another is a row like any other" index vault "ok | 0 | -"
 doc Example
@@ -655,6 +686,12 @@ mkdir -p "$vault/$P/docs/Money/Invoices"
 add_topic_line '- billing -> docs/Money'
 doc Example
 chk "topic-tags: an exception covers the sub-tags under its folder" topic-tags Example "ok | 0 | -"
+reset
+sb task tag EX-1 add billing
+mkdir -p "$vault/$P/"'docs\money'
+add_topic_line '- billing -> docs\money'
+doc Example
+chk "topic-tags: an exception whose folder holds a backslash is not taken, though the folder is there" topic-tags Example "warn | 1 | billing"
 reset
 
 # ---------------------------------------------------------------- repos

@@ -79,7 +79,8 @@ sb_task_scan() {
 }
 
 # Read scan rows on stdin; turn the depends_on paths into id:status pairs. The id is the folder of
-# the task README; the status comes from the scan, or from the note, or is "missing" with no note.
+# the task README, as the scan spells it when the task is in it; the status comes from the scan, or
+# from the note, or is "missing" with no note.
 sb_board_deps() {
   LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' "$(sb_awk_lib)"'
     function rel(p) { if (substr(p, 1, length(root)) == root) p = substr(p, length(root) + 1); sub(/\.md$/, "", p); return tolower(p) }
@@ -99,7 +100,7 @@ sb_board_deps() {
       return st
     }
     BEGIN { OFS = "\t"; root = ENVIRON["SB_R"] }
-    { row[NR] = $0; st_of[rel($1)] = $3 }
+    { row[NR] = $0; st_of[rel($1)] = $3; id_of[rel($1)] = $2 }
     END {
       for (r = 1; r <= NR; r++) {
         $0 = row[r]
@@ -108,6 +109,7 @@ sb_board_deps() {
           for (i = 1; i <= m; i++) {
             k = split(d[i], seg, "/"); did = seg[k]
             if (k >= 2 && tolower(did) == "readme") did = seg[k - 1]
+            if (tolower(d[i]) in id_of) did = id_of[tolower(d[i])]
             out = out (i > 1 ? "," : "") did ":" status_of(d[i])
           }
           $13 = out

@@ -754,6 +754,16 @@ edit "$T2" "s#^depends_on: \[\]\$#depends_on: [\"[[$P/tasks/EX-3/README.md|third
 file_has "task dep remove: the hand-written link is there first" "$T2" "README.md|third]]"
 sb task dep EX-2 remove EX-3
 out_is "task dep remove: matches a hand-written link by its path" "-"
+edit "$T2" "s#^depends_on: \[\]\$#depends_on: [\"[[$P/tasks/EX-3/README|EX-3]]\"]#"
+sb task dep EX-2 add EX-1
+out_is "task dep add: to an inline list" "[[$P/tasks/EX-3/README|EX-3]]
+[[$P/tasks/EX-1/README|EX-1]]"
+line_is "task dep add: the inline item stays quoted" "$T2" "  - \"[[$P/tasks/EX-3/README|EX-3]]\""
+line_is "task dep add: the new item after it" "$T2" "  - \"[[$P/tasks/EX-1/README|EX-1]]\""
+file_lacks "task dep add: no inline list left" "$T2" "depends_on: ["
+sb task dep EX-2 remove EX-3
+sb task dep EX-2 remove EX-1
+out_is "task dep remove: both gone" "-"
 sb task dep EX-6 add EX-2
 is "task dep: CRLF kept" "$(grep -c "$CR\$" "$T6")" "$(grep -c '' "$T6")"
 line_is "task dep: CRLF line written" "$T6" "  - \"[[$P/tasks/EX-2/README|EX-2]]\"$CR"
@@ -776,6 +786,10 @@ cp "$T5" "$tmp/t5.before"
 edit "$T5" "s#^  - \"\[\[$P/tasks/EX-3/README|EX-3\]\]\"\$#  - \"[[$P/tasks/EX-99/README|EX-99]]\"#"
 sb board Example
 is "board: a link to no note shows missing" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-99:missing"
+cp "$tmp/t5.before" "$T5"
+edit "$T5" "s#^  - \"\[\[$P/tasks/EX-2/README|EX-2\]\]\"\$#  - \"[[$P/tasks/ex-2/readme|ex-2]]\"#"
+sb board Example
+is "board: a link in other letter case shows the task's own id" "$(printf '%s\n' "$OUT" | grep '^EX-5 ' | awk -F' [|] ' '{ print $9 }')" "EX-2:planned,EX-3:done"
 cp "$tmp/t5.before" "$T5"
 sb board Example All
 sb board Example needs a status

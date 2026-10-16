@@ -164,6 +164,8 @@ branch: "none yet"
 epic: "-"
 sprint: "2026-10-14"          # omit the key when the task is in the backlog
 carried_from: []              # sprint ids this task was carried over from
+depends_on:                   # optional; the tasks this one waits on, as quoted path links
+  - "[[<project>/<tasks_root>/<other ID>/README|<other ID>]]"
 type: task
 tags:
   - <topic/tag>               # zero or more; the folder path under the topics root, lowercased
@@ -173,6 +175,9 @@ tags:
 ```
 
 - The helper never writes `jira_id`. Notes that already have it keep it; readers ignore it.
+- `depends_on` lists the tasks this one waits on, each a path link to the other task's README
+  with its folder id as display text, double-quoted. It is changed with `task dep`. The reverse,
+  the tasks that wait on this one, is never stored: Obsidian shows it as backlinks.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
 - Strings are written double-quoted when they contain `: `, `#`, start with `-` or `[`, or look
@@ -261,13 +266,14 @@ Rules that hold for every command:
 | `repo <project> [name]` | with no name, one TSV row per repo in the profile's order: name, path, state (`ok`, `missing`, or `unknown` when no location is recorded; path is then `-`). With a name, the path alone | paths are absolute, with `~` expanded. With a name: exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `profile <project> --keys` | profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | section name matched case-insensitively; exit 1 when absent |
-| `board <project> [view]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs` | default view `Active` (status planned, in-progress or in-review). Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `title` falls back to the note's first heading when the property is absent |
+| `board <project> [view]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs | depends_on` | default view `Active` (status planned, in-progress or in-review). Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README, spelled as on disk for a task of the project whatever the link's letter case, and that task's status, `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, topics, envs, summary line, newest status note | |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
-| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys, and for a sprint id on a project that does not use sprints (`sprint=` still removes one) |
+| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one) |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; refuses `type/` and `status/` tags (exit 5) |
 | `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoting when needed; the first alias never changes; exit 6 when the alias already names another task. Renaming a slug-named task to its ticket id (a new first alias and folder name) is not covered yet and is done by hand |
+| `task dep <ID> add\|remove <ID> [--project P]` | the resulting `depends_on` links, or `-` when none is left | the second id is the task the first waits on, found by id or alias like the first; `--project` applies to both. `add` appends `"[[<vault path of its README, no .md>\|<its folder id>]]"` and puts the key after `carried_from`; a task already linked is not added twice. `remove` drops the item whose link leads to that README, however its display text is written, and leaves `depends_on: []` when none is left. Exit 1 for an unknown task, exit 5 for the task itself. No cycle check: the doctor's `depends-on` check reports one |
 | `task new <ID> [--project P] [--title T] [--topics a,b] [--envs]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README or the id is another task's alias; a folder with no README gets one. Exit 5 for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
@@ -417,6 +423,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
 | project | `line-endings` | a task README with mixed line endings (warn) |
+| project | `depends-on` | a `depends_on` link of a task leads to no note or out of the vault (`<ID>:missing`), or tasks of the project depend on each other in a ring (`<ID>:cycle`, every task of a strongly connected group of two or more, and a task that depends on itself) (warn). A link matches a task of the project without letter case. The check fails with `awk:error` when it cannot run |
 
 - `task-location` takes a note's type from frontmatter that opens on the first line and closes.
   The key is `type:` followed by a blank: `type:task` is no property, and frontmatter that

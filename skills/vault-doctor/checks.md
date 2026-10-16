@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: ten for
-the vault, then seventeen for each project. Every entry is a heading, a blank line and three lines,
+the vault, then eighteen for each project. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -166,3 +166,9 @@ the vault, then seventeen for each project. Every entry is a heading, a blank li
 - Means: a task README holds both LF and CRLF line endings.
 - Why: a value that ends in a stray carriage return can fail to match in a search or a script, and every diff of the file is noisy.
 - Fix: `second-brain snapshot` first, then one ending for the whole file. To LF: `perl -pi -e 's/\r$//' "<file>"`.
+
+### depends-on
+
+- Means: a task's `depends_on` holds a link to no note, or to a path outside the vault (`<ID>:missing`), or tasks of the project wait on each other in a ring (`<ID>:cycle`, once for each task in it, and for a task that waits on itself). A link matches a task without letter case. `awk:error` (fail): the check could not run.
+- Why: the board shows such a dependency as `missing`, and in a ring no task can start first, so the work it records is blocked for good.
+- Fix: ask which task it waits on, then `second-brain task dep <ID> remove <ID>` and `second-brain task dep <ID> add <ID>`. A link the helper cannot match: edit the line in the note. A ring: ask which dependency is wrong and remove it.

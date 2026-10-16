@@ -80,7 +80,7 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 
 1. Plan needs a sprint in progress. With none, offer open.
 2. Run `second-brain board <project>` for the Active view. Each row is
-   `id | title | status | sprint | topics | branch | next | envs`.
+   `id | title | status | sprint | topics | branch | next | envs | depends_on`.
 3. Show two short groups: in this sprint, and backlog (`sprint` is `-`). Carried tasks are
    already in the sprint. Do not ask about them one by one.
 4. Ask which tasks join and which leave.

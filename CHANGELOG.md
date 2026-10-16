@@ -79,6 +79,12 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   `profile`, and the project is checked under that root's default.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
+- A task can list the tasks it waits on in `depends_on`, as quoted path links.
+  `second-brain task dep <ID> add|remove <ID>` edits the list, and `task set` refuses it.
+  `board` has a ninth column, `depends_on`, with each task and its status. The board template
+  has a `Depends on` column, the `story-tracker` status overview flags a task in progress that
+  waits on one not done, and a new doctor check, `depends-on`, warns about a link to no note and
+  about tasks that wait on each other in a ring.
 
 Upgrading a vault that was set up with 0.1.0:
 
@@ -98,6 +104,8 @@ Upgrading a vault that was set up with 0.1.0:
 - A snapshot taken with 0.1.0 does not compare with one taken now.
 - CI uses `actions/checkout@v7`, which runs on Node.js 24, in place of `@v4`, which runs on
   Node.js 20.
+- A `tasks.base` written before has no `Depends on` column. Add `note.depends_on` and the
+  `depends_on` column from `templates/tasks.base.tmpl` by hand to show it in Obsidian.
 
 ## 0.1.0 - unreleased
 

@@ -106,6 +106,8 @@ commit, before you reason about, recall or review a ticket.
   name `docs-keeper` as the one to run now.
 - Topic tags stay true: `second-brain task tag <ID> add <tag>` when the story reaches another
   topic whose folder exists, `remove <tag>` when it moves off one.
+- Dependencies stay true: `second-brain task dep <ID> add <other ID>` when the story waits on
+  another task, `remove <other ID>` when it no longer does. Never a `**Depends on:**` body line.
 - A README with no task frontmatter: never rewrite its body. Run
   `second-brain task alias <ID> add <ID>` (the folder id becomes the first alias),
   `second-brain task set <ID> type=task title="..." next="..."` and

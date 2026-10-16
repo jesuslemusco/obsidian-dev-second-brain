@@ -63,6 +63,11 @@ Sprints are optional per project. `uses_sprints: false` in a project's profile, 
 `vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
 `Current sprint` view; its stories are tracked by status alone.
 
+A task can say which tasks it waits on. `second-brain task dep EX-2 add EX-1` writes a link to
+EX-1 in the `depends_on` list of EX-2. The board shows the list in its `Depends on` column, the
+status overview flags a task in progress that waits on one not done, and the doctor warns about a
+link to no task and about tasks that wait on each other in a ring.
+
 ## On Windows
 
 Claude Code runs its Bash tool through Git Bash, which comes with Git for Windows, and so does the

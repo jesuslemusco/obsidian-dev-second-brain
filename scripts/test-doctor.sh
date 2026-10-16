@@ -855,6 +855,57 @@ doc Example
 chk "line-endings: one bare LF at the end is mixed" line-endings Example "warn | 2 | EX-2, EX-3"
 reset
 
+# ---------------------------------------------------------------- depends-on
+doc Example
+chk "depends-on: ok on new tasks" depends-on Example "ok | 0 | -"
+sb task dep EX-2 add EX-1
+sb task dep EX-3 add EX-2
+doc Example
+chk "depends-on: a chain is no cycle" depends-on Example "ok | 0 | -"
+sb task dep EX-1 add EX-3
+doc Example
+rc_is "depends-on: a warning leaves exit 0" 0
+chk "depends-on: every task of a ring is named" depends-on Example "warn | 3 | EX-1:cycle, EX-2:cycle, EX-3:cycle"
+is "depends-on: the fix names the command" "$(fix_of depends-on)" \
+  "link each depends_on item to a task README that exists; break a cycle with second-brain task dep <ID> remove <ID>"
+sb task dep EX-1 remove EX-3
+printf '%s\n' "$(sed "s#^depends_on:\$#depends_on:\\$NL  - \"[[$P/tasks/EX-9/README|EX-9]]\"#" "$T/EX-3/README.md")" >"$T/EX-3/README.md"
+printf '%s\n' "$(sed 's#^carried_from: \[\]$#depends_on: ["[[../outside/README|out]]"]#' "$T/EX-1/README.md")" >"$T/EX-1/README.md"
+doc Example
+chk "depends-on: a link to no note, or out of the vault, is missing" depends-on Example "warn | 2 | EX-1:missing, EX-3:missing"
+reset
+# A chord: EX-3 joins the ring of EX-1 and EX-2 through an edge the first walk reaches last.
+sb task dep EX-1 add EX-2
+sb task dep EX-2 add EX-1
+sb task dep EX-1 add EX-3
+sb task dep EX-3 add EX-2
+doc Example
+chk "depends-on: every task of a ring is named, a chord's too" depends-on Example "warn | 3 | EX-1:cycle, EX-2:cycle, EX-3:cycle"
+reset
+printf '%s\n' "$(sed "s#^carried_from: \[\]\$#depends_on: [\"[[$P/tasks/EX-1/README|EX-1]]\"]#" "$T/EX-1/README.md")" >"$T/EX-1/README.md"
+sb task dep EX-2 add EX-1
+doc Example
+chk "depends-on: a task that waits on itself is a ring alone" depends-on Example "warn | 1 | EX-1:cycle"
+reset
+printf '%s\n' "$(sed "s#^carried_from: \[\]\$#depends_on: [\"[[projects/example/tasks/ex-1/readme|ex-1]]\"]#" "$T/EX-2/README.md")" >"$T/EX-2/README.md"
+doc Example
+chk "depends-on: a link in other letter case finds the task" depends-on Example "ok | 0 | -"
+reset
+# 500 tasks in one ring, then in one chain: deeper than an awk recursion goes.
+i=1
+while [ "$i" -le 500 ]; do
+  mkdir -p "$T/LG-$i"
+  printf -- '---\naliases:\n  - LG-%s\nstatus: planned\ndepends_on:\n  - "[[%s/tasks/LG-%s/README|LG-%s]]"\ntype: task\ntags:\n  - type/task\n  - status/active\n---\n\n# LG-%s\n' \
+    "$i" "$P" "$((i % 500 + 1))" "$((i % 500 + 1))" "$i" >"$T/LG-$i/README.md"
+  i=$((i + 1))
+done
+doc Example
+is "depends-on: a ring of 500 tasks names each" "$(row depends-on | cut -d'|' -f1-2)" "warn | 500 "
+printf -- '---\naliases:\n  - LG-500\nstatus: planned\ntype: task\ntags:\n  - type/task\n  - status/active\n---\n' >"$T/LG-500/README.md"
+doc Example
+chk "depends-on: a chain of 500 tasks is no ring" depends-on Example "ok | 0 | -"
+reset
+
 # ---------------------------------------------------------------- --fix
 edit "$T/EX-1/README.md" '/^status: /d'
 edit "$T/EX-2/README.md" 's/^  - status\/done$/  - status\/active/'
@@ -868,7 +919,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "27"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "28"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -905,8 +956,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 27 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "27 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 28 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "28 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -921,16 +972,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: seventeen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "17/17"
+is "two projects: eighteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "18/18"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -10 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
+  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "10/17/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "10/18/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

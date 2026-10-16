@@ -163,6 +163,6 @@ the vault, then eighteen for each project. Every entry is a heading, a blank lin
 
 ### depends-on
 
-- Means: a task's `depends_on` holds a link to no note, or to a path outside the vault (`<ID>:missing`), or tasks of the project wait on each other in a ring (`<ID>:cycle`, once for each task in it).
+- Means: a task's `depends_on` holds a link to no note, or to a path outside the vault (`<ID>:missing`), or tasks of the project wait on each other in a ring (`<ID>:cycle`, once for each task in it, and for a task that waits on itself). A link matches a task without letter case. `awk:error` (fail): the check could not run.
 - Why: the board shows such a dependency as `missing`, and in a ring no task can start first, so the work it records is blocked for good.
 - Fix: ask which task it waits on, then `second-brain task dep <ID> remove <ID>` and `second-brain task dep <ID> add <ID>`. A link the helper cannot match: edit the line in the note. A ring: ask which dependency is wrong and remove it.

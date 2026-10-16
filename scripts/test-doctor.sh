@@ -829,6 +829,37 @@ printf '%s\n' "$(sed 's#^carried_from: \[\]$#depends_on: ["[[../outside/README|o
 doc Example
 chk "depends-on: a link to no note, or out of the vault, is missing" depends-on Example "warn | 2 | EX-1:missing, EX-3:missing"
 reset
+# A chord: EX-3 joins the ring of EX-1 and EX-2 through an edge the first walk reaches last.
+sb task dep EX-1 add EX-2
+sb task dep EX-2 add EX-1
+sb task dep EX-1 add EX-3
+sb task dep EX-3 add EX-2
+doc Example
+chk "depends-on: every task of a ring is named, a chord's too" depends-on Example "warn | 3 | EX-1:cycle, EX-2:cycle, EX-3:cycle"
+reset
+printf '%s\n' "$(sed "s#^carried_from: \[\]\$#depends_on: [\"[[$P/tasks/EX-1/README|EX-1]]\"]#" "$T/EX-1/README.md")" >"$T/EX-1/README.md"
+sb task dep EX-2 add EX-1
+doc Example
+chk "depends-on: a task that waits on itself is a ring alone" depends-on Example "warn | 1 | EX-1:cycle"
+reset
+printf '%s\n' "$(sed "s#^carried_from: \[\]\$#depends_on: [\"[[projects/example/tasks/ex-1/readme|ex-1]]\"]#" "$T/EX-2/README.md")" >"$T/EX-2/README.md"
+doc Example
+chk "depends-on: a link in other letter case finds the task" depends-on Example "ok | 0 | -"
+reset
+# 500 tasks in one ring, then in one chain: deeper than an awk recursion goes.
+i=1
+while [ "$i" -le 500 ]; do
+  mkdir -p "$T/LG-$i"
+  printf -- '---\naliases:\n  - LG-%s\nstatus: planned\ndepends_on:\n  - "[[%s/tasks/LG-%s/README|LG-%s]]"\ntype: task\ntags:\n  - type/task\n  - status/active\n---\n\n# LG-%s\n' \
+    "$i" "$P" "$((i % 500 + 1))" "$((i % 500 + 1))" "$i" >"$T/LG-$i/README.md"
+  i=$((i + 1))
+done
+doc Example
+is "depends-on: a ring of 500 tasks names each" "$(row depends-on | cut -d'|' -f1-2)" "warn | 500 "
+printf -- '---\naliases:\n  - LG-500\nstatus: planned\ntype: task\ntags:\n  - type/task\n  - status/active\n---\n' >"$T/LG-500/README.md"
+doc Example
+chk "depends-on: a chain of 500 tasks is no ring" depends-on Example "ok | 0 | -"
+reset
 
 # ---------------------------------------------------------------- --fix
 edit "$T/EX-1/README.md" '/^status: /d'

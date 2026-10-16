@@ -769,42 +769,57 @@ sb_doc_check_unresolved_links() {
 }
 
 # Check that each depends_on link leads to a note, and that no tasks of the project wait on each other in a ring.
+# A ring is a strongly connected group of two tasks or more, or a task that waits on itself. Tarjan's
+# algorithm finds them with a stack of its own, since a deep recursion overflows some awks.
 sb_doc_check_depends_on() {
   local bad
-  bad="$(printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' '
+  if ! bad="$(printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C SB_R="$SB_ROOT/" awk -F'\t' '
     function rel(p) { if (substr(p, 1, length(root)) == root) p = substr(p, length(root) + 1); sub(/\.md$/, "", p); return tolower(p) }
     function found(t,   f, l, r) {
+      if (tolower(t) in node) return 1
       if (("/" t "/") ~ /\/\.\.\// || index(t, "\\") || substr(t, 1, 1) == "/" || t == "") return 0
       f = root t ".md"; r = (getline l < f); close(f)
       return r >= 0
     }
-    function visit(u,   i, v, j) {
-      color[u] = 1; stack[++depth] = u
-      for (i = 1; i <= ne[u]; i++) {
-        v = edge[u, i]
-        if (color[v] == 1) { for (j = depth; j >= 1; j--) { ring[stack[j]] = 1; if (stack[j] == v) break } }
-        else if (!color[v]) visit(v)
-      }
-      depth--; color[u] = 2
-    }
     BEGIN { root = ENVIRON["SB_R"] }
-    NF >= 13 {
-      u = rel($1); nodes[++n] = u; id[u] = $2; dep[u] = $13
-    }
+    NF >= 13 { n++; node[rel($1)] = n; id[n] = $2; dep[n] = $13 }
     END {
-      for (i = 1; i <= n; i++) {
-        u = nodes[i]
+      for (u = 1; u <= n; u++) {
         if (dep[u] == "-") continue
         m = split(dep[u], d, ","); miss = 0
         for (k = 1; k <= m; k++) {
           if (!found(d[k])) miss = 1
-          if (tolower(d[k]) in id) edge[u, ++ne[u]] = tolower(d[k])
+          t = tolower(d[k])
+          if (t in node) { v = node[t]; edge[u, ++ne[u]] = v; if (v == u) ring[u] = 1 }
         }
         if (miss) print id[u] ":missing"
       }
-      for (i = 1; i <= n; i++) if (!color[nodes[i]]) visit(nodes[i])
-      for (i = 1; i <= n; i++) if (nodes[i] in ring) print id[nodes[i]] ":cycle"
-    }')"
+      cnt = 0; sp = 0
+      for (s = 1; s <= n; s++) {
+        if (s in num) continue
+        top = 1; cs[1] = s; ci[1] = 0; num[s] = low[s] = ++cnt; st[++sp] = s; on[s] = 1
+        while (top > 0) {
+          u = cs[top]
+          if (ci[top] < ne[u]) {
+            v = edge[u, ++ci[top]]
+            if (!(v in num)) { num[v] = low[v] = ++cnt; st[++sp] = v; on[v] = 1; cs[++top] = v; ci[top] = 0 }
+            else if (on[v] && num[v] < low[u]) low[u] = num[v]
+            continue
+          }
+          if (low[u] == num[u]) {
+            for (j = sp; st[j] != u; j--) continue
+            for (k = sp; k >= j; k--) { on[st[k]] = 0; if (sp > j) ring[st[k]] = 1 }
+            sp = j - 1
+          }
+          top--
+          if (top > 0 && low[u] < low[cs[top]]) low[cs[top]] = low[u]
+        }
+      }
+      for (u = 1; u <= n; u++) if (u in ring) print id[u] ":cycle"
+    }')"; then
+    sb_doc_row fail depends-on "$SB_P_NAME" "awk:error" "the check could not run; run second-brain doctor again, and report the error if it stays"
+    return 0
+  fi
   sb_doc_report warn depends-on "$SB_P_NAME" "$bad" "link each depends_on item to a task README that exists; break a cycle with second-brain task dep <ID> remove <ID>"
 }
 

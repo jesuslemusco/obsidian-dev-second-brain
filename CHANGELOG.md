@@ -32,6 +32,10 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The index says first what holds in every session: a new personal skill or agent is created in
   the vault, not straight in `~/.claude/skills` or `~/.claude/agents`. Its closing line, to
   ignore the file for a task outside the projects, is gone: it cancelled that rule.
+- The index also tells every session to answer in short, plain English and lead with the answer,
+  unless the user or their own instructions say otherwise. A vault learns of it on upgrade: the
+  release raises the template's `index_version`, so the doctor's `index` check warns until the
+  vault's index is brought in line.
 - The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`

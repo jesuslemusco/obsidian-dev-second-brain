@@ -60,6 +60,8 @@ index_version: 1
 - No command brings an index up to date, because it may hold the user's own lines. It is edited by
   hand: the text above `## Projects` is brought in line with the template, the table is kept, and
   `index_version` is set to the template's number.
+- The first line under `## In every session` is the answer style: short, plain English, the answer
+  first, unless the user or their own instructions say otherwise. A test pins its text.
 
 ## 3. The project
 

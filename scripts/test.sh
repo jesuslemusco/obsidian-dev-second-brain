@@ -1428,6 +1428,26 @@ file_has "sprint close: the board keeps the closed sprint's literal" "$vault/wor
 sb board Four "Current sprint"
 out_is "board Current sprint: no rows once the sprint is closed, whatever the board's literal says" ""
 
+# ---------------------------------------------------------------- docs-keeper on a ticket marked done
+DK="$here/agents/docs-keeper.md"
+desc="$(sed -n 's/^description: //p' "$DK")"
+is "docs-keeper: the description is under 200 characters" "$((${#desc} < 200))" "1"
+case "$desc" in *"a ticket is marked done"*) pass "docs-keeper: the description names a ticket marked done" ;;
+  *) fail "docs-keeper: the description names a ticket marked done" "in: $desc" ;; esac
+line_is "docs-keeper: Workflow 5 is there" "$DK" "## Workflow 5 - Ticket marked done"
+file_has "docs-keeper: Workflow 5 runs step 7 on the docs to update" "$DK" 'run step 7 of Workflow 1 on them'
+file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'The "Code to doc map" names the docs to check.'
+file_has "docs-keeper: Workflow 5 sends a gap to the debt file" "$DK" "A gap found but not fixed goes to the profile's debt file"
+file_has "docs-keeper: Workflow 5 adds a status note" "$DK" 'Add a status note to the ticket naming what was updated'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: a story in production starts docs-keeper" "$ST" 'start the `docs-keeper` agent'
+file_has "story-tracker: it hands over the ticket id and the README path" "$ST" 'with the project, the ticket id and the README path'
+file_lacks "story-tracker: no longer tells Claude not to start it" "$ST" 'Do not start it yourself.'
+file_has "sprint close: reports done tasks with unticked docs" "$here/skills/sprint/close.md" 'name each task with unticked `- [ ]` lines'
+file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.md" 'Do not start it here: the close only reports.'
+file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
+file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

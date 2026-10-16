@@ -119,6 +119,10 @@ holds "bin: second-brain runs from the Bash tool" "$(field "$tmp/second.jsonl" "
 holds "import: the index is read through the pointer" "$(field "$tmp/second.jsonl" 'select(.type == "result") | .result')" "$token"
 
 printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
+# With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
+sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&
+  mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
+holds "trigger: the profile has a persona" "$(bash "$SB" profile Example --keys)" "developer"
 ask "$tmp/third.jsonl" "For the Example project: give me summary, description and AC for a new ticket, no id.
 The ticket: the task board should show each task's branch."
 holds "trigger: the request loads story-tracker" \

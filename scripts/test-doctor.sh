@@ -125,9 +125,10 @@ is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | gr
 # ---------------------------------------------------------------- the skill's entries
 # The skill reads an entry with one Grep and the four lines after its heading.
 CHECKS="$here/skills/vault-doctor/checks.md"
+# The fresh vault has no subproject, so its rows lack subprojects, which comes right after repos.
 is "checks.md: one entry for each check the doctor prints, in the order of its table" \
   "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
-  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }')"
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects /')"
 is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
   function entry() {
     while (n > 0 && body[n] == "") n--
@@ -725,6 +726,51 @@ cp "$tmp/profile.mapped" "$PROFILE"
 edit "$PROFILE" 's/^## Docs$/## Notes/'
 doc Example
 chk "code-doc-map: the map counts only inside the Docs section" code-doc-map Example "warn | 3 | example-api, Example-Web, example-jobs"
+reset
+
+# ---------------------------------------------------------------- subprojects
+SUBS="$vault/$P/claude/subprojects"
+doc Example
+is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
+is "subprojects: a project with no subproject keeps seventeen rows" "$(scope_rows Example)" "17"
+mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
+set_repos '[example-api]' "$tmp/code" '[]'
+add_map_row '| example-api | a new endpoint | the API reference |'
+sb scaffold subproject Example infra --repos example-infra
+rc_is "subprojects: scaffold subproject exits 0" 0
+doc Example
+is "subprojects: an eighteenth row once the project has one" "$(scope_rows Example)" "18"
+is "subprojects: the row sits between repos and sprints" \
+  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "sprints" { printf "%s ", $2 }')" \
+  "repos subprojects sprints "
+chk "subprojects: a repository with no map row" subprojects Example "warn | 1 | infra/example-infra:no-map-row"
+chk "subprojects: the profile's own map check is left as it was" code-doc-map Example "ok | 0 | -"
+add_map_row '| example-infra | a new module | docs/infra |'
+doc Example
+rc_is "subprojects: exit 0" 0
+chk "subprojects: ok with its type, repos found, a docs folder and a map row" subprojects Example "ok | 0 | -"
+rm -rf "$vault/$P/docs/infra"
+edit "$SUBS/infra.md" 's/^type: subproject$/type: note/'
+edit "$SUBS/infra.md" 's/^repos: .*$/repos: [example-infra, gone-infra]/'
+doc Example
+chk "subprojects: a wrong type, no docs folder, a missing repo with no map row" subprojects Example \
+  "warn | 4 | infra:type, infra:no-docs, infra/gone-infra:no-map-row, infra/gone-infra:missing"
+is "subprojects: the fix names each part" "$(fix_of subprojects)" \
+  "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
+chk "subprojects: the repos check sees the subproject's repositories too" repos Example "warn | 1 | gone-infra"
+printf '%s\n' '---' 'type: subproject' 'repos: [EXAMPLE-INFRA]' '---' >"$SUBS/ops.md"
+printf '%s\n' '---' 'type: subproject' 'repos: []' '---' >"$SUBS/web.md"
+mkdir -p "$vault/$P/docs/ops" "$vault/$P/docs/web"
+edit "$PROFILE" 's/^repos_root: .*$/repos_root: ""/'
+doc Example
+chk "subprojects: with no location recorded, every note is read, five offenders shown" subprojects Example \
+  "warn | 8 | infra:type, infra:no-docs, infra/example-infra:no-location, infra/gone-infra:no-map-row, infra/gone-infra:no-location"
+rm -f "$SUBS/infra.md"
+printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' '---' >"$SUBS/more.md"
+mkdir -p "$vault/$P/docs/more"
+doc Example
+chk "subprojects: a repo in two subprojects, whatever the case, and a subproject with no repos" subprojects Example \
+  "warn | 4 | more/example-infra:no-location, EXAMPLE-INFRA:twice, ops/EXAMPLE-INFRA:no-location, web:no-repos"
 reset
 
 # ---------------------------------------------------------------- sprints

@@ -1,7 +1,8 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: ten for
-the vault, then eighteen for each project. Every entry is a heading, a blank line and three lines,
+the vault, then eighteen for each project, and `subprojects` as well for a project that has a
+subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -139,9 +140,15 @@ the vault, then eighteen for each project. Every entry is a heading, a blank lin
 
 ### repos
 
-- Means: a repository listed in the profile has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
+- Means: a repository of the project, listed in the profile or in a subproject note, has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
 - Why: skills run git in that folder for branch checks and doc audits, so they would check no code, or stop to ask where it is.
 - Fix: correct `repos_root` or the `repo_paths` entry in the profile, then confirm with `second-brain repo <project>`.
+
+### subprojects
+
+- Means: a note in `claude/subprojects/` is off: its `type` is not `subproject` (`<name>:type`), it lists no repos (`<name>:no-repos`), it has no docs folder `<topics root>/<name>/` (`<name>:no-docs`), a repo of it has no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo's folder is missing (`<name>/<repo>:missing`) or no location is recorded for it (`<name>/<repo>:no-location`), or two subprojects list one repo (`<repo>:twice`). Only a project with a subproject gets this row.
+- Why: a working directory resolves to a subproject through its repos, the branch check reads its settings from the note, and docs-keeper finds its docs through the map row and the docs folder. A repo in two subprojects resolves to neither.
+- Fix: a type or repos: edit the note's frontmatter, `type: subproject` and `repos: [<repo>]`. No docs: `second-brain scaffold subproject <project> <name>` writes the docs hub and overwrites nothing. A map row: add `| <repo> | <change> | <topics root>/<name>/... |` under `### Code to doc map` in the profile, after asking which docs follow it. A location: `repos_root` in the profile, or `"<repo>=<path>"` in the note's `repo_paths`. Twice: ask which subproject keeps the repo, then remove it from the other note.
 
 ### sprints
 

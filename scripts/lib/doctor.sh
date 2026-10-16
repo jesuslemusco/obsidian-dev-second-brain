@@ -673,14 +673,17 @@ EOF
   sb_doc_report warn topic-tags "$SB_P_NAME" "$bad" "create the folder, fix the tag, or add \"- <tag> -> <folder>\" under ## Topics in the profile"
 }
 
-# Check that each repository in the profile has a row in the Code to doc map of its Docs section.
-sb_doc_check_code_doc_map() {
-  local bad=""
-  [ ! -f "$SB_P_PROFILE" ] || bad="$(LC_ALL=C awk "$(sb_awk_lib)"'
+# Print the repositories in the frontmatter of a note, the profile or a subproject note, that have
+# no row in the Code to doc map of the profile's Docs section.
+sb_doc_unmapped() {
+  [ -f "$1" ] && [ -f "$SB_P_PROFILE" ] || return 0
+  LC_ALL=C awk "$(sb_awk_lib)"'
     function add(v) { if (v != "") repo[++nr] = v }
     { sub(/\r$/, "") }
-    NR == 1 { sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
-    st == 1 {
+    # fileno is the place of the file among the arguments, so an empty first file still counts.
+    FNR == 1 { do fileno++; while (fileno < ARGC && ARGV[fileno] != FILENAME); key = ""; sub(/^\357\273\277/, ""); st = ($0 == "---" ? 1 : 2); if (st == 1) next }
+    fileno == 1 {
+      if (st != 1) next
       if ($0 == "---") st = 2
       else if ($0 ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
         i = index($0, ":"); key = substr($0, 1, i - 1); v = trim(substr($0, i + 1))
@@ -690,6 +693,7 @@ sb_doc_check_code_doc_map() {
       } else if (key == "repos" && $0 ~ /^[ \t]*-([ \t]|$)/) { v = $0; sub(/^[ \t]*-[ \t]*/, "", v); add(unq(v)) }
       next
     }
+    st == 1 { if ($0 == "---") st = 2; next }
     /^[ \t]*(```|~~~)/ { fence = !fence; next }
     fence { next }
     /^#+[ \t]/ {
@@ -708,7 +712,13 @@ sb_doc_check_code_doc_map() {
       if (c == "repo") hdr = 1
       else if (hdr && c != "" && c != "<repo>" && c !~ /^:?-+:?$/) has[c] = 1
     }
-    END { for (r = 1; r <= nr; r++) if (!(tolower(repo[r]) in has)) print repo[r] }' "$SB_P_PROFILE")"
+    END { for (r = 1; r <= nr; r++) if (!(tolower(repo[r]) in has)) print repo[r] }' "$1" "$SB_P_PROFILE"
+}
+
+# Check that each repository in the profile has a row in the Code to doc map of its Docs section.
+sb_doc_check_code_doc_map() {
+  local bad
+  bad="$(sb_doc_unmapped "$SB_P_PROFILE")"
   sb_doc_report warn code-doc-map "$SB_P_NAME" "$bad" "add a row for the repository under \"Code to doc map\" in the profile's Docs section"
 }
 
@@ -717,6 +727,51 @@ sb_doc_check_repos() {
   local bad
   bad="$(sb_repo_rows "$SB_P_NAME" 2>/dev/null | awk -F'\t' '$3 == "missing" { print $1 }')"
   sb_doc_report warn repos "$SB_P_NAME" "$bad" "correct repos_root or the repo_paths entry in the profile, then run second-brain repo <project>"
+}
+
+# Check each subproject note: its type, its repositories (listed, found, in one subproject only,
+# each with a map row) and its docs folder. A project with no subproject gets no row.
+sb_doc_check_subprojects() {
+  local files f n r lr rows unmapped rn rp rs state seen bad="" nl=$'\n'
+  files="$(sb_sub_files "$SB_P_PATH")"
+  [ -n "$files" ] || return 0
+  rows="$(sb_repo_rows_at "$SB_P_PATH")"
+  seen="$nl"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    n="$(sb_sub_name "$f")"
+    [ "$(sb_fm_get "$f" type 2>/dev/null)" = "subproject" ] || bad="$bad$n:type$nl"
+    [ -n "$(sb_fm_list "$f" repos 2>/dev/null)" ] || bad="$bad$n:no-repos$nl"
+    [ -d "$SB_ROOT/$(sb_sub_docs "$n")" ] || bad="$bad$n:no-docs$nl"
+    unmapped="$nl$(sb_doc_unmapped "$f")$nl"
+    while IFS= read -r r; do
+      [ -n "$r" ] || continue
+      lr="$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]')"
+      case "$seen" in *"$nl$lr$nl"*) bad="$bad$r:twice$nl" ;; esac
+      seen="$seen$lr$nl"
+      case "$unmapped" in *"$nl$r$nl"*) bad="$bad$n/$r:no-map-row$nl" ;; esac
+      state="unknown"
+      while IFS=$'\t' read -r rn rp rs; do
+        if [ "$rn" = "$r" ]; then
+          state="$rs"
+          break
+        fi
+      done <<EOF2
+$rows
+EOF2
+      case "$state" in
+        ok) ;;
+        missing) bad="$bad$n/$r:missing$nl" ;;
+        *) bad="$bad$n/$r:no-location$nl" ;;
+      esac
+    done <<EOF2
+$(sb_fm_list "$f" repos 2>/dev/null)
+EOF2
+  done <<EOF
+$files
+EOF
+  sb_doc_report warn subprojects "$SB_P_NAME" "$bad" \
+    "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
 }
 
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
@@ -866,7 +921,7 @@ sb_doc_rows() {
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location topic_tags code_doc_map repos sprints unresolved_links bare_links \
+      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects sprints unresolved_links bare_links \
       line_endings depends_on; do
       "sb_doc_check_$c"
     done

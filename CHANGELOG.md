@@ -85,6 +85,13 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   has a `Depends on` column, the `story-tracker` status overview flags a task in progress that
   waits on one not done, and a new doctor check, `depends-on`, warns about a link to no note and
   about tasks that wait on each other in a ring.
+- A project can hold subprojects, one note each at `<project>/claude/subprojects/<name>.md`: its
+  repos, its own branches and environments, which fall back to the profile's, and its rules. Its
+  docs live in `docs/<name>/`. `second-brain scaffold subproject` creates one, and
+  `vault-setup subproject <project>` walks through it. `second-brain subproject <project> [name]`
+  lists them or prints one's settings; `context` adds a `subproject:` line in a subproject's
+  repo; a task carries the `subproject` key (`task new --subproject`, `task set subproject=`).
+  The doctor's new `subprojects` check looks at each one. A project with none works as before.
 
 Upgrading a vault that was set up with 0.1.0:
 

@@ -10,6 +10,8 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
 - **Sprints.** Open a sprint, plan it, see its status, close it and carry work over. Sprints are
   optional per project.
 - **Docs.** Keep a project's docs in step with its code. Marking a ticket done updates its docs.
+- **Several repos.** A project made of several repos can split them into subprojects, each with
+  its own branches, docs folder and rules, under one ticket key and one board.
 - **Fast answers.** A helper command, `second-brain`, answers from the vault's files in one call,
   so Claude does not read whole notes to find one fact.
 

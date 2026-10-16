@@ -51,7 +51,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 1
+index_version: 2
 ---
 ```
 

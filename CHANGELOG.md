@@ -1,29 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- `story-tracker` has a `draft` mode. It writes a ticket's summary, description and acceptance
-  criteria from the ticket template, with or without an id, and writes no file until the id
-  arrives. Its description names ticket text, so a request to write a ticket loads it.
-- The vault index says ticket text is never written freehand and names `story-tracker`. The
-  `sprint` skill sends a request to write a ticket there.
-- Upgrade: an existing vault keeps its own `CLAUDE.md`. Copy the ticket text line from
-  `templates/vault-index.md.tmpl` under `## Rules that most often go wrong`, and say on the plugin
-  skills line that `story-tracker` writes ticket text.
-- Marking a ticket done starts the `docs-keeper` agent. `story-tracker` starts it when a story is
-  set `done` in a project with no environments, or when its last environment is set `done`.
-  `docs-keeper` has a new Workflow 5 for it: it makes and ticks the edits under
-  `## Docs to update`, or, with no such section, checks the ticket's change against the
-  "Code to doc map". A gap it does not fix goes to the debt file, and the ticket gets a status
-  note naming what was updated.
-- New command `second-brain task docs <ID>[,<ID>...]` prints each task with unticked lines under
-  `## Docs to update`, its path and those lines.
-- The sprint close lists the done tasks whose `## Docs to update` lines are still unticked, with
-  `task docs`. It recommends `docs-keeper` for them and does not start it. The `scrum-master`
-  agent cannot start `docs-keeper` either, so it reports it as an action for the caller.
-- The vault index names a ticket marked done as a `docs-keeper` trigger. A vault set up earlier
-  keeps its old line until the index template is applied again.
-
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.
@@ -48,8 +24,8 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - `second-brain pointer set <folder>` creates the vault pointer on every system. `vault-setup` uses
   it in place of a hand-made symlink.
 - The SessionStart hook is written in shell form, so it runs on Windows.
-- The conventions note is at version 2: it describes the helper commands in place of the Obsidian
-  command line interface.
+- The conventions note is at version 3: it describes the helper commands in place of the Obsidian
+  command line interface, and names `depends_on`.
 - The vault's `CLAUDE.md` carries a version, `index_version`, in frontmatter. The doctor's `index`
   check warns about an index older than the plugin's template. It now fails on a row whose path
   is not a folder in the vault, and on a name, a key or a path that two rows share.
@@ -59,9 +35,7 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   ignore the file for a task outside the projects, is gone: it cancelled that rule. The rules
   for notes say that they are for notes.
 - The index also tells every session to answer in short, plain English and lead with the answer,
-  unless the user or their own instructions say otherwise. A vault learns of it on upgrade: the
-  release raises the template's `index_version`, so the doctor's `index` check warns until the
-  vault's index is brought in line.
+  unless the user or their own instructions say otherwise.
 - Pull request descriptions have one format: the headings `What was changed?`, `What was added?`,
   `Dependencies:` and `Risks:`, in that order, with a few one-line bullets in plain English under
   each. It lives in a new vault note, `claude/pull-request.md`, which `scaffold vault` creates and
@@ -79,6 +53,8 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   `profile`, and the project is checked under that root's default.
 - The tests run on Linux, macOS and Windows. An end-to-end check runs Claude Code itself against a
   scratch vault on a Linux and a Windows runner.
+- CI uses `actions/checkout@v7`, which runs on Node.js 24, in place of `@v4`, which runs on
+  Node.js 20.
 - A task can list the tasks it waits on in `depends_on`, as quoted path links.
   `second-brain task dep <ID> add|remove <ID>` edits the list, and `task set` refuses it.
   `board` has a ninth column, `depends_on`, with each task and its status. The board template
@@ -97,6 +73,22 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   rule for every project goes in `~/.claude/CLAUDE.md`. It also says to read the subproject's note
   with the project's rules. The doctor's new `global-rules` check warns about a line of
   `~/.claude/CLAUDE.md` that names a project of the index.
+- `story-tracker` has a `draft` mode. It writes a ticket's summary, description and acceptance
+  criteria from the ticket template, with or without an id, and writes no file until the id
+  arrives. Its description names ticket text, so a request to write a ticket loads it.
+- The vault index says ticket text is never written freehand and names `story-tracker`. The
+  `sprint` skill sends a request to write a ticket there.
+- Marking a ticket done starts the `docs-keeper` agent. `story-tracker` starts it when a story is
+  set `done` in a project with no environments, or when its last environment is set `done`.
+  `docs-keeper` has a new Workflow 5 for it: it makes and ticks the edits under
+  `## Docs to update`, or, with no such section, checks the ticket's change against the
+  "Code to doc map". A gap it does not fix goes to the debt file, and the ticket gets a status
+  note naming what was updated.
+- New command `second-brain task docs <ID>[,<ID>...]` prints each task with unticked lines under
+  `## Docs to update`, its path and those lines.
+- The sprint close lists the done tasks whose `## Docs to update` lines are still unticked, with
+  `task docs`. It recommends `docs-keeper` for them and does not start it. The `scrum-master`
+  agent cannot start `docs-keeper` either, so it reports it as an action for the caller.
 
 Upgrading a vault that was set up with 0.1.0:
 
@@ -113,9 +105,16 @@ Upgrading a vault that was set up with 0.1.0:
 - The vault has no `claude/pull-request.md`, so the doctor warns about it. Run
   `second-brain scaffold vault`: it creates the note and overwrites nothing. Then add the index
   line about pull requests from `templates/vault-index.md.tmpl` under `## In every session`.
+- The plugin's index template is now at `index_version: 2`, and its conventions note at
+  `conventions_version: 3`. The doctor's `index` and `conventions` checks warn about a vault whose
+  copy is older, and say so. Bring the index's text above `## Projects` in line with
+  `templates/vault-index.md.tmpl`: it adds the answer-style line, the rule about where a saved rule
+  goes, the line about pull requests, the subproject note to read with a project's rules, the
+  ticket text line under `## Rules for notes that most often go wrong`, and on the plugin lines
+  that `story-tracker` writes ticket text and that `docs-keeper` runs for a ticket marked done.
+  Keep your own lines and the table, and set `index_version: 2`. Delete
+  `obsidian-conventions.md` and run `second-brain scaffold vault` for the new conventions note.
 - A snapshot taken with 0.1.0 does not compare with one taken now.
-- CI uses `actions/checkout@v7`, which runs on Node.js 24, in place of `@v4`, which runs on
-  Node.js 20.
 - A `tasks.base` written before has no `Depends on` column. Add `note.depends_on` and the
   `depends_on` column from `templates/tasks.base.tmpl` by hand to show it in Obsidian.
 

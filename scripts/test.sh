@@ -1417,6 +1417,7 @@ out_has "sprints turned off again: context says off" "sprint: off"
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"
+is "index template: the answer-style rule is pinned" "$(sed -n '/^## In every session/,/^## Working/p' "$here/templates/vault-index.md.tmpl" | tr '\n' ' ' | grep -c 'Answer in short, plain English. Lead with the answer. The user, or their own instructions, may *say otherwise.')" "1"
 is "templates: only UPPER_SNAKE placeholders" "$(cat "$here"/templates/*.tmpl | grep -o '{{[^}]*}}' | grep -vc '^{{[A-Z][A-Z0-9_]*}}$' || true)" "0"
 bad_links="$(find "$vault" -name '.*' -prune -o -type f -name '*.md' -print | while IFS= read -r f; do check_links "$f"; done)"
 is "generated notes: every link carries a path that exists" "$bad_links" ""

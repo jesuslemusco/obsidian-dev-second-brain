@@ -262,6 +262,10 @@ is "index: what holds in every session comes before what holds for a project" \
   "$(($(lineno "$vault/CLAUDE.md" '## In every session') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: a new skill is not created straight in the link directory" "$vault/CLAUDE.md" '~/.claude/skills'
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
+file_has "index: a rule about one project goes under the project's Rules" "$vault/CLAUDE.md" 'A rule about one project goes under `## Rules` in `<Path>/claude/README.md`'
+is "index: the rule placement holds in every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
+file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'read `<Path>/claude/subprojects/<name>.md` too'
 line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 2"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"

@@ -50,6 +50,11 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
   lists them or prints one's settings; `context` adds a `subproject:` line in a subproject's
   repo; a task carries the `subproject` key (`task new --subproject`, `task set subproject=`).
   The doctor's new `subprojects` check looks at each one. A project with none works as before.
+- A rule the user asks Claude to save goes where it applies. The index says that a rule about one
+  project goes under `## Rules` in its `claude/README.md`, or in its subproject's note, and only a
+  rule for every project goes in `~/.claude/CLAUDE.md`. It also says to read the subproject's note
+  with the project's rules. The doctor's new `global-rules` check warns about a line of
+  `~/.claude/CLAUDE.md` that names a project of the index.
 
 Upgrading a vault that was set up with 0.1.0:
 

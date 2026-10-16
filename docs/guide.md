@@ -66,6 +66,11 @@ its own branches and environments; what it leaves empty comes from the profile. 
 one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
 `/obsidian-dev-second-brain:vault-setup subproject <project>` to add one.
 
+A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
+its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in
+`~/.claude/CLAUDE.md`, and Claude asks when it cannot tell. `vault-doctor` warns about a line of
+`~/.claude/CLAUDE.md` that names a project.
+
 Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
 `vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
 `Current sprint` view; its stories are tracked by status alone.

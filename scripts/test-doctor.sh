@@ -165,6 +165,14 @@ conventions_version: $((tv + 1))/"
 doc
 chk "conventions: a note newer than the template is fine" conventions vault "ok | 0 | -"
 reset
+doc
+chk "pull-request: ok" pull-request vault "ok | 0 | -"
+rm "$vault/claude/pull-request.md"
+doc
+rc_is "pull-request: a missing note leaves exit 0" 0
+chk "pull-request: a missing note warns" pull-request vault "warn | 1 | claude/pull-request.md"
+is "pull-request: the fix says to scaffold the vault" "$(fix_of pull-request vault)" "run second-brain scaffold vault to create it"
+reset
 
 # ---------------------------------------------------------------- index rows and version
 # add_row <name> <path> <keys>: add one row to the index table.
@@ -393,7 +401,7 @@ chk "outside: a row with a .. part fails the index" index vault "fail | 1 | Out:
 is "outside: it gets no project rows, and nothing under it is read" "$(scope_rows Out)/$(marks)" "0/0"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
-is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "9/0/0"
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "10/0/0"
 doc --fix
 is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 index_back
@@ -823,7 +831,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "26"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "27"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -860,8 +868,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 26 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "26 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 27 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "27 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -877,15 +885,15 @@ sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 is "two projects: seventeen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "17/17"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -9 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions import links double-registration always-loaded-size descriptions skill-size "
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -10 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions pull-request import links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "9/17/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "10/17/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

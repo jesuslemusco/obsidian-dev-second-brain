@@ -156,6 +156,13 @@ sb_doc_check_conventions() {
   sb_doc_row ok conventions vault "" "-"
 }
 
+# Check that the vault's pull request format note exists.
+sb_doc_check_pull_request() {
+  local list=""
+  [ -f "$SB_ROOT/claude/pull-request.md" ] || list="claude/pull-request.md"
+  sb_doc_report warn pull-request vault "$list" "run second-brain scaffold vault to create it"
+}
+
 # Check that the link directory's CLAUDE.md imports the index.
 sb_doc_check_import() {
   local home f line p bad="CLAUDE.md"
@@ -795,7 +802,7 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions import links double_registration \
+  for c in pointer index conventions pull_request import links double_registration \
     always_loaded_size descriptions skill_size; do
     "sb_doc_check_$c"
   done

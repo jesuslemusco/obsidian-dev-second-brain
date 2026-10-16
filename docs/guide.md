@@ -13,7 +13,7 @@ format is in the [contract](contract.md).
 | `vault-setup` | skill | Set up a vault, add a project, adopt an existing project, register your own skills. |
 | `vault-doctor` | skill | Check the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
-| `docs-keeper` | agent | Keeps a project's docs in step with its code. |
+| `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
 | `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
 
 ## Other ways to install

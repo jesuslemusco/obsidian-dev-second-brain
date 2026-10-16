@@ -516,6 +516,12 @@ carries the full vault path for a `README.md` and the alias as display text.
   against is the production branch on the remote. Until a change is confirmed, the planned doc
   edits are recorded as pending and not made: under `## Docs to update` in the task README when
   there is a ticket, else as a line starting `pending production:` in the profile's debt file.
+- **A ticket marked done starts `docs-keeper`.** When `story-tracker` sets a story `done` in a
+  project with no environments, or sets its last environment `done`, it starts the `docs-keeper`
+  agent with the ticket id and the README path. The agent makes the edits under
+  `## Docs to update` and ticks them; with no such section it checks the ticket's change against
+  the "Code to doc map". A gap it does not fix goes to the debt file, and it adds a status note
+  to the ticket. The sprint close only reports done tasks with unticked doc lines.
 - Frontmatter is the source of truth. A status is never inferred from prose. A missing or
   non-standard status is reported as "Needs a status" and never set without asking.
 - Notes are moved and renamed with `second-brain move` / `rename`, never `mv`.

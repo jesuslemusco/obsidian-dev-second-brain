@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Marking a ticket done starts the `docs-keeper` agent. `story-tracker` starts it when a story is
+  set `done` in a project with no environments, or when its last environment is set `done`.
+  `docs-keeper` has a new Workflow 5 for it: it makes and ticks the edits under
+  `## Docs to update`, or, with no such section, checks the ticket's change against the
+  "Code to doc map". A gap it does not fix goes to the debt file, and the ticket gets a status
+  note naming what was updated.
+- The sprint close lists the done tasks whose `## Docs to update` lines are still unticked. It
+  recommends `docs-keeper` for them and does not start it.
+- The vault index names a ticket marked done as a `docs-keeper` trigger. A vault set up earlier
+  keeps its old line until the index template is applied again.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

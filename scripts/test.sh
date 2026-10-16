@@ -262,6 +262,7 @@ is "index: what holds in every session comes before what holds for a project" \
   "$(($(lineno "$vault/CLAUDE.md" '## In every session') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: a new skill is not created straight in the link directory" "$vault/CLAUDE.md" '~/.claude/skills'
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
+file_has "index: story-tracker is named as the skill that writes ticket text" "$vault/CLAUDE.md" "\`story-tracker\` writes ticket text and tracks tasks"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
   "$(($(lineno "$vault/CLAUDE.md" '## Rules that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"

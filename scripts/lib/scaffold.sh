@@ -46,7 +46,7 @@ sb_scaffold_hub_line() {
   printf -- '- [[%s/%s/README|%s]] - %s\n' "$path" "$root" "$alias" "$text"
 }
 
-# Create the index, the conventions note and the vault Claude hub.
+# Create the index, the conventions note, the vault Claude hub and the pull request format.
 sb_scaffold_vault() {
   local dir="${1:-}"
   [ $# -le 1 ] || sb_die 5 "usage: second-brain scaffold vault [DIR]"
@@ -61,6 +61,7 @@ sb_scaffold_vault() {
   sb_scaffold_file vault-index.md.tmpl CLAUDE.md
   sb_scaffold_file obsidian-conventions.md.tmpl obsidian-conventions.md
   sb_scaffold_file vault-claude-hub.md.tmpl claude/README.md
+  sb_scaffold_file pull-request.md.tmpl claude/pull-request.md
   return 0
 }
 

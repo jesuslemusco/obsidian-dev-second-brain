@@ -38,8 +38,9 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - Never make the pointer another way. On Windows `ln -s` copies the vault.
 3. Run `second-brain root`. It must print the vault's path. Exit 2: show the message and stop.
 4. Run `second-brain scaffold vault`. It creates `CLAUDE.md` (the index, with an empty
-   `## Projects` table), `obsidian-conventions.md` and `claude/README.md` (the hub for the user's
-   own skills and agents) and prints the ones it created. It never overwrites: a file that was
+   `## Projects` table), `obsidian-conventions.md`, `claude/README.md` (the hub for the user's
+   own skills and agents) and `claude/pull-request.md` (the pull request description format), and
+   prints the ones it created. It never overwrites: a file that was
    there is kept and reported as `exists: <path>`.
 5. The import line is `@~/.claude/second-brain-vault/CLAUDE.md`. It goes through the pointer, so
    it survives a vault move. Read `~/.claude/CLAUDE.md`.

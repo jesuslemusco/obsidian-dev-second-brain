@@ -42,6 +42,7 @@ In the vault:
 CLAUDE.md                         the index: how to use the vault, and the list of projects
 obsidian-conventions.md           the rules: note metadata, topic tags, links, searching
 claude/                           your own global skills and agents
+claude/pull-request.md            the format of every pull request description Claude writes
 <project>/
   README.md
   claude/profile.md               the project's settings, read by every skill and agent

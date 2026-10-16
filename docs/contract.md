@@ -13,6 +13,7 @@ frontmatter below. Change this file first, then the code.
 | pointer | `second-brain-vault` in the link directory, a link to the vault: a symlink on macOS and Linux, a directory junction on Windows. `second-brain pointer set` creates it. The environment variable `SECOND_BRAIN_VAULT` overrides it (tests use this). |
 | index | `<vault>/CLAUDE.md`. Always loaded by Claude through an import in `~/.claude/CLAUDE.md`. Holds the only list of projects. |
 | conventions | `<vault>/obsidian-conventions.md`. Skills point to it as `~/.claude/second-brain-vault/obsidian-conventions.md`. Its first section, "The short version", is the default read. |
+| pull request format | `<vault>/claude/pull-request.md`. The headings and style of every pull request description Claude writes. The index points to it in one line. A project's own `<project>/claude/pull-request.md` wins over it. |
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
 | profile | `<vault>/<project path>/claude/profile.md`. The one per-project settings note. |
 | helper | `bin/second-brain`. On the Bash PATH while the plugin is enabled. It reads and writes the vault's files and never calls Obsidian, which is only the viewer. |
@@ -68,6 +69,7 @@ index_version: 1
   README.md
   claude/README.md
   claude/profile.md
+  claude/pull-request.md       optional; the project's own pull request format, which wins
   tasks/README.md
   tasks/tasks.base
   tasks/<TICKET-ID>/README.md
@@ -277,7 +279,7 @@ Rules that hold for every command:
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
 | `sprint set <project> key=value...` | the changed keys | sets `goal` or `committed` on the sprint in progress; exit 1 when there is none, exit 5 for any other key |
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
-| `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`. A file that already exists is reported on stderr as `exists: <path>` |
+| `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`, `claude/pull-request.md`. A file that already exists is reported on stderr as `exists: <path>` |
 | `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
@@ -388,6 +390,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
 | vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names and paths compared without letter case, `//` and `/./` in a path folded, and keys compared in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
+| vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |
@@ -483,6 +486,7 @@ line that holds only an empty placeholder is dropped. A filled file must contain
 | `vault-index.md.tmpl` | `<vault>/CLAUDE.md` | none |
 | `obsidian-conventions.md.tmpl` | `<vault>/obsidian-conventions.md` | none |
 | `vault-claude-hub.md.tmpl` | `<vault>/claude/README.md` | none |
+| `pull-request.md.tmpl` | `<vault>/claude/pull-request.md` | none |
 | `project-readme.md.tmpl` | `<project>/README.md` | `PROJECT`, `PROJECT_PATH`, `TASKS_HUB_LINE`, `TOPICS_HUB_LINE`, `SPRINTS_HUB_LINE` |
 | `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH` |
 | `profile.md.tmpl` | `<project>/claude/profile.md` | `PROJECT`, `PROJECT_PATH`, `TICKET_KEYS`, `TASKS_ROOT`, `TOPICS_ROOT`, `SPRINTS_ROOT` |

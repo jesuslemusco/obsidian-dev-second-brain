@@ -32,6 +32,12 @@ The helper works on the vault's files alone, and the plugin runs on Windows.
 - The index says first what holds in every session: a new personal skill or agent is created in
   the vault, not straight in `~/.claude/skills` or `~/.claude/agents`. Its closing line, to
   ignore the file for a task outside the projects, is gone: it cancelled that rule.
+- Pull request descriptions have one format: the headings `What was changed?`, `What was added?`,
+  `Dependencies:` and `Risks:`, in that order, with a few one-line bullets in plain English under
+  each. It lives in a new vault note, `claude/pull-request.md`, which `scaffold vault` creates and
+  you can edit. One line in the index points every session to it. A project's own
+  `<project>/claude/pull-request.md` wins. The doctor's new `pull-request` check warns when the
+  vault note is missing.
 - The doctor checks more. `hubs` warns about a project's hub that is missing or empty.
   `task-location` warns about a note with `type: task` that is not the README of its own folder
   under the tasks root. `board` warns, while a sprint is in progress, about a `Current sprint`
@@ -56,6 +62,9 @@ Upgrading a vault that was set up with 0.1.0:
   the file, and its rule about moving notes names `second-brain move` and `second-brain rename`.
   Keep your own lines and the table, and put the template's frontmatter, with its
   `index_version`, at the top. The `vault-doctor` skill does this after asking.
+- The vault has no `claude/pull-request.md`, so the doctor warns about it. Run
+  `second-brain scaffold vault`: it creates the note and overwrites nothing. Then add the index
+  line about pull requests from `templates/vault-index.md.tmpl` under `## In every session`.
 - A snapshot taken with 0.1.0 does not compare with one taken now.
 
 ## 0.1.0 - unreleased

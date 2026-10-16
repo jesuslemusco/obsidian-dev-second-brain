@@ -87,6 +87,8 @@ edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
 }
 lineno() { grep -nF -- "$2" "$1" | head -1 | cut -d: -f1; }
+# section_of <file> <heading>: the non-blank lines under one level-2 heading, up to the next.
+section_of() { awk -v h="## $2" '/^## / { on = ($0 == h); next } on && NF' "$1"; }
 # shown <path>: the path as the helper prints it; on Windows that is the drive form.
 shown() {
   if sb_is_windows; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
@@ -250,12 +252,28 @@ out_has "context: vault none" "vault: none"
 # ---------------------------------------------------------------- scaffold vault
 sb scaffold vault
 rc_is "scaffold vault: exit 0" 0
-out_is "scaffold vault: lists the three files" "CLAUDE.md
+out_is "scaffold vault: lists the four files" "CLAUDE.md
 obsidian-conventions.md
-claude/README.md"
+claude/README.md
+claude/pull-request.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
+is "pull request format: the four headings, in order" "$(grep '^## [WDR]' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "## What was changed?|## What was added?|## Dependencies:|## Risks:|"
+is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
+  "- Use the four headings below, in this order, and no others.
+- Write short plain English: a few bullets under each heading, one line each.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write \`- None.\`"
+file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
+  'A project that keeps its own'
+line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
+  "  root; a project's own \`<Path>/claude/pull-request.md\` wins."
+file_has "index: the pull request rule names the vault note" "$vault/CLAUDE.md" \
+  '- Write a pull request description in the format of `claude/pull-request.md` at the vault'
+is "index: the pull request rule is in the section for every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
 line_is "index: version property" "$vault/CLAUDE.md" "index_version: 1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -295,6 +313,10 @@ sb scaffold vault
 rc_is "scaffold vault again: exit 0" 0
 out_is "scaffold vault again: creates nothing" ""
 file_has "scaffold vault again: does not overwrite" "$vault/claude/README.md" "my own line"
+printf -- '- my own pull request rule\n' >>"$vault/claude/pull-request.md"
+sb scaffold vault
+err_has "scaffold vault again: names the pull request note that exists" "exists: claude/pull-request.md"
+file_has "scaffold vault again: does not overwrite the pull request note" "$vault/claude/pull-request.md" "my own pull request rule"
 mkdir -p "$tmp/vault2/.obsidian"
 sb scaffold vault "$tmp/vault2"
 exists "scaffold vault DIR: writes into that vault" "$tmp/vault2/CLAUDE.md"

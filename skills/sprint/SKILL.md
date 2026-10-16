@@ -124,4 +124,6 @@ Read `${CLAUDE_SKILL_DIR}/close.md` and follow it. Read it only in this mode.
 - Task files belong to the story-tracker skill. This skill touches a task only through
   `second-brain task set`, `second-brain task note` and the sprint commands that move tasks.
 - Ask, do not invent: a date, a goal, a ticket id, a reason.
+- A request to write a ticket (its summary, description or acceptance criteria, with or without
+  an id) goes to the story-tracker skill in `draft` mode. This skill never writes ticket text.
 - The helper prints `-` for an empty cell or value. Read it as empty.

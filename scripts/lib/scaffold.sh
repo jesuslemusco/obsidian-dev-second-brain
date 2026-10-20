@@ -289,10 +289,10 @@ The live board over every task README. Its other views are $views. Nothing is ad
   cur="$(sb_sprint_current_id "$path")"
   base="$SB_ROOT/$path/$troot/tasks.base"
   if [ "$sprints" -eq 0 ] && [ ! -e "$base" ]; then
-    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "SPRINT_ID=none"
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "SPRINT_ID=none"
     sb_board_drop_sprint "$base" || sb_die 1 "cannot write $path/$troot/tasks.base"
   else
-    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "SPRINT_ID=${cur:-none}"
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "SPRINT_ID=${cur:-none}"
   fi
   if [ "$topics" != "." ]; then
     intro="The topics root. Each folder under \`$topics/\` is a topic, and its tag is the folder path below

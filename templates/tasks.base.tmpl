@@ -2,7 +2,11 @@ filters:
   and:
     - file.inFolder("{{TASKS_PATH}}")
     - file.name == "README"
-    - file.folder.split("/").length == {{TASK_DEPTH}}
+    - or:
+        - file.folder.split("/").length == {{TASK_DEPTH}}
+        - and:
+            - file.inFolder("{{TASKS_PATH}}/archive")
+            - file.folder.split("/").length == {{ARCHIVE_DEPTH}}
 formulas:
   task: file.asLink(aliases[0])
   topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))

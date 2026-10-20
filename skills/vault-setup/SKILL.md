@@ -96,6 +96,10 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    user says.
 8. Offer to list the folders under the topics root, `ls -d "<vault>/<path>/<topics_root>"/*/`, so
    the user can confirm the topics.
+9. `scaffold project` leaves the template's `<...>` lines in the project hub, `claude/README.md`
+   and the profile, and the doctor's `placeholders` check warns about each one. Ask for one
+   paragraph on the project and for its rules. Write them in place of those lines, and delete a
+   line the user has nothing for. Never invent a rule.
 
 ## adopt <path>, repo <project> and subproject <project>
 

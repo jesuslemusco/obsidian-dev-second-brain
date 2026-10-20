@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- A new doctor check, `placeholders`, warns about each line of a project's hub, `claude/README.md`,
+  profile or subproject note that still holds the `<...>` text of its template, such as
+  `<A rule Claude must follow in this project, one per bullet.>`. Only the template's own text
+  counts, and task READMEs are not read. `vault-setup` asks for the project's paragraph and rules
+  after `scaffold project`.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

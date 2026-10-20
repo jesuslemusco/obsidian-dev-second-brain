@@ -8,6 +8,8 @@
 - `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
   subproject, and `board <project> "By subproject"` lists the active tasks by subproject.
 - Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
+- The doctor's new `task-subproject` check warns about a task whose `subproject` names no
+  subproject of the project (`<ID>:<value>`). Only a project with a subproject gets the row.
 
 ## 0.2.0 - unreleased
 

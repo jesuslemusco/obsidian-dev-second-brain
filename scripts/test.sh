@@ -259,13 +259,26 @@ claude/pull-request.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
-is "pull request format: the four headings, in order" "$(grep '^## [WDR]' "$vault/claude/pull-request.md" | tr '\n' '|')" \
-  "## What was changed?|## What was added?|## Dependencies:|## Risks:|"
+is "pull request format: the goal first, then the four headings, in order and bold" "$(grep '^## \*\*' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "## **Goal**|## **What was changed?**|## **What was added?**|## **Dependencies:**|## **Risks:**|"
+is "pull request format: every bullet of the format starts with a bold label" \
+  "$(awk '/^```/ { on = !on; next } on && /^- / { n++; if (/^- \*\*<part>:\*\* </) b++ } END { print b + 0 "/" n + 0 }' "$vault/claude/pull-request.md")" "4/4"
+is "pull request format: the goal is one or two lines, not a bullet" \
+  "$(awk '/^## \*\*Goal\*\*$/ { on = 1; next } /^## / { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
+  "<why this pull request exists, in one or two lines>"
 is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
-  "- Use the four headings below, in this order, and no others.
-- Write short plain English: a few bullets under each heading, one line each.
+  "- Write the description from the branch, never from memory of the work. The source branch holds
+  the work; the target is the branch it merges into, usually \`main\`.
+- Read \`git log <target>..<source>\` for the commits and \`git diff <target>...<source>\` for the
+  changes. Name both branches: the checkout may be on another one. Take the target as the remote
+  has it, as in \`origin/main\`, after a \`git fetch\`. Describe what they show and nothing else.
+- Use the five headings below, in this order, and no others. Every heading is bold.
+- Under \`Goal\`, say in one or two lines why the pull request exists.
+- Under each other heading, write a few bullets in short plain English, one line each. Every
+  bullet starts with a bold label, the part it is about: \`- **doctor:** warns on an old index\`.
 - Name the file, the command or the setting. Leave out what the diff already shows line by line.
-- Under a heading with nothing to say, write \`- None.\`"
+- Under a heading with nothing to say, write \`- **None.**\`"
+line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 2"
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \

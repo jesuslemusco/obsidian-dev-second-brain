@@ -156,11 +156,60 @@ sb_doc_check_conventions() {
   sb_doc_row ok conventions vault "" "-"
 }
 
-# Check that the vault's pull request format note exists.
+# Print each text of the pull request note that the plugin has written, one per line: its
+# pull_request_version, then the cksum of the text with its CRs dropped. "none" is the note of
+# 0.2.0, which had no version. A change to the template raises its version and adds a line last.
+sb_doc_pr_texts() {
+  printf '%s\n' \
+    'none 1926705061 992' \
+    '2 3779339813 1749'
+}
+
+# Return 0 when the vault's pull request note is older than the plugin's template. Sets
+# SB_DOC_HAVE to the note's version, or "none", and SB_DOC_WANT to the template's.
+sb_doc_pr_older() {
+  local have want
+  have="$(sb_fm_get "$SB_ROOT/claude/pull-request.md" pull_request_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/pull-request.md.tmpl" pull_request_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  SB_DOC_HAVE="${have:-none}"
+  SB_DOC_WANT="$want"
+  [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }
+}
+
+# Return 0 when the vault's pull request note was never edited: line endings aside, it holds a
+# text the plugin wrote.
+sb_doc_pr_unedited() {
+  local have v crc size
+  read -r crc size v <<EOF
+$(tr -d '\r' <"$SB_ROOT/claude/pull-request.md" | cksum)
+EOF
+  have="$crc $size"
+  while read -r v crc size; do
+    [ "$crc $size" != "$have" ] || return 0
+  done <<EOF
+$(sb_doc_pr_texts)
+EOF
+  return 1
+}
+
+# Check that the vault's pull request format note exists, and that it is not older than the
+# plugin's template. An older note that was never edited is one --fix replaces.
 sb_doc_check_pull_request() {
-  local list=""
-  [ -f "$SB_ROOT/claude/pull-request.md" ] || list="claude/pull-request.md"
-  sb_doc_report warn pull-request vault "$list" "run second-brain scaffold vault to create it"
+  if [ ! -f "$SB_ROOT/claude/pull-request.md" ]; then
+    sb_doc_row warn pull-request vault "claude/pull-request.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  if ! sb_doc_pr_older; then
+    sb_doc_row ok pull-request vault "" "-"
+  elif sb_doc_pr_unedited; then
+    sb_doc_row warn pull-request vault "claude/pull-request.md:$SB_DOC_HAVE" \
+      "the note is older than the plugin's template, version $SB_DOC_WANT, and was never edited: run second-brain doctor --fix"
+  else
+    sb_doc_row warn pull-request vault "claude/pull-request.md:$SB_DOC_HAVE" \
+      "the note is older than the plugin's template, version $SB_DOC_WANT, and was edited: bring it in line with the template by hand, keep your own rules, and set pull_request_version"
+  fi
 }
 
 # Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
@@ -1068,9 +1117,23 @@ sb_doc_json() {
     END { print (rows ? "\n]" : "]") }'
 }
 
-# Make the status/ tag follow the status on each task where they disagree; print each change.
+# Replace the vault's pull request note with the template when it is older and was never edited;
+# print the change. Return 1 when nothing was replaced.
+sb_doc_fix_pull_request() {
+  local f="$SB_ROOT/claude/pull-request.md" tmp
+  [ -f "$f" ] && sb_doc_pr_older && sb_doc_pr_unedited || return 1
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-pr.XXXXXX")" || return 1
+  sb_fill_text pull-request.md.tmpl >"$tmp" || { rm -f "$tmp"; return 1; }
+  cat "$tmp" >"$f"
+  rm -f "$tmp"
+  printf 'fixed: claude/pull-request.md -> version %s (vault)\n' "$SB_DOC_WANT"
+}
+
+# Replace an old, never edited pull request note, and make the status/ tag follow the status on
+# each task where they disagree; print each change.
 sb_doc_fix() {
   local name path keys id file status tag n=0
+  if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"

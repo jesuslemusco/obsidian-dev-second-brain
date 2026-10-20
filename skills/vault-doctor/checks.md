@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then nineteen for each project, and `subprojects` and `task-subproject` as well for a
+the vault, then twenty for each project, and `subprojects` and `task-subproject` as well for a
 project that has a subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
@@ -128,15 +128,21 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 
 ### no-readme
 
-- Means: a folder directly under the tasks root holds no `README.md`.
+- Means: a task folder holds no `README.md`: a folder directly under the tasks root other than `archive`, or one directly under a year of the archive, `archive/<YYYY>/`.
 - Why: the board lists only that README, so the folder's work is on no board and no command finds it by id.
 - Fix: a task: `second-brain task new <ID> --project <project> --title "<title>"` writes the README into the folder. Not a task: tell the user.
 
 ### task-location
 
-- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, or deeper inside a task folder. Each offender is the note's path under the project.
+- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md` or `<tasks root>/archive/<YYYY>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, deeper inside a task folder, or in the archive with no year folder. Each offender is the note's path under the project.
 - Why: the board and the task commands read only the README directly inside a folder of the tasks root, so this task is on no board and no task command finds it by id.
 - Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first; it rewrites the links to the note. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
+
+### task-layout
+
+- Means: the tasks do not follow the profile's `task_layout`. With `flat`, the default, an `archive` folder sits under the tasks root (`archive:flat`). With `archive`, an open task is inside the archive (`<ID>:open`), a done or abandoned task is still outside it `archive_after_days` days or more after its newest status note or its sprint's end, 14 days when the key is absent (`<ID>:to-archive`), or `archive_after_days` is not a whole number (`archive_after_days:not-a-number`).
+- Why: the archive keeps the live tasks folder short, so a done task left out of it makes the folder grow again, and an open task inside it is lost among the finished ones.
+- Fix: `to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>` and prints a `fixed:` line per task; it never moves an open task. `open`: ask whether the task is done; if not, `second-brain move "<its folder>" "<project path>/<tasks root>/<ID>"`. `flat`: ask whether the project should archive; on a yes set `task_layout: archive` in the profile, otherwise move each task in the archive back the same way. `not-a-number`: write the number of days.
 
 ### topic-tags
 

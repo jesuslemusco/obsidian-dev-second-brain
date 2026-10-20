@@ -747,12 +747,14 @@ EOF
   sb_doc_report fail alias-unique "$SB_P_NAME" "$bad" "rename the alias on one of the notes that carry it"
 }
 
-# Check that every folder directly under the tasks root holds a README with something in it.
+# Check that every task folder holds a README with something in it: each folder directly under the
+# tasks root but the archive, and each one directly under a year of the archive.
 sb_doc_check_no_readme() {
   local d bad="" nl=$'\n'
-  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/; do
+  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/ "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/*/; do
     [ -d "$d" ] || continue
     d="${d%/}"
+    [ "$d" != "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || continue
     [ -s "$d/README.md" ] || bad="$bad${d##*/}$nl"
   done
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
@@ -792,6 +794,59 @@ sb_doc_check_task_location() {
     }' | LC_ALL=C sort)"
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
     "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
+}
+
+# Print id, file and reason for each task out of the archive layout: open inside the archive, or
+# done or abandoned outside it for archive_after_days days or more. A done task's age counts from
+# the newest date it holds, of its status notes and its sprint id; with none it is old enough.
+# Nothing in a flat project.
+sb_doc_layout_drift() {
+  local days
+  [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] || return 0
+  days="$(sb_setting "$SB_P_PATH" archive_after_days 14)"
+  case "$days" in *[!0-9]*) days=14 ;; esac
+  printf '%s\n' "$SB_DOC_SCAN" | SB_A="$SB_P_DIR/$SB_TASKS_ROOT/archive/" SB_NOW="$(sb_today)" SB_DAYS="$days" \
+    LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
+    function newest(path,   line, d, best, on) {
+      best = ""; on = 0
+      while ((getline line < path) > 0) {
+        sub(/\r$/, "", line)
+        if (line ~ /^## /) { on = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); continue }
+        if (on && line ~ /^\*\*[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/) {
+          d = substr(line, 3, 10)
+          if (date_ok(d) && d > best) best = d
+        }
+      }
+      close(path)
+      return best
+    }
+    BEGIN { arch = ENVIRON["SB_A"]; now = date_days(ENVIRON["SB_NOW"]); days = ENVIRON["SB_DAYS"] + 0 }
+    NF < 12 { next }
+    {
+      inarch = (substr($1, 1, length(arch)) == arch)
+      if ($3 == "planned" || $3 == "in-progress" || $3 == "in-review") { if (inarch) print $2 "\t" $1 "\topen"; next }
+      if (inarch || ($3 != "done" && $3 != "abandoned")) next
+      d = newest($1)
+      if (date_ok($4) && $4 > d) d = $4
+      if (d == "" || now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
+    }'
+}
+
+# Check that the tasks follow the profile's task_layout: no archive folder in a flat project; in an
+# archive project, no open task in the archive and no done one left out of it too long.
+sb_doc_check_task_layout() {
+  local days bad="" to="$SB_P_PATH/$SB_TASKS_ROOT"
+  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" != "archive" ]; then
+    [ ! -d "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || bad="archive:flat"
+    sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
+      "set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+    return 0
+  fi
+  days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
+  case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number"$'\n' ;; esac
+  bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
+  sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
+    "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
@@ -1105,8 +1160,8 @@ sb_doc_rows() {
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects task_subproject sprints \
-      unresolved_links bare_links line_endings depends_on; do
+      alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
+      sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF
@@ -1153,10 +1208,11 @@ sb_doc_fix_pull_request() {
   printf 'fixed: claude/pull-request.md -> version %s (vault)\n' "$SB_DOC_WANT"
 }
 
-# Replace an old, never edited pull request note, and make the status/ tag follow the status on
-# each task where they disagree; print each change.
+# Replace an old, never edited pull request note, make the status/ tag follow the status on each
+# task where they disagree, then archive each done or abandoned task the task-layout check names;
+# print each change. An open task is never moved.
 sb_doc_fix() {
-  local name path keys id file status tag n=0
+  local name path keys id file status tag new reason n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
@@ -1171,6 +1227,19 @@ sb_doc_fix() {
       printf 'fixed: %s -> %s (%s)\n' "$id" "$tag" "$name"
     done 4<<EOF
 $(sb_doc_status_drift)
+EOF
+    # task archive reads the tasks root as written, so it never runs where that root leaves the
+    # project. A task it refuses stays where it is, with the reason on stderr.
+    case "$SB_DOC_LEAVES" in *tasks_root:*) continue ;; esac
+    while IFS=$'\t' read -r id file reason <&4; do
+      [ "$reason" = "to-archive" ] || continue
+      new="$( (sb_task_archive "$id" --project "$name") )"
+      new="${new%%"$nl"*}"
+      [ -n "$new" ] || continue
+      n=$((n + 1))
+      printf 'fixed: %s -> %s (%s)\n' "$id" "$new" "$name"
+    done 4<<EOF
+$(sb_doc_layout_drift)
 EOF
   done 3<<EOF
 $1

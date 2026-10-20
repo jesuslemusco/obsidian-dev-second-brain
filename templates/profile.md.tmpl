@@ -8,6 +8,7 @@ tracker: ""
 persona: ""
 tasks_root: {{TASKS_ROOT}}
 task_layout: flat
+archive_after_days: 14
 topics_root: {{TOPICS_ROOT}}
 uses_sprints: true
 sprints_root: {{SPRINTS_ROOT}}
@@ -40,6 +41,8 @@ one section at a time. Keep it to facts about the project; the workflow lives in
 - Task layout: `task_layout:` above is `flat | archive`. `flat`, the default, keeps every task in its
   folder under the tasks root. `archive` moves a done or abandoned task once, with
   `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under the tasks root.
+  `archive_after_days:` is how long a done task stays in the live folder before the doctor names it,
+  counted from its newest status note or its sprint's end; `doctor --fix` then archives it.
 
 ## Topics
 

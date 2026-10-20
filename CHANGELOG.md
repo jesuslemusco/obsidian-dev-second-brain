@@ -39,6 +39,12 @@
 - The board file that `scaffold project` writes lists archived tasks too. A board written before
   lists only the live ones in Obsidian until its filter is copied from `templates/tasks.base.tmpl`.
 - `task new` refuses an id that is archived, and the id `archive`, the archive's folder.
+- A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
+  project, an open task in the archive, and a done task left out of it, all warn. A done task is
+  left out once `archive_after_days`, 14 by default, have passed since its newest status note or
+  its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
+  each, and never moves an open task.
+- `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
 
 ## 0.2.0 - unreleased
 

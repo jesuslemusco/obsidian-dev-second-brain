@@ -174,6 +174,92 @@ rc_is "pull-request: a missing note leaves exit 0" 0
 chk "pull-request: a missing note warns" pull-request vault "warn | 1 | claude/pull-request.md"
 is "pull-request: the fix says to scaffold the vault" "$(fix_of pull-request vault)" "run second-brain scaffold vault to create it"
 reset
+# The note as 0.2.0 wrote it, with no version.
+cat >"$tmp/pr-0.2.0.md" <<'EOF'
+---
+aliases:
+  - Pull Request Format
+type: onboarding
+tags:
+  - type/onboarding
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Pull request format
+
+Every pull request description Claude writes follows this format. A project that keeps its own
+`<project>/claude/pull-request.md` uses that one instead. Edit this note to change the format.
+
+## The rules
+
+- Use the four headings below, in this order, and no others.
+- Write short plain English: a few bullets under each heading, one line each.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write `- None.`
+
+## The format
+
+```markdown
+## What was changed?
+
+- <behaviour that works differently now, one line each>
+
+## What was added?
+
+- <new files, commands, checks or options, one line each>
+
+## Dependencies:
+
+- <what must be merged, installed or set first, or "None.">
+
+## Risks:
+
+- <what could break and for whom, or "None.">
+```
+EOF
+PRT="$here/templates/pull-request.md.tmpl"
+pv="$(sed -n 's/^pull_request_version: *//p' "$PRT" | head -1)"
+is "pull-request: the last text the doctor knows is the template's, so a change to it adds a line" \
+  "$(. "$here/scripts/lib/doctor.sh" && sb_doc_pr_texts | tail -1)" "$pv $(tr -d '\r' <"$PRT" | cksum)"
+UNEDITED="the note is older than the plugin's template, version $pv, and was never edited: run second-brain doctor --fix"
+EDITED="the note is older than the plugin's template, version $pv, and was edited: bring it in line with the template by hand, keep your own rules, and set pull_request_version"
+cat "$tmp/pr-0.2.0.md" >"$vault/claude/pull-request.md"
+doc
+rc_is "pull-request: an older note leaves exit 0" 0
+chk "pull-request: the note of 0.2.0 warns, with no version" pull-request vault "warn | 1 | claude/pull-request.md:none"
+is "pull-request: a note never edited is left to --fix" "$(fix_of pull-request vault)" "$UNEDITED"
+edit "$vault/claude/pull-request.md" "s/\$/$CR/"
+doc
+is "pull-request: CRLF line endings are no edit" "$(fix_of pull-request vault)" "$UNEDITED"
+doc --fix
+rc_is "pull-request: --fix exits 0" 0
+is "pull-request: --fix names the note it replaced, first" "$(printf '%s\n' "$OUT" | head -1)" "fixed: claude/pull-request.md -> version $pv (vault)"
+is "pull-request: --fix writes the template" "$(cmp -s "$PRT" "$vault/claude/pull-request.md" && printf same)" "same"
+chk "pull-request: the replaced note is ok" pull-request vault "ok | 0 | -"
+doc --fix
+is "pull-request: --fix again changes nothing" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+cat "$tmp/pr-0.2.0.md" >"$vault/claude/pull-request.md"
+printf -- '- my own pull request rule\n' >>"$vault/claude/pull-request.md"
+cp "$vault/claude/pull-request.md" "$tmp/pr.before"
+doc --fix
+is "pull-request: --fix leaves an edited note alone" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+is "pull-request: the edited note is unchanged" "$(cmp -s "$tmp/pr.before" "$vault/claude/pull-request.md" && printf same)" "same"
+chk "pull-request: an edited note of 0.2.0 warns" pull-request vault "warn | 1 | claude/pull-request.md:none"
+is "pull-request: the fix says to bring an edited note in line by hand" "$(fix_of pull-request vault)" "$EDITED"
+cat "$PRT" >"$vault/claude/pull-request.md"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv - 1))/"
+doc
+chk "pull-request: a lower version warns, with that version" pull-request vault "warn | 1 | claude/pull-request.md:$((pv - 1))"
+is "pull-request: a version changed by hand is an edit" "$(fix_of pull-request vault)" "$EDITED"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv + 1))/"
+doc
+chk "pull-request: a note newer than the template is fine" pull-request vault "ok | 0 | -"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: 99999999999999999999999/"
+doc
+chk "pull-request: a version too long to compare counts as newer" pull-request vault "ok | 0 | -"
+is "pull-request: such a version gives no shell error" "$ERR" ""
+reset
 
 # ---------------------------------------------------------------- index rows and version
 # add_row <name> <path> <keys>: add one row to the index table.

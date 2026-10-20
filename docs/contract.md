@@ -13,7 +13,7 @@ frontmatter below. Change this file first, then the code.
 | pointer | `second-brain-vault` in the link directory, a link to the vault: a symlink on macOS and Linux, a directory junction on Windows. `second-brain pointer set` creates it. The environment variable `SECOND_BRAIN_VAULT` overrides it (tests use this). |
 | index | `<vault>/CLAUDE.md`. Always loaded by Claude through an import in `~/.claude/CLAUDE.md`. Holds the only list of projects. |
 | conventions | `<vault>/obsidian-conventions.md`. Skills point to it as `~/.claude/second-brain-vault/obsidian-conventions.md`. Its first section, "The short version", is the default read. |
-| pull request format | `<vault>/claude/pull-request.md`. The headings and style of every pull request description Claude writes. The index points to it in one line. A project's own `<project>/claude/pull-request.md` wins over it. |
+| pull request format | `<vault>/claude/pull-request.md`. The headings and style of every pull request description Claude writes. The index points to it in one line. A project's own `<project>/claude/pull-request.md` wins over it. Its frontmatter holds `pull_request_version`, the version of `templates/pull-request.md.tmpl` it follows. |
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
 | profile | `<vault>/<project path>/claude/profile.md`. The one per-project settings note. |
 | subproject | A part of a project with its own repos, branches and docs folder, declared by one note `<project>/claude/subprojects/<name>.md`. It shares the project's ticket keys, tasks and board. |
@@ -58,7 +58,8 @@ index_version: 2
 - It is the version of `templates/vault-index.md.tmpl` that the text above `## Projects` follows.
   The template's number goes up when that text changes.
 - The doctor's `index` check warns when the vault's number is missing or lower than the template's.
-  A number too long to compare counts as newer. The same holds for `conventions_version`.
+  A number too long to compare counts as newer. The same holds for `conventions_version` and
+  `pull_request_version`.
 - No command brings an index up to date, because it may hold the user's own lines. It is edited by
   hand: the text above `## Projects` is brought in line with the template, the table is kept, and
   `index_version` is set to the template's number.
@@ -352,7 +353,7 @@ Rules that hold for every command:
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
-| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
+| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` repairs `pull-request` and `status-tag` where it can, prints `fixed: ...` lines, then the table |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check` | nothing when set up, else one line | always exits 0 |
 
@@ -459,7 +460,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
 | vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names and paths compared without letter case, `//` and `/./` in a path folded, and keys compared in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
-| vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn) |
+| vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn), or its `pull_request_version` is missing or lower than the template's (warn, `claude/pull-request.md:<version or none>`). `--fix` replaces an older note that was never edited, one that holds, CRs dropped, a text the plugin wrote: the helper knows each by its `cksum`. The fix of an edited one says to bring it in line with the template by hand |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `global-rules` | a line of the link directory's `CLAUDE.md` names an index project: its name as a whole word, as written, or its path in any letter case (`<project>:<line number>`, or `<project>:@<line number>` for an `@` import line, whose fix is to remove it) (warn). A whole word has no letter, digit, `_` or `-` on either side. The import line of the index and the table rows under a `## Projects` heading are not read, nor the files the `CLAUDE.md` imports |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
@@ -472,7 +473,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project, and a hub that two roots share is named once |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
 | project | `needs-a-status` | status missing or not one of the five (warn; never changed) |
-| project | `status-tag` | the `status/` tag disagrees with `status` (warn; the only check `--fix` repairs) |
+| project | `status-tag` | the `status/` tag disagrees with `status` (warn; `--fix` repairs it) |
 | project | `yaml-traps` | an unquoted alias holding a colon and a space, an unquoted lone dash value, an unquoted sprint id (fail) |
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
 | project | `no-readme` | a task folder without a README (warn) |

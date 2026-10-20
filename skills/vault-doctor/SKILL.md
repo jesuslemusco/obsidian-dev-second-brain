@@ -41,10 +41,11 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 ## fix
 
 1. Start from a check run in this session. Run one when there is none.
-2. Run `second-brain doctor --fix`. It repairs one check only, `status-tag`: the `status/` tag is
-   made to follow `status`. It prints one `fixed:` line per change, then the table.
-3. The proof of that repair is a second `second-brain doctor` run with `status-tag` at `ok`.
-   Compare proves nothing here: it does not cover tags.
+2. Run `second-brain doctor --fix`. It repairs two checks only. `status-tag`: the `status/` tag
+   is made to follow `status`. `pull-request`: an old note that was never edited is replaced by
+   the template. It prints one `fixed:` line per change, then the table.
+3. The proof of those repairs is a second `second-brain doctor` run with the checks it repaired
+   at `ok`. Compare proves nothing here: it covers neither tags nor that note.
 4. Every other check: propose the fix from its `checks.md` entry, one check at a time. Do it only
    after the user agrees to that one. A fix that touches more than one note is a bulk change:
    snapshot before it and compare after it, as below.
@@ -67,8 +68,8 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 
 - `needs-a-status` is never fixed by guessing. Ask for the status of each note, then set it with
   `second-brain task set <ID> status=<status>`.
-- Never run a bulk fix without a snapshot first. `doctor --fix` needs none: it changes status
-  tags only, and its proof is the second doctor run.
+- Never run a bulk fix without a snapshot first. `doctor --fix` needs none: it changes only status
+  tags and a pull request note that was never edited, and its proof is the second doctor run.
 - Never delete a note. The one exception is a file that a fix in `checks.md` says to delete, and
   then only after the user agrees to that fix.
 - Never use `mv`. A move goes through `second-brain move`, run with `--dry-run` first.

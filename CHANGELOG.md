@@ -7,6 +7,12 @@
   `- **doctor:** warns on an old index`; a heading with nothing to say gets `- **None.**`. The
   description is written from the branch, with `git log <target>..<source>` and
   `git diff <target>...<source>`, both branches named, never from memory of the work.
+- The pull request note carries a version, `pull_request_version: 2`, in frontmatter. The doctor's
+  `pull-request` check warns about a note older than the plugin's template. `doctor --fix`
+  replaces an old note that was never edited with the template. An edited one is left alone, and
+  its row says to bring it in line with `templates/pull-request.md.tmpl` by hand: add the goal,
+  bold the headings and the labels, take the rules, keep your own, and set
+  `pull_request_version: 2`.
 
 ## 0.2.0 - unreleased
 

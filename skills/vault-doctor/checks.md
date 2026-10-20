@@ -26,9 +26,9 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 ### pull-request
 
-- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn).
-- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own.
-- Fix: `second-brain scaffold vault` creates the note and overwrites nothing.
+- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn), or it is older than the plugin's template (warn, `claude/pull-request.md:<its version or none>`): its `pull_request_version` is lower or missing.
+- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own, and with an old note it takes the old one.
+- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older and never edited, as the row's fix says: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first; then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the rules the user added, and set `pull_request_version` to the template's.
 
 ### import
 
@@ -106,7 +106,7 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 - Means: a task's `status/` tag disagrees with `status`. `status/done` goes with `done` and `abandoned`, `status/active` with the rest.
 - Why: the tag pane and tag searches go by the tag, so they show a finished task as active, or an active one as finished.
-- Fix: `second-brain doctor --fix`. It makes the tag follow `status` and changes nothing else.
+- Fix: `second-brain doctor --fix`. It makes the tag follow `status` and changes nothing else in the task.
 
 ### yaml-traps
 

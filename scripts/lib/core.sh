@@ -31,7 +31,7 @@ notes:    outline <path> | backlinks <path> | unresolved [project]
 tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" [--session S]
           task tag <ID> add|remove <tag> | task alias <ID> add <alias>
           task docs <ID>[,<ID>...]   (unticked lines under ## Docs to update)
-          task dep <ID> add|remove <ID>
+          task dep <ID> add|remove <ID> | task archive <ID>   (a done task, once)
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 sprints:  sprint current <project> | sprint next <project>

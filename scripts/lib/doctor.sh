@@ -953,7 +953,7 @@ sb_doc_check_line_endings() {
   while IFS=$'\t' read -r id kind; do
     [ -n "$id" ] || continue
     # A single bare last line counts only when a newline ends it.
-    if [ "$kind" = "last" ] && [ -n "$(tail -c 1 "$SB_P_DIR/$SB_TASKS_ROOT/$id/README.md")" ]; then continue; fi
+    if [ "$kind" = "last" ] && [ -n "$(tail -c 1 "$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)")" ]; then continue; fi
     bad="$bad$id$nl"
   done <<EOF
 $(printf '%s\n' "$SB_DOC_FACTS" | awk -F'\t' '$1 == "eol" { print $2 "\t" $3 }')

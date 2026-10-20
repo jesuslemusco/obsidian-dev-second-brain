@@ -31,15 +31,15 @@ sb_alias_scan() {
   '
 }
 
-# Print "project<TAB>file" for each index row whose tasks folder holds the id.
+# Print "project<TAB>file" for each index row whose tasks folder holds the id, live or archived.
 # On Windows a backslash separates folders too, so an id that holds one names no task folder.
 sb_task_by_path() {
   local id="$1" rows="$2" name path keys f
   if sb_is_windows; then case "$id" in *\\*) return 0 ;; esac; fi
   while IFS=$'\t' read -r name path keys; do
     [ -n "$name" ] || continue
-    f="$SB_ROOT/$path/$(sb_setting "$path" tasks_root tasks)/$id/README.md"
-    [ -f "$f" ] && printf '%s\t%s\n' "$name" "$f"
+    sb_task_readme "$SB_ROOT/$path/$(sb_setting "$path" tasks_root tasks)" "$id" |
+      while IFS= read -r f; do printf '%s\t%s\n' "$name" "$f"; done
   done <<EOF
 $rows
 EOF
@@ -414,7 +414,7 @@ sb_task_alias() {
   other=""
   case "$alias" in
     */* | .*) ;;
-    *) [ ! -f "$SB_P_DIR/$SB_TASKS_ROOT/$alias/README.md" ] || other="$SB_P_DIR/$SB_TASKS_ROOT/$alias/README.md" ;;
+    *) other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$alias" | grep -vxF -- "$SB_T_FILE" | head -1)" ;;
   esac
   [ -n "$other" ] || other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$alias" | grep -vxF -- "$SB_T_FILE" | head -1)"
   if [ -n "$other" ] && [ "$other" != "$SB_T_FILE" ]; then
@@ -529,6 +529,7 @@ sb_task_new() {
   [ -n "$id" ] || sb_die 5 "$usage"
   case "$id" in
     *[!A-Za-z0-9._-]* | .* | -*) sb_die 5 "a task id holds letters, digits, dots, hyphens and underscores: $id" ;;
+    archive) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
   esac
   sb_need_root
   if [ -z "$project" ]; then
@@ -543,6 +544,8 @@ sb_task_new() {
   file="$dir/README.md"
   [ ! -e "$file" ] || sb_die 6 "the task already has a README: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
   if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $SB_P_PATH/$SB_TASKS_ROOT/$id"; fi
+  other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)"
+  [ -z "$other" ] || sb_die 6 "the task is archived: $(sb_rel "$other")"
   other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$id" | head -1)"
   [ -z "$other" ] || sb_die 6 "$id is already an alias of $(sb_rel "$other")"
   [ -z "$sub" ] || sb_need_sub "$sub"
@@ -594,6 +597,49 @@ EOF
   sb_rel "$file"
 }
 
+# Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
+# the year being today's, and date it in archived. Print its new path, then the move's links: lines.
+# A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat project.
+sb_task_archive() {
+  local id="" project="" layout status today from dest out rc=0
+  local usage="usage: second-brain task archive <ID> [--project P]"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] || sb_die 5 "--project needs a value"
+        project="$2"
+        shift 2
+        ;;
+      -*) sb_die 5 "$usage" ;;
+      *)
+        [ -z "$id" ] || sb_die 5 "$usage"
+        id="$1"
+        shift
+        ;;
+    esac
+  done
+  [ -n "$id" ] || sb_die 5 "$usage"
+  sb_need_task "$id" "$project"
+  layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
+  [ "$layout" = "archive" ] || sb_die 5 "$SB_P_NAME does not archive tasks (task_layout: $layout in its profile)"
+  case "$SB_T_FILE" in "$SB_P_DIR/$SB_TASKS_ROOT/archive/"*) sb_die 6 "the task is archived already: $SB_T_REL" ;; esac
+  status="$(sb_fm_get "$SB_T_FILE" status)"
+  case "$status" in
+    done | abandoned) ;;
+    *) sb_die 5 "only a done or abandoned task is archived; $SB_T_ID is ${status:-without a status}" ;;
+  esac
+  today="$(sb_today)"
+  from="${SB_T_REL%/*}"
+  dest="$SB_P_PATH/$SB_TASKS_ROOT/archive/${today%%-*}/$SB_T_ID"
+  out="$(cmd_move -- "$from" "$dest")" || rc=$?
+  # A move that stopped before the folder left keeps the task as it was.
+  if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
+  sb_fm_set "$SB_ROOT/$dest/README.md" archived "$today" || sb_die 1 "moved the task, but cannot edit $dest/README.md"
+  printf '%s\n' "$dest/README.md"
+  printf '%s\n' "$out" | grep '^links: ' || true
+  return "$rc"
+}
+
 # Print each task that has unticked lines under "## Docs to update": its id and path, then the lines.
 sb_task_docs() {
   local ids="" project="" id lines usage="usage: second-brain task docs <ID>[,<ID>...] [--project P]"
@@ -638,6 +684,7 @@ cmd_task() {
     tag) sb_task_tag "$@" ;;
     alias) sb_task_alias "$@" ;;
     dep) sb_task_dep "$@" ;;
-    *) sb_die 5 "usage: second-brain task head | docs | set | note | tag | alias | dep | new <ID> ..." ;;
+    archive) sb_task_archive "$@" ;;
+    *) sb_die 5 "usage: second-brain task head | docs | set | note | tag | alias | dep | new | archive <ID> ..." ;;
   esac
 }

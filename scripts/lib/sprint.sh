@@ -170,7 +170,7 @@ sb_sprint_ids() {
   local list="$1" dir="$SB_P_DIR/$SB_TASKS_ROOT" out="" name hit nl=$'\n'
   while IFS= read -r name; do
     [ -n "$name" ] || continue
-    if [ ! -f "$dir/$name/README.md" ]; then
+    if [ -z "$(sb_task_readme "$dir" "$name")" ]; then
       hit="$(sb_task_files "$dir" | sb_alias_scan "$name")"
       case "$hit" in
         '' | *"$nl"*) ;;
@@ -376,7 +376,8 @@ EOF
   fi
   while IFS=$'\t' read -r action file tid title rest; do
     [ -n "$action" ] || continue
-    link="- [[$SB_P_PATH/$SB_TASKS_ROOT/$tid/README|$tid]]"
+    link="${file#"$SB_ROOT"/}"
+    link="- [[${link%.md}|$tid]]"
     [ "$title" = "-" ] || link="$link - $title"
     case "$action" in
       done)

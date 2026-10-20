@@ -16,7 +16,8 @@ the vault. Skills and agents read "The short version" before they write notes.
 ## The short version
 
 1. Every task is `<project>/tasks/<TICKET-ID>/README.md`. Never file a task inside the topic it is
-   about. With no ticket yet, the folder is a kebab-case slug.
+   about. With no ticket yet, the folder is a kebab-case slug. A project whose profile says
+   `task_layout: archive` moves a done task once, to `tasks/archive/<YYYY>/<TICKET-ID>/`.
 2. A note says what it is about with **topic tags**. A topic tag is a folder path under the project's
    **topics root** (`docs/` unless the profile says otherwise), lowercased: `billing/invoices`.
    Tag only folders that exist; a cross-cutting note carries no topic tag.
@@ -103,9 +104,15 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 <project>/tasks/<TICKET-ID>/queries/ ...   # its queries, notebooks, decks and logs, beside it
 <project>/tasks/README.md                  # the tasks hub
 <project>/tasks/tasks.base                 # the task board
+<project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md   # an archived task
 ```
 
 - One folder per task, directly under `tasks/`; its name is the README's first alias.
+- The profile's `task_layout` is `flat`, the default, or `archive`. With `archive`, a done or
+  abandoned task is moved once, with `second-brain task archive <ID>`, to
+  `tasks/archive/<YYYY>/<ID>/`, the year it was archived, and gets `archived: "<date>"`. Every
+  command still finds it by id, and links to it follow it. A `.base` or `.canvas` file that names
+  its old path is not rewritten. A `flat` project never moves a task, and no task is named `archive`.
 - No ticket yet: the folder is a kebab-case slug. Once the ticket exists, add the id as an alias
   with `second-brain task alias <slug> add <ID>`; every command then accepts the id. The folder
   keeps the slug: renaming a task folder is not supported yet.
@@ -209,9 +216,11 @@ hold it, for several the lines that hold the most terms. To see every line of on
 ## Searching
 
 Search by metadata first and by text last. Scope every search to one project, and for tasks to the
-READMEs one level under `tasks/`: task folders hold large logs and data.
+READMEs one level under `tasks/`, or three under `tasks/archive/`: task folders hold large logs and
+data.
 
-- **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias: `second-brain find <ID>`.
+- **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias or an archived task:
+  `second-brain find <ID>`.
 - **Active tasks**, with sprint, topics, branch and next action: `second-brain board <project>`.
 - **Tasks on a topic**, sub-topics included: `second-brain topic <project> billing/invoices`.
 - **From a topic tag to its docs:** the tag is the folder path. Start at that folder's `README.md`.

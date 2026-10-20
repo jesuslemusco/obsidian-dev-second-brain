@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 # board.sh - the task board: the views of the board file, read from task frontmatter.
 
-# Print the task READMEs directly inside a tasks folder, one absolute path per line.
+# Print the task READMEs of a tasks folder, one absolute path per line: those directly inside it,
+# then the archived ones, archive/<YYYY>/<ID>/README.md. The folder archive is never a task.
 sb_task_files() {
   local f
-  for f in "$1"/*/README.md; do
+  for f in "$1"/*/README.md "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do
+    [ "$f" != "$1/archive/README.md" ] || continue
     [ -f "$f" ] && printf '%s\n' "$f"
   done
+  return 0
+}
+
+# Print the README of one task folder of a tasks folder, live or archived; nothing when it has none.
+sb_task_readme() {
+  local f
+  for f in "$1/$2/README.md" "$1"/archive/[0-9][0-9][0-9][0-9]/"$2"/README.md; do
+    [ "$f" != "$1/archive/README.md" ] || continue
+    [ -f "$f" ] && printf '%s\n' "$f"
+  done
+  return 0
 }
 
 # Read file paths on stdin; print one TSV row of frontmatter per readable file.

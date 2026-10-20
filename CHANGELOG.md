@@ -32,6 +32,13 @@
 - Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
 - The doctor's new `task-subproject` check warns about a task whose `subproject` names no
   subproject of the project (`<ID>:<value>`). Only a project with a subproject gets the row.
+- A profile key, `task_layout`, keeps the tasks folder short: `flat`, the default, or `archive`.
+  With `archive`, `second-brain task archive <ID>` moves a done or abandoned task once, through
+  `move`, to `tasks/archive/<YYYY>/<ID>/`, writes `archived: "<date>"` and rewrites the links to
+  it. Every command still finds the task by id, at either depth, in both layouts.
+- The board file that `scaffold project` writes lists archived tasks too. A board written before
+  lists only the live ones in Obsidian until its filter is copied from `templates/tasks.base.tmpl`.
+- `task new` refuses an id that is archived, and the id `archive`, the archive's folder.
 
 ## 0.2.0 - unreleased
 

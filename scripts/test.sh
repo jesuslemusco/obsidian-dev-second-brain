@@ -368,7 +368,9 @@ line_is "index: one row for the project" "$vault/CLAUDE.md" "| Example | $P | EX
 line_is "profile: ticket keys" "$vault/$P/claude/profile.md" "ticket_keys: [EX, EXOPS]"
 line_is "profile: sprints are on by default" "$vault/$P/claude/profile.md" "uses_sprints: true"
 line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder(\"$P/tasks\")"
-line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
+line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '        - file.folder.split("/").length == 6'
+line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base" "            - file.inFolder(\"$P/tasks/archive\")"
+line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
@@ -461,6 +463,7 @@ out_has "profile --keys: scalar" "project: Example"
 out_has "profile --keys: inline list" "ticket_keys: EX, EXOPS"
 out_has "profile --keys: block list" "tags: type/profile"
 out_has "profile --keys: roots" "tasks_root: tasks"
+out_has "profile --keys: the task layout, flat by default" "task_layout: flat"
 out_has "profile --keys: an empty value prints a dash" "persona: -"
 out_has "profile --keys: an empty list prints a dash" "environments: -"
 is "profile: persona sits right after tracker" "$(($(lineno "$vault/$P/claude/profile.md" 'persona:') - $(lineno "$vault/$P/claude/profile.md" 'tracker:')))" "1"
@@ -1274,7 +1277,8 @@ line_is "scaffold roots: topics root in the profile" "$vault/$R/claude/profile.m
 line_is "scaffold roots: sprints root in the profile" "$vault/$R/claude/profile.md" "sprints_root: cadence/sprints"
 for d in tasks docs sprints; do absent "scaffold roots: no default $d folder" "$vault/$R/$d"; done
 line_is "scaffold roots: board folder is the tasks root" "$vault/$R/plan/tasks/tasks.base" "    - file.inFolder(\"$R/plan/tasks\")"
-line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '    - file.folder.split("/").length == 5'
+line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '        - file.folder.split("/").length == 5'
+line_is "scaffold roots: the archive depth counts it too" "$vault/$R/plan/tasks/tasks.base" '            - file.folder.split("/").length == 7'
 line_is "scaffold roots: tasks hub embeds its own board" "$vault/$R/plan/tasks/README.md" "![[$R/plan/tasks/tasks.base#Active]]"
 line_is "scaffold roots: map links the tasks hub" "$vault/$R/README.md" "- [[$R/plan/tasks/README|Roots Tasks Hub]] - one folder per task, and the task board"
 line_is "scaffold roots: map links the topics hub" "$vault/$R/README.md" "- [[$R/knowledge/README|Roots Docs Hub]] - the topics: one folder per subject"
@@ -1763,6 +1767,88 @@ rc_is "board --subproject: no value gives exit 5" 5
 file_has "story-tracker status: inside a subproject's repo, every board call takes its name" "$here/skills/story-tracker/status.md" \
   'add `--subproject <name>` to every `board` call'
 file_has "conventions: the board lists the tasks of one subproject" "$vault/obsidian-conventions.md" '`second-brain board <project> --subproject <name>`'
+
+# ---------------------------------------------------------------- task archive
+A="work/shelf"
+AT="$vault/$A/tasks"
+sb scaffold project Shelf --path "$A" --keys SH
+line_is "archive: a new profile is flat" "$vault/$A/claude/profile.md" "task_layout: flat"
+for t in SH-1 SH-2 SH-3 SH-4; do sb task new "$t" --project Shelf --title "Shelf $t"; done
+sb task dep SH-2 add SH-1
+sb task alias SH-3 add old-slug
+sb task set SH-1 status=done
+sb task archive SH-1
+rc_is "archive: a flat project gives exit 5" 5
+err_has "archive: the message names the layout" "task_layout: flat"
+exists "archive: nothing moved in a flat project" "$AT/SH-1/README.md"
+edit "$vault/$A/claude/profile.md" '/^task_layout: flat$/d'
+sb task archive SH-1
+rc_is "archive: no task_layout key means flat" 5
+edit "$vault/$A/claude/profile.md" 's/^tasks_root: tasks$/tasks_root: tasks\
+task_layout: Archive/'
+sb task archive SH-2
+rc_is "archive: an open task gives exit 5" 5
+err_has "archive: the message names the status" "SH-2 is planned"
+exists "archive: the open task stays" "$AT/SH-2/README.md"
+sb sprint open Shelf --end 2026-10-14
+sb task set SH-1 sprint=2026-10-14
+sb task set SH-2 sprint=2026-10-14
+printf '{"nodes":[{"type":"file","file":"%s"}]}\n' "$A/tasks/SH-1/README.md" >"$vault/$A/plan.canvas"
+cp "$vault/$A/plan.canvas" "$tmp/canvas.before"
+sb task archive SH-1
+rc_is "archive: a done task, layout in any letter case, exit 0" 0
+out_is "archive: prints the new path, then the notes whose links it rewrote" "$A/tasks/archive/2026/SH-1/README.md
+links: $A/tasks/SH-2/README.md | 1"
+absent "archive: the live folder is gone" "$AT/SH-1"
+line_is "archive: the date it was archived" "$AT/archive/2026/SH-1/README.md" 'archived: "2026-10-08"'
+line_is "archive: a link to the task follows it" "$AT/SH-2/README.md" "  - \"[[$A/tasks/archive/2026/SH-1/README|SH-1]]\""
+err_has "archive: a canvas that names the old path is reported" "note: $A/plan.canvas mentions $A/tasks/SH-1"
+is "archive: the canvas is not rewritten" "$(cmp -s "$tmp/canvas.before" "$vault/$A/plan.canvas"; echo $?)" "0"
+rm "$vault/$A/plan.canvas"
+sb task archive SH-1
+rc_is "archive: a task is archived once, exit 6" 6
+err_has "archive: the message gives its path" "$A/tasks/archive/2026/SH-1/README.md"
+sb find SH-1
+out_is "archive: find sees an archived task" "$A/tasks/archive/2026/SH-1/README.md"
+sb task head SH-1
+out_has "archive: task head reads an archived task" "path: $A/tasks/archive/2026/SH-1/README.md"
+sb task set SH-1 next="Nothing left"
+out_is "archive: task set edits an archived task" "next: Nothing left"
+sb task note SH-1 "Archived"
+rc_is "archive: task note writes to an archived task" 0
+sb board Shelf All
+out_has "archive: the board lists an archived task" "SH-1 | Shelf SH-1 | done | 2026-10-14 |"
+out_has "archive: a depends_on link reads its status in the archive" "| SH-1:done"
+sb board Shelf "Current sprint"
+out_has "archive: the sprint view lists it too" "SH-1 | Shelf SH-1 | done |"
+sb task tag SH-1 add shelving
+sb topic Shelf shelving
+out_is "archive: topic lists an archived task" "$A/tasks/archive/2026/SH-1/README.md"
+sb task set SH-3 status=abandoned
+sb task archive old-slug
+rc_is "archive: an abandoned task, by an alias" 0
+sb task head old-slug
+out_has "archive: an alias finds an archived task" "path: $A/tasks/archive/2026/SH-3/README.md"
+sb task new SH-1 --project Shelf
+rc_is "archive: task new refuses an archived id, exit 6" 6
+err_has "archive: task new names the archived README" "the task is archived: $A/tasks/archive/2026/SH-1/README.md"
+absent "archive: task new writes nothing then" "$AT/SH-1"
+sb task new archive --project Shelf
+rc_is "archive: the archive folder is no task id, exit 5" 5
+sb task alias SH-2 add SH-1
+rc_is "archive: an archived id is no alias for another task, exit 6" 6
+mkdir -p "$AT/SH-1"
+cp "$AT/archive/2026/SH-1/README.md" "$AT/SH-1/README.md"
+sb task head SH-1
+rc_is "archive: the same id live and archived is ambiguous, exit 4" 4
+rm -r "$AT/SH-1"
+sb sprint close Shelf --carry SH-2
+rc_is "archive: sprint close sees the archived task" 0
+out_has "archive: it counts as done" "done: SH-1"
+file_has "archive: the close links the archived README" "$vault/$A/sprints/2026-10-14.md" "- [[$A/tasks/archive/2026/SH-1/README|SH-1]] - Shelf SH-1"
+sb task set SH-4 status=done
+sb task archive SH-4 --project Shelf
+rc_is "archive: --project is taken" 0
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"

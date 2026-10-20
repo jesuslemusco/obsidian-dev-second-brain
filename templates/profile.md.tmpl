@@ -7,6 +7,7 @@ ticket_keys: [{{TICKET_KEYS}}]
 tracker: ""
 persona: ""
 tasks_root: {{TASKS_ROOT}}
+task_layout: flat
 topics_root: {{TOPICS_ROOT}}
 uses_sprints: true
 sprints_root: {{SPRINTS_ROOT}}
@@ -36,6 +37,9 @@ one section at a time. Keep it to facts about the project; the workflow lives in
 - Persona: the role a story's description opens with (`*As a* <persona>,`). Set it in `persona:` above.
 - Tracker: <where tickets live, where epics usually sit, any ticket markup to keep>.
 - Extra frontmatter a task README needs here, and how to pick topic tags for a new ticket: <or "none">.
+- Task layout: `task_layout:` above is `flat | archive`. `flat`, the default, keeps every task in its
+  folder under the tasks root. `archive` moves a done or abandoned task once, with
+  `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under the tasks root.
 
 ## Topics
 

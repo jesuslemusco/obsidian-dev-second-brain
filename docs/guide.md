@@ -83,6 +83,11 @@ EX-1 in the `depends_on` list of EX-2. The board shows the list in its `Depends 
 status overview flags a task in progress that waits on one not done, and the doctor warns about a
 link to no task and about tasks that wait on each other in a ring.
 
+The tasks folder can stay short. `task_layout: archive` in a project's profile lets
+`second-brain task archive EX-1` move a done or abandoned task, once, to
+`tasks/archive/<year>/EX-1/`. Its links follow it, and every command still finds it by its id.
+With `task_layout: flat`, the default, no task ever moves.
+
 ## On Windows
 
 Claude Code runs its Bash tool through Git Bash, which comes with Git for Windows, and so does the

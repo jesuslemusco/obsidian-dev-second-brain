@@ -45,6 +45,17 @@
   its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
   each, and never moves an open task.
 - `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
+- The vault index has a rule for finding and reading notes, under
+  `## Rules for notes that most often go wrong`: `second-brain find`, `search`, `task head`, then
+  `outline` and a ranged read, a whole note last, and never grep, cat or sed on vault files. Every
+  session has it without running `second-brain conventions`.
+- The plugin's index template is now at `index_version: 3`, so the doctor's `index` check warns
+  about a vault index without the rule. Add the rule from `templates/vault-index.md.tmpl` under
+  `## Rules for notes that most often go wrong`, keep your own lines and the table, and set
+  `index_version: 3`. The `vault-doctor` skill does this after asking.
+- A new PreToolUse hook warns Claude when a Grep call, a Read of a whole task note, or a shell
+  grep, cat or sed reaches into the vault, and names the helper commands to use. It only adds
+  context: it never blocks a call and never approves one. Edits pass as before.
 
 ## 0.2.0 - unreleased
 

@@ -25,6 +25,8 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
   every Claude session, so Claude knows where each project's notes are.
 - When you ask for something, a skill tells Claude the steps and the `second-brain` helper does
   the reading and writing, straight on the files.
+- When Claude reaches for grep, cat or sed on the vault's notes, a hook reminds it of the helper
+  commands. It never blocks a call.
 - You read the result in Obsidian: the notes, the links between them, and a task board per
   project that is a live table of its tickets.
 

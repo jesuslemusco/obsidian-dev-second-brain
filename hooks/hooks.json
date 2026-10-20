@@ -10,6 +10,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/search-rule.sh\"",
+            "timeout": 5,
+            "onFailure": "continue"
+          }
+        ]
+      }
     ]
   }
 }

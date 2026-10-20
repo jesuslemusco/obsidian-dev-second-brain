@@ -61,6 +61,9 @@ row_is() {
 out_lacks() {
   case "$OUT" in *"$2"*) fail "$1" "unwanted: $2" "in: $OUT" ;; *) pass "$1" ;; esac
 }
+out_has() {
+  case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
+}
 # points_at <desc> <link> <target>: the entry is a link holding exactly that target.
 points_at() {
   if [ -L "$2" ]; then is "$1" "$(readlink "$2")" "$3"; else fail "$1" "not a link: $2"; fi
@@ -649,8 +652,10 @@ rc_is "default link directory: the helper finds the vault through the pointer" 0
 if [ "$OUT" -ef "$vault" ]; then pass "default link directory: root is the vault"; else fail "default link directory: root is the vault" "got: $OUT"; fi
 
 # ---------------------------------------------------------------- the SessionStart hook
-hook="$(sed -n 's/^ *"command": "\(.*\)",$/\1/p' "$here/hooks/hooks.json" | sed 's/\\"/"/g')"
-is "hook: one command in shell form" "$hook" 'bash "${CLAUDE_PLUGIN_ROOT}/bin/second-brain" session-check'
+hooks="$(sed -n 's/^ *"command": "\(.*\)",$/\1/p' "$here/hooks/hooks.json" | sed 's/\\"/"/g')"
+is "hooks: two commands in shell form, SessionStart first" "$hooks" 'bash "${CLAUDE_PLUGIN_ROOT}/bin/second-brain" session-check
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/search-rule.sh"'
+hook="$(printf '%s\n' "$hooks" | sed -n 1p)"
 is "hook: no args list, which would bypass the shell" "$(grep -c '"args"' "$here/hooks/hooks.json")" "0"
 run env CLAUDE_PLUGIN_ROOT="$here" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$hook"
 rc_is "hook: exits 0 with no vault" 0
@@ -664,6 +669,97 @@ if [ "$WIN" -eq 1 ]; then
   run env CLAUDE_PLUGIN_ROOT="$(cygpath -w "$here")" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$hook"
   rc_is "hook: on Windows it runs from a plugin root written with backslashes" 0
   out_is "hook: on Windows it reports from there too" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+fi
+
+# ---------------------------------------------------------------- the PreToolUse hook
+rule="$(printf '%s\n' "$hooks" | sed -n 2p)"
+is "search rule: one matcher, the three tools it reads" "$(grep -c '"matcher": "Bash|Grep|Read"' "$here/hooks/hooks.json")" "1"
+is "search rule: a failure of the hook lets the call go on" "$(grep -c '"onFailure": "continue"' "$here/hooks/hooks.json")" "1"
+if bash -n "$here/hooks/search-rule.sh" 2>"$tmp/stderr"; then pass "syntax: hooks/search-rule.sh"; else fail "syntax: hooks/search-rule.sh" "$(cat "$tmp/stderr")"; fi
+# guard <tool> <tool_input JSON> [cwd]: run the hook as Claude Code does, with its JSON on stdin.
+guard() {
+  printf '{"session_id":"s1","transcript_path":"/t/s1.jsonl","cwd":"%s","permission_mode":"default","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":%s,"tool_use_id":"toolu_1"}' \
+    "${3:-/work}" "$1" "$2" >"$tmp/hook.json"
+  run env CLAUDE_PLUGIN_ROOT="$here" bash -c "$rule" <"$tmp/hook.json"
+}
+# warns <desc>: the last run exits 0 and adds the rule as context, with no permission decision.
+warns() {
+  local want='{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"second-brain: '
+  rc_is "$1: exit 0" 0
+  case "$OUT" in "$want"*'never runs grep, cat or sed on vault files."}}') pass "$1: adds the rule as context" ;;
+    *) fail "$1: adds the rule as context" "got: $OUT" ;; esac
+  out_lacks "$1: makes no permission decision" "permissionDecision"
+}
+# silent <desc>: the last run exits 0 and prints nothing, so the call goes on as it would.
+silent() {
+  rc_is "$1: exit 0" 0
+  out_is "$1: prints nothing" ""
+}
+TV="$vault/$P/tasks/EX-1/README.md"
+guard Bash '{"command":"cat \"'"$TV"'\"","description":"Show the story"}'
+warns "search rule: cat on a task note"
+out_has "search rule: it names the command run" "This command runs cat on vault files."
+for cmd in 'second-brain find <ID-or-alias>' 'second-brain search <project> <text>' 'second-brain task head <ID>' 'second-brain outline <path>'; do
+  out_has "search rule: it names $cmd" "\`$cmd\`"
+done
+guard Bash '{"command":"cd /work &&\nsed -n 1,40p \"'"$vault"'/CLAUDE.md\""}'
+warns "search rule: sed on the next line of a command"
+guard Bash '{"command":"grep -rn \"Chocolatey\" \"'"$vault/$P"'\" | head -5"}'
+warns "search rule: grep in a project folder"
+out_has "search rule: it names grep" "This command runs grep on vault files."
+guard Bash '{"command":"echo \"a \\\"quoted\\\" \\\\ part\" && cat \"'"$vault"'/CLAUDE.md\""}'
+warns "search rule: a command with escaped quotes and backslashes"
+guard Bash '{"command":"cat \"$(second-brain root)/CLAUDE.md\""}'
+warns "search rule: cat on a path built from second-brain root"
+guard Bash '{"command":"grep -n x README.md"}' "$vault/$P"
+warns "search rule: grep in a working directory inside the vault"
+guard Bash '{"command":"second-brain search Example \"Chocolatey\" | grep -v Done"}'
+silent "search rule: grep on the helper's own output"
+guard Bash '{"command":"second-brain task head EX-1 && second-brain outline '"$P"'/tasks/EX-1/README.md"}'
+silent "search rule: the helper's reads"
+guard Bash '{"command":"grep -rn x /work/src && cat /work/README.md"}'
+silent "search rule: grep and cat outside the vault"
+guard Bash '{"command":"grep -rn x \"'"$vault"'-old/notes\""}'
+silent "search rule: a folder whose name only starts with the vault's"
+guard Bash '{"command":"ls \"'"$vault"'\" && concatenate x"}'
+silent "search rule: another command on the vault"
+guard Read '{"file_path":"'"$TV"'"}'
+warns "search rule: a Read of a whole task note"
+out_has "search rule: it says what the Read takes" "This Read takes a whole task note."
+guard Read '{"file_path":"'"$TV"'","offset":12,"limit":30}'
+silent "search rule: a ranged Read of a task note"
+guard Read '{"file_path":"'"$vault/$P"'/README.md"}'
+silent "search rule: a Read of a project hub, which the index says to read"
+guard Read '{"file_path":"/work/tasks/EX-1/README.md"}'
+silent "search rule: a Read outside the vault"
+guard Grep '{"pattern":"Chocolatey","path":"'"$vault/$P"'","output_mode":"content"}'
+warns "search rule: Grep on a vault folder"
+out_has "search rule: it says what the Grep call does" "This Grep call searches vault files."
+guard Grep '{"pattern":"Chocolatey"}' "$vault"
+warns "search rule: Grep with no path from a working directory inside the vault"
+guard Grep '{"pattern":"Chocolatey","path":"/work/src"}'
+silent "search rule: Grep outside the vault"
+guard Edit '{"file_path":"'"$TV"'","old_string":"a","new_string":"b"}'
+silent "search rule: an Edit of a task note"
+for odd in empty:'' text:'not json' cut:'{"tool_name":"Bash","tool_input":{"command":"cat \"'"$vault"'/CLAUDE' number:'{"tool_name":7}'; do
+  printf '%s' "${odd#*:}" >"$tmp/hook.json"
+  run env CLAUDE_PLUGIN_ROOT="$here" bash -c "$rule" <"$tmp/hook.json"
+  silent "search rule: odd input, ${odd%%:*}"
+done
+guard Bash '{"command":"cat \"'"$TV"'\""}'
+run env CLAUDE_PLUGIN_ROOT="$here" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$rule" <"$tmp/hook.json"
+silent "search rule: no vault"
+guard Bash '{"command":"sed -n 1,20p ~/.claude/second-brain-vault/CLAUDE.md"}'
+run env -u SECOND_BRAIN_VAULT -u SECOND_BRAIN_CLAUDE_HOME CLAUDE_PLUGIN_ROOT="$here" bash -c "$rule" <"$tmp/hook.json"
+warns "search rule: sed on the vault through the pointer in ~/.claude"
+guard Read '{"file_path":"C:\\Users\\me\\.claude\\second-brain-vault\\projects\\example\\tasks\\EX-1\\README.md"}'
+run env -u SECOND_BRAIN_VAULT -u SECOND_BRAIN_CLAUDE_HOME CLAUDE_PLUGIN_ROOT="$here" bash -c "$rule" <"$tmp/hook.json"
+warns "search rule: a Read through the pointer in the Windows drive form"
+if [ "$WIN" -eq 1 ]; then
+  wv="$(cygpath -w "$TV" | sed 's/\\/\\\\/g')"
+  guard Read '{"file_path":"'"$wv"'"}'
+  run env CLAUDE_PLUGIN_ROOT="$(cygpath -w "$here")" bash -c "$rule" <"$tmp/hook.json"
+  warns "search rule: on Windows a Read of the vault's own path, from a plugin root written with backslashes"
 fi
 
 # ---------------------------------------------------------------- sb_link_scan

@@ -51,7 +51,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 2
+index_version: 3
 ---
 ```
 
@@ -71,6 +71,10 @@ index_version: 2
 - It says to read the subproject's note with the project's `claude/README.md` when
   `second-brain context` prints a `subproject` line, so the subproject's rules load with the
   project's.
+- Under `## Rules for notes that most often go wrong` it holds the rule for finding and reading
+  notes: `second-brain find`, `search` (also for related notes before a decision), `task head`,
+  then `outline` and a ranged read, and a whole note last; never grep, cat or sed on vault files.
+  A test pins its text.
 
 ## 3. The project
 
@@ -641,6 +645,23 @@ carries the full vault path for a `README.md` and the alias as display text.
   read), then a scoped search, and a whole note last.
 - The plugin's hooks are written in shell form, a `command` string with no `args`, so that Claude
   Code runs them through a shell on every system: Git Bash on Windows.
+- `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`. PreToolUse
+  runs `hooks/search-rule.sh` on every Bash, Grep and Read call, with `"onFailure": "continue"` so
+  that a hook that cannot run never holds a call back.
+- `search-rule.sh` warns and never blocks. It prints one JSON object whose
+  `hookSpecificOutput.additionalContext` says what the call does, then the search and read rule,
+  when one of these reaches into the vault: a Grep call; a Read of a whole task note, a
+  `tasks/<ID>/README.md` read with no `offset` and no `limit`; a Bash command that runs grep,
+  egrep, fgrep, rg, cat or sed. It sets no `permissionDecision`, so the call goes on through the
+  normal permission flow. Otherwise it prints nothing. It always exits 0.
+- A call reaches into the vault when one of its paths, or the working directory, holds the last
+  two parts of the vault's path, through the pointer or the physical one, at the end of a name.
+  Letter case is ignored and a backslash counts as a slash, so `~/`, `$HOME/`, `C:\` and `/c/`
+  forms all match. A Bash command also does when it holds `second-brain root`.
+- Edit and Write are never matched, and a ranged Read or a Read of another note passes in silence:
+  the index tells Claude to read some notes whole, and an Edit needs the note read first.
+- It loads no library and starts one awk, so it stays fast on every call. With no vault, or with
+  input it cannot read, it prints nothing.
 
 ## 10. Writing rules for every file in this repo
 

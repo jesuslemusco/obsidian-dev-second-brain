@@ -63,6 +63,9 @@ out_is() { is "$1" "$OUT" "$2"; }
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
 }
+out_lacks() {
+  case "$OUT" in *"$2"*) fail "$1" "unwanted: $2" "in: $OUT" ;; *) pass "$1" ;; esac
+}
 # edit <file> <sed script>: change a file through a temp file.
 edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
@@ -1380,6 +1383,95 @@ out_has "session-check: one line when the link directory holds no pointer" "no v
 sb pointer set "$vault"
 run env -u SECOND_BRAIN_VAULT "$SB" session-check
 out_is "session-check: silent when the pointer of the link directory leads to the vault" ""
+
+# ---------------------------------------------------------------- session-check, the session block
+reset
+R="$tmp/code/example-api"
+RULE='rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.'
+mkdir -p "$R/.git" "$R/src/deep" "$tmp/code/outside/.git"
+set_repos '[example-api]' "$tmp/code" '[]'
+# on_branch <repo folder> <HEAD line>: the repository's HEAD file, written as git writes it.
+on_branch() { printf '%s\n' "$2" >"$1/.git/HEAD"; }
+on_branch "$R" 'ref: refs/heads/feature/EX-1-first-task'
+sb task set EX-1 "next=Write the first test"
+start=$SECONDS
+sb session-check --cwd "$R/src/deep"
+rc_is "session-check: exit 0 in a repo of a project" 0
+is "session-check: the block for a ticket branch with a story" "$OUT" "second-brain context for this session:
+project: Example
+sprint: 2026-01-14
+branch: feature/EX-1-first-task
+ticket: EX-1
+story: projects/example/tasks/EX-1/README.md - in-progress, next: Write the first test
+$RULE"
+is "session-check: well under the hook's 5 second timeout" "$(((SECONDS - start) < 5))" "1"
+run bash -c 'cd "$1" && "$2" session-check' _ "$R" "$SB"
+out_has "session-check: the working directory is the default" "ticket: EX-1"
+on_branch "$R" 'ref: refs/heads/fix/ex-9-later'
+sb session-check --cwd "$R"
+out_has "session-check: a key in another letter case names the ticket as the index spells it" "ticket: EX-9"
+out_has "session-check: a ticket branch with no story says how to start one" "story: none - run story-tracker start"
+is "session-check: the block ends with the search and read rule" "$(printf '%s\n' "$OUT" | tail -1)" "$RULE"
+on_branch "$R" 'ref: refs/heads/feature/hex-12-and-EX-3'
+sb session-check --cwd "$R"
+out_has "session-check: a key inside a word is no ticket, the next one is" "ticket: EX-3"
+on_branch "$R" 'ref: refs/heads/main'
+sb session-check --cwd "$R"
+out_has "session-check: a branch that names no ticket" "branch: main
+ticket: none
+$RULE"
+out_lacks "session-check: no story line with no ticket" "story:"
+on_branch "$R" '0123456789abcdef0123456789abcdef01234567'
+sb session-check --cwd "$R"
+out_has "session-check: a detached head" "branch: detached
+ticket: none"
+mv "$R/.git" "$tmp/code/main-git"
+mkdir -p "$tmp/code/main-git/worktrees/w1"
+printf 'gitdir: %s\n' "$tmp/code/main-git/worktrees/w1" >"$R/.git"
+printf '%s\n' 'ref: refs/heads/main' >"$tmp/code/main-git/HEAD"
+printf '%s\n' 'ref: refs/heads/feature/EX-2-second' >"$tmp/code/main-git/worktrees/w1/HEAD"
+sb session-check --cwd "$R/src"
+out_has "session-check: a linked worktree reads the HEAD of its own git folder" "ticket: EX-2
+story: projects/example/tasks/EX-2/README.md - done, next: Frame the story"
+printf 'gitdir: %s\n' "../main-git/worktrees/w1" >"$R/.git"
+sb session-check --cwd "$R"
+out_has "session-check: a git folder named from the repo's own folder" "ticket: EX-2"
+if sb_is_windows; then
+  printf 'gitdir: %s\n' "$(cygpath -m "$tmp/code/main-git/worktrees/w1")" >"$R/.git"
+  sb session-check --cwd "$R"
+  out_has "session-check: on Windows a git folder in the drive form" "ticket: EX-2"
+fi
+rm -f "$R/.git"
+sb session-check --cwd "$R"
+out_has "session-check: a project folder that is no git repository" "branch: none
+ticket: none"
+mkdir -p "$R/.git"
+on_branch "$R" 'ref: refs/heads/feature/EX-1-first-task'
+edit "$vault/$P/sprints/2026-01-14.md" 's/^status: in-progress$/status: done/'
+sb session-check --cwd "$R"
+out_has "session-check: no sprint in progress" "sprint: none"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*$/uses_sprints: false/'
+sb session-check --cwd "$R"
+out_lacks "session-check: no sprint line for a project without sprints" "sprint:"
+sb scaffold subproject Example infra --repos example-infra
+mkdir -p "$tmp/code/example-infra/.git"
+on_branch "$tmp/code/example-infra" 'ref: refs/heads/feature/EX-3-infra'
+sb session-check --cwd "$tmp/code/example-infra"
+out_has "session-check: the subproject of the repo" "project: Example
+subproject: infra"
+out_has "session-check: the subproject's repo names its ticket too" "ticket: EX-3"
+sb session-check --cwd "$tmp/code/outside"
+rc_is "session-check: exit 0 in a repo outside every project" 0
+out_is "session-check: silent in a repo outside every project" ""
+sb session-check --cwd "$tmp/nowhere"
+out_is "session-check: silent for a folder that is not there" ""
+printf '%s\n' '# Index' '' 'No table.' >"$vault/CLAUDE.md"
+sb session-check --cwd "$R"
+rc_is "session-check: exit 0 with an index that has no table" 0
+out_is "session-check: silent with an index that has no table" ""
+run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
+out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+reset
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

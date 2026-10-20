@@ -1289,11 +1289,104 @@ cmd_doctor() {
   return 0
 }
 
-# Print one line when no vault is set up, for the SessionStart hook; always exit 0.
+# Print the branch checked out in the repository that holds a directory, read from its files:
+# its name, or "detached". Nothing outside a repository.
+sb_doc_branch() {
+  local d="$1" g="" head=""
+  while [ -n "$d" ]; do
+    if [ -d "$d/.git" ]; then
+      g="$d/.git"
+      break
+    fi
+    if [ -f "$d/.git" ]; then
+      # A linked worktree: the file names its own git folder.
+      IFS= read -r g <"$d/.git"
+      g="${g%$'\r'}"
+      g="$(sb_path_in "${g#gitdir: }")"
+      case "$g" in /*) ;; *) g="$d/$g" ;; esac
+      break
+    fi
+    case "$d" in */*) d="${d%/*}" ;; *) d="" ;; esac
+  done
+  [ -n "$g" ] && [ -f "$g/HEAD" ] || return 0
+  IFS= read -r head <"$g/HEAD"
+  head="${head%$'\r'}"
+  case "$head" in
+    'ref: refs/heads/'?*) printf '%s\n' "${head#ref: refs/heads/}" ;;
+    ?*) printf 'detached\n' ;;
+  esac
+}
+
+# Print the first ticket id a branch names: a key of the project, a hyphen and a number, compared
+# without letter case and printed with the key as the index spells it.
+sb_doc_ticket() {
+  SB_B="$1" SB_K="$2" awk 'BEGIN {
+    lb = tolower(ENVIRON["SB_B"]); n = split(ENVIRON["SB_K"], k, ",")
+    for (i = 1; i <= n; i++) {
+      if (k[i] !~ /[A-Za-z0-9]/) continue
+      lk = tolower(k[i]) "-"; from = 1
+      while ((j = index(substr(lb, from), lk)) > 0) {
+        p = from + j - 1
+        if ((p == 1 || substr(lb, p - 1, 1) !~ /[a-z0-9]/) && match(substr(lb, p + length(lk)), /^[0-9]+/)) {
+          if (!best || p < best || (p == best && length(k[i]) > length(key))) {
+            best = p; key = k[i]; num = substr(lb, p + length(lk), RLENGTH)
+          }
+          break
+        }
+        from = p + 1
+      }
+    }
+    if (best) print key "-" num
+  }'
+}
+
+# Print the session block for a directory, or nothing when no project of the index holds it.
+sb_doc_session() {
+  local cwd rows sub sprint branch ticket f status nxt
+  cwd="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
+  SB_ROOT="$(sb_root 2>/dev/null)" || return 0
+  rows="$(sb_project_rows_by_cwd "$cwd" 2>/dev/null)"
+  case "$rows" in '' | *$'\n'*) return 0 ;; esac
+  IFS=$'\t' read -r SB_P_NAME SB_P_PATH SB_P_KEYS <<EOF
+$rows
+EOF
+  printf 'second-brain context for this session:\nproject: %s\n' "$SB_P_NAME"
+  sub="$(sb_sub_by_cwd "$SB_P_PATH" "$cwd" 2>/dev/null)"
+  case "$sub" in '' | *$'\n'*) ;; *) printf 'subproject: %s\n' "$sub" ;; esac
+  if sb_uses_sprints "$SB_P_PATH"; then
+    sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
+    printf 'sprint: %s\n' "${sprint:-none}"
+  fi
+  branch="$(sb_doc_branch "$cwd")"
+  ticket=""
+  [ -z "$branch" ] || ticket="$(sb_doc_ticket "$branch" "$SB_P_KEYS")"
+  printf 'branch: %s\nticket: %s\n' "${branch:-none}" "${ticket:-none}"
+  if [ -n "$ticket" ]; then
+    f="$(sb_task_by_path "$ticket" "$rows" | cut -f2-)"
+    [ -n "$f" ] || f="$(sb_task_by_alias "$ticket" "$rows" | cut -f2- | head -1)"
+    if [ -n "$f" ]; then
+      status="$(sb_fm_get "$f" status 2>/dev/null)"
+      nxt="$(sb_fm_get "$f" next 2>/dev/null)"
+      printf 'story: %s - %s, next: %s\n' "$(sb_rel "$f")" "${status:--}" "${nxt:--}"
+    else
+      printf 'story: none - run story-tracker start\n'
+    fi
+  fi
+  printf 'rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.\n'
+}
+
+# For the SessionStart hook; always exit 0. With no vault, one line that says so. In a directory
+# of a project of the index, the session block. Anywhere else, nothing.
 cmd_session_check() {
-  local v="${SECOND_BRAIN_VAULT:-}"
+  local v="${SECOND_BRAIN_VAULT:-}" cwd="$PWD" block
+  if [ "${1:-}" = "--cwd" ] && [ $# -ge 2 ]; then cwd="$(sb_path_in "$2")"; fi
   [ -n "$v" ] || v="$(sb_link_home)/second-brain-vault"
-  if [ -d "$v/.obsidian" ] && [ -f "$v/CLAUDE.md" ]; then return 0; fi
-  printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
+  if [ ! -d "$v/.obsidian" ] || [ ! -f "$v/CLAUDE.md" ]; then
+    printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
+    return 0
+  fi
+  # Built in a subshell: a command that exits on an odd vault leaves no half block and no failure.
+  block="$(sb_doc_session "$cwd" 2>/dev/null)" || block=""
+  [ -z "$block" ] || printf '%s\n' "$block"
   return 0
 }

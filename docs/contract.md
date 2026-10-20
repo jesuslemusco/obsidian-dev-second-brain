@@ -380,7 +380,7 @@ Rules that hold for every command:
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`, makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`, then archives each task that `task-layout` names `to-archive` through `task archive`, `fixed: <ID> -> <new README path> (<project>)`, then prints the table. It never moves an open task, and archives nothing in a project whose tasks root leaves it |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
-| `session-check` | nothing when set up, else one line | always exits 0 |
+| `session-check [--cwd DIR]` | with no vault, one line; in a directory of a project of the index, the session block; else nothing | for the SessionStart hook, see session-check below; always exits 0. `--cwd` reads another directory than the working one |
 
 ### Links between notes
 
@@ -528,6 +528,40 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`, all read from
   the vault's files.
 
+### session-check
+
+The SessionStart hook runs it, so that a session knows from its first message where it is. With
+no vault, or a vault with no index, it prints one line:
+`second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init`. In a
+directory that a project of the index holds, found as `context` finds the project, it prints one
+block:
+
+```
+second-brain context for this session:
+project: Example
+subproject: infra
+sprint: 2026-10-14
+branch: feature/EX-123-board-column
+ticket: EX-123
+story: projects/example/tasks/EX-123/README.md - in-progress, next: Add the column
+rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.
+```
+
+- `subproject` is there only when one subproject's repository holds the directory, as in
+  `context`. `sprint` is there only for a project that uses sprints: the sprint in progress, or
+  `none`.
+- `branch` is read from the repository's files, never from a git command: `.git/HEAD`, or in a
+  linked worktree the `HEAD` of the git folder its `.git` file names. It is `detached` for a
+  detached head, and `none` outside a repository.
+- `ticket` is the first `<KEY>-<number>` in the branch for one of the project's keys, at the
+  start of a word, matched without letter case and printed with the key as the index spells it.
+  It is `none` when the branch names none.
+- `story` is there only with a ticket: the vault path of its task README, found by its folder
+  and then by its aliases, with its `status` and `next`; or `none - run story-tracker start`.
+- The block always ends with the `rule` line, the search and read rule of the index.
+- Anywhere else it prints nothing. Anything that fails while the block is built leaves the block
+  out, and the command still exits 0.
+
 ### Code layout
 
 `bin/second-brain` resolves its own real directory, sources every `scripts/lib/*.sh`, then calls
@@ -645,7 +679,8 @@ carries the full vault path for a `README.md` and the alias as display text.
   read), then a scoped search, and a whole note last.
 - The plugin's hooks are written in shell form, a `command` string with no `args`, so that Claude
   Code runs them through a shell on every system: Git Bash on Windows.
-- `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`. PreToolUse
+- `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`, which
+  prints the session block (see session-check). PreToolUse
   runs `hooks/search-rule.sh` on every Bash, Grep and Read call, with `"onFailure": "continue"` so
   that a hook that cannot run never holds a call back.
 - `search-rule.sh` warns and never blocks. It prints one JSON object whose

@@ -110,6 +110,7 @@ Then answer in one line with the end-to-end token from your instructions."
 got="$(field "$tmp/second.jsonl" "$hook_out")"
 holds "hook: exits 0 once the vault is set up" "$got" "exit=0"
 case "$got" in *"no vault is set up"*) fail "hook: no complaint once the vault is set up" "got: $got" ;; *) pass "hook: no complaint once the vault is set up" ;; esac
+case "$got" in *"project:"*) fail "hook: no session block outside a project" "got: $got" ;; *) pass "hook: no session block outside a project" ;; esac
 skills="$(field "$tmp/second.jsonl" "$init_of | .skills[]")"
 agents="$(field "$tmp/second.jsonl" "$init_of | .agents[]")"
 holds "skills: the vault's own skill is found through its link" "$skills" "e2e-vault-skill"
@@ -154,9 +155,31 @@ holds "search rule: the answer gives the story's next action" "$(field "$tmp/fou
 got="$(field "$tmp/fourth.jsonl" 'select(.type == "system" and .subtype == "hook_response" and .hook_event == "PreToolUse") | "exit=\(.exit_code)"' | sort -u | tr '\n' ' ')"
 holds "search rule: the PreToolUse hook ran" "$got" "exit=0"
 case "$got" in *"exit="[!0]*) fail "search rule: the PreToolUse hook always exits 0" "got: $got" ;; *) pass "search rule: the PreToolUse hook always exits 0" ;; esac
+printf '== session context: the SessionStart hook names the project, the ticket and its story ==\n'
+repo="$tmp/code/example-api"
+mkdir -p "$repo"
+step "git init: a repo of the project" git init -q "$repo"
+step "git: on a ticket branch" git -C "$repo" symbolic-ref HEAD refs/heads/feature/EX-1-branch-column
+code="$tmp/code"
+if command -v cygpath >/dev/null 2>&1; then code="$(cygpath -m "$code")"; fi
+sed -e 's/^repos: \[\]$/repos: [example-api]/' -e "s|^repos_root: \"\"$|repos_root: \"$code\"|" \
+  "$vault/$P/claude/profile.md" >"$tmp/profile.md" && mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
+holds "repo: the profile records the repo" "$(bash "$SB" repo Example)" "example-api"
+was="$work"
+work="$repo"
+ask "$tmp/fifth.jsonl" "Which ticket id does the branch of this session name? Reply with the id only."
+work="$was"
+got="$(field "$tmp/fifth.jsonl" "$hook_out")"
+holds "session context: the hook exits 0" "$got" "exit=0"
+holds "session context: it names the project" "$got" "project: Example"
+holds "session context: it names the branch" "$got" "branch: feature/EX-1-branch-column"
+holds "session context: it names the ticket" "$got" "ticket: EX-1"
+holds "session context: it names the story and its status" "$got" "story: projects/example/tasks/EX-1/README.md - in-progress"
+holds "session context: it ends with the search and read rule" "$got" "never grep, cat or sed on vault files."
+holds "session context: Claude knows the ticket from the first message" "$(field "$tmp/fifth.jsonl" 'select(.type == "result") | .result')" "EX-1"
 if [ "$n_fail" -gt 0 ]; then
   printf '\n== what Claude Code printed ==\n'
-  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl" "$tmp/fourth.jsonl"; do
+  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl" "$tmp/fourth.jsonl" "$tmp/fifth.jsonl"; do
     printf -- '-- %s --\n' "${f##*/}"
     cat "$f.err" 2>/dev/null
     field "$f" "$init_of | {skills, agents, plugins}"

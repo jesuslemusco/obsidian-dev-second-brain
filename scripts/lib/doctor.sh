@@ -839,6 +839,20 @@ EOF
     "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
 }
 
+# Check that each task's subproject names a subproject note, without letter case as the helper
+# resolves it. A project with no subproject gets no row.
+sb_doc_check_task_subproject() {
+  local files bad
+  files="$(sb_sub_files "$SB_P_PATH")"
+  [ -n "$files" ] || return 0
+  bad="$(printf '%s\n\034\n%s\n' "$files" "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' '
+    $0 == "\034" { part = 2; next }
+    !part { n = $0; sub(/^.*\//, "", n); sub(/\.md$/, "", n); has[tolower(n)] = 1; next }
+    NF >= 14 && $14 != "-" && !(tolower($14) in has) { print $2 ":" $14 }')"
+  sb_doc_report warn task-subproject "$SB_P_NAME" "$bad" \
+    "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
+}
+
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
@@ -986,8 +1000,8 @@ sb_doc_rows() {
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects sprints unresolved_links bare_links \
-      line_endings depends_on; do
+      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects task_subproject sprints \
+      unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

@@ -553,6 +553,62 @@ sb_doc_check_hubs() {
     "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first" 120
 }
 
+# Check that the project hub, claude/README.md, the profile and each subproject note hold no
+# placeholder of the template they were written from: text in angle brackets, outside inline code
+# unless it opens the code. Only the template's own placeholders count, so the owner's angle
+# brackets never do. Frontmatter and fenced code are not read, nor are task READMEs. An offender
+# is the note's path under the project and the line.
+sb_doc_check_placeholders() {
+  local f bad
+  bad="$({
+    printf '%s\t%s\n' project-readme.md.tmpl README.md project-claude-hub.md.tmpl claude/README.md \
+      profile.md.tmpl claude/profile.md
+    for f in "$SB_P_DIR"/claude/subprojects/*.md; do
+      [ -f "$f" ] || continue
+      printf 'subproject.md.tmpl\tclaude/subprojects/%s\n' "${f##*/}"
+    done
+  } | LC_ALL=C SB_T="$(sb_plugin_root)/templates/" SB_D="$SB_P_DIR/" awk -F'\t' '
+    # Put the placeholders of a line in sp; return how many.
+    function spans(s,   i, j, n, c, code, start) {
+      n = 0; code = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "`") { code = !code; start = i + 1; continue }
+        if (c != "<" || (code && i != start)) continue
+        j = index(substr(s, i + 1), ">")
+        if (j < 2 || substr(s, i + 1, 1) ~ /[ \t]/) continue
+        sp[++n] = substr(s, i, j + 1); i += j
+      }
+      return n
+    }
+    # Read a template into ph when rel is empty, else print rel:<line> for each line of the note
+    # that holds a placeholder of the template.
+    function scan(path, tmpl, rel,   line, k, m, i, st, fence) {
+      k = 0; st = 0; fence = 0
+      while ((getline line < path) > 0) {
+        k++
+        sub(/\r$/, "", line)
+        if (k == 1) { sub(/^\357\273\277/, "", line); if (line == "---") { st = 1; continue } }
+        if (st) { if (line == "---") st = 0; continue }
+        if (line ~ /^[ \t]*(```|~~~)/) { fence = !fence; continue }
+        if (fence) continue
+        m = spans(line)
+        for (i = 1; i <= m; i++) {
+          if (rel == "") ph[tmpl "\t" sp[i]] = 1
+          else if ((tmpl "\t" sp[i]) in ph) { print rel ":" k; break }
+        }
+      }
+      close(path)
+    }
+    $1 == "" { next }
+    {
+      if (!($1 in loaded)) { loaded[$1] = 1; scan(ENVIRON["SB_T"] $1, $1, "") }
+      scan(ENVIRON["SB_D"] $2, $1, $2)
+    }')"
+  sb_doc_report warn placeholders "$SB_P_NAME" "$bad" \
+    "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
+}
+
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
 sb_doc_feed() {
   printf '%s\n%s\n' "$SB_DOC_FACTS" "$SB_DOC_SCAN"
@@ -975,7 +1031,7 @@ sb_doc_rows() {
     # A row whose path leaves the vault gets no rows, and nothing under it is opened.
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
-    for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
+    for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location topic_tags code_doc_map repos subprojects sprints unresolved_links bare_links \
       line_endings depends_on; do
       "sb_doc_check_$c"

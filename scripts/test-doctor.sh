@@ -115,9 +115,9 @@ cp -R "$vault" "$tmp/pristine"
 doc
 rc_is "fresh vault: exit 0" 0
 is "fresh vault: no fail row" "$(printf '%s\n' "$OUT" | grep '^fail ' || true)" ""
-is "fresh vault: the one row that is not ok, with no import line" \
+is "fresh vault: the rows that are not ok: no import line, and the template text not yet filled" \
   "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" { printf "%s:%s ", $1, $2 }')" \
-  "warn:import "
+  "warn:import warn:placeholders "
 is "rows: a result is ok, warn or fail" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" && $1 != "warn" && $1 != "fail"' | grep -c . || true)" "0"
 chk "pointer: ok" pointer vault "ok | 0 | -"
 is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | grep -c . || true)" "0"
@@ -517,6 +517,43 @@ doc Long
 chk "hubs: a long path is printed whole" hubs Long "warn | 1 | a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
 reset
 
+# ---------------------------------------------------------------- placeholders
+HUB="$vault/$P/README.md"
+CHUB="$vault/$P/claude/README.md"
+PF="$vault/$P/claude/profile.md"
+doc Example
+rc_is "placeholders: a warning leaves exit 0" 0
+chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
+  "warn | 25 | README.md:14, claude/README.md:20, claude/README.md:21, claude/profile.md:37, claude/profile.md:38"
+is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
+  "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
+# Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
+edit "$HUB" 's#^<One paragraph.*>$#Example is the scratch project. Its code is in `<repo>/src`, see <https://example.com>.#'
+edit "$CHUB" 's#^- <A rule .*>$#- Name a branch feature/<ID>-<slug>.#'
+edit "$CHUB" 's#^- <Live systems: .*>$#- Live systems: none.#'
+edit "$PF" '/^## Stories$/,$s/<[^ >][^>]*>/none/g'
+doc Example
+chk "placeholders: ok once filled; the owner's own angle brackets, inline code and task READMEs are not read" placeholders Example "ok | 0 | -"
+edit "$CHUB" 's/^- Live systems: none\.$/&\
+- <A rule Claude must follow in this project, one per bullet.>/'
+doc Example
+chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:22"
+edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
+doc Example
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:22, claude/profile.md:37"
+edit "$CHUB" '/^- <A rule /d'
+edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
+printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
+edit "$HUB" 's/^type: moc$/&\
+note: "<One paragraph: what the project is, who it is for, and where its code lives.>"/'
+printf '%s\n' '<A rule Claude must follow in this subproject, one per bullet.>' >>"$HUB"
+doc Example
+chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
+sb scaffold subproject Example infra --repos example-infra
+doc Example
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:31"
+reset
+
 # ---------------------------------------------------------------- task frontmatter and status
 doc Example
 chk "task-frontmatter: ok on new tasks" task-frontmatter Example "ok | 0 | -"
@@ -806,14 +843,14 @@ reset
 SUBS="$vault/$P/claude/subprojects"
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
-is "subprojects: a project with no subproject keeps eighteen rows" "$(scope_rows Example)" "18"
+is "subprojects: a project with no subproject keeps nineteen rows" "$(scope_rows Example)" "19"
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 set_repos '[example-api]' "$tmp/code" '[]'
 add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: a nineteenth row once the project has one" "$(scope_rows Example)" "19"
+is "subprojects: a twentieth row once the project has one" "$(scope_rows Example)" "20"
 is "subprojects: the row sits between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects sprints "
@@ -999,7 +1036,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "29"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "30"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1036,8 +1073,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 29 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "29 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 30 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "30 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1052,16 +1089,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: eighteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "18/18"
+is "two projects: nineteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "19/19"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/18/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/19/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

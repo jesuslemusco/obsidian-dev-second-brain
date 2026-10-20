@@ -8,6 +8,11 @@
 - The guide has a Releases section: `version` changes in one commit on `main`, after the release
   pull request is merged, and that commit is tagged `v<version>`. An early copy of 0.2.0 never
   moved to the final 0.2.0, because both say `0.2.0`; 0.3.0 does move.
+- A new doctor check, `placeholders`, warns about each line of a project's hub, `claude/README.md`,
+  profile or subproject note that still holds the `<...>` text of its template, such as
+  `<A rule Claude must follow in this project, one per bullet.>`. Only the template's own text
+  counts, and task READMEs are not read. `vault-setup` asks for the project's paragraph and rules
+  after `scaffold project`.
 
 ## 0.2.0 - unreleased
 

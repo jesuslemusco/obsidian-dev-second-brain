@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then eighteen for each project, and `subprojects` as well for a project that has a
+the vault, then nineteen for each project, and `subprojects` as well for a project that has a
 subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
@@ -89,6 +89,12 @@ subproject. Every entry is a heading, a blank line and three lines,
 - Means: a hub of the project is missing or empty: `README.md`, `claude/README.md`, or the `README.md` of the tasks root, of the topics root unless it is `.`, or of the sprints root when the project uses sprints.
 - Why: the index tells Claude to read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others. `second-brain scaffold project` creates all of them.
 - Fix: `second-brain scaffold project <name> --path <path>` again, with the name and the path of the index row. It writes each missing hub from its template and overwrites nothing, so it keeps an empty file: ask, then delete that one first. A hub that comes back is a new one, without the lines the old one had gained, such as the sprint links of the sprints hub.
+
+### placeholders
+
+- Means: a line of the project's `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` still holds text in angle brackets from the template it was written from, such as `<A rule Claude must follow in this project, one per bullet.>` (`<path under the project>:<line>`). Only the template's own placeholders count, so the owner's angle brackets never do; frontmatter, fenced code and task READMEs are not read.
+- Why: every session reads the hub and `claude/README.md` before it works on the project, so a rule never written gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
+- Fix: ask the user, then write the rule or the fact the line asks for in its place, or delete the line when there is none. Never invent one. Keep the headings: the `profile` check needs the seven sections.
 
 ### task-frontmatter
 

@@ -696,6 +696,97 @@ else
   printf 'skip  task-location: this file system tells TASKS from tasks\n'
 fi
 
+# ---------------------------------------------------------------- task-layout
+# layout <value>: set task_layout in the profile.
+layout() { edit "$vault/$P/claude/profile.md" "s/^task_layout: .*/task_layout: $1/"; }
+doc Example
+chk "task-layout: ok in a flat project" task-layout Example "ok | 0 | -"
+mkdir -p "$T/archive/2025/EX-0"
+sed 's/^  - EX-2$/  - EX-0/' "$T/EX-2/README.md" >"$T/archive/2025/EX-0/README.md"
+doc Example
+rc_is "task-layout: a warning leaves exit 0" 0
+chk "task-layout: an archive folder in a flat project warns" task-layout Example "warn | 1 | archive:flat"
+is "task-layout: the flat fix names both ways out" "$(fix_of task-layout)" \
+  "set task_layout: archive in the profile, or move each task in $P/tasks/archive back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: the archive folder is no task folder, in a flat project too" no-readme Example "ok | 0 | -"
+chk "task-location: an archived task is in its place, in a flat project too" task-location Example "ok | 0 | -"
+cp "$T/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+is "task-layout: --fix moves nothing in a flat project" "$(printf '%s\n' "$OUT" | head -1)/$(cmp -s "$tmp/EX-2.before" "$T/EX-2/README.md" && printf same)" \
+  "fixed: nothing/same"
+reset
+layout archive
+doc Example
+chk "task-layout: a done task with no date is old enough to archive" task-layout Example "warn | 1 | EX-2:to-archive"
+is "task-layout: the archive fix names --fix and the way back" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $P/tasks/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+sb task note EX-2 "Done"
+doc Example
+chk "task-layout: a done task with a status note of today stays, 14 days by default" task-layout Example "ok | 0 | -"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-12-27 /'
+doc Example
+chk "task-layout: 14 days after its newest status note it is old enough" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$T/EX-2/README.md" 's/^## Status notes$/## Status notes\
+\
+**2025-12-01 - An older note on top**/'
+edit "$T/EX-2/README.md" 's/^\*\*2025-12-27 /**2025-12-28 /'
+doc Example
+chk "task-layout: the newest status note counts, wherever it is" task-layout Example "ok | 0 | -"
+edit "$T/EX-2/README.md" 's/^\*\*2025-12-28 /**2025-12-02 /'
+sb task set EX-2 sprint=2026-01-14
+doc Example
+chk "task-layout: a sprint id newer than every note counts" task-layout Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^archive_after_days: .*/archive_after_days: 0/'
+doc Example
+chk "task-layout: archive_after_days 0 still waits for the sprint's end" task-layout Example "ok | 0 | -"
+sb task set EX-2 sprint=
+sb task note EX-2 "Closed"
+doc Example
+chk "task-layout: archive_after_days 0 takes a task done today" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$vault/$P/claude/profile.md" 's/^archive_after_days: .*/archive_after_days: two weeks/'
+doc Example
+chk "task-layout: a value that is no whole number warns, and 14 days count" task-layout Example "warn | 1 | archive_after_days:not-a-number"
+edit "$vault/$P/claude/profile.md" '/^archive_after_days: /d'
+sb task set EX-3 status=abandoned
+doc Example
+chk "task-layout: no key is 14 days, and an abandoned task is archived too" task-layout Example "warn | 1 | EX-3:to-archive"
+reset
+layout Archive
+mkdir -p "$T/archive/2025"
+sb task set EX-1 status=planned
+sb task note EX-2 "Done"
+mv "$T/EX-1" "$T/archive/2025/EX-1"
+mkdir -p "$T/archive/2025/EX-9" "$T/archive/EX-8"
+printf '%s\n' '---' 'type: task' '---' '' '# A task with no year' >"$T/archive/EX-8/README.md"
+doc Example
+chk "task-layout: an open task in the archive warns, the layout in any letter case" task-layout Example "warn | 1 | EX-1:open"
+chk "no-readme: a folder in a year of the archive with no README warns" no-readme Example "warn | 1 | EX-9"
+chk "task-location: a task in the archive with no year folder warns" task-location Example "warn | 1 | tasks/archive/EX-8/README.md"
+rm -r "$T/archive/2025/EX-9" "$T/archive/EX-8"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-06-30 /'
+cp "$T/EX-3/README.md" "$tmp/EX-3.before"
+doc Example --fix
+rc_is "task-layout --fix: exit 0" 0
+is "task-layout --fix: one fixed line per archived task" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-2 -> $P/tasks/archive/2026/EX-2/README.md (Example)"
+exists "task-layout --fix: the task is in the archive, under the year of today" "$T/archive/2026/EX-2/README.md"
+is "task-layout --fix: it went through task archive" "$(grep -c '^archived: "2026-01-10"$' "$T/archive/2026/EX-2/README.md")" "1"
+exists "task-layout --fix: an open task in the archive is never moved" "$T/archive/2025/EX-1/README.md"
+is "task-layout --fix: an open task outside it is never moved" "$(cmp -s "$tmp/EX-3.before" "$T/EX-3/README.md" && printf same)" "same"
+chk "task-layout --fix: the open task is left to the user" task-layout Example "warn | 1 | EX-1:open"
+doc Example --fix
+is "task-layout --fix: nothing left to move" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+reset
+layout archive
+set_root tasks_root ../../../outside-proj/tasks
+mkdir -p "$O/tasks/EX-2"
+cp "$T/EX-2/README.md" "$O/tasks/EX-2/README.md"
+doc Example --fix
+is "task-layout --fix: nothing is moved through a tasks root that leaves the project" \
+  "$(printf '%s\n' "$OUT" | head -1)/$(ls "$O/tasks" | tr '\n' ' ')" "fixed: nothing/EX-2 OUTMARK-1 tasks.base "
+rm -r "$O/tasks/EX-2"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {
@@ -806,14 +897,14 @@ reset
 SUBS="$vault/$P/claude/subprojects"
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
-is "subprojects: a project with no subproject keeps eighteen rows" "$(scope_rows Example)" "18"
+is "subprojects: a project with no subproject keeps nineteen rows" "$(scope_rows Example)" "19"
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 set_repos '[example-api]' "$tmp/code" '[]'
 add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: a nineteenth row once the project has one" "$(scope_rows Example)" "19"
+is "subprojects: a twentieth row once the project has one" "$(scope_rows Example)" "20"
 is "subprojects: the row sits between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects sprints "
@@ -999,7 +1090,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "29"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "30"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1036,8 +1127,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 29 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "29 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 30 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "30 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1052,16 +1143,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: eighteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "18/18"
+is "two projects: nineteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "19/19"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/18/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/19/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

@@ -103,6 +103,7 @@ tracker: "Jira"
 persona: "Example engineer"
 tasks_root: tasks
 task_layout: flat
+archive_after_days: 14
 topics_root: docs
 uses_sprints: true
 sprints_root: sprints
@@ -133,6 +134,11 @@ tags:
   another value, is `flat`: every task stays in `<tasks_root>/<ID>/`. With `archive`, a done or
   abandoned task moves once, through `task archive`, to `<tasks_root>/archive/<YYYY>/<ID>/`, the
   year being the year it was archived. Commands find a task at either depth in both layouts.
+- `archive_after_days` is a whole number of days, 14 when the key is absent. With `archive`, a done
+  or abandoned task outside the archive is due once that many days have passed since the newest
+  date it holds: the date of its newest status note, or its sprint id when that is later. A task
+  with neither is due at once. The doctor's `task-layout` check names it, and `doctor --fix`
+  archives it.
 - `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
   them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
   no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,
@@ -365,7 +371,7 @@ Rules that hold for every command:
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
-| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` prints `fixed: ...` lines, then the table |
+| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`, then archives each task that `task-layout` names `to-archive` through `task archive`, `fixed: <ID> -> <new README path> (<project>)`, then prints the table. It never moves an open task, and archives nothing in a project whose tasks root leaves it |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check` | nothing when set up, else one line | always exits 0 |
 
@@ -485,11 +491,12 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project, and a hub that two roots share is named once |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
 | project | `needs-a-status` | status missing or not one of the five (warn; never changed) |
-| project | `status-tag` | the `status/` tag disagrees with `status` (warn; the only check `--fix` repairs) |
+| project | `status-tag` | the `status/` tag disagrees with `status` (warn; `--fix` repairs it) |
 | project | `yaml-traps` | an unquoted alias holding a colon and a space, an unquoted lone dash value, an unquoted sprint id (fail) |
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
-| project | `no-readme` | a task folder without a README (warn) |
-| project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
+| project | `no-readme` | a task folder without a README (warn): a folder directly under the tasks root other than `archive`, or one directly under `<tasks_root>/archive/<YYYY>/` |
+| project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md` or `<tasks_root>/archive/<YYYY>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
+| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`) |
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |

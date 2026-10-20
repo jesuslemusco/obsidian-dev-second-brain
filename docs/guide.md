@@ -84,7 +84,9 @@ link to no task and about tasks that wait on each other in a ring.
 The tasks folder can stay short. `task_layout: archive` in a project's profile lets
 `second-brain task archive EX-1` move a done or abandoned task, once, to
 `tasks/archive/<year>/EX-1/`. Its links follow it, and every command still finds it by its id.
-With `task_layout: flat`, the default, no task ever moves.
+With `task_layout: flat`, the default, no task ever moves. The doctor names a done task still in
+the live folder `archive_after_days` days after its last status note or its sprint's end, 14 by
+default, and `second-brain doctor --fix` archives it. It never moves an open task.
 
 ## On Windows
 

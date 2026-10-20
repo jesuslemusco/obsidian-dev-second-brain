@@ -53,6 +53,53 @@ Then set it up:
 
 Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
 
+## Update
+
+Claude Code reads the plugin from a local copy of the marketplace, and it does not refresh that
+copy on its own. It updates the plugin only when the plugin's `version` changes. To get a new
+release:
+
+1. Refresh the marketplace. In your shell:
+   `claude plugin marketplace update second-brain`. Inside Claude Code the same is
+   `/plugin marketplace update second-brain`.
+2. Update the plugin. In your shell:
+   `claude plugin update obsidian-dev-second-brain@second-brain`. Inside Claude Code, run `/plugin`,
+   open the Installed tab, pick the plugin and choose Update now.
+3. Restart Claude Code. `/reload-plugins` loads the new skills and agents into a session that is
+   open, but a restart is the sure way: the session-start hook and the `second-brain` command then
+   come from the new version.
+4. Bring the vault up to the new version. Run `/obsidian-dev-second-brain:vault-doctor check`, then
+   `/obsidian-dev-second-brain:vault-doctor fix`. The doctor warns when the vault's index or
+   conventions note is older than the plugin's template. `fix` repairs what is safe and asks
+   before it changes anything else.
+
+`claude plugin list` shows the version you have. Compare it with the newest section of the
+[changelog](CHANGELOG.md). When nothing is newer, step 2 prints `already at the latest version`.
+
+### When the update does not take
+
+If `claude plugin list` still shows the old version after steps 1 and 2, uninstall the plugin and
+install it again:
+
+```
+claude plugin uninstall obsidian-dev-second-brain@second-brain
+claude plugin install obsidian-dev-second-brain@second-brain
+```
+
+The install refreshes the marketplace first. Your vault and your notes are not touched. Restart
+Claude Code, then run the doctor as in step 4.
+
+An early copy of 0.2.0 never moves to the final 0.2.0, because both say `0.2.0`. Version 0.3.0 and
+later do move with the steps above.
+
+### Update by itself
+
+Auto-update is off for a marketplace you added yourself. To turn it on for `second-brain`, run
+`/plugin` in Claude Code, open the Marketplaces tab, pick `second-brain` and choose Enable
+auto-update. From then on Claude Code refreshes the marketplace and updates the plugin in the
+background during a session, and the next session starts on the new version. It does not run the
+doctor, so do step 4 after a release that changes the vault.
+
 ## Your own skills and agents
 
 The vault can hold skills and agents of your own, next to the ones the plugin ships.
@@ -80,7 +127,7 @@ change the format. A project that keeps its own `<project>/claude/pull-request.m
 ## More
 
 - [docs/guide.md](docs/guide.md): what the plugin ships, how a vault is laid out, notes on Windows,
-  and how to run the tests.
+  how to run the tests, and how a release is made.
 - [docs/contract.md](docs/contract.md): every helper command and the format of the notes.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

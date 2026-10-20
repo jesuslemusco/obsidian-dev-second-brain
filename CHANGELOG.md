@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- The README has an Update section: refresh the marketplace, update the plugin, restart Claude Code,
+  then run the doctor's `check` and `fix`. It says what to do when the update does not take, and
+  how to turn on auto-update for the `second-brain` marketplace.
+- The guide has a Releases section: `version` changes in one commit on `main`, after the release
+  pull request is merged, and that commit is tagged `v<version>`. An early copy of 0.2.0 never
+  moved to the final 0.2.0, because both say `0.2.0`; 0.3.0 does move.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

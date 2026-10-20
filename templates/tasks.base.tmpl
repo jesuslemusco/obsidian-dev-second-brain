@@ -25,6 +25,8 @@ properties:
     displayName: Depends on
   note.epic:
     displayName: Epic
+  note.subproject:
+    displayName: Subproject
   note.branch:
     displayName: Branch
   file.mtime:
@@ -77,6 +79,23 @@ views:
         direction: ASC
     order:
       - formula.topics
+      - formula.task
+      - title
+      - status
+      - next
+      - branch
+  - type: table
+    name: By subproject
+    filters:
+      or:
+        - status == "in-progress"
+        - status == "in-review"
+        - status == "planned"
+    groupBy:
+      property: subproject
+      direction: ASC
+    order:
+      - subproject
       - formula.task
       - title
       - status

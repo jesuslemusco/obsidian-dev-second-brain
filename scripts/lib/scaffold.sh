@@ -273,8 +273,8 @@ sb_scaffold_project() {
     [ "$sprints" -eq 1 ] || sb_fm_set_raw "$profile" uses_sprints false
   fi
   views='`Current sprint`, `By topic`,
-`Needs a status` and `All`'
-  [ "$sprints" -eq 1 ] || views='`By topic`, `Needs a status` and `All`'
+`By subproject`, `Needs a status` and `All`'
+  [ "$sprints" -eq 1 ] || views='`By topic`, `By subproject`, `Needs a status` and `All`'
   intro="One folder per task: \`$troot/<TICKET-ID>/README.md\`, with its queries, notebooks and logs beside it.
 A task is never filed under the topic it is about; it carries topic tags instead.
 

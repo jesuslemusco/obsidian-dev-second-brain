@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- The pull request format opens with a `Goal` section, one or two lines on why the pull request
+  exists. Every heading is bold, and every bullet starts with a bold label, as in
+  `- **doctor:** warns on an old index`; a heading with nothing to say gets `- **None.**`. The
+  description is written from the branch, with `git log <target>..<source>` and
+  `git diff <target>...<source>`, both branches named, never from memory of the work.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

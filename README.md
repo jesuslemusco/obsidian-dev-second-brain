@@ -72,10 +72,13 @@ Skills and agents you keep straight in `~/.claude`, outside the vault, are never
 
 ## Pull request descriptions
 
-Every pull request description Claude writes uses four headings, in this order: `What was
-changed?`, `What was added?`, `Dependencies:` and `Risks:`, with a few one-line bullets in plain
-English under each. The format is the note `claude/pull-request.md` in your vault: edit it to
-change the format. A project that keeps its own `<project>/claude/pull-request.md` uses that one.
+Every pull request description Claude writes opens with a `Goal`, one or two lines on why the
+pull request exists, then uses four headings, in this order: `What was changed?`, `What was
+added?`, `Dependencies:` and `Risks:`. Every heading is bold, and under each a few one-line
+bullets in plain English start with a bold label. Claude writes it from the branch, with
+`git log <target>..<source>` and `git diff <target>...<source>`, never from memory of the work.
+The format is the note `claude/pull-request.md` in your vault: edit it to change the format. A
+project that keeps its own `<project>/claude/pull-request.md` uses that one.
 
 ## More
 

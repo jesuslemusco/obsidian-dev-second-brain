@@ -112,9 +112,12 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 - A goal tracked as one ticket per environment is **one** folder and one README, under the first
   environment's id, with every id in `aliases` and an `envs:` mapping in the frontmatter.
 - The **task board** (`tasks.base`, Obsidian Bases) is a live table over the README frontmatter,
-  with the views `Active`, `Current sprint`, `By topic`, `Needs a status` and `All`. Nothing is
-  added to it by hand. A status edited in the board changes the property only; fix the `status/`
-  tag the next time the note is touched.
+  with the views `Active`, `Current sprint`, `By topic`, `By subproject`, `Needs a status` and
+  `All`. Nothing is added to it by hand. A status edited in the board changes the property only;
+  fix the `status/` tag the next time the note is touched.
+- A task of one subproject carries its name in `subproject`. Every task stays in the one `tasks/`
+  folder: the `By subproject` view groups them, and
+  `second-brain board <project> --subproject <name>` lists the tasks of one subproject.
 - A status note is one line, newest first, under `## Status notes`:
   `` **YYYY-MM-DD (session `<id>`) - <text>** ``.
 
@@ -175,6 +178,7 @@ slashes. `second-brain help` lists everything.
 |---|---|
 | A note by id or alias | `second-brain find "<ID or alias>"` |
 | A project's task board | `second-brain board <project> [view]` |
+| The tasks of one subproject | `second-brain board <project> --subproject <name>` |
 | Tasks carrying a topic tag or a sub-tag | `second-brain topic <project> billing/invoices` |
 | What links to a note | `second-brain backlinks "<vault path>"` |
 | Links that go nowhere | `second-brain unresolved [project]` |

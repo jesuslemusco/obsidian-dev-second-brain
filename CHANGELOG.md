@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- The board shows a task's `subproject` and has a `By subproject` view, which groups the active
+  tasks by subproject. `scaffold project` writes it into a new board. The doctor's `board` check
+  warns when a project with a subproject has a board without it (`tasks.base:no-subproject-view`).
+- `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
+  subproject, and `board <project> "By subproject"` lists the active tasks by subproject.
+- Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

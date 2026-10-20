@@ -1,8 +1,8 @@
 # Guide
 
-What the plugin ships, how a vault is laid out, what differs on Windows, and how to work on the
-plugin itself. The short version is in the [README](../README.md); every helper command and note
-format is in the [contract](contract.md).
+What the plugin ships, how a vault is laid out, what differs on Windows, how to work on the plugin
+itself, and how a release is made. The short version is in the [README](../README.md); every helper
+command and note format is in the [contract](contract.md).
 
 ## What you get
 
@@ -130,3 +130,21 @@ runner. It costs API usage, so the `e2e` workflow runs only when started from th
 
 `docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
 template placeholders. Change it first, then the code.
+
+## Releases
+
+Claude Code updates an installed plugin only when `version` in `.claude-plugin/plugin.json`
+changes. Two different copies of the plugin that say the same `version` look the same to it, so
+the people who have the older copy never get the newer one. That is why `version` changes in one
+place only, at the end of a release.
+
+- Feature branches merge into a `release/<version>` branch, such as `release/0.3.0`.
+- One pull request takes the release branch into `main`.
+- Neither a feature branch nor the release branch changes `version`.
+- After that pull request is merged, one commit on `main` sets `version` in
+  `.claude-plugin/plugin.json` and dates the changelog section: `## 0.3.0 - unreleased` becomes
+  `## 0.3.0 - 2026-10-21`, with the release date. Tag that commit `v<version>`, as in
+  `git tag v0.3.0`, and push the tag. This is the only commit that changes `version`.
+- Every release has a section in `CHANGELOG.md`, written as the feature branches merge.
+
+A user updates with the steps in the [README](../README.md#update).

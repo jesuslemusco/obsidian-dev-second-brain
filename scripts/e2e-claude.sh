@@ -53,12 +53,15 @@ step() {
   shift
   if out="$("$@" 2>&1)"; then pass "$desc"; else fail "$desc" "exit $?" "output: $out"; fi
 }
-# ask <out file> <prompt>: one headless Claude Code session in the work folder, as a JSON stream.
+# ask <out file> <prompt> [tool...]: one headless Claude Code session in the work folder, as a JSON
+# stream. It may run the helper and skills, and the tools named.
 ask() {
-  (cd "$work" && claude -p "$2" --plugin-dir "$plugin" --model haiku --max-budget-usd 0.50 \
+  local out="$1" prompt="$2"
+  shift 2
+  (cd "$work" && claude -p "$prompt" --plugin-dir "$plugin" --model haiku --max-budget-usd 0.50 \
     --output-format stream-json --verbose --include-hook-events --no-session-persistence \
-    --allowedTools "Bash(second-brain *)" Skill >"$1" 2>"$1.err")
-  printf 'claude exit %s, %s lines\n' "$?" "$(wc -l <"$1" | tr -d ' ')"
+    --allowedTools "Bash(second-brain *)" Skill "$@" >"$out" 2>"$out.err")
+  printf 'claude exit %s, %s lines\n' "$?" "$(wc -l <"$out" | tr -d ' ')"
 }
 # field <out file> <jq filter>: print what the filter selects.
 field() {
@@ -132,9 +135,28 @@ case "${got#"${got%%[![:space:]]*}"}" in
   '*As a*'*) pass "trigger: the ticket text starts with *As a*" ;;
   *) fail "trigger: the ticket text starts with *As a*" "got: $got" ;;
 esac
+printf '== search rule: a fresh session recalls a story with the helper ==\n'
+step "task new: a tracked story" bash "$SB" task new EX-1 --project Example --title "Show each task's branch on the board"
+step "task set: its next action" bash "$SB" task set EX-1 status=in-progress "next=Add a branch column to the board view"
+# Read, Grep, cat, sed and grep are allowed too, so a whole-file read could come first.
+ask "$tmp/fourth.jsonl" "Where does story EX-1 stand, and what is its next action? Answer in one line." \
+  Read Grep "Bash(cat *)" "Bash(sed *)" "Bash(grep *)"
+uses='select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | if .name == "Bash" then "bash " + (.input.command | gsub("\n"; " ")) elif .name == "Read" then "read " + .input.file_path + (if (.input.offset // .input.limit) then " ranged" else "" end) else .name end'
+first="$(field "$tmp/fourth.jsonl" "$uses" | awk '
+  /^bash .*second-brain +(task +head|outline|search)/ { print "helper: " $0; exit }
+  /^read / && !/ ranged$/ { print "whole: " $0; exit }
+  /^Grep$/ || /^bash .*[^a-z](cat|sed|grep|head|tail)[ \t]/ { print "whole: " $0; exit }')"
+case "$first" in
+  helper:*) pass "search rule: task head, outline or search comes before any whole-file read" ;;
+  *) fail "search rule: task head, outline or search comes before any whole-file read" "first: ${first:-none}" ;;
+esac
+holds "search rule: the answer gives the story's next action" "$(field "$tmp/fourth.jsonl" 'select(.type == "result") | .result')" "branch column"
+got="$(field "$tmp/fourth.jsonl" 'select(.type == "system" and .subtype == "hook_response" and .hook_event == "PreToolUse") | "exit=\(.exit_code)"' | sort -u | tr '\n' ' ')"
+holds "search rule: the PreToolUse hook ran" "$got" "exit=0"
+case "$got" in *"exit="[!0]*) fail "search rule: the PreToolUse hook always exits 0" "got: $got" ;; *) pass "search rule: the PreToolUse hook always exits 0" ;; esac
 if [ "$n_fail" -gt 0 ]; then
   printf '\n== what Claude Code printed ==\n'
-  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl"; do
+  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl" "$tmp/fourth.jsonl"; do
     printf -- '-- %s --\n' "${f##*/}"
     cat "$f.err" 2>/dev/null
     field "$f" "$init_of | {skills, agents, plugins}"

@@ -51,7 +51,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 2
+index_version: 3
 ---
 ```
 
@@ -70,6 +70,10 @@ index_version: 2
 - It says to read the subproject's note with the project's `claude/README.md` when
   `second-brain context` prints a `subproject` line, so the subproject's rules load with the
   project's.
+- Under `## Rules for notes that most often go wrong` it holds the rule for finding and reading
+  notes: `second-brain find`, `search` (also for related notes before a decision), `task head`,
+  then `outline` and a ranged read, and a whole note last; never grep, cat or sed on vault files.
+  A test pins its text.
 
 ## 3. The project
 

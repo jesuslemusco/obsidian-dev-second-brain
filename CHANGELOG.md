@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- The vault index has a rule for finding and reading notes, under
+  `## Rules for notes that most often go wrong`: `second-brain find`, `search`, `task head`, then
+  `outline` and a ranged read, a whole note last, and never grep, cat or sed on vault files. Every
+  session has it without running `second-brain conventions`.
+- The plugin's index template is now at `index_version: 3`, so the doctor's `index` check warns
+  about a vault index without the rule. Add the rule from `templates/vault-index.md.tmpl` under
+  `## Rules for notes that most often go wrong`, keep your own lines and the table, and set
+  `index_version: 3`. The `vault-doctor` skill does this after asking.
+
 ## 0.2.0 - unreleased
 
 The helper works on the vault's files alone, and the plugin runs on Windows.

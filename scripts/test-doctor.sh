@@ -125,10 +125,11 @@ is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | gr
 # ---------------------------------------------------------------- the skill's entries
 # The skill reads an entry with one Grep and the four lines after its heading.
 CHECKS="$here/skills/vault-doctor/checks.md"
-# The fresh vault has no subproject, so its rows lack subprojects, which comes right after repos.
+# The fresh vault has no subproject, so its rows lack subprojects and task-subproject, which come
+# right after repos.
 is "checks.md: one entry for each check the doctor prints, in the order of its table" \
   "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
-  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects /')"
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects task-subproject /')"
 is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
   function entry() {
     while (n > 0 && body[n] == "") n--
@@ -927,8 +928,11 @@ reset
 
 # ---------------------------------------------------------------- subprojects
 SUBS="$vault/$P/claude/subprojects"
+edit "$T/EX-3/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
+is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
 is "subprojects: a project with no subproject keeps nineteen rows" "$(scope_rows Example)" "19"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
@@ -939,10 +943,13 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: a twentieth row once the project has one" "$(scope_rows Example)" "20"
-is "subprojects: the row sits between repos and sprints" \
-  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "sprints" { printf "%s ", $2 }')" \
-  "repos subprojects sprints "
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "21"
+is "subprojects: its rows sit between repos and sprints" \
+  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
+  "repos subprojects task-subproject sprints "
+chk "task-subproject: a value that names no note warns as <ID>:<value>" task-subproject Example "warn | 1 | EX-3:ghost"
+is "task-subproject: the fix names task set" "$(fix_of task-subproject)" \
+  "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
 chk "subprojects: a repository with no map row" subprojects Example "warn | 1 | infra/example-infra:no-map-row"
 chk "subprojects: the profile's own map check is left as it was" code-doc-map Example "ok | 0 | -"
 chk "board: a project with a subproject and a board with no By subproject view warns" board Example "warn | 1 | tasks.base:no-subproject-view"
@@ -956,6 +963,11 @@ is "board: the fix holds both" "$(fix_of board)" \
 edit "$T/tasks.base" 's/sprint == "2025-12-31"/sprint == "2026-01-14"/; s/name: By repo$/name: By subproject/'
 doc Example
 chk "board: ok once the view is back" board Example "ok | 0 | -"
+sb task set EX-3 subproject=infra
+edit "$T/EX-1/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: INFRA/'
+doc Example
+chk "task-subproject: ok when each value names a note, in any letter case" task-subproject Example "ok | 0 | -"
 add_map_row '| example-infra | a new module | docs/infra |'
 doc Example
 rc_is "subprojects: exit 0" 0
@@ -980,6 +992,7 @@ rm -f "$SUBS/infra.md"
 printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' '---' >"$SUBS/more.md"
 mkdir -p "$vault/$P/docs/more"
 doc Example
+chk "task-subproject: a removed note leaves its tasks with a stale value" task-subproject Example "warn | 2 | EX-1:INFRA, EX-3:infra"
 chk "subprojects: a repo in two subprojects, whatever the case, and a subproject with no repos" subprojects Example \
   "warn | 4 | more/example-infra:no-location, EXAMPLE-INFRA:twice, ops/EXAMPLE-INFRA:no-location, web:no-repos"
 rm -f "$SUBS/more.md" "$SUBS/ops.md" "$SUBS/web.md"

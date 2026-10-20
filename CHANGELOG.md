@@ -10,6 +10,9 @@
   about a vault index without the rule. Add the rule from `templates/vault-index.md.tmpl` under
   `## Rules for notes that most often go wrong`, keep your own lines and the table, and set
   `index_version: 3`. The `vault-doctor` skill does this after asking.
+- A new PreToolUse hook warns Claude when a Grep call, a Read of a whole task note, or a shell
+  grep, cat or sed reaches into the vault, and names the helper commands to use. It only adds
+  context: it never blocks a call and never approves one. Edits pass as before.
 
 ## 0.2.0 - unreleased
 

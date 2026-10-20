@@ -24,6 +24,12 @@
   its row says to bring it in line with `templates/pull-request.md.tmpl` by hand: add the goal,
   bold the headings and the labels, take the rules, keep your own, and set
   `pull_request_version: 2`.
+- The board shows a task's `subproject` and has a `By subproject` view, which groups the active
+  tasks by subproject. `scaffold project` writes it into a new board. The doctor's `board` check
+  warns when a project with a subproject has a board without it (`tasks.base:no-subproject-view`).
+- `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
+  subproject, and `board <project> "By subproject"` lists the active tasks by subproject.
+- Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
 
 ## 0.2.0 - unreleased
 

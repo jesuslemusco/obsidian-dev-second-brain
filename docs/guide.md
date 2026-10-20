@@ -65,7 +65,9 @@ subprojects. Each one is a note, `claude/subprojects/<name>.md`, that lists its 
 its own branches and environments; what it leaves empty comes from the profile. Its docs live in
 `docs/<name>/`, and its rules in the note's `## Rules` section. The project keeps one ticket key and
 one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
-`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one.
+`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one. The board's
+`By subproject` view groups the tasks by subproject, and in a subproject's repo the status overview
+lists that subproject's tasks.
 
 A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
 its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in

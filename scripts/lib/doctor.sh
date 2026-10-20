@@ -549,9 +549,19 @@ sb_doc_check_profile() {
   sb_doc_report fail profile "$SB_P_NAME" "$bad" "$fix"
 }
 
-# Check that the board file exists, and that its Current sprint view filters on the sprint in progress.
+# Return 0 when a board file has a view by that name.
+sb_doc_has_view() {
+  SB_VIEW="$2" LC_ALL=C awk '
+    BEGIN { want = "^[ \t]*(-[ \t]+)?name:[ \t]*[\"\047]?" ENVIRON["SB_VIEW"] "[\"\047]?[ \t]*$" }
+    { sub(/\r$/, "") }
+    $0 ~ want { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$1"
+}
+
+# Check that the board file exists, that its Current sprint view filters on the sprint in progress,
+# and that a project with a subproject has the By subproject view.
 sb_doc_check_board() {
-  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit
+  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
     sb_doc_row fail board "$SB_P_NAME" "tasks.base" "run second-brain scaffold project again with the same name and path to write it"
     return 0
@@ -562,26 +572,26 @@ sb_doc_check_board() {
     awk -F'\t' '$3 == "in-progress" { print $2 }' | LC_ALL=C sort | tail -1)"
   if [ -n "$cur" ]; then
     lit="$(sb_board_sprint_literal "$base")"
-    if [ -z "$lit" ]; then
-      # No id was read: the view is there with a filter in another form, or it is not there.
-      if LC_ALL=C awk '
-        { sub(/\r$/, "") }
-        /^[ \t]*(-[ \t]+)?name:[ \t]*["\047]?Current sprint["\047]?[ \t]*$/ { found = 1; exit }
-        END { exit(found ? 0 : 1) }' "$base"; then
-        sb_doc_row warn board "$SB_P_NAME" "tasks.base:filter" \
-          "write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
-      else
-        sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
-          "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+    if [ -n "$lit" ]; then
+      if [ "$lit" != "$cur" ]; then
+        bad="tasks.base:$lit"
+        fix="set the filter of the board's Current sprint view to the sprint in progress, $cur"
       fi
-      return 0
-    fi
-    if [ "$lit" != "$cur" ]; then
-      sb_doc_row warn board "$SB_P_NAME" "tasks.base:$lit" "set the filter of the board's Current sprint view to the sprint in progress, $cur"
-      return 0
+    # No id was read: the view is there with a filter in another form, or it is not there.
+    elif sb_doc_has_view "$base" "Current sprint"; then
+      bad="tasks.base:filter"
+      fix="write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
+    else
+      bad="tasks.base:no-view"
+      fix="add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
     fi
   fi
-  sb_doc_row ok board "$SB_P_NAME" "" "-"
+  # A board scaffolded before the By subproject view lacks it; only a project with a subproject needs it.
+  if [ -n "$(sb_sub_files "$SB_P_PATH")" ] && ! sb_doc_has_view "$base" "By subproject"; then
+    bad="${bad:+$bad$nl}tasks.base:no-subproject-view"
+    fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+  fi
+  sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"
 }
 
 # Check that each hub scaffold project writes is there, with something in it. A hub that two

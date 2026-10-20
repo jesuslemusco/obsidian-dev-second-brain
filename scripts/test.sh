@@ -147,7 +147,7 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] [--subproject S] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
   "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
@@ -371,9 +371,11 @@ line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
-for v in Active "Current sprint" "By topic" "Needs a status" All; do
+line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
+for v in Active "Current sprint" "By topic" "By subproject" "Needs a status" All; do
   line_is "board: view $v" "$vault/$P/tasks/tasks.base" "    name: $v"
 done
+file_has "tasks hub: names the By subproject view" "$vault/$P/tasks/README.md" '`By subproject`, `Needs a status` and `All`'
 line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tasks.base#Active]]"
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
@@ -1511,10 +1513,10 @@ is "no sprints: every map link points at a file" "$(check_links "$vault/$N/READM
 file_lacks "no sprints: the tasks hub names no sprint view" "$vault/$N/tasks/README.md" "Current sprint"
 file_lacks "no sprints: the board has no sprint view, filter or column" "$vault/$N/tasks/tasks.base" "sprint"
 file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/tasks.base" "carried_from"
-for v in Active "By topic" "Needs a status" All; do
+for v in Active "By topic" "By subproject" "Needs a status" All; do
   line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
 done
-is "no sprints: the board keeps its four views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "4"
+is "no sprints: the board keeps its five views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "5"
 line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
 sb context --cwd "$vault/$N"
 out_has "no sprints: context says off" "sprint: off"
@@ -1738,6 +1740,29 @@ rc_is "task set subproject: an unknown subproject gives exit 1" 1
 line_is "task set subproject: the old value stays" "$vault/$M/tasks/MU-2/README.md" "subproject: tools"
 sb task set MU-2 subproject=
 out_is "task set subproject: an empty value removes the key" "subproject: (removed)"
+sb task new MU-3 --project Multi --title "Tools work" --subproject tools
+sb board Multi "By subproject"
+is "board By subproject: active tasks by subproject, none last" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+sb board Multi subproject
+is "board: subproject names the By subproject view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+sb board Multi --subproject INFRA
+rc_is "board --subproject: exit 0" 0
+is "board --subproject: only that subproject's tasks, the name matched without case" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 "
+edit "$vault/$M/tasks/MU-3/README.md" 's/^subproject: tools$/subproject: TOOLS/'
+sb task set MU-3 status=done
+sb board Multi All --subproject tools
+is "board --subproject: a value written in another case counts, in any view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-3 "
+sb board Multi --subproject tools
+rc_is "board --subproject: the view still applies, exit 0" 0
+out_is "board --subproject: a done task is not in the Active view" ""
+sb board Multi --subproject nope
+rc_is "board --subproject: a name that is no subproject gives exit 1" 1
+err_has "board --subproject: the message says how to list them" "second-brain subproject Multi"
+sb board Multi --subproject
+rc_is "board --subproject: no value gives exit 5" 5
+file_has "story-tracker status: inside a subproject's repo, every board call takes its name" "$here/skills/story-tracker/status.md" \
+  'add `--subproject <name>` to every `board` call'
+file_has "conventions: the board lists the tasks of one subproject" "$vault/obsidian-conventions.md" '`second-brain board <project> --subproject <name>`'
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"

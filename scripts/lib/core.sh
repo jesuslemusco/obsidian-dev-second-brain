@@ -23,7 +23,7 @@ lookups:  help | version | root | context [--cwd DIR] | projects
           project --name N | --key K | --cwd DIR
           profile <project> --keys | <section> | repo <project> [name]
           subproject <project> [name | --cwd DIR]
-          board <project> [view] | topic <project> <tag>
+          board <project> [view] [--subproject S] | topic <project> <tag>
           find <ID-or-alias> [--project P] | search <project> "<text>" [--in SUBPATH]
 notes:    outline <path> | backlinks <path> | unresolved [project]
           move <from> <to> [--dry-run] | rename <path> <name> [--dry-run]

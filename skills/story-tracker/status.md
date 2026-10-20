@@ -10,9 +10,14 @@ One call: `second-brain board <project> [view]`. Every line is one story:
 `EX-1:done,EX-2:planned`: each task it depends on, with that task's status, or `missing` when the
 link leads to no note.
 
+Inside a subproject's repo, the `second-brain context` of Step 0 prints a `subproject:` line. Then
+add `--subproject <name>` to every `board` call, so the overview lists that subproject's stories,
+and name it in the count line. Leave the flag out when the user asks for the whole project.
+
 | The user asks for | Do |
 |---|---|
 | nothing specific | `second-brain board <project>`. The default view is `Active`: status `planned`, `in-progress` or `in-review` |
+| one subproject | `--subproject <name>` on the board call. Exit 1: the name is no subproject; show `second-brain subproject <project>` |
 | "all", "everything" | view `All` |
 | one status | view `All`, keep the rows with that status |
 | one ticket | `second-brain task head <ID>`, rendered as one block |

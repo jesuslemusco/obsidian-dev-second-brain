@@ -807,6 +807,9 @@ SUBS="$vault/$P/claude/subprojects"
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "subprojects: a project with no subproject keeps eighteen rows" "$(scope_rows Example)" "18"
+edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
+doc Example
+chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 set_repos '[example-api]' "$tmp/code" '[]'
 add_map_row '| example-api | a new endpoint | the API reference |'
@@ -819,6 +822,17 @@ is "subprojects: the row sits between repos and sprints" \
   "repos subprojects sprints "
 chk "subprojects: a repository with no map row" subprojects Example "warn | 1 | infra/example-infra:no-map-row"
 chk "subprojects: the profile's own map check is left as it was" code-doc-map Example "ok | 0 | -"
+chk "board: a project with a subproject and a board with no By subproject view warns" board Example "warn | 1 | tasks.base:no-subproject-view"
+is "board: the fix names what to add" "$(fix_of board)" "add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the missing view share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-subproject-view"
+is "board: the fix holds both" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2025-12-31"/sprint == "2026-01-14"/; s/name: By repo$/name: By subproject/'
+doc Example
+chk "board: ok once the view is back" board Example "ok | 0 | -"
 add_map_row '| example-infra | a new module | docs/infra |'
 doc Example
 rc_is "subprojects: exit 0" 0

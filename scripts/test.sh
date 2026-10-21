@@ -1946,8 +1946,8 @@ file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/arch
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
 file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
 file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
-file_has "index: an archived task's path" "$vault/CLAUDE.md" '`<project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md` once archived'
-file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'names the subproject in its `subproject` property.'
+file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
+file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
 file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conventions.md" '`subproject` is the name of the task'"'"'s subproject, spelled as its note'
 VD="$here/skills/vault-doctor/SKILL.md"

@@ -60,7 +60,9 @@
   `index_version: 3`. The `vault-doctor` skill does this after asking.
 - A new PreToolUse hook warns Claude when a Grep call, a Read of a whole task note, or a shell
   grep, cat or sed reaches into the vault, and names the helper commands to use. It only adds
-  context: it never blocks a call and never approves one. Edits pass as before.
+  context: it never blocks a call and never approves one. Edits pass as before. It sets
+  `"onFailure": "continue"`, so a hook that cannot run lets the call go on, on Windows too; the
+  plugin now needs Claude Code 2.1.295 or later.
 - The SessionStart hook prints the session's context in a repo of a project: the project, the
   subproject, the sprint in progress, the branch and the ticket it names, and that ticket's story
   with its status and next step, or `story: none - run story-tracker start`. It ends with the

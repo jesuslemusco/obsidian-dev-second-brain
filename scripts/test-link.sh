@@ -675,6 +675,8 @@ fi
 rule="$(printf '%s\n' "$hooks" | sed -n 2p)"
 is "search rule: one matcher, the three tools it reads" "$(grep -c '"matcher": "Bash|Grep|Read"' "$here/hooks/hooks.json")" "1"
 is "search rule: a failure of the hook lets the call go on" "$(grep -c '"onFailure": "continue"' "$here/hooks/hooks.json")" "1"
+is "search rule: the README names the Claude Code version that onFailure needs" \
+  "$(grep -c '^- \[Claude Code\](https://claude.com/claude-code), version 2\.1\.295 or later' "$here/README.md")" "1"
 if bash -n "$here/hooks/search-rule.sh" 2>"$tmp/stderr"; then pass "syntax: hooks/search-rule.sh"; else fail "syntax: hooks/search-rule.sh" "$(cat "$tmp/stderr")"; fi
 # guard <tool> <tool_input JSON> [cwd]: run the hook as Claude Code does, with its JSON on stdin.
 guard() {

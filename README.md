@@ -34,7 +34,8 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
 
 ## What you need
 
-- [Claude Code](https://claude.com/claude-code).
+- [Claude Code](https://claude.com/claude-code), version 2.1.295 or later. The vault search hook
+  tells it to let a call go on when the hook cannot run, which older versions do not know.
 - [Obsidian](https://obsidian.md/download), version 1.9 or later, to read the vault and its task
   boards. The plugin works on the files and never calls the app, so it does not have to be running.
 - macOS, Linux, or Windows with [Git for Windows](https://gitforwindows.org).

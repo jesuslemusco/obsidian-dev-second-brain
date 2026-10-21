@@ -685,7 +685,9 @@ carries the full vault path for a `README.md` and the alias as display text.
 - `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`, which
   prints the session block (see session-check). PreToolUse
   runs `hooks/search-rule.sh` on every Bash, Grep and Read call, with `"onFailure": "continue"` so
-  that a hook that cannot run never holds a call back.
+  that a hook that cannot run never holds a call back: on Windows without Git Bash, a shell-form
+  PreToolUse hook that fails with no `onFailure` can block the call. The key needs Claude Code
+  2.1.295 or later, which the README names.
 - `search-rule.sh` warns and never blocks. It prints one JSON object whose
   `hookSpecificOutput.additionalContext` says what the call does, then the search and read rule,
   when one of these reaches into the vault: a Grep call; a Read of a whole task note, a

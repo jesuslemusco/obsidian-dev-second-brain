@@ -41,7 +41,8 @@
   lists only the live ones in Obsidian until its filters block is copied from
   `templates/tasks.base.tmpl`. In a project with `task_layout: archive`, the doctor's `board` check
   warns about such a board (`tasks.base:no-archive-filter`).
-- `task new` refuses an id that is archived, and the id `archive`, the archive's folder.
+- `task new` refuses an id that is archived, and the id `archive`, the archive's folder, in any
+  letter case. `task alias` refuses the alias `archive` the same way.
 - A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
   project, an open task in the archive, and a done task left out of it, all warn. A done task is
   left out once `archive_after_days`, 14 by default, have passed since its newest status note or

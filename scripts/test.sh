@@ -1838,6 +1838,18 @@ err_has "archive: task new names the archived README" "the task is archived: $A/
 absent "archive: task new writes nothing then" "$AT/SH-1"
 sb task new archive --project Shelf
 rc_is "archive: the archive folder is no task id, exit 5" 5
+for a in Archive ARCHIVE; do
+  sb task new "$a" --project Shelf
+  rc_is "archive: $a, in another letter case, is no task id either, exit 5" 5
+done
+is "archive: nothing written for it" "$(ls "$AT" | grep -ci '^archive$')/$(ls "$AT/archive")" "1/2026"
+cp "$AT/SH-2/README.md" "$tmp/SH-2.before"
+for a in archive Archive; do
+  sb task alias SH-2 add "$a"
+  rc_is "archive: $a is no task alias, exit 5" 5
+done
+err_has "archive: the alias message names the folder" "archive is the folder of the archived tasks"
+is "archive: the aliases stay as they were" "$(cmp -s "$tmp/SH-2.before" "$AT/SH-2/README.md" && printf same)" "same"
 sb task alias SH-2 add SH-1
 rc_is "archive: an archived id is no alias for another task, exit 6" 6
 mkdir -p "$AT/SH-1"

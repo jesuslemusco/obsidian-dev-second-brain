@@ -409,6 +409,7 @@ sb_task_alias() {
   [ "$action" = "add" ] || sb_die 5 "$usage"
   alias="$(printf '%s' "$alias" | tr '\n\r\t' '   ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [ -n "$alias" ] || sb_die 5 "$usage"
+  case "$alias" in [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task alias" ;; esac
   sb_need_task "$id" "$project"
   # An alias names one task: refuse one that another task of the project already answers to.
   other=""
@@ -529,7 +530,8 @@ sb_task_new() {
   [ -n "$id" ] || sb_die 5 "$usage"
   case "$id" in
     *[!A-Za-z0-9._-]* | .* | -*) sb_die 5 "a task id holds letters, digits, dots, hyphens and underscores: $id" ;;
-    archive) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
+    # A file system that ignores letter case would write it into the archive folder.
+    [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
   esac
   sb_need_root
   if [ -z "$project" ]; then

@@ -646,8 +646,10 @@ carries the full vault path for a `README.md` and the alias as display text.
 ## 9. Skills and agents
 
 - Frontmatter: `name` (equals the folder or file name), `description` (one sentence, under 200
-  characters, quoted if it contains `: `). Skills run only by name set
-  `disable-model-invocation: true`.
+  characters, quoted if it contains `: `). A skill that runs only by name sets
+  `disable-model-invocation: true`. `vault-setup` is the one: it writes the pointer and the links
+  into `~/.claude`. Claude may call `vault-doctor` from a request: its check writes nothing, and
+  its fix repairs only what is safe and asks before anything else.
 - A skill's `SKILL.md` holds the router and the rules needed on every run. Detail for one mode goes
   in a sibling file that is read only in that mode.
 - Every skill and agent carries this pointer near the top and does not restate the conventions:

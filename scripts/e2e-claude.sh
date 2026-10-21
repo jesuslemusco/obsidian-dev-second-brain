@@ -122,6 +122,34 @@ holds "agents: the plugin's agents are loaded" "$agents" "scrum-master"
 holds "bin: second-brain runs from the Bash tool" "$(field "$tmp/second.jsonl" "$tool_out")" "vault: "
 holds "import: the index is read through the pointer" "$(field "$tmp/second.jsonl" 'select(.type == "result") | .result')" "$token"
 
+printf '== triggers: a request in plain words loads the right skill ==\n'
+step "task new: a tracked story" bash "$SB" task new EX-2 --project Example --title "Sort the board by status"
+step "task set: it is in progress" bash "$SB" task set EX-2 status=in-progress "next=Sort the Active view by status"
+step "scaffold project: a project that runs sprints" bash "$SB" scaffold project Mobile --path projects/mobile --keys MO
+# The skills that the Skill tool loaded, leaving out a call it refused.
+skill_ok='[.[] | select(.type == "user") | .message.content[]? | select(.type == "tool_result" and .is_error == true) | .tool_use_id] as $err
+  | .[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill")
+  | select(.id as $id | any($err[]; . == $id) | not) | .input.skill'
+# trigger <desc> <out file> <skill>: the session loaded that skill.
+trigger() {
+  local got
+  got="$(jq -rs "$skill_ok" "$2" 2>/dev/null | tr '\n' ' ')"
+  case " $got" in
+    *" $3 "* | *":$3 "*) pass "$1" ;;
+    *) fail "$1" "wanted: $3" "loaded: ${got:-none}" "answer: $(field "$2" 'select(.type == "result") | .result')" ;;
+  esac
+}
+ask "$tmp/recall.jsonl" "Where does EX-2 stand?"
+trigger "trigger: where a ticket stands loads story-tracker" "$tmp/recall.jsonl" story-tracker
+ask "$tmp/standup.jsonl" "Standup for the Example project: what is in progress, and what comes next?"
+trigger "trigger: a standup loads story-tracker" "$tmp/standup.jsonl" story-tracker
+ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
+trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
+ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
+trigger "trigger: a sprint request loads sprint" "$tmp/sprint.jsonl" sprint
+ask "$tmp/health.jsonl" "Check my vault for problems."
+trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
+
 printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
 # With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
 sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&

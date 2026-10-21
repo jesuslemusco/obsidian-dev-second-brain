@@ -16,6 +16,23 @@ command and note format is in the [contract](contract.md).
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
 | `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
 
+## What to say
+
+Claude picks a skill by matching your words against the skill's description. The end-to-end check
+proves that each of these requests loads the skill next to it:
+
+| You say | Skill |
+|---|---|
+| For the Example project: give me summary, description and AC for a new ticket, no id. | `story-tracker` |
+| Where does EX-2 stand? | `story-tracker` |
+| Standup for the Example project: what is in progress, and what comes next? | `story-tracker` |
+| Update EX-2: the sort is merged, move it to in review. | `story-tracker` |
+| Open a new sprint for the Mobile project. | `sprint` |
+| Check my vault for problems. | `vault-doctor` |
+
+`vault-setup` writes into `~/.claude`, so it runs only when you name it:
+`/obsidian-dev-second-brain:vault-setup`. Any skill runs by name the same way.
+
 ## Other ways to install
 
 From a local clone:
@@ -138,7 +155,10 @@ build symlinks as fixtures, which takes Developer Mode or an elevated shell; usi
 takes neither.
 
 `scripts/e2e-claude.sh` runs Claude Code itself against a scratch vault, on a Linux and a Windows
-runner. It costs API usage, so the `e2e` workflow runs only when started from the Actions tab.
+runner. It costs API usage, so the `e2e` workflow runs only when started from the Actions tab. It
+asks each request under [What to say](#what-to-say) and fails when one does not load its skill.
+A request that fails is fixed in the skill's `description`, in the user's words, not in the
+request.
 
 `docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
 template placeholders. Change it first, then the code.

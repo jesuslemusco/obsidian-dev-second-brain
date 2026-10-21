@@ -78,6 +78,16 @@
 - The vault-doctor `fix` mode says that `doctor --fix` also archives the tasks `task-layout` names
   in an `archive` project, and replaces an old pull request note that was never edited. Before an
   archive it takes a snapshot, and `compare` after it proves that only those tasks moved.
+- Claude can now run the doctor's check on its own: a request such as "Check my vault for
+  problems." loads `vault-doctor`, which ran only by name before. Its check writes nothing, and its
+  fix repairs only what is safe and asks before anything else. `vault-setup` still runs only by
+  name, and offers the doctor for the detail of a check.
+- The `story-tracker` description names where a ticket stands and a standup, so "Where does EX-2
+  stand?" and "Standup for the Example project" load it.
+- The end-to-end check asks five more requests in plain words: where a ticket stands, a standup,
+  an update to a ticket, a new sprint and a vault check. A request that does not load its skill
+  fails the job, which may now take 30 minutes. The guide lists every request it proves under
+  `What to say`.
 
 ## 0.2.0 - unreleased
 

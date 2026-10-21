@@ -55,7 +55,8 @@ Then set it up:
 3. Run `/obsidian-dev-second-brain:vault-setup project <name>` to add a project.
 4. Ask Claude to start tracking a ticket.
 
-Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
+Ask Claude to check your vault, or run `/obsidian-dev-second-brain:vault-doctor`, whenever you want
+the setup checked.
 
 ## Update
 

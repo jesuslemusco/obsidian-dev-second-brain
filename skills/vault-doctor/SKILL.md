@@ -2,14 +2,13 @@
 name: vault-doctor
 description: Check the vault, its projects and the Claude registration against the second-brain standard.
 argument-hint: "[check [project] | fix | snapshot | compare]"
-disable-model-invocation: true
 allowed-tools: Read Grep Bash(second-brain *)
 ---
 
 # Vault doctor
 
 The helper runs the checks. This file says how to read its answer and what may be repaired. The
-first argument is the mode. With none, run check.
+first argument is the mode. With none, take it from the request. With nothing to go on, run check.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 

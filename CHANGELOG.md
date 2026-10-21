@@ -28,22 +28,28 @@
   tasks by subproject. `scaffold project` writes it into a new board. The doctor's `board` check
   warns when a project with a subproject has a board without it (`tasks.base:no-subproject-view`).
 - `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
-  subproject, and `board <project> "By subproject"` lists the active tasks by subproject.
+  subproject, and `board <project> "By subproject"` lists the active tasks by subproject, with the
+  subproject in a last column.
 - Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
 - The doctor's new `task-subproject` check warns about a task whose `subproject` names no
   subproject of the project (`<ID>:<value>`). Only a project with a subproject gets the row.
 - A profile key, `task_layout`, keeps the tasks folder short: `flat`, the default, or `archive`.
   With `archive`, `second-brain task archive <ID>` moves a done or abandoned task once, through
   `move`, to `tasks/archive/<YYYY>/<ID>/`, writes `archived: "<date>"` and rewrites the links to
-  it. Every command still finds the task by id, at either depth, in both layouts.
+  it. When anything is at that path already, even an empty folder, it moves nothing and exits 6.
+  Every command still finds the task by id, at either depth, in both layouts.
 - The board file that `scaffold project` writes lists archived tasks too. A board written before
-  lists only the live ones in Obsidian until its filter is copied from `templates/tasks.base.tmpl`.
-- `task new` refuses an id that is archived, and the id `archive`, the archive's folder.
+  lists only the live ones in Obsidian until its filters block is copied from
+  `templates/tasks.base.tmpl`. In a project with `task_layout: archive`, the doctor's `board` check
+  warns about such a board (`tasks.base:no-archive-filter`).
+- `task new` refuses an id that is archived, and the id `archive`, the archive's folder, in any
+  letter case. `task alias` refuses the alias `archive` the same way.
 - A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
   project, an open task in the archive, and a done task left out of it, all warn. A done task is
   left out once `archive_after_days`, 14 by default, have passed since its newest status note or
-  its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
-  each, and never moves an open task.
+  its sprint's end; one with neither does not warn, and `task archive` moves it by hand.
+  `doctor --fix` archives those tasks through `task archive`, one `fixed:` line each, and never
+  moves an open task.
 - `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
 - The vault index has a rule for finding and reading notes, under
   `## Rules for notes that most often go wrong`: `second-brain find`, `search`, `task head`, then
@@ -55,7 +61,9 @@
   `index_version: 3`. The `vault-doctor` skill does this after asking.
 - A new PreToolUse hook warns Claude when a Grep call, a Read of a whole task note, or a shell
   grep, cat or sed reaches into the vault, and names the helper commands to use. It only adds
-  context: it never blocks a call and never approves one. Edits pass as before.
+  context: it never blocks a call and never approves one. Edits pass as before. It sets
+  `"onFailure": "continue"`, so a hook that cannot run lets the call go on, on Windows too; the
+  plugin now needs Claude Code 2.1.295 or later.
 - The SessionStart hook prints the session's context in a repo of a project: the project, the
   subproject, the sprint in progress, the branch and the ticket it names, and that ticket's story
   with its status and next step, or `story: none - run story-tracker start`. It ends with the

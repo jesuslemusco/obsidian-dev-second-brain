@@ -1750,6 +1750,10 @@ out_is "task set subproject: an empty value removes the key" "subproject: (remov
 sb task new MU-3 --project Multi --title "Tools work" --subproject tools
 sb board Multi "By subproject"
 is "board By subproject: active tasks by subproject, none last" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+is "board By subproject: a tenth column names each row's subproject, - for none" \
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s:%s:%s ", NF, $1, $10 }')" "10:MU-1:infra 10:MU-3:tools 10:MU-2:- "
+sb board Multi
+is "board: the other views keep nine columns" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s ", NF }')" "9 9 9 "
 sb board Multi subproject
 is "board: subproject names the By subproject view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
 sb board Multi --subproject INFRA
@@ -1838,6 +1842,18 @@ err_has "archive: task new names the archived README" "the task is archived: $A/
 absent "archive: task new writes nothing then" "$AT/SH-1"
 sb task new archive --project Shelf
 rc_is "archive: the archive folder is no task id, exit 5" 5
+for a in Archive ARCHIVE; do
+  sb task new "$a" --project Shelf
+  rc_is "archive: $a, in another letter case, is no task id either, exit 5" 5
+done
+is "archive: nothing written for it" "$(ls "$AT" | grep -ci '^archive$')/$(ls "$AT/archive")" "1/2026"
+cp "$AT/SH-2/README.md" "$tmp/SH-2.before"
+for a in archive Archive; do
+  sb task alias SH-2 add "$a"
+  rc_is "archive: $a is no task alias, exit 5" 5
+done
+err_has "archive: the alias message names the folder" "archive is the folder of the archived tasks"
+is "archive: the aliases stay as they were" "$(cmp -s "$tmp/SH-2.before" "$AT/SH-2/README.md" && printf same)" "same"
 sb task alias SH-2 add SH-1
 rc_is "archive: an archived id is no alias for another task, exit 6" 6
 mkdir -p "$AT/SH-1"
@@ -1852,6 +1868,28 @@ file_has "archive: the close links the archived README" "$vault/$A/sprints/2026-
 sb task set SH-4 status=done
 sb task archive SH-4 --project Shelf
 rc_is "archive: --project is taken" 0
+sb task new SH-5 --project Shelf --title "Shelf SH-5"
+sb task set SH-5 status=done
+mkdir -p "$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: an existing destination folder, even empty, gives exit 6" 6
+err_has "archive: the message names the destination" "the destination exists: $A/tasks/archive/2026/SH-5"
+exists "archive: the task stays where it was" "$AT/SH-5/README.md"
+is "archive: the destination is left as it was" "$(ls -A "$AT/archive/2026/SH-5")" ""
+file_lacks "archive: no archived date then" "$AT/SH-5/README.md" "archived:"
+rmdir "$AT/archive/2026/SH-5"
+printf 'x\n' >"$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: a file at the destination gives exit 6" 6
+exists "archive: the task stays then too" "$AT/SH-5/README.md"
+rm "$AT/archive/2026/SH-5"
+if ! sb_is_windows; then
+  ln -s "$tmp/nowhere" "$AT/archive/2026/SH-5"
+  sb task archive SH-5
+  rc_is "archive: a link at the destination, even a dead one, gives exit 6" 6
+  exists "archive: the task stays then as well" "$AT/SH-5/README.md"
+  rm "$AT/archive/2026/SH-5"
+fi
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"

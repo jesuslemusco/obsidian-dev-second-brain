@@ -502,6 +502,27 @@ edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
 doc Example
 chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
 reset
+# The board's filters as 0.2.0 wrote them, with no archive branch.
+edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; s/^        - file\.folder/    - file.folder/'
+is "board: the old filters keep one depth line" "$(grep -c '^    - file.folder.split("/").length == 4$' "$T/tasks.base")/$(grep -c 'archive' "$T/tasks.base")" "1/0"
+doc Example
+chk "board: a flat project is not asked for the archive filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Archive/'
+doc Example
+rc_is "board: a missing archive filter leaves exit 0" 0
+chk "board: an archive project whose board takes no archived task warns" board Example "warn | 1 | tasks.base:no-archive-filter"
+is "board: the fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the archive filter share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-archive-filter"
+is "board: the fix holds both" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; copy the filters block from templates/tasks.base.tmpl"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project with the template's filters is ok" board Example "ok | 0 | -"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.
@@ -844,7 +865,17 @@ is "task-layout: --fix moves nothing in a flat project" "$(printf '%s\n' "$OUT" 
 reset
 layout archive
 doc Example
-chk "task-layout: a done task with no date is old enough to archive" task-layout Example "warn | 1 | EX-2:to-archive"
+chk "task-layout: a done task with no status note and no sprint is not due, as nothing dates it" task-layout Example "ok | 0 | -"
+cp "$T/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+is "task-layout --fix: a task it cannot date is not moved" "$(printf '%s\n' "$OUT" | head -1)/$(cmp -s "$tmp/EX-2.before" "$T/EX-2/README.md" && printf same)" \
+  "fixed: nothing/same"
+edit "$T/EX-2/README.md" 's/^## Status notes$/## Status notes\
+\
+**2025-12-01 - Closed/'
+doc Example
+chk "task-layout: a done task with an old status note is due" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$T/EX-2/README.md" '/^\*\*2025-12-01 - Closed$/d'
 is "task-layout: the archive fix names --fix and the way back" "$(fix_of task-layout)" \
   "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $P/tasks/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
 sb task note EX-2 "Done"
@@ -875,6 +906,8 @@ doc Example
 chk "task-layout: a value that is no whole number warns, and 14 days count" task-layout Example "warn | 1 | archive_after_days:not-a-number"
 edit "$vault/$P/claude/profile.md" '/^archive_after_days: /d'
 sb task set EX-3 status=abandoned
+sb task note EX-3 "Dropped"
+edit "$T/EX-3/README.md" 's/^\*\*2026-01-10 /**2025-12-27 /'
 doc Example
 chk "task-layout: no key is 14 days, and an abandoned task is archived too" task-layout Example "warn | 1 | EX-3:to-archive"
 reset
@@ -903,6 +936,17 @@ is "task-layout --fix: an open task outside it is never moved" "$(cmp -s "$tmp/E
 chk "task-layout --fix: the open task is left to the user" task-layout Example "warn | 1 | EX-1:open"
 doc Example --fix
 is "task-layout --fix: nothing left to move" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+reset
+layout archive
+sb task note EX-2 "Done"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-06-30 /'
+mkdir -p "$T/archive/2026/EX-2"
+doc Example --fix
+is "task-layout --fix: a task whose destination folder exists is not moved" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+case "$ERR" in *"the destination exists: $P/tasks/archive/2026/EX-2"*) pass "task-layout --fix: stderr says why" ;; *) fail "task-layout --fix: stderr says why" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the task stays in place, and the destination stays empty" \
+  "$(ls "$T/EX-2")/$(ls -A "$T/archive/2026/EX-2")" "README.md/"
+chk "task-layout --fix: the task is still named" task-layout Example "warn | 1 | EX-2:to-archive"
 reset
 layout archive
 set_root tasks_root ../../../outside-proj/tasks

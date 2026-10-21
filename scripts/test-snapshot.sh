@@ -272,6 +272,8 @@ out_has "compare: its alias moved with it" "aliases added:${NL}  EX-4${TAB}$P/ta
 # ---------------------------------------------------------------- doctor --fix archives, compare proves it
 sb task new EX-5 --project Example --title "Task EX-5"
 sb task set EX-5 status=done
+sb task note EX-5 "Done"
+sed 's/^\*\*2026-01-10 /**2025-12-01 /' "$vault/$P/tasks/EX-5/README.md" >"$tmp/task.tmp" && cat "$tmp/task.tmp" >"$vault/$P/tasks/EX-5/README.md"
 printf '%s\n' '' "Links to [[$P/tasks/EX-5/README|EX-5]]." >>"$vault/$P/docs/notes.md"
 sb snapshot before-fix
 sb doctor Example --fix

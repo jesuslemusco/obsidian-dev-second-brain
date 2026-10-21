@@ -675,6 +675,8 @@ fi
 rule="$(printf '%s\n' "$hooks" | sed -n 2p)"
 is "search rule: one matcher, the three tools it reads" "$(grep -c '"matcher": "Bash|Grep|Read"' "$here/hooks/hooks.json")" "1"
 is "search rule: a failure of the hook lets the call go on" "$(grep -c '"onFailure": "continue"' "$here/hooks/hooks.json")" "1"
+is "search rule: the README names the Claude Code version that onFailure needs" \
+  "$(grep -c '^- \[Claude Code\](https://claude.com/claude-code), version 2\.1\.295 or later' "$here/README.md")" "1"
 if bash -n "$here/hooks/search-rule.sh" 2>"$tmp/stderr"; then pass "syntax: hooks/search-rule.sh"; else fail "syntax: hooks/search-rule.sh" "$(cat "$tmp/stderr")"; fi
 # guard <tool> <tool_input JSON> [cwd]: run the hook as Claude Code does, with its JSON on stdin.
 guard() {
@@ -723,11 +725,42 @@ guard Bash '{"command":"grep -rn x \"'"$vault"'-old/notes\""}'
 silent "search rule: a folder whose name only starts with the vault's"
 guard Bash '{"command":"ls \"'"$vault"'\" && concatenate x"}'
 silent "search rule: another command on the vault"
+# The vault's last two parts count as whole names: after a slash, a quote, a blank or the start.
+tb="${tmp##*/}"
+guard Bash '{"command":"cat \"/work/x'"$tb"'/my vault/CLAUDE.md\""}'
+silent "search rule: a folder whose name only ends with the vault's parent"
+guard Bash '{"command":"cat \"/work/'"${tb%%.*}"'Q'"${tb#*.}"'/my vault/CLAUDE.md\""}'
+silent "search rule: a dot in the vault's path stands for a dot only"
+guard Bash '{"command":"cd .. && cat \"'"$tb"'/my vault/CLAUDE.md\""}'
+warns "search rule: a relative path after a double quote"
+guard Bash '{"command":"cd .. && grep -rn x '"'$tb/my vault'"'"}'
+warns "search rule: a relative path after a single quote"
+guard Bash '{"command":"cd .. && sed -n 1p '"$tb"'/my vault/CLAUDE.md"}'
+warns "search rule: a relative path after a blank"
+guard Bash '{"command":"'"$tb"'/my vault/x.sh && cat CLAUDE.md"}'
+warns "search rule: a relative path at the start"
+# A near miss every 32 bytes, 3.2 MB in all: the hook reads it in one pass, well within its 5 seconds.
+awk -v t="$tb/my vault" 'BEGIN {
+  printf "{\"tool_name\":\"Bash\",\"cwd\":\"/work\",\"tool_input\":{\"command\":\""
+  for (i = 0; i < 100000; i++) printf "cat /x/%sx ", t
+  printf "\"}}"
+}' >"$tmp/hook.json"
+start=$SECONDS
+run env CLAUDE_PLUGIN_ROOT="$here" bash -c "$rule" <"$tmp/hook.json"
+took=$((SECONDS - start))
+silent "search rule: a long command full of near misses"
+is "search rule: it takes under 3 seconds" "$([ "$took" -lt 3 ] && printf yes || printf "no, $took s")" "yes"
 guard Read '{"file_path":"'"$TV"'"}'
 warns "search rule: a Read of a whole task note"
 out_has "search rule: it says what the Read takes" "This Read takes a whole task note."
 guard Read '{"file_path":"'"$TV"'","offset":12,"limit":30}'
 silent "search rule: a ranged Read of a task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md"}'
+warns "search rule: a Read of a whole archived task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md","offset":1,"limit":20}'
+silent "search rule: a ranged Read of an archived task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
+silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'
 silent "search rule: a Read of a project hub, which the index says to read"
 guard Read '{"file_path":"/work/tasks/EX-1/README.md"}'

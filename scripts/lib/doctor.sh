@@ -558,8 +558,19 @@ sb_doc_has_view() {
     END { exit(found ? 0 : 1) }' "$1"
 }
 
+# Return 0 when a board file's own filters, the block above its formulas and views, take the
+# archive folder.
+sb_doc_has_archive_filter() {
+  LC_ALL=C awk '
+    { sub(/\r$/, "") }
+    /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
+    top && /file\.inFolder\(["\047][^"\047]*\/archive["\047]\)/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$1"
+}
+
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
-# and that a project with a subproject has the By subproject view.
+# that a project with a subproject has the By subproject view, and that an archive project's board
+# takes the archived tasks.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -590,6 +601,11 @@ sb_doc_check_board() {
   if [ -n "$(sb_sub_files "$SB_P_PATH")" ] && ! sb_doc_has_view "$base" "By subproject"; then
     bad="${bad:+$bad$nl}tasks.base:no-subproject-view"
     fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+  fi
+  # A board scaffolded before the archive layout shows no archived task in Obsidian.
+  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
+    bad="${bad:+$bad$nl}tasks.base:no-archive-filter"
+    fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
   fi
   sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"
 }
@@ -798,7 +814,8 @@ sb_doc_check_task_location() {
 
 # Print id, file and reason for each task out of the archive layout: open inside the archive, or
 # done or abandoned outside it for archive_after_days days or more. A done task's age counts from
-# the newest date it holds, of its status notes and its sprint id; with none it is old enough.
+# the newest date it holds, of its status notes and its sprint id; with none it is never due, as
+# --fix moves no folder it cannot date.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
   local days
@@ -828,7 +845,7 @@ sb_doc_layout_drift() {
       if (inarch || ($3 != "done" && $3 != "abandoned")) next
       d = newest($1)
       if (date_ok($4) && $4 > d) d = $4
-      if (d == "" || now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
+      if (d != "" && now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
     }'
 }
 

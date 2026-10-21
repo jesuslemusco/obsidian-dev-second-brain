@@ -409,6 +409,7 @@ sb_task_alias() {
   [ "$action" = "add" ] || sb_die 5 "$usage"
   alias="$(printf '%s' "$alias" | tr '\n\r\t' '   ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [ -n "$alias" ] || sb_die 5 "$usage"
+  case "$alias" in [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task alias" ;; esac
   sb_need_task "$id" "$project"
   # An alias names one task: refuse one that another task of the project already answers to.
   other=""
@@ -529,7 +530,8 @@ sb_task_new() {
   [ -n "$id" ] || sb_die 5 "$usage"
   case "$id" in
     *[!A-Za-z0-9._-]* | .* | -*) sb_die 5 "a task id holds letters, digits, dots, hyphens and underscores: $id" ;;
-    archive) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
+    # A file system that ignores letter case would write it into the archive folder.
+    [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
   esac
   sb_need_root
   if [ -z "$project" ]; then
@@ -631,6 +633,8 @@ sb_task_archive() {
   today="$(sb_today)"
   from="${SB_T_REL%/*}"
   dest="$SB_P_PATH/$SB_TASKS_ROOT/archive/${today%%-*}/$SB_T_ID"
+  # move would put the task inside a folder that is there already, under its own name.
+  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
   out="$(cmd_move -- "$from" "$dest")" || rc=$?
   # A move that stopped before the folder left keeps the task as it was.
   if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi

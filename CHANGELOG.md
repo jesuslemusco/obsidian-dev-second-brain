@@ -51,6 +51,10 @@
   name, and offers the doctor for the detail of a check.
 - The `story-tracker` description names where a ticket stands and a standup, so "Where does EX-2
   stand?" and "Standup for the Example project" load it.
+- The end-to-end check asks five more requests in plain words: where a ticket stands, a standup,
+  an update to a ticket, a new sprint and a vault check. A request that does not load its skill
+  fails the job, which may now take 30 minutes. The guide lists every request it proves under
+  `What to say`.
 
 ## 0.2.0 - unreleased
 

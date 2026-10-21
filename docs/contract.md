@@ -694,13 +694,14 @@ carries the full vault path for a `README.md` and the alias as display text.
   egrep, fgrep, rg, cat or sed. It sets no `permissionDecision`, so the call goes on through the
   normal permission flow. Otherwise it prints nothing. It always exits 0.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last
-  two parts of the vault's path, through the pointer or the physical one, at the end of a name.
+  two parts of the vault's path, through the pointer or the physical one, as whole names: after a
+  slash, a quote, a blank or the start, and at the end of a name.
   Letter case is ignored and a backslash counts as a slash, so `~/`, `$HOME/`, `C:\` and `/c/`
   forms all match. A Bash command also does when it holds `second-brain root`.
 - Edit and Write are never matched, and a ranged Read or a Read of another note passes in silence:
   the index tells Claude to read some notes whole, and an Edit needs the note read first.
-- It loads no library and starts one awk, so it stays fast on every call. With no vault, or with
-  input it cannot read, it prints nothing.
+- It loads no library and starts one awk, so it stays fast on every call, and it reads a long
+  command in one pass. With no vault, or with input it cannot read, it prints nothing.
 
 ## 10. Writing rules for every file in this repo
 

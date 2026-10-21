@@ -70,6 +70,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    |---|---|---|
    | `tracker` | where tickets live | `"Jira"` |
    | `persona` | the role a story's description opens with | `"Example engineer"` |
+   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, or every task stays in its folder | `archive` or `flat` |
+   | `archive_after_days` | with `archive` only: the days a done task stays in the live folder before the doctor names it | `14` |
    | `repos` | folder names of the code repositories, the default for branch checks first | `[example-api, example-web]` |
    | `repos_root` | the one folder those repositories usually sit in on this machine | `"~/code/acme"` or `""` |
    | `repo_paths` | each repository stored somewhere else, as `name=path` | `["example-web=~/work/example-web"]` or `[]` |

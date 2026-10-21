@@ -269,6 +269,19 @@ out_has "compare: an archived task is the same task, with its new status" "tasks
 out_lacks "compare: an archived task is not removed" "tasks removed:"
 out_has "compare: its alias moved with it" "aliases added:${NL}  EX-4${TAB}$P/tasks/archive/2026/EX-4/README.md"
 
+# ---------------------------------------------------------------- doctor --fix archives, compare proves it
+sb task new EX-5 --project Example --title "Task EX-5"
+sb task set EX-5 status=done
+printf '%s\n' '' "Links to [[$P/tasks/EX-5/README|EX-5]]." >>"$vault/$P/docs/notes.md"
+sb snapshot before-fix
+sb doctor Example --fix
+out_has "doctor --fix: archives the done task" "fixed: EX-5 -> $P/tasks/archive/2026/EX-5/README.md (Example)"
+sb compare before-fix
+rc_is "compare after doctor --fix: exit 1, the task moved" 1
+out_is "compare after doctor --fix: only the archived task's alias moved; no link broke, no task changed" \
+  "snapshot: $SNAPS/before-fix${NL}aliases added:${NL}  EX-5${TAB}$P/tasks/archive/2026/EX-5/README.md${NL}aliases removed:${NL}  EX-5${TAB}$P/tasks/EX-5/README.md"
+is "doctor --fix: the link to the task follows it" "$(grep -c -F "[[$P/tasks/archive/2026/EX-5/README|EX-5]]" "$vault/$P/docs/notes.md")" "1"
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

@@ -41,8 +41,9 @@ this file.
 - Find and read notes with the helper, never with grep, cat or sed on vault files:
   `second-brain find`, `search` (also for related notes before a decision), `task head`, then
   `outline` and a ranged read, and a whole note last.
-- A task note is always `<project>/tasks/<TICKET-ID>/README.md`. Never file it inside the topic
-  it is about; tie it to the topic with a tag that is the folder path, lowercased.
+- A task note is always `<project>/tasks/<TICKET-ID>/README.md`, under `tasks/archive/<YYYY>/`
+  once archived. Never file it inside the topic it is about; tie it to the topic with a tag that
+  is the folder path, lowercased, and to its subproject with the `subproject` property.
 - A bare `[[Alias]]` does not resolve. Links carry a path:
   `[[<vault path or unique file name>|<alias>]]`.
 - Move and rename notes with the helper (`second-brain move`, `second-brain rename`), never `mv`.

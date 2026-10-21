@@ -65,9 +65,11 @@ story's sprint is its `sprint` property, never a line of prose.
 Update the story through `story-tracker` first. Then run `second-brain profile <project> --keys`
 and read `achievements_skill`; `-` means none. If it names a skill, invoke it: hand it the sprint
 note, when the project has one, and point it at the finished story file as the source - it should
-pull the real outcome and impact from there, not from a summary you paraphrase. Confirm the
-achievement wording with the user before it is written if there is any ambiguity about what
-counts as the delivered outcome.
+pull the real outcome and impact from there, not from a summary you paraphrase. Take that file's
+path from the `path:` line of `second-brain task head <ID> --project <project>`: a story is
+`<tasks_root>/<ID>/README.md`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.
+Never build the path from the id. Confirm the achievement wording with the user before it is
+written if there is any ambiguity about what counts as the delivered outcome.
 
 When `story-tracker` says `docs-keeper` is due and you cannot start it, carry it in your final
 report as an action for the caller: "start `docs-keeper` Workflow 5 for <ID>, <README path>".
@@ -75,8 +77,10 @@ report as an action for the caller: "start `docs-keeper` Workflow 5 for <ID>, <R
 ## Step 5 - Close
 
 Run the `sprint` skill in close mode. The user decides, task by task: carry over, backlog or
-abandon. When the profile names an achievements skill, offer a sprint-end sweep to make sure every
-completed story has a matching achievement entry. Then offer to open the next sprint.
+abandon. In a project whose profile says `task_layout: archive`, the close asks once whether to
+archive the sprint's done tasks; that answer is the user's too. When the profile names an
+achievements skill, offer a sprint-end sweep to make sure every completed story has a matching
+achievement entry. Then offer to open the next sprint.
 
 ## Step 6 - Hygiene pass
 

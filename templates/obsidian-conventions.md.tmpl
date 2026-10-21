@@ -29,9 +29,9 @@ the vault. Skills and agents read "The short version" before they write notes.
    Every other note starts with `> Up: [[<path>|<Hub alias>]]`.
 6. **Move and rename with `second-brain move` / `second-brain rename`**, never `mv`.
 7. **Frontmatter is the truth.** A task carries `title`, `status`, `next` (the next action, in one
-   phrase), `branch` and `epic`. `status` is `planned`, `in-progress`, `in-review`, `done` or
-   `abandoned`; its tag is `status/done` for the last two and `status/active` for the rest. Change
-   both with `second-brain task set <ID> status=<status>`.
+   phrase), `branch` and `epic`, and `subproject` when it belongs to one. `status` is `planned`,
+   `in-progress`, `in-review`, `done` or `abandoned`; its tag is `status/done` for the last two
+   and `status/active` for the rest. Change both with `second-brain task set <ID> status=<status>`.
 8. **Quote a YAML value** that holds a colon then a space or a `#`, starts with `-` or `[`, is a
    lone dash, or looks like a date or a number: `- "Runbook: rotate the API keys"`, `epic: "-"`.
 9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date. A task joins it with
@@ -71,6 +71,8 @@ tags:
 - **Task notes** also carry `title`, `next`, `branch`, `epic` and `carried_from` (the sprint ids a
   task was carried over from). The ticket id is the folder name and the first alias, not a property.
   `depends_on` lists the tasks one waits on as quoted path links; `second-brain task dep` edits it.
+  `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
+  is named; a task in no subproject has no such key. `archived` is the date `task archive` moved it.
 
 YAML traps. Quote a value when:
 

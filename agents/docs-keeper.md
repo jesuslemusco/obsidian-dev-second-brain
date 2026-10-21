@@ -84,8 +84,9 @@ never from the working tree: it may be on an unrelated branch with local changes
    Propose the new row, with its repository named, in your report.
 5. Confirmed: state the code ref, check each edit against it, and update every doc found.
 6. Not confirmed, or not known: make no doc edit. Record one line per doc: the doc path and what
-   will change. With a ticket, as checkbox lines under `## Docs to update` in the task README;
-   create that section before `## Status notes` if it is absent. With no ticket, as lines starting
+   will change. With a ticket, as checkbox lines under `## Docs to update` in the task README, at
+   the path `second-brain find <ID> --project <project>` prints; create that section before
+   `## Status notes` if it is absent. With no ticket, as lines starting
    `pending production:` in the profile's debt file. Report the pending list and stop.
 7. Coming back: a ticket has `## Docs to update` and its change is now confirmed in production.
    Verify each line against the production ref first, since the code may have moved. Then make
@@ -118,8 +119,10 @@ never from the working tree: it may be on an unrelated branch with local changes
 The caller, usually the `story-tracker` skill, gives the project, the ticket id and its README path.
 
 1. Read the ticket: `second-brain task head <ID> --project <project>`, then its
-   `## Docs to update` section and its `**Branch:**` line. The ticket set to `done`, or its last
-   environment set to `done`, is the production confirmation of principle 2.
+   `## Docs to update` section and its `**Branch:**` line. The `path:` line wins over the path
+   the caller gave: a ticket archived since has moved to `<tasks_root>/archive/<YYYY>/<ID>/`. The
+   ticket set to `done`, or its last environment set to `done`, is the production confirmation of
+   principle 2.
 2. With unticked lines under `## Docs to update`: run step 7 of Workflow 1 on them, then go to
    step 5.
 3. With every line already ticked: go to step 6. Do not check the map again.
@@ -141,6 +144,8 @@ The caller, usually the `story-tracker` skill, gives the project, the ticket id 
 Cheapest first. A whole note is the last resort. The conventions are not restated here.
 
 - Find a note: `second-brain find <ID-or-alias> --project <project>`.
+- A task is `<tasks_root>/<ID>/README.md`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once
+  archived. Take its path from `find` or `task head`; never build it from the id.
 - Tasks on a topic: `second-brain topic <project> <tag>`.
 - Before you change or remove a note: `second-brain backlinks "<vault path>"`.
 - Part of a note: `second-brain outline "<vault path>"`, then a ranged Read.

@@ -69,11 +69,16 @@ Ground the ticket in the code before writing. No code edits, no new file except 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`. Topics are tags,
    comma separated: the folder `docs/billing/invoices` under the topics root `docs` is
    `billing/invoices`. Add `--project <P>` when the id's key does not name one project, and
-   `--envs` for an environment set (read `env-split.md`), and `--subproject <name>` when the
-   story is in a subproject. A folder with no README gets one.
+   `--envs` for an environment set (read `env-split.md`). A folder with no README gets one.
+   Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`
+   from Step 0, or the subproject the user named. With no such line, while
+   `second-brain subproject <project>` lists subprojects, ask which one the story is in, or none,
+   and pass the answer. A project with no subproject gets no flag.
 2. Exit 6: the story exists, or the id is another story's alias; switch to update mode. Exit 5
-   with `--envs`: the profile lists no environments. A `note: no folder for the topic tag ...` on
-   stderr: run `second-brain task tag EX-123 remove <tag>` and ask the user.
+   with `--envs`: the profile lists no environments. Exit 1 with `--subproject`: the name is no
+   subproject; show `second-brain subproject <project>` and ask. A
+   `note: no folder for the topic tag ...` on stderr: run
+   `second-brain task tag EX-123 remove <tag>` and ask the user.
 3. `second-brain task set EX-123 status=<planned or in-progress> next="<the next action>"
    branch="<branch or none yet>"`, plus `epic=<ID>` when there is one.
 4. Fill the sections the template leaves empty. Summary, Description, Findings (delete the heading

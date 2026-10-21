@@ -160,13 +160,15 @@ sb_board_filter() {
 }
 
 # Read scan rows on stdin; print board rows:
-# id | title | status | sprint | topics | branch | next | envs | depends_on.
+# id | title | status | sprint | topics | branch | next | envs | depends_on, and | subproject in the
+# By subproject view, the one its rows are grouped by.
 sb_board_rows() {
-  awk -F'\t' '
+  SB_VIEW="${1:-}" awk -F'\t' '
     function cell(s) { gsub(/\|/, "/", s); return s }
+    BEGIN { bysub = (ENVIRON["SB_VIEW"] == "By subproject") }
     {
       title = ($8 != "-" ? $8 : $12)
-      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11) " | " cell($13)
+      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11) " | " cell($13) (bysub ? " | " cell($14) : "")
     }
   '
 }
@@ -236,7 +238,7 @@ cmd_board() {
     ! sb_uses_sprints "$SB_P_PATH" || cur="$(sb_sprint_current_id "$SB_P_PATH")"
     [ -n "$cur" ] || return 0
   fi
-  sb_task_files "$dir" | sb_task_scan | sb_board_deps | sb_board_filter "$view" "$cur" "$sub" | sb_board_rows
+  sb_task_files "$dir" | sb_task_scan | sb_board_deps | sb_board_filter "$view" "$cur" "$sub" | sb_board_rows "$view"
   return 0
 }
 

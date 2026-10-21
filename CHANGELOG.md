@@ -28,7 +28,8 @@
   tasks by subproject. `scaffold project` writes it into a new board. The doctor's `board` check
   warns when a project with a subproject has a board without it (`tasks.base:no-subproject-view`).
 - `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
-  subproject, and `board <project> "By subproject"` lists the active tasks by subproject.
+  subproject, and `board <project> "By subproject"` lists the active tasks by subproject, with the
+  subproject in a last column.
 - Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
 - The doctor's new `task-subproject` check warns about a task whose `subproject` names no
   subproject of the project (`<ID>:<value>`). Only a project with a subproject gets the row.

@@ -1750,6 +1750,10 @@ out_is "task set subproject: an empty value removes the key" "subproject: (remov
 sb task new MU-3 --project Multi --title "Tools work" --subproject tools
 sb board Multi "By subproject"
 is "board By subproject: active tasks by subproject, none last" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+is "board By subproject: a tenth column names each row's subproject, - for none" \
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s:%s:%s ", NF, $1, $10 }')" "10:MU-1:infra 10:MU-3:tools 10:MU-2:- "
+sb board Multi
+is "board: the other views keep nine columns" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s ", NF }')" "9 9 9 "
 sb board Multi subproject
 is "board: subproject names the By subproject view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
 sb board Multi --subproject INFRA

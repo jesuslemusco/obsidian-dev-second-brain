@@ -122,7 +122,8 @@ Read `${CLAUDE_SKILL_DIR}/close.md` and follow it. Read it only in this mode.
   the user asks. The rest of the note belongs to `sprint open`, `sprint set` and `sprint close`.
 - A missing or non-standard status is reported as "Needs a status" and never set without asking.
 - Task files belong to the story-tracker skill. This skill touches a task only through
-  `second-brain task set`, `second-brain task note` and the sprint commands that move tasks.
+  `second-brain task set`, `second-brain task note`, the sprint commands that move tasks and, after
+  a yes at close, `second-brain task archive`.
 - Ask, do not invent: a date, a goal, a ticket id, a reason.
 - A request to write a ticket (its summary, description or acceptance criteria, with or without
   an id) goes to the story-tracker skill in `draft` mode. This skill never writes ticket text.

@@ -24,7 +24,7 @@ and name it in the count line. Leave the flag out when the user asks for the who
 | a ticket key | keep the rows whose id starts with the key |
 | a topic | find its tag in `second-brain profile <project> topics`, run `second-brain topic <project> <tag>` (exit 1: none), keep the rows whose folder it lists. A parent tag includes its sub-topics |
 | "current sprint", "this sprint" | view `"Current sprint"`. No rows: say "no sprint in progress", or "this project does not use sprints" when the `profile <project> --keys` answer of Step 0 holds `uses_sprints: false` |
-| what is waiting on docs | view `All`, keep the rows that reached production (status `done`, or the last entry of `envs` is `done`). One Grep for `^## Docs to update` over those stories' READMEs, read just that section, and list the stories with unticked lines |
+| what is waiting on docs | view `All`, keep the rows that reached production (status `done`, or the last entry of `envs` is `done`). `second-brain task docs <their ids> --project <project>` prints each story with unticked lines under `## Docs to update`, and its path, archived or not; list those |
 
 - A key or topic filter narrows the `Active` view unless the user also says "all".
 - Run `second-brain task head <ID>` only for a row whose title or next is `-`. Never read a whole

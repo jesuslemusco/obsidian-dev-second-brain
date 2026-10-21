@@ -1912,6 +1912,50 @@ file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.m
 file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
 file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
+# ---------------------------------------------------------------- skills follow the subproject and layout standards
+ST="$here/skills/story-tracker/SKILL.md"
+STC="$here/skills/story-tracker/create.md"
+CL="$here/skills/sprint/close.md"
+file_has "story-tracker create: task new takes the subproject from context" "$STC" 'Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`'
+file_has "story-tracker create: asks when the repo is in no subproject" "$STC" 'ask which one the story is in, or none'
+file_has "story-tracker create: a name that is no subproject is asked about" "$STC" 'Exit 1 with `--subproject`: the name is no'
+file_has "story-tracker: a story set done in an archive project gets one question" "$ST" 'the profile says `task_layout: archive`: after'
+file_has "story-tracker: the question is asked once" "$ST" 'ask once whether to archive it now'
+file_has "story-tracker: it archives through the helper" "$ST" '`second-brain task archive <ID>`'
+file_has "story-tracker: never archives without a yes" "$ST" 'Never archive a story without that yes.'
+file_has "story-tracker: an archived story is found by id, not by a built path" "$ST" "Take a story's path from \`find\` or \`task head\`; never build it from the id."
+file_has "story-tracker status: what waits on docs comes from task docs" "$here/skills/story-tracker/status.md" '`second-brain task docs <their ids> --project <project>`'
+file_lacks "story-tracker status: no Grep over the READMEs" "$here/skills/story-tracker/status.md" 'One Grep for'
+file_has "sprint close: asks once whether to archive the sprint's done tasks" "$CL" 'once whether to archive those tasks now'
+file_has "sprint close: it archives through the helper" "$CL" '`second-brain task archive <ID> --project <project>`'
+file_has "sprint close: never archives without a yes" "$CL" 'Never archive a task without that yes.'
+is "sprint close: the archive question comes after the achievements and before the report" \
+  "$(($(lineno "$CL" '8. Run `second-brain profile') < $(lineno "$CL" '9. `task_layout: archive`') && $(lineno "$CL" '9. `task_layout: archive`') < $(lineno "$CL" '10. Report the summary')))" "1"
+file_has "sprint: its rules allow task archive after a yes at close" "$here/skills/sprint/SKILL.md" 'a yes at close, `second-brain task archive`'
+file_has "vault-setup: the profile interview asks for task_layout" "$here/skills/vault-setup/SKILL.md" '| `task_layout` |'
+file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKILL.md" '| `archive_after_days` | with `archive` only'
+file_has "vault-setup adopt: asks for task_layout and moves nothing" "$here/skills/vault-setup/adopt.md" 'And `task_layout`. Adopting still moves nothing'
+file_has "vault-setup adopt: names the task-layout check" "$here/skills/vault-setup/adopt.md" '`flat` project: `task-layout`.'
+line_is "vault-setup subproject: a section on its tasks" "$here/skills/vault-setup/subproject.md" "## 3. Its tasks"
+file_has "vault-setup subproject: a task names its subproject" "$here/skills/vault-setup/subproject.md" 'frontmatter, `subproject: <name>`, spelled as the note is named'
+file_has "vault-setup subproject: sets it through task set" "$here/skills/vault-setup/subproject.md" '`second-brain task set <ID> subproject=<name>`'
+file_has "docs-keeper: the path task head prints wins" "$DK" 'The `path:` line wins over the path'
+file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/archive/<YYYY>/<ID>/README.md` once'
+file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
+file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
+file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
+file_has "index: an archived task's path" "$vault/CLAUDE.md" '`<project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md` once archived'
+file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'names the subproject in its `subproject` property.'
+file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
+file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conventions.md" '`subproject` is the name of the task'"'"'s subproject, spelled as its note'
+VD="$here/skills/vault-doctor/SKILL.md"
+file_has "vault-doctor fix: --fix repairs three checks" "$VD" 'repairs three checks only'
+file_lacks "vault-doctor fix: no longer says two" "$VD" 'repairs two checks only'
+file_has "vault-doctor fix: names the archive repair" "$VD" '`to-archive` is archived through `second-brain task archive`'
+file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'then run `second-brain snapshot` before it.'
+file_has "vault-doctor fix: compare proves the archive" "$VD" 'For the archive it is the'
+file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.'
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

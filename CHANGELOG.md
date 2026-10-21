@@ -45,6 +45,23 @@
   its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
   each, and never moves an open task.
 - `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
+- story-tracker writes a new story's `subproject` from the `subproject:` line of
+  `second-brain context`, and asks which subproject, or none, when the repo is in none of a
+  project that has some. A story set to `done` or `abandoned` in an `archive` project gets one
+  question: archive it now with `task archive`? The sprint close asks the same once for the
+  sprint's done and abandoned tasks. Neither moves a task without a yes.
+- `vault-setup project` and `adopt` ask for `task_layout`, and `archive_after_days` with
+  `archive`, and write them into the profile. `vault-setup subproject` says how a task names its
+  subproject and offers to set it on the tasks that exist.
+- docs-keeper and scrum-master take a task's path from `find` or `task head`, so they reach an
+  archived task too. The story-tracker overview of what waits on docs uses `task docs` for the
+  same reason.
+- The vault index and the conventions say where a task lives in each layout and that a task names
+  its subproject in `subproject`. Copy the task line under `## Rules for notes that most often go
+  wrong` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`.
+- The vault-doctor `fix` mode says that `doctor --fix` also archives the tasks `task-layout` names
+  in an `archive` project, and replaces an old pull request note that was never edited. Before an
+  archive it takes a snapshot, and `compare` after it proves that only those tasks moved.
 
 ## 0.2.0 - unreleased
 

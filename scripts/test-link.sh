@@ -728,6 +728,12 @@ warns "search rule: a Read of a whole task note"
 out_has "search rule: it says what the Read takes" "This Read takes a whole task note."
 guard Read '{"file_path":"'"$TV"'","offset":12,"limit":30}'
 silent "search rule: a ranged Read of a task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md"}'
+warns "search rule: a Read of a whole archived task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md","offset":1,"limit":20}'
+silent "search rule: a ranged Read of an archived task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
+silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'
 silent "search rule: a Read of a project hub, which the index says to read"
 guard Read '{"file_path":"/work/tasks/EX-1/README.md"}'

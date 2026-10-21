@@ -65,7 +65,7 @@ END {
   what = ""
   if (tool == "read") {
     p = str("file_path")
-    if (hit(p) && p ~ /\/tasks\/[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
+    if (hit(p) && p ~ /\/tasks\/(archive\/[0-9][0-9][0-9][0-9]\/)?[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
       what = "This Read takes a whole task note."
   } else if (tool == "grep") {
     p = str("path")

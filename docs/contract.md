@@ -689,7 +689,8 @@ carries the full vault path for a `README.md` and the alias as display text.
 - `search-rule.sh` warns and never blocks. It prints one JSON object whose
   `hookSpecificOutput.additionalContext` says what the call does, then the search and read rule,
   when one of these reaches into the vault: a Grep call; a Read of a whole task note, a
-  `tasks/<ID>/README.md` read with no `offset` and no `limit`; a Bash command that runs grep,
+  `tasks/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md` read with no `offset` and no
+  `limit`; a Bash command that runs grep,
   egrep, fgrep, rg, cat or sed. It sets no `permissionDecision`, so the call goes on through the
   normal permission flow. Otherwise it prints nothing. It always exits 0.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last

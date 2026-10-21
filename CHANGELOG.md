@@ -38,7 +38,9 @@
   it. When anything is at that path already, even an empty folder, it moves nothing and exits 6.
   Every command still finds the task by id, at either depth, in both layouts.
 - The board file that `scaffold project` writes lists archived tasks too. A board written before
-  lists only the live ones in Obsidian until its filter is copied from `templates/tasks.base.tmpl`.
+  lists only the live ones in Obsidian until its filters block is copied from
+  `templates/tasks.base.tmpl`. In a project with `task_layout: archive`, the doctor's `board` check
+  warns about such a board (`tasks.base:no-archive-filter`).
 - `task new` refuses an id that is archived, and the id `archive`, the archive's folder.
 - A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
   project, an open task in the archive, and a done task left out of it, all warn. A done task is

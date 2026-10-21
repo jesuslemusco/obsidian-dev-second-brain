@@ -502,6 +502,27 @@ edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
 doc Example
 chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
 reset
+# The board's filters as 0.2.0 wrote them, with no archive branch.
+edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; s/^        - file\.folder/    - file.folder/'
+is "board: the old filters keep one depth line" "$(grep -c '^    - file.folder.split("/").length == 4$' "$T/tasks.base")/$(grep -c 'archive' "$T/tasks.base")" "1/0"
+doc Example
+chk "board: a flat project is not asked for the archive filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Archive/'
+doc Example
+rc_is "board: a missing archive filter leaves exit 0" 0
+chk "board: an archive project whose board takes no archived task warns" board Example "warn | 1 | tasks.base:no-archive-filter"
+is "board: the fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the archive filter share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-archive-filter"
+is "board: the fix holds both" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; copy the filters block from templates/tasks.base.tmpl"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project with the template's filters is ok" board Example "ok | 0 | -"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.

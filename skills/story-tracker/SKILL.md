@@ -1,6 +1,6 @@
 ---
 name: story-tracker
-description: Write ticket text (summary, description, acceptance criteria) and track stories as one README per task in the Obsidian vault - draft, start, update, recall, list.
+description: Write ticket text (summary, description, acceptance criteria) and track each ticket as one README in the Obsidian vault - draft, start, update, where a ticket stands, a standup of what is active.
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---

@@ -45,6 +45,12 @@
   its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
   each, and never moves an open task.
 - `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
+- Claude can now run the doctor's check on its own: a request such as "Check my vault for
+  problems." loads `vault-doctor`, which ran only by name before. Its check writes nothing, and its
+  fix repairs only what is safe and asks before anything else. `vault-setup` still runs only by
+  name, and offers the doctor for the detail of a check.
+- The `story-tracker` description names where a ticket stands and a standup, so "Where does EX-2
+  stand?" and "Standup for the Example project" load it.
 
 ## 0.2.0 - unreleased
 

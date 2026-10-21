@@ -140,7 +140,8 @@ fix.
 
 - Init never overwrites a `CLAUDE.md` that was there, so it has no `## Projects` table and `index`
   fails. Say so: the first `second-brain scaffold project` adds the table and its row.
-- For the detail of a check, name `/obsidian-dev-second-brain:vault-doctor`. The user runs it.
+- For the detail of a check, offer the vault-doctor skill. On a yes, call it with the Skill tool
+  as `obsidian-dev-second-brain:vault-doctor`.
 
 ## Rules
 

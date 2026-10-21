@@ -1872,7 +1872,7 @@ out_is "board Current sprint: no rows once the sprint is closed, whatever the bo
 ST="$here/skills/story-tracker/SKILL.md"
 st_desc="$(grep -m1 '^description: ' "$ST")"
 st_desc="${st_desc#description: }"
-for word in "ticket text" summary description "acceptance criteria" draft; do
+for word in "ticket text" summary description "acceptance criteria" draft "where a ticket stands" standup; do
   case "$st_desc" in *"$word"*) pass "story-tracker: the description names $word" ;; *) fail "story-tracker: the description names $word" "in: $st_desc" ;; esac
 done
 is "story-tracker: the description is under the doctor's 200 characters" "$((${#st_desc} < 200))" "1"
@@ -1882,6 +1882,8 @@ case "$draft_row" in
   *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
 esac
 file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
+file_lacks "vault-doctor: a request to check the vault may load it" "$here/skills/vault-doctor/SKILL.md" "disable-model-invocation"
+line_is "vault-setup: it runs only by name" "$here/skills/vault-setup/SKILL.md" "disable-model-invocation: true"
 
 # ---------------------------------------------------------------- docs-keeper on a ticket marked done
 DK="$here/agents/docs-keeper.md"

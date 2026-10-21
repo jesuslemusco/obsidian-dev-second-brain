@@ -52,9 +52,9 @@ function lit(t,   i, c, r) {
   }
   return r
 }
-# 1 when the text holds a form of the vault path as whole names: after a slash, a quote, a blank or
-# the start, and before the end or a character no file name goes on with. One regex match per form
-# reads the text once, however many near misses it holds.
+# 1 when the text holds a form of the vault path as whole names: after the start or a character no
+# file name goes on with, and before the end or such a character. One regex match per form reads the
+# text once, however many near misses it holds.
 function hit(p,   k) {
   p = " " p " "
   for (k = 1; k <= nn; k++) if (p ~ re[k]) return 1
@@ -69,7 +69,7 @@ END {
   if ((t = tail2(ENVIRON["SB_RULE_VAULT"])) != "") nd[++nn] = t
   if ((t = tail2(ENVIRON["SB_RULE_ROOT"])) != "" && t != nd[1]) nd[++nn] = t
   # A form that starts with a slash, the vault one folder below the root, has its boundary in it.
-  for (k = 1; k <= nn; k++) re[k] = (substr(nd[k], 1, 1) == "/" ? "" : "[/\"\047 \t]") lit(nd[k]) "[^a-z0-9._-]"
+  for (k = 1; k <= nn; k++) re[k] = (substr(nd[k], 1, 1) == "/" ? "" : "[^a-z0-9._-]") lit(nd[k]) "[^a-z0-9._-]"
   tool = str("tool_name")
   here = hit(str("cwd"))
   what = ""

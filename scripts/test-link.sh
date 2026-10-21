@@ -725,7 +725,7 @@ guard Bash '{"command":"grep -rn x \"'"$vault"'-old/notes\""}'
 silent "search rule: a folder whose name only starts with the vault's"
 guard Bash '{"command":"ls \"'"$vault"'\" && concatenate x"}'
 silent "search rule: another command on the vault"
-# The vault's last two parts count as whole names: after a slash, a quote, a blank or the start.
+# The vault's last two parts count as whole names: after the start or a character no name goes on with.
 tb="${tmp##*/}"
 guard Bash '{"command":"cat \"/work/x'"$tb"'/my vault/CLAUDE.md\""}'
 silent "search rule: a folder whose name only ends with the vault's parent"
@@ -739,6 +739,10 @@ guard Bash '{"command":"cd .. && sed -n 1p '"$tb"'/my vault/CLAUDE.md"}'
 warns "search rule: a relative path after a blank"
 guard Bash '{"command":"'"$tb"'/my vault/x.sh && cat CLAUDE.md"}'
 warns "search rule: a relative path at the start"
+guard Bash '{"command":"cd .. && grep -rn x --include=*.md --dir='"$tb"'/my vault"}'
+warns "search rule: a relative path after an equals sign"
+guard Bash '{"command":"cd .. && cat <'"$tb"'/my vault/CLAUDE.md"}'
+warns "search rule: a relative path after a redirect"
 # A near miss every 32 bytes, 3.2 MB in all: the hook reads it in one pass, well within its 5 seconds.
 awk -v t="$tb/my vault" 'BEGIN {
   printf "{\"tool_name\":\"Bash\",\"cwd\":\"/work\",\"tool_input\":{\"command\":\""

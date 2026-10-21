@@ -67,7 +67,8 @@ its own branches and environments; what it leaves empty comes from the profile. 
 one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
 `/obsidian-dev-second-brain:vault-setup subproject <project>` to add one. The board's
 `By subproject` view groups the tasks by subproject, and in a subproject's repo the status overview
-lists that subproject's tasks.
+lists that subproject's tasks. A task names its subproject in its `subproject` property: a story
+started in a subproject's repo gets it from there, and elsewhere Claude asks which one, if any.
 
 A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
 its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in
@@ -88,7 +89,9 @@ The tasks folder can stay short. `task_layout: archive` in a project's profile l
 `tasks/archive/<year>/EX-1/`. Its links follow it, and every command still finds it by its id.
 With `task_layout: flat`, the default, no task ever moves. The doctor names a done task still in
 the live folder `archive_after_days` days after its last status note or its sprint's end, 14 by
-default, and `second-brain doctor --fix` archives it. It never moves an open task.
+default, and `second-brain doctor --fix` archives it. It never moves an open task. When a story is
+set done, and when a sprint closes, Claude asks once whether to archive the done tasks now; nothing
+moves without a yes. `vault-setup` asks for the layout when it sets up or adopts a project.
 
 ## On Windows
 

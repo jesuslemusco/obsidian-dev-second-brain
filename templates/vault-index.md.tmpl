@@ -38,8 +38,11 @@ this file.
 
 ## Rules for notes that most often go wrong
 
-- A task note is always `<project>/tasks/<TICKET-ID>/README.md`. Never file it inside the topic
-  it is about; tie it to the topic with a tag that is the folder path, lowercased.
+- A task note is always `<project>/tasks/<TICKET-ID>/README.md`, or
+  `<project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md` once archived in a project whose profile
+  says `task_layout: archive`. Never file it inside the topic it is about; tie it to the topic
+  with a tag that is the folder path, lowercased. A task of a subproject is filed there too, and
+  names the subproject in its `subproject` property.
 - A bare `[[Alias]]` does not resolve. Links carry a path:
   `[[<vault path or unique file name>|<alias>]]`.
 - Move and rename notes with the helper (`second-brain move`, `second-brain rename`), never `mv`.

@@ -133,7 +133,7 @@ skill_ok='[.[] | select(.type == "user") | .message.content[]? | select(.type ==
 # trigger <desc> <out file> <skill>: the session loaded that skill.
 trigger() {
   local got
-  got="$(jq -rs "$skill_ok" "$2" 2>/dev/null | tr '\n' ' ')"
+  got="$(jq -rs "$skill_ok" "$2" 2>/dev/null | tr -d '\r' | tr '\n' ' ')"
   case " $got" in
     *" $3 "* | *":$3 "*) pass "$1" ;;
     *) fail "$1" "wanted: $3" "loaded: ${got:-none}" "answer: $(field "$2" 'select(.type == "result") | .result')" ;;
@@ -160,10 +160,12 @@ The ticket: the task board should show each task's branch."
 holds "trigger: the request loads story-tracker" \
   "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-tracker"
 got="$(field "$tmp/third.jsonl" 'select(.type == "result") | .result')"
-case "${got#"${got%%[![:space:]]*}"}" in
-  '*As a*'*) pass "trigger: the ticket text starts with *As a*" ;;
-  *) fail "trigger: the ticket text starts with *As a*" "got: $got" ;;
-esac
+# The text may follow a line that says what it is; the template's first line opens a line of its own.
+if printf '%s\n' "$got" | tr -d '\r' | grep -q '^[[:space:]]*\*As a\*'; then
+  pass "trigger: the ticket text has a line that starts with *As a*"
+else
+  fail "trigger: the ticket text has a line that starts with *As a*" "got: $got"
+fi
 printf '== search rule: a fresh session recalls a story with the helper ==\n'
 step "task new: a tracked story" bash "$SB" task new EX-1 --project Example --title "Show each task's branch on the board"
 step "task set: its next action" bash "$SB" task set EX-1 status=in-progress "next=Add a branch column to the board view"

@@ -41,6 +41,10 @@ nothing and rewrites no note body.
   folder as `repos_root`. Then show `second-brain repo <project>`.
 - It also includes the branch production runs (`production_branch`, empty when it is the base
   branch) and how a deployment is confirmed, written in the opening paragraph of `## Docs`.
+- And `task_layout`. Adopting still moves nothing: with `archive`, the done tasks already there
+  stay where they are, and the doctor's `task-layout` row names the ones due. Archiving them is a
+  bulk move, taken later and only when the user asks: `second-brain snapshot`, then
+  `second-brain doctor <project> --fix`, then `second-brain compare`.
 - For every repository named, add its Code to doc map rows as section 2 of `repo.md`, beside
   this file, says. Existing docs may answer: quote them and confirm with the user. Never invent.
 - Fill the seven sections from what the user says and from existing notes. Quote, do not invent.
@@ -53,9 +57,11 @@ nothing and rewrites no note body.
 Run `second-brain doctor <project>`. From its rows and from step 1, list what is off-standard.
 Fix none of it here.
 
-- Tasks that are not `<tasks_root>/<ID>/README.md`: `task-location` for a note that has
-  `type: task`, and step 1 for one that has no frontmatter yet. A task folder with no README:
-  `no-readme`.
+- Tasks that are not `<tasks_root>/<ID>/README.md`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md`
+  once archived: `task-location` for a note that has `type: task`, and step 1 for one that has no
+  frontmatter yet. A task folder with no README: `no-readme`.
+- Tasks that do not follow `task_layout`, such as an `archive` folder under the tasks root of a
+  `flat` project: `task-layout`.
 - A hub that is missing or empty: `hubs`.
 - Notes with no status, or one outside the five: `needs-a-status`.
 - Bare alias links such as `[[EX-123]]`: `unresolved-links`, and `bare-links` for `[[README]]`.

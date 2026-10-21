@@ -2,6 +2,12 @@
 
 ## 0.3.0 - unreleased
 
+Tasks can be archived and seen by subproject, every session starts knowing its project and ticket,
+and the doctor checks more of what the skills write.
+
+- The conventions note is at version 4: it describes the archive layout, the `By subproject` view
+  and `board --subproject`, and how a task names its subproject. The doctor's `conventions` check
+  warns about an older note.
 - The README has an Update section: refresh the marketplace, update the plugin, restart Claude Code,
   then run the doctor's `check` and `fix`. It says what to do when the update does not take, and
   how to turn on auto-update for the `second-brain` marketplace.
@@ -97,7 +103,7 @@
   fails the job, which may now take 30 minutes. The guide lists every request it proves under
   `What to say`.
 
-## 0.2.0 - unreleased
+## 0.2.0 - 2026-10-15
 
 The helper works on the vault's files alone, and the plugin runs on Windows.
 

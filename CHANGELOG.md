@@ -96,8 +96,10 @@ and the doctor checks more of what the skills write.
   problems." loads `vault-doctor`, which ran only by name before. Its check writes nothing, and its
   fix repairs only what is safe and asks before anything else. `vault-setup` still runs only by
   name, and offers the doctor for the detail of a check.
-- The `story-tracker` description names where a ticket stands and a standup, so "Where does EX-2
-  stand?" and "Standup for the Example project" load it.
+- The `story-tracker` description names where a ticket stands and a standup, and the index says to
+  call a plugin skill for its work rather than the helper alone, so "Where does EX-2 stand?" and
+  "Standup for the Example project" load it. The index is two lines shorter, to keep room for
+  project rows under the doctor's 60-line limit.
 - The end-to-end check asks five more requests in plain words: where a ticket stands, a standup,
   an update to a ticket, a new sprint and a vault check. A request that does not load its skill
   fails the job, which may now take 30 minutes. The guide lists every request it proves under

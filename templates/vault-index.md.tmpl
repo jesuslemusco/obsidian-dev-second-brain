@@ -4,8 +4,7 @@ index_version: 3
 
 # Vault index for Claude
 
-This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every session. It lists the
-projects kept in this vault, and says where new skills and agents go.
+This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every session.
 
 ## In every session
 
@@ -17,8 +16,9 @@ projects kept in this vault, and says where new skills and agents go.
   Then run `second-brain link --apply`, or Claude Code never loads it (steps: `claude/README.md`).
 - A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or its subproject's
   note; only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
-- Plugin skills: `story-tracker` writes ticket text and tracks tasks, `sprint` runs a sprint,
-  `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
+- Call a plugin skill for its work, rather than the helper alone. Plugin skills:
+  `story-tracker` writes ticket text and tracks tasks (where a ticket stands, a standup, an update),
+  `sprint` runs a sprint, `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
   Plugin agents: `scrum-master` for the sprint cadence,
   `docs-keeper` for docs that follow the code and for a ticket marked done.
 - Write a pull request description in the format of
@@ -27,8 +27,7 @@ projects kept in this vault, and says where new skills and agents go.
 
 ## Working on a project or on notes
 
-A request that touches no project below and no note in this vault needs nothing from the rest of
-this file.
+A request that touches no project below and no note here needs nothing from the rest of this file.
 
 - When a request belongs to a project below, read `<Path>/README.md`, then
   `<Path>/claude/README.md` (its rules, skills, agents) and

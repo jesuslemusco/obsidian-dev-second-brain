@@ -844,7 +844,17 @@ is "task-layout: --fix moves nothing in a flat project" "$(printf '%s\n' "$OUT" 
 reset
 layout archive
 doc Example
-chk "task-layout: a done task with no date is old enough to archive" task-layout Example "warn | 1 | EX-2:to-archive"
+chk "task-layout: a done task with no status note and no sprint is not due, as nothing dates it" task-layout Example "ok | 0 | -"
+cp "$T/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+is "task-layout --fix: a task it cannot date is not moved" "$(printf '%s\n' "$OUT" | head -1)/$(cmp -s "$tmp/EX-2.before" "$T/EX-2/README.md" && printf same)" \
+  "fixed: nothing/same"
+edit "$T/EX-2/README.md" 's/^## Status notes$/## Status notes\
+\
+**2025-12-01 - Closed/'
+doc Example
+chk "task-layout: a done task with an old status note is due" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$T/EX-2/README.md" '/^\*\*2025-12-01 - Closed$/d'
 is "task-layout: the archive fix names --fix and the way back" "$(fix_of task-layout)" \
   "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $P/tasks/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
 sb task note EX-2 "Done"
@@ -875,6 +885,8 @@ doc Example
 chk "task-layout: a value that is no whole number warns, and 14 days count" task-layout Example "warn | 1 | archive_after_days:not-a-number"
 edit "$vault/$P/claude/profile.md" '/^archive_after_days: /d'
 sb task set EX-3 status=abandoned
+sb task note EX-3 "Dropped"
+edit "$T/EX-3/README.md" 's/^\*\*2026-01-10 /**2025-12-27 /'
 doc Example
 chk "task-layout: no key is 14 days, and an abandoned task is archived too" task-layout Example "warn | 1 | EX-3:to-archive"
 reset

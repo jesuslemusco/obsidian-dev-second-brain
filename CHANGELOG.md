@@ -43,8 +43,9 @@
 - A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
   project, an open task in the archive, and a done task left out of it, all warn. A done task is
   left out once `archive_after_days`, 14 by default, have passed since its newest status note or
-  its sprint's end. `doctor --fix` archives those tasks through `task archive`, one `fixed:` line
-  each, and never moves an open task.
+  its sprint's end; one with neither does not warn, and `task archive` moves it by hand.
+  `doctor --fix` archives those tasks through `task archive`, one `fixed:` line each, and never
+  moves an open task.
 - `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
 - The vault index has a rule for finding and reading notes, under
   `## Rules for notes that most often go wrong`: `second-brain find`, `search`, `task head`, then

@@ -798,7 +798,8 @@ sb_doc_check_task_location() {
 
 # Print id, file and reason for each task out of the archive layout: open inside the archive, or
 # done or abandoned outside it for archive_after_days days or more. A done task's age counts from
-# the newest date it holds, of its status notes and its sprint id; with none it is old enough.
+# the newest date it holds, of its status notes and its sprint id; with none it is never due, as
+# --fix moves no folder it cannot date.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
   local days
@@ -828,7 +829,7 @@ sb_doc_layout_drift() {
       if (inarch || ($3 != "done" && $3 != "abandoned")) next
       d = newest($1)
       if (date_ok($4) && $4 > d) d = $4
-      if (d == "" || now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
+      if (d != "" && now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
     }'
 }
 

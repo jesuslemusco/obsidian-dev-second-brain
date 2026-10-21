@@ -142,8 +142,8 @@ tags:
 - `archive_after_days` is a whole number of days, 14 when the key is absent. With `archive`, a done
   or abandoned task outside the archive is due once that many days have passed since the newest
   date it holds: the date of its newest status note, or its sprint id when that is later. A task
-  with neither is due at once. The doctor's `task-layout` check names it, and `doctor --fix`
-  archives it.
+  with neither is never due, as nothing dates it; `task archive <ID>` archives it by hand. The
+  doctor's `task-layout` check names a task that is due, and `doctor --fix` archives it.
 - `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
   them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
   no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,
@@ -504,7 +504,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
 | project | `no-readme` | a task folder without a README (warn): a folder directly under the tasks root other than `archive`, or one directly under `<tasks_root>/archive/<YYYY>/` |
 | project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md` or `<tasks_root>/archive/<YYYY>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
-| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`) |
+| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it; a task with neither a status note nor a sprint is never due), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`) |
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |

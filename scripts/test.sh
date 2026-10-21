@@ -1852,6 +1852,28 @@ file_has "archive: the close links the archived README" "$vault/$A/sprints/2026-
 sb task set SH-4 status=done
 sb task archive SH-4 --project Shelf
 rc_is "archive: --project is taken" 0
+sb task new SH-5 --project Shelf --title "Shelf SH-5"
+sb task set SH-5 status=done
+mkdir -p "$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: an existing destination folder, even empty, gives exit 6" 6
+err_has "archive: the message names the destination" "the destination exists: $A/tasks/archive/2026/SH-5"
+exists "archive: the task stays where it was" "$AT/SH-5/README.md"
+is "archive: the destination is left as it was" "$(ls -A "$AT/archive/2026/SH-5")" ""
+file_lacks "archive: no archived date then" "$AT/SH-5/README.md" "archived:"
+rmdir "$AT/archive/2026/SH-5"
+printf 'x\n' >"$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: a file at the destination gives exit 6" 6
+exists "archive: the task stays then too" "$AT/SH-5/README.md"
+rm "$AT/archive/2026/SH-5"
+if ! sb_is_windows; then
+  ln -s "$tmp/nowhere" "$AT/archive/2026/SH-5"
+  sb task archive SH-5
+  rc_is "archive: a link at the destination, even a dead one, gives exit 6" 6
+  exists "archive: the task stays then as well" "$AT/SH-5/README.md"
+  rm "$AT/archive/2026/SH-5"
+fi
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"

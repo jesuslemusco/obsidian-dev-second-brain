@@ -905,6 +905,17 @@ doc Example --fix
 is "task-layout --fix: nothing left to move" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
 reset
 layout archive
+sb task note EX-2 "Done"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-06-30 /'
+mkdir -p "$T/archive/2026/EX-2"
+doc Example --fix
+is "task-layout --fix: a task whose destination folder exists is not moved" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+case "$ERR" in *"the destination exists: $P/tasks/archive/2026/EX-2"*) pass "task-layout --fix: stderr says why" ;; *) fail "task-layout --fix: stderr says why" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the task stays in place, and the destination stays empty" \
+  "$(ls "$T/EX-2")/$(ls -A "$T/archive/2026/EX-2")" "README.md/"
+chk "task-layout --fix: the task is still named" task-layout Example "warn | 1 | EX-2:to-archive"
+reset
+layout archive
 set_root tasks_root ../../../outside-proj/tasks
 mkdir -p "$O/tasks/EX-2"
 cp "$T/EX-2/README.md" "$O/tasks/EX-2/README.md"

@@ -631,6 +631,8 @@ sb_task_archive() {
   today="$(sb_today)"
   from="${SB_T_REL%/*}"
   dest="$SB_P_PATH/$SB_TASKS_ROOT/archive/${today%%-*}/$SB_T_ID"
+  # move would put the task inside a folder that is there already, under its own name.
+  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
   out="$(cmd_move -- "$from" "$dest")" || rc=$?
   # A move that stopped before the folder left keeps the task as it was.
   if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi

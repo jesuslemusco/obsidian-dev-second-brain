@@ -35,7 +35,8 @@
 - A profile key, `task_layout`, keeps the tasks folder short: `flat`, the default, or `archive`.
   With `archive`, `second-brain task archive <ID>` moves a done or abandoned task once, through
   `move`, to `tasks/archive/<YYYY>/<ID>/`, writes `archived: "<date>"` and rewrites the links to
-  it. Every command still finds the task by id, at either depth, in both layouts.
+  it. When anything is at that path already, even an empty folder, it moves nothing and exits 6.
+  Every command still finds the task by id, at either depth, in both layouts.
 - The board file that `scaffold project` writes lists archived tasks too. A board written before
   lists only the live ones in Obsidian until its filter is copied from `templates/tasks.base.tmpl`.
 - `task new` refuses an id that is archived, and the id `archive`, the archive's folder.

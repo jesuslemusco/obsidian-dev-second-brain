@@ -1,8 +1,8 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then eighteen for each project, and `subprojects` as well for a project that has a
-subproject. Every entry is a heading, a blank line and three lines,
+the vault, then twenty for each project, and `subprojects` and `task-subproject` as well for a
+project that has a subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
 
@@ -15,7 +15,7 @@ subproject. Every entry is a heading, a blank line and three lines,
 ### index
 
 - Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`), which a path that is `.` or holds a `..` part or a backslash never is, and such a row gets no project rows; a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
-- Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has.
+- Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has, or lack a rule every session needs, such as the one for finding and reading notes.
 - Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row. A row: ask, then correct its path, change the name or the key another row has, or remove the row of a project that is gone. Older: ask first; then replace the text above `## Projects` with the text of `templates/vault-index.md.tmpl`, keep the lines the user added and the table, and set `index_version` to the template's.
 
 ### conventions
@@ -26,9 +26,9 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 ### pull-request
 
-- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn).
-- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own.
-- Fix: `second-brain scaffold vault` creates the note and overwrites nothing.
+- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn), or it is older than the plugin's template (warn, `claude/pull-request.md:<its version or none>`): its `pull_request_version` is lower or missing.
+- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own, and with an old note it takes the old one.
+- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older and never edited, as the row's fix says: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first; then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the rules the user added, and set `pull_request_version` to the template's.
 
 ### import
 
@@ -80,15 +80,21 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 ### board
 
-- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is in a form the helper does not read (`tasks.base:filter`), or the board has no such view (`tasks.base:no-view`).
-- Why: Obsidian shows the task board from that file, so with no file the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs and goes by the sprint in progress, so with another id in the view Obsidian shows another sprint than the helper reports.
-- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id, or `filter`: after a yes, write the filter line of the view in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites that form alone. Never add a second view by that name. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter.
+- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is in a form the helper does not read (`tasks.base:filter`), or the board has no such view (`tasks.base:no-view`); or the project has a subproject and the board has no `By subproject` view (`tasks.base:no-subproject-view`), which a board made before that view was added lacks; or the project has `task_layout: archive` and the board's own `filters` block does not take the archive folder (`tasks.base:no-archive-filter`), which a board made before the archive layout lacks.
+- Why: Obsidian shows the task board from that file, so with no file the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs and goes by the sprint in progress, so with another id in the view Obsidian shows another sprint than the helper reports. Without `By subproject`, Obsidian has no view that shows the tasks of one subproject together. Without the archive filter, Obsidian shows no archived task, though `second-brain board` lists them.
+- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id, or `filter`: after a yes, write the filter line of the view in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites that form alone. Never add a second view by that name. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter. `no-subproject-view`: after a yes, copy the `By subproject` view and the `note.subproject` property from `templates/tasks.base.tmpl` into `tasks.base`. `no-archive-filter`: after a yes, replace the `filters` block at the top of `tasks.base` with the one in `templates/tasks.base.tmpl`, with `{{TASKS_PATH}}` the tasks root's vault path, `{{TASK_DEPTH}}` the number in the board's old `file.folder.split("/").length` line, and `{{ARCHIVE_DEPTH}}` that number plus 2.
 
 ### hubs
 
 - Means: a hub of the project is missing or empty: `README.md`, `claude/README.md`, or the `README.md` of the tasks root, of the topics root unless it is `.`, or of the sprints root when the project uses sprints.
 - Why: the index tells Claude to read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others. `second-brain scaffold project` creates all of them.
 - Fix: `second-brain scaffold project <name> --path <path>` again, with the name and the path of the index row. It writes each missing hub from its template and overwrites nothing, so it keeps an empty file: ask, then delete that one first. A hub that comes back is a new one, without the lines the old one had gained, such as the sprint links of the sprints hub.
+
+### placeholders
+
+- Means: a line of the project's `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` still holds text in angle brackets from the template it was written from, such as `<A rule Claude must follow in this project, one per bullet.>` (`<path under the project>:<line>`). Only the template's own placeholders count, so the owner's angle brackets never do; frontmatter, fenced code and task READMEs are not read.
+- Why: every session reads the hub and `claude/README.md` before it works on the project, so a rule never written gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
+- Fix: ask the user, then write the rule or the fact the line asks for in its place, or delete the line when there is none. Never invent one. Keep the headings: the `profile` check needs the seven sections.
 
 ### task-frontmatter
 
@@ -106,7 +112,7 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 - Means: a task's `status/` tag disagrees with `status`. `status/done` goes with `done` and `abandoned`, `status/active` with the rest.
 - Why: the tag pane and tag searches go by the tag, so they show a finished task as active, or an active one as finished.
-- Fix: `second-brain doctor --fix`. It makes the tag follow `status` and changes nothing else.
+- Fix: `second-brain doctor --fix`. It makes the tag follow `status` and changes nothing else in the task.
 
 ### yaml-traps
 
@@ -122,15 +128,21 @@ subproject. Every entry is a heading, a blank line and three lines,
 
 ### no-readme
 
-- Means: a folder directly under the tasks root holds no `README.md`.
+- Means: a task folder holds no `README.md`: a folder directly under the tasks root other than `archive`, or one directly under a year of the archive, `archive/<YYYY>/`.
 - Why: the board lists only that README, so the folder's work is on no board and no command finds it by id.
 - Fix: a task: `second-brain task new <ID> --project <project> --title "<title>"` writes the README into the folder. Not a task: tell the user.
 
 ### task-location
 
-- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, or deeper inside a task folder. Each offender is the note's path under the project.
+- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md` or `<tasks root>/archive/<YYYY>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, deeper inside a task folder, or in the archive with no year folder. Each offender is the note's path under the project.
 - Why: the board and the task commands read only the README directly inside a folder of the tasks root, so this task is on no board and no task command finds it by id.
 - Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first; it rewrites the links to the note. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
+
+### task-layout
+
+- Means: the tasks do not follow the profile's `task_layout`. With `flat`, the default, an `archive` folder sits under the tasks root (`archive:flat`). With `archive`, an open task is inside the archive (`<ID>:open`), a done or abandoned task is still outside it `archive_after_days` days or more after its newest status note or its sprint's end, 14 days when the key is absent (`<ID>:to-archive`; a task with neither a status note nor a sprint is never named, as nothing dates it), or `archive_after_days` is not a whole number (`archive_after_days:not-a-number`).
+- Why: the archive keeps the live tasks folder short, so a done task left out of it makes the folder grow again, and an open task inside it is lost among the finished ones.
+- Fix: `to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>` and prints a `fixed:` line per task; it never moves an open task. A done task that nothing dates is archived by hand with `second-brain task archive <ID>`, after the user says so. A task whose folder in the archive is there already stays where it is, with the reason on stderr: show that folder to the user; after a yes, move it away with `second-brain move`, or delete it when it is empty, then run `--fix` again. `open`: ask whether the task is done; if not, `second-brain move "<its folder>" "<project path>/<tasks root>/<ID>"`. `flat`: ask whether the project should archive; on a yes set `task_layout: archive` in the profile, otherwise move each task in the archive back the same way. `not-a-number`: write the number of days.
 
 ### topic-tags
 
@@ -155,6 +167,12 @@ subproject. Every entry is a heading, a blank line and three lines,
 - Means: a note in `claude/subprojects/` is off: its `type` is not `subproject` (`<name>:type`), it lists no repos (`<name>:no-repos`), it has no docs folder `<topics root>/<name>/` (`<name>:no-docs`), a repo of it has no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo's folder is missing (`<name>/<repo>:missing`) or no location is recorded for it (`<name>/<repo>:no-location`), or two subprojects list one repo (`<repo>:twice`). Only a project with a subproject gets this row.
 - Why: a working directory resolves to a subproject through its repos, the branch check reads its settings from the note, and docs-keeper finds its docs through the map row and the docs folder. A repo in two subprojects resolves to neither.
 - Fix: a type or repos: edit the note's frontmatter, `type: subproject` and `repos: [<repo>]`. No docs: `second-brain scaffold subproject <project> <name>` writes the docs hub and overwrites nothing. A map row: add `| <repo> | <change> | <topics root>/<name>/... |` under `### Code to doc map` in the profile, after asking which docs follow it. A location: `repos_root` in the profile, or `"<repo>=<path>"` in the note's `repo_paths`. Twice: ask which subproject keeps the repo, then remove it from the other note.
+
+### task-subproject
+
+- Means: a task's `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`): the note was renamed or removed, or the value was written by hand. Only a project with a subproject gets this row.
+- Why: the board's `By subproject` view and `second-brain board <project> --subproject <name>` file the task under a name that leads nowhere, and the skills read a subproject's branches and docs from its note, so for this task they find none.
+- Fix: ask which subproject the task belongs to, then `second-brain task set <ID> subproject=<name>`, which checks the name. A task in no subproject: `second-brain task set <ID> subproject=`.
 
 ### sprints
 

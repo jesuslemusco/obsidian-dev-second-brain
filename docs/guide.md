@@ -1,8 +1,8 @@
 # Guide
 
-What the plugin ships, how a vault is laid out, what differs on Windows, and how to work on the
-plugin itself. The short version is in the [README](../README.md); every helper command and note
-format is in the [contract](contract.md).
+What the plugin ships, how a vault is laid out, what differs on Windows, how to work on the plugin
+itself, and how a release is made. The short version is in the [README](../README.md); every helper
+command and note format is in the [contract](contract.md).
 
 ## What you get
 
@@ -15,6 +15,23 @@ format is in the [contract](contract.md).
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
 | `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
+
+## What to say
+
+Claude picks a skill by matching your words against the skill's description. The end-to-end check
+proves that each of these requests loads the skill next to it:
+
+| You say | Skill |
+|---|---|
+| For the Example project: give me summary, description and AC for a new ticket, no id. | `story-tracker` |
+| Where does EX-2 stand? | `story-tracker` |
+| Standup for the Example project: what is in progress, and what comes next? | `story-tracker` |
+| Update EX-2: the sort is merged, move it to in review. | `story-tracker` |
+| Open a new sprint for the Mobile project. | `sprint` |
+| Check my vault for problems. | `vault-doctor` |
+
+`vault-setup` writes into `~/.claude`, so it runs only when you name it:
+`/obsidian-dev-second-brain:vault-setup`. Any skill runs by name the same way.
 
 ## Other ways to install
 
@@ -65,7 +82,10 @@ subprojects. Each one is a note, `claude/subprojects/<name>.md`, that lists its 
 its own branches and environments; what it leaves empty comes from the profile. Its docs live in
 `docs/<name>/`, and its rules in the note's `## Rules` section. The project keeps one ticket key and
 one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
-`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one.
+`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one. The board's
+`By subproject` view groups the tasks by subproject, and in a subproject's repo the status overview
+lists that subproject's tasks. A task names its subproject in its `subproject` property: a story
+started in a subproject's repo gets it from there, and elsewhere Claude asks which one, if any.
 
 A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
 its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in
@@ -80,6 +100,15 @@ A task can say which tasks it waits on. `second-brain task dep EX-2 add EX-1` wr
 EX-1 in the `depends_on` list of EX-2. The board shows the list in its `Depends on` column, the
 status overview flags a task in progress that waits on one not done, and the doctor warns about a
 link to no task and about tasks that wait on each other in a ring.
+
+The tasks folder can stay short. `task_layout: archive` in a project's profile lets
+`second-brain task archive EX-1` move a done or abandoned task, once, to
+`tasks/archive/<year>/EX-1/`. Its links follow it, and every command still finds it by its id.
+With `task_layout: flat`, the default, no task ever moves. The doctor names a done task still in
+the live folder `archive_after_days` days after its last status note or its sprint's end, 14 by
+default, and `second-brain doctor --fix` archives it. It never moves an open task. When a story is
+set done, and when a sprint closes, Claude asks once whether to archive the done tasks now; nothing
+moves without a yes. `vault-setup` asks for the layout when it sets up or adopts a project.
 
 ## On Windows
 
@@ -126,7 +155,28 @@ build symlinks as fixtures, which takes Developer Mode or an elevated shell; usi
 takes neither.
 
 `scripts/e2e-claude.sh` runs Claude Code itself against a scratch vault, on a Linux and a Windows
-runner. It costs API usage, so the `e2e` workflow runs only when started from the Actions tab.
+runner. It costs API usage, so the `e2e` workflow runs only when started from the Actions tab. It
+asks each request under [What to say](#what-to-say) and fails when one does not load its skill.
+A request that fails is fixed in the skill's `description`, in the user's words, not in the
+request.
 
 `docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
 template placeholders. Change it first, then the code.
+
+## Releases
+
+Claude Code updates an installed plugin only when `version` in `.claude-plugin/plugin.json`
+changes. Two different copies of the plugin that say the same `version` look the same to it, so
+the people who have the older copy never get the newer one. That is why `version` changes in one
+place only, at the end of a release.
+
+- Feature branches merge into a `release/<version>` branch, such as `release/0.3.0`.
+- One pull request takes the release branch into `main`.
+- Neither a feature branch nor the release branch changes `version`.
+- After that pull request is merged, one commit on `main` sets `version` in
+  `.claude-plugin/plugin.json` and dates the changelog section: `## 0.3.0 - unreleased` becomes
+  `## 0.3.0 - 2026-10-21`, with the release date. Tag that commit `v<version>`, as in
+  `git tag v0.3.0`, and push the tag. This is the only commit that changes `version`.
+- Every release has a section in `CHANGELOG.md`, written as the feature branches merge.
+
+A user updates with the steps in the [README](../README.md#update).

@@ -70,6 +70,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    |---|---|---|
    | `tracker` | where tickets live | `"Jira"` |
    | `persona` | the role a story's description opens with | `"Example engineer"` |
+   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, or every task stays in its folder | `archive` or `flat` |
+   | `archive_after_days` | with `archive` only: the days a done task stays in the live folder before the doctor names it | `14` |
    | `repos` | folder names of the code repositories, the default for branch checks first | `[example-api, example-web]` |
    | `repos_root` | the one folder those repositories usually sit in on this machine | `"~/code/acme"` or `""` |
    | `repo_paths` | each repository stored somewhere else, as `name=path` | `["example-web=~/work/example-web"]` or `[]` |
@@ -96,6 +98,10 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    user says.
 8. Offer to list the folders under the topics root, `ls -d "<vault>/<path>/<topics_root>"/*/`, so
    the user can confirm the topics.
+9. `scaffold project` leaves the template's `<...>` lines in the project hub, `claude/README.md`
+   and the profile, and the doctor's `placeholders` check warns about each one. Ask for one
+   paragraph on the project and for its rules. Write them in place of those lines, and delete a
+   line the user has nothing for. Never invent a rule.
 
 ## adopt <path>, repo <project> and subproject <project>
 
@@ -136,7 +142,8 @@ fix.
 
 - Init never overwrites a `CLAUDE.md` that was there, so it has no `## Projects` table and `index`
   fails. Say so: the first `second-brain scaffold project` adds the table and its row.
-- For the detail of a check, name `/obsidian-dev-second-brain:vault-doctor`. The user runs it.
+- For the detail of a check, offer the vault-doctor skill. On a yes, call it with the Skill tool
+  as `obsidian-dev-second-brain:vault-doctor`.
 
 ## Rules
 

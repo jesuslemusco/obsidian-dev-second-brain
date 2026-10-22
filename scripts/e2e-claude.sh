@@ -53,12 +53,15 @@ step() {
   shift
   if out="$("$@" 2>&1)"; then pass "$desc"; else fail "$desc" "exit $?" "output: $out"; fi
 }
-# ask <out file> <prompt>: one headless Claude Code session in the work folder, as a JSON stream.
+# ask <out file> <prompt> [tool...]: one headless Claude Code session in the work folder, as a JSON
+# stream. It may run the helper and skills, and the tools named.
 ask() {
-  (cd "$work" && claude -p "$2" --plugin-dir "$plugin" --model haiku --max-budget-usd 0.50 \
+  local out="$1" prompt="$2"
+  shift 2
+  (cd "$work" && claude -p "$prompt" --plugin-dir "$plugin" --model haiku --max-budget-usd 0.50 \
     --output-format stream-json --verbose --include-hook-events --no-session-persistence \
-    --allowedTools "Bash(second-brain *)" Skill >"$1" 2>"$1.err")
-  printf 'claude exit %s, %s lines\n' "$?" "$(wc -l <"$1" | tr -d ' ')"
+    --allowedTools "Bash(second-brain *)" Skill "$@" >"$out" 2>"$out.err")
+  printf 'claude exit %s, %s lines\n' "$?" "$(wc -l <"$out" | tr -d ' ')"
 }
 # field <out file> <jq filter>: print what the filter selects.
 field() {
@@ -107,6 +110,7 @@ Then answer in one line with the end-to-end token from your instructions."
 got="$(field "$tmp/second.jsonl" "$hook_out")"
 holds "hook: exits 0 once the vault is set up" "$got" "exit=0"
 case "$got" in *"no vault is set up"*) fail "hook: no complaint once the vault is set up" "got: $got" ;; *) pass "hook: no complaint once the vault is set up" ;; esac
+case "$got" in *"project:"*) fail "hook: no session block outside a project" "got: $got" ;; *) pass "hook: no session block outside a project" ;; esac
 skills="$(field "$tmp/second.jsonl" "$init_of | .skills[]")"
 agents="$(field "$tmp/second.jsonl" "$init_of | .agents[]")"
 holds "skills: the vault's own skill is found through its link" "$skills" "e2e-vault-skill"
@@ -118,6 +122,34 @@ holds "agents: the plugin's agents are loaded" "$agents" "scrum-master"
 holds "bin: second-brain runs from the Bash tool" "$(field "$tmp/second.jsonl" "$tool_out")" "vault: "
 holds "import: the index is read through the pointer" "$(field "$tmp/second.jsonl" 'select(.type == "result") | .result')" "$token"
 
+printf '== triggers: a request in plain words loads the right skill ==\n'
+step "task new: a tracked story" bash "$SB" task new EX-2 --project Example --title "Sort the board by status"
+step "task set: it is in progress" bash "$SB" task set EX-2 status=in-progress "next=Sort the Active view by status"
+step "scaffold project: a project that runs sprints" bash "$SB" scaffold project Mobile --path projects/mobile --keys MO
+# The skills that the Skill tool loaded, leaving out a call it refused.
+skill_ok='[.[] | select(.type == "user") | .message.content[]? | select(.type == "tool_result" and .is_error == true) | .tool_use_id] as $err
+  | .[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill")
+  | select(.id as $id | any($err[]; . == $id) | not) | .input.skill'
+# trigger <desc> <out file> <skill>: the session loaded that skill.
+trigger() {
+  local got
+  got="$(jq -rs "$skill_ok" "$2" 2>/dev/null | tr -d '\r' | tr '\n' ' ')"
+  case " $got" in
+    *" $3 "* | *":$3 "*) pass "$1" ;;
+    *) fail "$1" "wanted: $3" "loaded: ${got:-none}" "answer: $(field "$2" 'select(.type == "result") | .result')" ;;
+  esac
+}
+ask "$tmp/recall.jsonl" "Where does EX-2 stand?"
+trigger "trigger: where a ticket stands loads story-tracker" "$tmp/recall.jsonl" story-tracker
+ask "$tmp/standup.jsonl" "Standup for the Example project: what is in progress, and what comes next?"
+trigger "trigger: a standup loads story-tracker" "$tmp/standup.jsonl" story-tracker
+ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
+trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
+ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
+trigger "trigger: a sprint request loads sprint" "$tmp/sprint.jsonl" sprint
+ask "$tmp/health.jsonl" "Check my vault for problems."
+trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
+
 printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
 # With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
 sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&
@@ -128,13 +160,56 @@ The ticket: the task board should show each task's branch."
 holds "trigger: the request loads story-tracker" \
   "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-tracker"
 got="$(field "$tmp/third.jsonl" 'select(.type == "result") | .result')"
-case "${got#"${got%%[![:space:]]*}"}" in
-  '*As a*'*) pass "trigger: the ticket text starts with *As a*" ;;
-  *) fail "trigger: the ticket text starts with *As a*" "got: $got" ;;
+# The text may follow a line that says what it is; the template's first line opens a line of its own.
+if printf '%s\n' "$got" | tr -d '\r' | grep -q '^[[:space:]]*\*As a\*'; then
+  pass "trigger: the ticket text has a line that starts with *As a*"
+else
+  fail "trigger: the ticket text has a line that starts with *As a*" "got: $got"
+fi
+printf '== search rule: a fresh session recalls a story with the helper ==\n'
+step "task new: a tracked story" bash "$SB" task new EX-1 --project Example --title "Show each task's branch on the board"
+step "task set: its next action" bash "$SB" task set EX-1 status=in-progress "next=Add a branch column to the board view"
+# Read, Grep, cat, sed and grep are allowed too, so a whole-file read could come first.
+ask "$tmp/fourth.jsonl" "Where does story EX-1 stand, and what is its next action? Answer in one line." \
+  Read Grep "Bash(cat *)" "Bash(sed *)" "Bash(grep *)"
+uses='select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | if .name == "Bash" then "bash " + (.input.command | gsub("\n"; " ")) elif .name == "Read" then "read " + .input.file_path + (if (.input.offset // .input.limit) then " ranged" else "" end) else .name end'
+first="$(field "$tmp/fourth.jsonl" "$uses" | awk '
+  /^bash .*second-brain +(task +head|outline|search)/ { print "helper: " $0; exit }
+  /^read / && !/ ranged$/ { print "whole: " $0; exit }
+  /^Grep$/ || /^bash .*[^a-z](cat|sed|grep|head|tail)[ \t]/ { print "whole: " $0; exit }')"
+case "$first" in
+  helper:*) pass "search rule: task head, outline or search comes before any whole-file read" ;;
+  *) fail "search rule: task head, outline or search comes before any whole-file read" "first: ${first:-none}" ;;
 esac
+holds "search rule: the answer gives the story's next action" "$(field "$tmp/fourth.jsonl" 'select(.type == "result") | .result')" "branch column"
+got="$(field "$tmp/fourth.jsonl" 'select(.type == "system" and .subtype == "hook_response" and .hook_event == "PreToolUse") | "exit=\(.exit_code)"' | sort -u | tr '\n' ' ')"
+holds "search rule: the PreToolUse hook ran" "$got" "exit=0"
+case "$got" in *"exit="[!0]*) fail "search rule: the PreToolUse hook always exits 0" "got: $got" ;; *) pass "search rule: the PreToolUse hook always exits 0" ;; esac
+printf '== session context: the SessionStart hook names the project, the ticket and its story ==\n'
+repo="$tmp/code/example-api"
+mkdir -p "$repo"
+step "git init: a repo of the project" git init -q "$repo"
+step "git: on a ticket branch" git -C "$repo" symbolic-ref HEAD refs/heads/feature/EX-1-branch-column
+code="$tmp/code"
+if command -v cygpath >/dev/null 2>&1; then code="$(cygpath -m "$code")"; fi
+sed -e 's/^repos: \[\]$/repos: [example-api]/' -e "s|^repos_root: \"\"$|repos_root: \"$code\"|" \
+  "$vault/$P/claude/profile.md" >"$tmp/profile.md" && mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
+holds "repo: the profile records the repo" "$(bash "$SB" repo Example)" "example-api"
+was="$work"
+work="$repo"
+ask "$tmp/fifth.jsonl" "Which ticket id does the branch of this session name? Reply with the id only."
+work="$was"
+got="$(field "$tmp/fifth.jsonl" "$hook_out")"
+holds "session context: the hook exits 0" "$got" "exit=0"
+holds "session context: it names the project" "$got" "project: Example"
+holds "session context: it names the branch" "$got" "branch: feature/EX-1-branch-column"
+holds "session context: it names the ticket" "$got" "ticket: EX-1"
+holds "session context: it names the story and its status" "$got" "story: projects/example/tasks/EX-1/README.md - in-progress"
+holds "session context: it ends with the search and read rule" "$got" "never grep, cat or sed on vault files."
+holds "session context: Claude knows the ticket from the first message" "$(field "$tmp/fifth.jsonl" 'select(.type == "result") | .result')" "EX-1"
 if [ "$n_fail" -gt 0 ]; then
   printf '\n== what Claude Code printed ==\n'
-  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl"; do
+  for f in "$tmp/first.jsonl" "$tmp/second.jsonl" "$tmp/third.jsonl" "$tmp/fourth.jsonl" "$tmp/fifth.jsonl"; do
     printf -- '-- %s --\n' "${f##*/}"
     cat "$f.err" 2>/dev/null
     field "$f" "$init_of | {skills, agents, plugins}"

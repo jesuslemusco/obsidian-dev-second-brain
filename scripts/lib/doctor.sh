@@ -156,11 +156,60 @@ sb_doc_check_conventions() {
   sb_doc_row ok conventions vault "" "-"
 }
 
-# Check that the vault's pull request format note exists.
+# Print each text of the pull request note that the plugin has written, one per line: its
+# pull_request_version, then the cksum of the text with its CRs dropped. "none" is the note of
+# 0.2.0, which had no version. A change to the template raises its version and adds a line last.
+sb_doc_pr_texts() {
+  printf '%s\n' \
+    'none 1926705061 992' \
+    '2 3779339813 1749'
+}
+
+# Return 0 when the vault's pull request note is older than the plugin's template. Sets
+# SB_DOC_HAVE to the note's version, or "none", and SB_DOC_WANT to the template's.
+sb_doc_pr_older() {
+  local have want
+  have="$(sb_fm_get "$SB_ROOT/claude/pull-request.md" pull_request_version 2>/dev/null)"
+  want="$(sb_fm_get "$(sb_plugin_root)/templates/pull-request.md.tmpl" pull_request_version 2>/dev/null)"
+  case "$have" in *[!0-9]*) have="" ;; esac
+  case "$want" in *[!0-9]*) want="" ;; esac
+  SB_DOC_HAVE="${have:-none}"
+  SB_DOC_WANT="$want"
+  [ -n "$want" ] && { [ -z "$have" ] || sb_doc_older "$have" "$want"; }
+}
+
+# Return 0 when the vault's pull request note was never edited: line endings aside, it holds a
+# text the plugin wrote.
+sb_doc_pr_unedited() {
+  local have v crc size
+  read -r crc size v <<EOF
+$(tr -d '\r' <"$SB_ROOT/claude/pull-request.md" | cksum)
+EOF
+  have="$crc $size"
+  while read -r v crc size; do
+    [ "$crc $size" != "$have" ] || return 0
+  done <<EOF
+$(sb_doc_pr_texts)
+EOF
+  return 1
+}
+
+# Check that the vault's pull request format note exists, and that it is not older than the
+# plugin's template. An older note that was never edited is one --fix replaces.
 sb_doc_check_pull_request() {
-  local list=""
-  [ -f "$SB_ROOT/claude/pull-request.md" ] || list="claude/pull-request.md"
-  sb_doc_report warn pull-request vault "$list" "run second-brain scaffold vault to create it"
+  if [ ! -f "$SB_ROOT/claude/pull-request.md" ]; then
+    sb_doc_row warn pull-request vault "claude/pull-request.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  if ! sb_doc_pr_older; then
+    sb_doc_row ok pull-request vault "" "-"
+  elif sb_doc_pr_unedited; then
+    sb_doc_row warn pull-request vault "claude/pull-request.md:$SB_DOC_HAVE" \
+      "the note is older than the plugin's template, version $SB_DOC_WANT, and was never edited: run second-brain doctor --fix"
+  else
+    sb_doc_row warn pull-request vault "claude/pull-request.md:$SB_DOC_HAVE" \
+      "the note is older than the plugin's template, version $SB_DOC_WANT, and was edited: bring it in line with the template by hand, keep your own rules, and set pull_request_version"
+  fi
 }
 
 # Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
@@ -500,9 +549,30 @@ sb_doc_check_profile() {
   sb_doc_report fail profile "$SB_P_NAME" "$bad" "$fix"
 }
 
-# Check that the board file exists, and that its Current sprint view filters on the sprint in progress.
+# Return 0 when a board file has a view by that name.
+sb_doc_has_view() {
+  SB_VIEW="$2" LC_ALL=C awk '
+    BEGIN { want = "^[ \t]*(-[ \t]+)?name:[ \t]*[\"\047]?" ENVIRON["SB_VIEW"] "[\"\047]?[ \t]*$" }
+    { sub(/\r$/, "") }
+    $0 ~ want { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$1"
+}
+
+# Return 0 when a board file's own filters, the block above its formulas and views, take the
+# archive folder.
+sb_doc_has_archive_filter() {
+  LC_ALL=C awk '
+    { sub(/\r$/, "") }
+    /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
+    top && /file\.inFolder\(["\047][^"\047]*\/archive["\047]\)/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$1"
+}
+
+# Check that the board file exists, that its Current sprint view filters on the sprint in progress,
+# that a project with a subproject has the By subproject view, and that an archive project's board
+# takes the archived tasks.
 sb_doc_check_board() {
-  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit
+  local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
     sb_doc_row fail board "$SB_P_NAME" "tasks.base" "run second-brain scaffold project again with the same name and path to write it"
     return 0
@@ -513,26 +583,31 @@ sb_doc_check_board() {
     awk -F'\t' '$3 == "in-progress" { print $2 }' | LC_ALL=C sort | tail -1)"
   if [ -n "$cur" ]; then
     lit="$(sb_board_sprint_literal "$base")"
-    if [ -z "$lit" ]; then
-      # No id was read: the view is there with a filter in another form, or it is not there.
-      if LC_ALL=C awk '
-        { sub(/\r$/, "") }
-        /^[ \t]*(-[ \t]+)?name:[ \t]*["\047]?Current sprint["\047]?[ \t]*$/ { found = 1; exit }
-        END { exit(found ? 0 : 1) }' "$base"; then
-        sb_doc_row warn board "$SB_P_NAME" "tasks.base:filter" \
-          "write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
-      else
-        sb_doc_row warn board "$SB_P_NAME" "tasks.base:no-view" \
-          "add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
+    if [ -n "$lit" ]; then
+      if [ "$lit" != "$cur" ]; then
+        bad="tasks.base:$lit"
+        fix="set the filter of the board's Current sprint view to the sprint in progress, $cur"
       fi
-      return 0
-    fi
-    if [ "$lit" != "$cur" ]; then
-      sb_doc_row warn board "$SB_P_NAME" "tasks.base:$lit" "set the filter of the board's Current sprint view to the sprint in progress, $cur"
-      return 0
+    # No id was read: the view is there with a filter in another form, or it is not there.
+    elif sb_doc_has_view "$base" "Current sprint"; then
+      bad="tasks.base:filter"
+      fix="write the filter of the board's Current sprint view as sprint == \"$cur\", the form sprint open rewrites"
+    else
+      bad="tasks.base:no-view"
+      fix="add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
     fi
   fi
-  sb_doc_row ok board "$SB_P_NAME" "" "-"
+  # A board scaffolded before the By subproject view lacks it; only a project with a subproject needs it.
+  if [ -n "$(sb_sub_files "$SB_P_PATH")" ] && ! sb_doc_has_view "$base" "By subproject"; then
+    bad="${bad:+$bad$nl}tasks.base:no-subproject-view"
+    fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+  fi
+  # A board scaffolded before the archive layout shows no archived task in Obsidian.
+  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
+    bad="${bad:+$bad$nl}tasks.base:no-archive-filter"
+    fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
+  fi
+  sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"
 }
 
 # Check that each hub scaffold project writes is there, with something in it. A hub that two
@@ -551,6 +626,62 @@ sb_doc_check_hubs() {
   done
   sb_doc_report warn hubs "$SB_P_NAME" "$bad" \
     "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first" 120
+}
+
+# Check that the project hub, claude/README.md, the profile and each subproject note hold no
+# placeholder of the template they were written from: text in angle brackets, outside inline code
+# unless it opens the code. Only the template's own placeholders count, so the owner's angle
+# brackets never do. Frontmatter and fenced code are not read, nor are task READMEs. An offender
+# is the note's path under the project and the line.
+sb_doc_check_placeholders() {
+  local f bad
+  bad="$({
+    printf '%s\t%s\n' project-readme.md.tmpl README.md project-claude-hub.md.tmpl claude/README.md \
+      profile.md.tmpl claude/profile.md
+    for f in "$SB_P_DIR"/claude/subprojects/*.md; do
+      [ -f "$f" ] || continue
+      printf 'subproject.md.tmpl\tclaude/subprojects/%s\n' "${f##*/}"
+    done
+  } | LC_ALL=C SB_T="$(sb_plugin_root)/templates/" SB_D="$SB_P_DIR/" awk -F'\t' '
+    # Put the placeholders of a line in sp; return how many.
+    function spans(s,   i, j, n, c, code, start) {
+      n = 0; code = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "`") { code = !code; start = i + 1; continue }
+        if (c != "<" || (code && i != start)) continue
+        j = index(substr(s, i + 1), ">")
+        if (j < 2 || substr(s, i + 1, 1) ~ /[ \t]/) continue
+        sp[++n] = substr(s, i, j + 1); i += j
+      }
+      return n
+    }
+    # Read a template into ph when rel is empty, else print rel:<line> for each line of the note
+    # that holds a placeholder of the template.
+    function scan(path, tmpl, rel,   line, k, m, i, st, fence) {
+      k = 0; st = 0; fence = 0
+      while ((getline line < path) > 0) {
+        k++
+        sub(/\r$/, "", line)
+        if (k == 1) { sub(/^\357\273\277/, "", line); if (line == "---") { st = 1; continue } }
+        if (st) { if (line == "---") st = 0; continue }
+        if (line ~ /^[ \t]*(```|~~~)/) { fence = !fence; continue }
+        if (fence) continue
+        m = spans(line)
+        for (i = 1; i <= m; i++) {
+          if (rel == "") ph[tmpl "\t" sp[i]] = 1
+          else if ((tmpl "\t" sp[i]) in ph) { print rel ":" k; break }
+        }
+      }
+      close(path)
+    }
+    $1 == "" { next }
+    {
+      if (!($1 in loaded)) { loaded[$1] = 1; scan(ENVIRON["SB_T"] $1, $1, "") }
+      scan(ENVIRON["SB_D"] $2, $1, $2)
+    }')"
+  sb_doc_report warn placeholders "$SB_P_NAME" "$bad" \
+    "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 }
 
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
@@ -632,12 +763,14 @@ EOF
   sb_doc_report fail alias-unique "$SB_P_NAME" "$bad" "rename the alias on one of the notes that carry it"
 }
 
-# Check that every folder directly under the tasks root holds a README with something in it.
+# Check that every task folder holds a README with something in it: each folder directly under the
+# tasks root but the archive, and each one directly under a year of the archive.
 sb_doc_check_no_readme() {
   local d bad="" nl=$'\n'
-  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/; do
+  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/ "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/*/; do
     [ -d "$d" ] || continue
     d="${d%/}"
+    [ "$d" != "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || continue
     [ -s "$d/README.md" ] || bad="$bad${d##*/}$nl"
   done
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
@@ -677,6 +810,60 @@ sb_doc_check_task_location() {
     }' | LC_ALL=C sort)"
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
     "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
+}
+
+# Print id, file and reason for each task out of the archive layout: open inside the archive, or
+# done or abandoned outside it for archive_after_days days or more. A done task's age counts from
+# the newest date it holds, of its status notes and its sprint id; with none it is never due, as
+# --fix moves no folder it cannot date.
+# Nothing in a flat project.
+sb_doc_layout_drift() {
+  local days
+  [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] || return 0
+  days="$(sb_setting "$SB_P_PATH" archive_after_days 14)"
+  case "$days" in *[!0-9]*) days=14 ;; esac
+  printf '%s\n' "$SB_DOC_SCAN" | SB_A="$SB_P_DIR/$SB_TASKS_ROOT/archive/" SB_NOW="$(sb_today)" SB_DAYS="$days" \
+    LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
+    function newest(path,   line, d, best, on) {
+      best = ""; on = 0
+      while ((getline line < path) > 0) {
+        sub(/\r$/, "", line)
+        if (line ~ /^## /) { on = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); continue }
+        if (on && line ~ /^\*\*[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/) {
+          d = substr(line, 3, 10)
+          if (date_ok(d) && d > best) best = d
+        }
+      }
+      close(path)
+      return best
+    }
+    BEGIN { arch = ENVIRON["SB_A"]; now = date_days(ENVIRON["SB_NOW"]); days = ENVIRON["SB_DAYS"] + 0 }
+    NF < 12 { next }
+    {
+      inarch = (substr($1, 1, length(arch)) == arch)
+      if ($3 == "planned" || $3 == "in-progress" || $3 == "in-review") { if (inarch) print $2 "\t" $1 "\topen"; next }
+      if (inarch || ($3 != "done" && $3 != "abandoned")) next
+      d = newest($1)
+      if (date_ok($4) && $4 > d) d = $4
+      if (d != "" && now - date_days(d) >= days) print $2 "\t" $1 "\tto-archive"
+    }'
+}
+
+# Check that the tasks follow the profile's task_layout: no archive folder in a flat project; in an
+# archive project, no open task in the archive and no done one left out of it too long.
+sb_doc_check_task_layout() {
+  local days bad="" to="$SB_P_PATH/$SB_TASKS_ROOT"
+  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" != "archive" ]; then
+    [ ! -d "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || bad="archive:flat"
+    sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
+      "set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+    return 0
+  fi
+  days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
+  case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number"$'\n' ;; esac
+  bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
+  sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
+    "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
@@ -829,6 +1016,20 @@ EOF
     "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
 }
 
+# Check that each task's subproject names a subproject note, without letter case as the helper
+# resolves it. A project with no subproject gets no row.
+sb_doc_check_task_subproject() {
+  local files bad
+  files="$(sb_sub_files "$SB_P_PATH")"
+  [ -n "$files" ] || return 0
+  bad="$(printf '%s\n\034\n%s\n' "$files" "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' '
+    $0 == "\034" { part = 2; next }
+    !part { n = $0; sub(/^.*\//, "", n); sub(/\.md$/, "", n); has[tolower(n)] = 1; next }
+    NF >= 14 && $14 != "-" && !(tolower($14) in has) { print $2 ":" $14 }')"
+  sb_doc_report warn task-subproject "$SB_P_NAME" "$bad" \
+    "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
+}
+
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
@@ -953,7 +1154,7 @@ sb_doc_check_line_endings() {
   while IFS=$'\t' read -r id kind; do
     [ -n "$id" ] || continue
     # A single bare last line counts only when a newline ends it.
-    if [ "$kind" = "last" ] && [ -n "$(tail -c 1 "$SB_P_DIR/$SB_TASKS_ROOT/$id/README.md")" ]; then continue; fi
+    if [ "$kind" = "last" ] && [ -n "$(tail -c 1 "$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)")" ]; then continue; fi
     bad="$bad$id$nl"
   done <<EOF
 $(printf '%s\n' "$SB_DOC_FACTS" | awk -F'\t' '$1 == "eol" { print $2 "\t" $3 }')
@@ -975,9 +1176,9 @@ sb_doc_rows() {
     # A row whose path leaves the vault gets no rows, and nothing under it is opened.
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
-    for c in profile board hubs task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location topic_tags code_doc_map repos subprojects sprints unresolved_links bare_links \
-      line_endings depends_on; do
+    for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
+      alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
+      sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF
@@ -1012,9 +1213,24 @@ sb_doc_json() {
     END { print (rows ? "\n]" : "]") }'
 }
 
-# Make the status/ tag follow the status on each task where they disagree; print each change.
+# Replace the vault's pull request note with the template when it is older and was never edited;
+# print the change. Return 1 when nothing was replaced.
+sb_doc_fix_pull_request() {
+  local f="$SB_ROOT/claude/pull-request.md" tmp
+  [ -f "$f" ] && sb_doc_pr_older && sb_doc_pr_unedited || return 1
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-pr.XXXXXX")" || return 1
+  sb_fill_text pull-request.md.tmpl >"$tmp" || { rm -f "$tmp"; return 1; }
+  cat "$tmp" >"$f"
+  rm -f "$tmp"
+  printf 'fixed: claude/pull-request.md -> version %s (vault)\n' "$SB_DOC_WANT"
+}
+
+# Replace an old, never edited pull request note, make the status/ tag follow the status on each
+# task where they disagree, then archive each done or abandoned task the task-layout check names;
+# print each change. An open task is never moved.
 sb_doc_fix() {
-  local name path keys id file status tag n=0
+  local name path keys id file status tag new reason n=0 nl=$'\n'
+  if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
@@ -1028,6 +1244,19 @@ sb_doc_fix() {
       printf 'fixed: %s -> %s (%s)\n' "$id" "$tag" "$name"
     done 4<<EOF
 $(sb_doc_status_drift)
+EOF
+    # task archive reads the tasks root as written, so it never runs where that root leaves the
+    # project. A task it refuses stays where it is, with the reason on stderr.
+    case "$SB_DOC_LEAVES" in *tasks_root:*) continue ;; esac
+    while IFS=$'\t' read -r id file reason <&4; do
+      [ "$reason" = "to-archive" ] || continue
+      new="$( (sb_task_archive "$id" --project "$name") )"
+      new="${new%%"$nl"*}"
+      [ -n "$new" ] || continue
+      n=$((n + 1))
+      printf 'fixed: %s -> %s (%s)\n' "$id" "$new" "$name"
+    done 4<<EOF
+$(sb_doc_layout_drift)
 EOF
   done 3<<EOF
 $1
@@ -1077,11 +1306,104 @@ cmd_doctor() {
   return 0
 }
 
-# Print one line when no vault is set up, for the SessionStart hook; always exit 0.
+# Print the branch checked out in the repository that holds a directory, read from its files:
+# its name, or "detached". Nothing outside a repository.
+sb_doc_branch() {
+  local d="$1" g="" head=""
+  while [ -n "$d" ]; do
+    if [ -d "$d/.git" ]; then
+      g="$d/.git"
+      break
+    fi
+    if [ -f "$d/.git" ]; then
+      # A linked worktree: the file names its own git folder.
+      IFS= read -r g <"$d/.git"
+      g="${g%$'\r'}"
+      g="$(sb_path_in "${g#gitdir: }")"
+      case "$g" in /*) ;; *) g="$d/$g" ;; esac
+      break
+    fi
+    case "$d" in */*) d="${d%/*}" ;; *) d="" ;; esac
+  done
+  [ -n "$g" ] && [ -f "$g/HEAD" ] || return 0
+  IFS= read -r head <"$g/HEAD"
+  head="${head%$'\r'}"
+  case "$head" in
+    'ref: refs/heads/'?*) printf '%s\n' "${head#ref: refs/heads/}" ;;
+    ?*) printf 'detached\n' ;;
+  esac
+}
+
+# Print the first ticket id a branch names: a key of the project, a hyphen and a number, compared
+# without letter case and printed with the key as the index spells it.
+sb_doc_ticket() {
+  SB_B="$1" SB_K="$2" awk 'BEGIN {
+    lb = tolower(ENVIRON["SB_B"]); n = split(ENVIRON["SB_K"], k, ",")
+    for (i = 1; i <= n; i++) {
+      if (k[i] !~ /[A-Za-z0-9]/) continue
+      lk = tolower(k[i]) "-"; from = 1
+      while ((j = index(substr(lb, from), lk)) > 0) {
+        p = from + j - 1
+        if ((p == 1 || substr(lb, p - 1, 1) !~ /[a-z0-9]/) && match(substr(lb, p + length(lk)), /^[0-9]+/)) {
+          if (!best || p < best || (p == best && length(k[i]) > length(key))) {
+            best = p; key = k[i]; num = substr(lb, p + length(lk), RLENGTH)
+          }
+          break
+        }
+        from = p + 1
+      }
+    }
+    if (best) print key "-" num
+  }'
+}
+
+# Print the session block for a directory, or nothing when no project of the index holds it.
+sb_doc_session() {
+  local cwd rows sub sprint branch ticket f status nxt
+  cwd="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
+  SB_ROOT="$(sb_root 2>/dev/null)" || return 0
+  rows="$(sb_project_rows_by_cwd "$cwd" 2>/dev/null)"
+  case "$rows" in '' | *$'\n'*) return 0 ;; esac
+  IFS=$'\t' read -r SB_P_NAME SB_P_PATH SB_P_KEYS <<EOF
+$rows
+EOF
+  printf 'second-brain context for this session:\nproject: %s\n' "$SB_P_NAME"
+  sub="$(sb_sub_by_cwd "$SB_P_PATH" "$cwd" 2>/dev/null)"
+  case "$sub" in '' | *$'\n'*) ;; *) printf 'subproject: %s\n' "$sub" ;; esac
+  if sb_uses_sprints "$SB_P_PATH"; then
+    sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
+    printf 'sprint: %s\n' "${sprint:-none}"
+  fi
+  branch="$(sb_doc_branch "$cwd")"
+  ticket=""
+  [ -z "$branch" ] || ticket="$(sb_doc_ticket "$branch" "$SB_P_KEYS")"
+  printf 'branch: %s\nticket: %s\n' "${branch:-none}" "${ticket:-none}"
+  if [ -n "$ticket" ]; then
+    f="$(sb_task_by_path "$ticket" "$rows" | cut -f2-)"
+    [ -n "$f" ] || f="$(sb_task_by_alias "$ticket" "$rows" | cut -f2- | head -1)"
+    if [ -n "$f" ]; then
+      status="$(sb_fm_get "$f" status 2>/dev/null)"
+      nxt="$(sb_fm_get "$f" next 2>/dev/null)"
+      printf 'story: %s - %s, next: %s\n' "$(sb_rel "$f")" "${status:--}" "${nxt:--}"
+    else
+      printf 'story: none - run story-tracker start\n'
+    fi
+  fi
+  printf 'rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.\n'
+}
+
+# For the SessionStart hook; always exit 0. With no vault, one line that says so. In a directory
+# of a project of the index, the session block. Anywhere else, nothing.
 cmd_session_check() {
-  local v="${SECOND_BRAIN_VAULT:-}"
+  local v="${SECOND_BRAIN_VAULT:-}" cwd="$PWD" block
+  if [ "${1:-}" = "--cwd" ] && [ $# -ge 2 ]; then cwd="$(sb_path_in "$2")"; fi
   [ -n "$v" ] || v="$(sb_link_home)/second-brain-vault"
-  if [ -d "$v/.obsidian" ] && [ -f "$v/CLAUDE.md" ]; then return 0; fi
-  printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
+  if [ ! -d "$v/.obsidian" ] || [ ! -f "$v/CLAUDE.md" ]; then
+    printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
+    return 0
+  fi
+  # Built in a subshell: a command that exits on an odd vault leaves no half block and no failure.
+  block="$(sb_doc_session "$cwd" 2>/dev/null)" || block=""
+  [ -z "$block" ] || printf '%s\n' "$block"
   return 0
 }

@@ -1,6 +1,111 @@
 # Changelog
 
-## 0.2.0 - unreleased
+## 0.3.0 - unreleased
+
+Tasks can be archived and seen by subproject, every session starts knowing its project and ticket,
+and the doctor checks more of what the skills write.
+
+- The conventions note is at version 4: it describes the archive layout, the `By subproject` view
+  and `board --subproject`, and how a task names its subproject. The doctor's `conventions` check
+  warns about an older note.
+- The README has an Update section: refresh the marketplace, update the plugin, restart Claude Code,
+  then run the doctor's `check` and `fix`. It says what to do when the update does not take, and
+  how to turn on auto-update for the `second-brain` marketplace.
+- The guide has a Releases section: `version` changes in one commit on `main`, after the release
+  pull request is merged, and that commit is tagged `v<version>`. An early copy of 0.2.0 never
+  moved to the final 0.2.0, because both say `0.2.0`; 0.3.0 does move.
+- A new doctor check, `placeholders`, warns about each line of a project's hub, `claude/README.md`,
+  profile or subproject note that still holds the `<...>` text of its template, such as
+  `<A rule Claude must follow in this project, one per bullet.>`. Only the template's own text
+  counts, and task READMEs are not read. `vault-setup` asks for the project's paragraph and rules
+  after `scaffold project`.
+- The pull request format opens with a `Goal` section, one or two lines on why the pull request
+  exists. Every heading is bold, and every bullet starts with a bold label, as in
+  `- **doctor:** warns on an old index`; a heading with nothing to say gets `- **None.**`. The
+  description is written from the branch, with `git log <target>..<source>` and
+  `git diff <target>...<source>`, both branches named, never from memory of the work.
+- The pull request note carries a version, `pull_request_version: 2`, in frontmatter. The doctor's
+  `pull-request` check warns about a note older than the plugin's template. `doctor --fix`
+  replaces an old note that was never edited with the template. An edited one is left alone, and
+  its row says to bring it in line with `templates/pull-request.md.tmpl` by hand: add the goal,
+  bold the headings and the labels, take the rules, keep your own, and set
+  `pull_request_version: 2`.
+- The board shows a task's `subproject` and has a `By subproject` view, which groups the active
+  tasks by subproject. `scaffold project` writes it into a new board. The doctor's `board` check
+  warns when a project with a subproject has a board without it (`tasks.base:no-subproject-view`).
+- `second-brain board <project> [view] --subproject <name>` lists only the tasks of that
+  subproject, and `board <project> "By subproject"` lists the active tasks by subproject, with the
+  subproject in a last column.
+- Inside a subproject's repo, the story-tracker status overview lists that subproject's stories.
+- The doctor's new `task-subproject` check warns about a task whose `subproject` names no
+  subproject of the project (`<ID>:<value>`). Only a project with a subproject gets the row.
+- A profile key, `task_layout`, keeps the tasks folder short: `flat`, the default, or `archive`.
+  With `archive`, `second-brain task archive <ID>` moves a done or abandoned task once, through
+  `move`, to `tasks/archive/<YYYY>/<ID>/`, writes `archived: "<date>"` and rewrites the links to
+  it. When anything is at that path already, even an empty folder, it moves nothing and exits 6.
+  Every command still finds the task by id, at either depth, in both layouts.
+- The board file that `scaffold project` writes lists archived tasks too. A board written before
+  lists only the live ones in Obsidian until its filters block is copied from
+  `templates/tasks.base.tmpl`. In a project with `task_layout: archive`, the doctor's `board` check
+  warns about such a board (`tasks.base:no-archive-filter`).
+- `task new` refuses an id that is archived, and the id `archive`, the archive's folder, in any
+  letter case. `task alias` refuses the alias `archive` the same way.
+- A doctor check, `task-layout`, keeps a project in its layout: an `archive` folder in a `flat`
+  project, an open task in the archive, and a done task left out of it, all warn. A done task is
+  left out once `archive_after_days`, 14 by default, have passed since its newest status note or
+  its sprint's end; one with neither does not warn, and `task archive` moves it by hand.
+  `doctor --fix` archives those tasks through `task archive`, one `fixed:` line each, and never
+  moves an open task.
+- `no-readme` and `task-location` accept a task at `tasks/archive/<YYYY>/<ID>/README.md`.
+- The vault index has a rule for finding and reading notes, under
+  `## Rules for notes that most often go wrong`: `second-brain find`, `search`, `task head`, then
+  `outline` and a ranged read, a whole note last, and never grep, cat or sed on vault files. Every
+  session has it without running `second-brain conventions`.
+- The plugin's index template is now at `index_version: 3`, so the doctor's `index` check warns
+  about a vault index without the rule. Add the rule from `templates/vault-index.md.tmpl` under
+  `## Rules for notes that most often go wrong`, keep your own lines and the table, and set
+  `index_version: 3`. The `vault-doctor` skill does this after asking.
+- A new PreToolUse hook warns Claude when a Grep call, a Read of a whole task note, or a shell
+  grep, cat or sed reaches into the vault, and names the helper commands to use. It only adds
+  context: it never blocks a call and never approves one. Edits pass as before. It sets
+  `"onFailure": "continue"`, so a hook that cannot run lets the call go on, on Windows too; the
+  plugin now needs Claude Code 2.1.295 or later.
+- The SessionStart hook prints the session's context in a repo of a project: the project, the
+  subproject, the sprint in progress, the branch and the ticket it names, and that ticket's story
+  with its status and next step, or `story: none - run story-tracker start`. It ends with the
+  rule for finding and reading notes. It reads the repo's files and runs no git command, and
+  outside every project it prints nothing, as before.
+- story-tracker writes a new story's `subproject` from the `subproject:` line of
+  `second-brain context`, and asks which subproject, or none, when the repo is in none of a
+  project that has some. A story set to `done` or `abandoned` in an `archive` project gets one
+  question: archive it now with `task archive`? The sprint close asks the same once for the
+  sprint's done and abandoned tasks. Neither moves a task without a yes.
+- `vault-setup project` and `adopt` ask for `task_layout`, and `archive_after_days` with
+  `archive`, and write them into the profile. `vault-setup subproject` says how a task names its
+  subproject and offers to set it on the tasks that exist.
+- docs-keeper and scrum-master take a task's path from `find` or `task head`, so they reach an
+  archived task too. The story-tracker overview of what waits on docs uses `task docs` for the
+  same reason.
+- The vault index and the conventions say where a task lives in each layout and that a task names
+  its subproject in `subproject`. Copy the task line under `## Rules for notes that most often go
+  wrong` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`.
+- The vault-doctor `fix` mode says that `doctor --fix` also archives the tasks `task-layout` names
+  in an `archive` project, and replaces an old pull request note that was never edited. Before an
+  archive it takes a snapshot, and `compare` after it proves that only those tasks moved.
+- Claude can now run the doctor's check on its own: a request such as "Check my vault for
+  problems." loads `vault-doctor`, which ran only by name before. Its check writes nothing, and its
+  fix repairs only what is safe and asks before anything else. `vault-setup` still runs only by
+  name, and offers the doctor for the detail of a check.
+- The `story-tracker` description names where a ticket stands and a standup, and the index says to
+  call a plugin skill for its work rather than the helper alone, so "Where does EX-2 stand?" and
+  "Standup for the Example project" load it. The index is two lines shorter, to keep room for
+  project rows under the doctor's 60-line limit.
+- The end-to-end check asks five more requests in plain words: where a ticket stands, a standup,
+  an update to a ticket, a new sprint and a vault check. A request that does not load its skill
+  fails the job, which may now take 30 minutes. The guide lists every request it proves under
+  `What to say`.
+
+## 0.2.0 - 2026-10-15
 
 The helper works on the vault's files alone, and the plugin runs on Windows.
 

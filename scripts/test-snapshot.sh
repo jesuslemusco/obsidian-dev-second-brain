@@ -256,6 +256,34 @@ out_is "compare: unresolved and alias changes" \
   "snapshot: $SNAPS/with-links${NL}unresolved added:${NL}  $P/docs/notes.md: [[cherry]]${NL}unresolved removed:${NL}  $P/docs/notes.md: [[zebra]]${NL}aliases added:${NL}  New name${TAB}$P/tasks/EX-1/README.md"
 is "snapshot: doctor.txt holds the unresolved-links row" "$(grep -c "^warn | unresolved-links | Example | 2 | " "$vault/$SNAPS/with-links/doctor.txt")" "1"
 
+# ---------------------------------------------------------------- an archived task
+sb snapshot before-archive
+sed 's/^task_layout: flat$/task_layout: archive/' "$vault/$P/claude/profile.md" >"$tmp/profile.tmp" && cat "$tmp/profile.tmp" >"$vault/$P/claude/profile.md"
+sb task set EX-4 status=done
+sb task archive EX-4
+rc_is "archive: a done task is archived" 0
+sb snapshot after-archive
+is "snapshot: tasks.tsv keeps an archived task" "$(grep "${TAB}EX-4${TAB}" "$vault/$SNAPS/after-archive/tasks.tsv")" "Example${TAB}EX-4${TAB}done"
+sb compare before-archive
+out_has "compare: an archived task is the same task, with its new status" "tasks changed:${NL}  Example | EX-4 | planned -> done"
+out_lacks "compare: an archived task is not removed" "tasks removed:"
+out_has "compare: its alias moved with it" "aliases added:${NL}  EX-4${TAB}$P/tasks/archive/2026/EX-4/README.md"
+
+# ---------------------------------------------------------------- doctor --fix archives, compare proves it
+sb task new EX-5 --project Example --title "Task EX-5"
+sb task set EX-5 status=done
+sb task note EX-5 "Done"
+sed 's/^\*\*2026-01-10 /**2025-12-01 /' "$vault/$P/tasks/EX-5/README.md" >"$tmp/task.tmp" && cat "$tmp/task.tmp" >"$vault/$P/tasks/EX-5/README.md"
+printf '%s\n' '' "Links to [[$P/tasks/EX-5/README|EX-5]]." >>"$vault/$P/docs/notes.md"
+sb snapshot before-fix
+sb doctor Example --fix
+out_has "doctor --fix: archives the done task" "fixed: EX-5 -> $P/tasks/archive/2026/EX-5/README.md (Example)"
+sb compare before-fix
+rc_is "compare after doctor --fix: exit 1, the task moved" 1
+out_is "compare after doctor --fix: only the archived task's alias moved; no link broke, no task changed" \
+  "snapshot: $SNAPS/before-fix${NL}aliases added:${NL}  EX-5${TAB}$P/tasks/archive/2026/EX-5/README.md${NL}aliases removed:${NL}  EX-5${TAB}$P/tasks/EX-5/README.md"
+is "doctor --fix: the link to the task follows it" "$(grep -c -F "[[$P/tasks/archive/2026/EX-5/README|EX-5]]" "$vault/$P/docs/notes.md")" "1"
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

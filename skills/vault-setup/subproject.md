@@ -33,7 +33,18 @@ In one round:
 4. For every repository, add its Code to doc map rows as section 2 of `repo.md` says, with the
    subproject's docs folder, `<topics root>/<name>/`, in the Docs cell where its docs live there.
 
-## 3. Finish
+## 3. Its tasks
+
+A task of the subproject stays in the project's one tasks folder and names the subproject in its
+frontmatter, `subproject: <name>`, spelled as the note is named. story-tracker writes it on a new
+task with `second-brain task new <ID> --subproject <name>`, taking the name from the
+`subproject:` line of `second-brain context` in its repos. For tasks that exist, offer to set it:
+show `second-brain board <project>`, ask which tasks belong to the subproject, then run
+`second-brain task set <ID> subproject=<name>` for each. Exit 1: the name is no subproject. The
+board's `By subproject` view groups the tasks, and
+`second-brain board <project> --subproject <name>` lists one subproject's.
+
+## 4. Finish
 
 1. Run `second-brain subproject <project> <name>` and show its settings: each value is the note's
    or, when the note leaves it empty, the profile's.

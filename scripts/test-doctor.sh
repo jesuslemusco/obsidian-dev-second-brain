@@ -63,6 +63,9 @@ out_is() { is "$1" "$OUT" "$2"; }
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
 }
+out_lacks() {
+  case "$OUT" in *"$2"*) fail "$1" "unwanted: $2" "in: $OUT" ;; *) pass "$1" ;; esac
+}
 # edit <file> <sed script>: change a file through a temp file.
 edit() {
   sed "$2" "$1" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$1"
@@ -115,9 +118,9 @@ cp -R "$vault" "$tmp/pristine"
 doc
 rc_is "fresh vault: exit 0" 0
 is "fresh vault: no fail row" "$(printf '%s\n' "$OUT" | grep '^fail ' || true)" ""
-is "fresh vault: the one row that is not ok, with no import line" \
+is "fresh vault: the rows that are not ok: no import line, and the template text not yet filled" \
   "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" { printf "%s:%s ", $1, $2 }')" \
-  "warn:import "
+  "warn:import warn:placeholders "
 is "rows: a result is ok, warn or fail" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '$1 != "ok" && $1 != "warn" && $1 != "fail"' | grep -c . || true)" "0"
 chk "pointer: ok" pointer vault "ok | 0 | -"
 is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | grep -c . || true)" "0"
@@ -125,10 +128,11 @@ is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | gr
 # ---------------------------------------------------------------- the skill's entries
 # The skill reads an entry with one Grep and the four lines after its heading.
 CHECKS="$here/skills/vault-doctor/checks.md"
-# The fresh vault has no subproject, so its rows lack subprojects, which comes right after repos.
+# The fresh vault has no subproject, so its rows lack subprojects and task-subproject, which come
+# right after repos.
 is "checks.md: one entry for each check the doctor prints, in the order of its table" \
   "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
-  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects /')"
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects task-subproject /')"
 is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
   function entry() {
     while (n > 0 && body[n] == "") n--
@@ -173,6 +177,92 @@ doc
 rc_is "pull-request: a missing note leaves exit 0" 0
 chk "pull-request: a missing note warns" pull-request vault "warn | 1 | claude/pull-request.md"
 is "pull-request: the fix says to scaffold the vault" "$(fix_of pull-request vault)" "run second-brain scaffold vault to create it"
+reset
+# The note as 0.2.0 wrote it, with no version.
+cat >"$tmp/pr-0.2.0.md" <<'EOF'
+---
+aliases:
+  - Pull Request Format
+type: onboarding
+tags:
+  - type/onboarding
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Pull request format
+
+Every pull request description Claude writes follows this format. A project that keeps its own
+`<project>/claude/pull-request.md` uses that one instead. Edit this note to change the format.
+
+## The rules
+
+- Use the four headings below, in this order, and no others.
+- Write short plain English: a few bullets under each heading, one line each.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write `- None.`
+
+## The format
+
+```markdown
+## What was changed?
+
+- <behaviour that works differently now, one line each>
+
+## What was added?
+
+- <new files, commands, checks or options, one line each>
+
+## Dependencies:
+
+- <what must be merged, installed or set first, or "None.">
+
+## Risks:
+
+- <what could break and for whom, or "None.">
+```
+EOF
+PRT="$here/templates/pull-request.md.tmpl"
+pv="$(sed -n 's/^pull_request_version: *//p' "$PRT" | head -1)"
+is "pull-request: the last text the doctor knows is the template's, so a change to it adds a line" \
+  "$(. "$here/scripts/lib/doctor.sh" && sb_doc_pr_texts | tail -1)" "$pv $(tr -d '\r' <"$PRT" | cksum)"
+UNEDITED="the note is older than the plugin's template, version $pv, and was never edited: run second-brain doctor --fix"
+EDITED="the note is older than the plugin's template, version $pv, and was edited: bring it in line with the template by hand, keep your own rules, and set pull_request_version"
+cat "$tmp/pr-0.2.0.md" >"$vault/claude/pull-request.md"
+doc
+rc_is "pull-request: an older note leaves exit 0" 0
+chk "pull-request: the note of 0.2.0 warns, with no version" pull-request vault "warn | 1 | claude/pull-request.md:none"
+is "pull-request: a note never edited is left to --fix" "$(fix_of pull-request vault)" "$UNEDITED"
+edit "$vault/claude/pull-request.md" "s/\$/$CR/"
+doc
+is "pull-request: CRLF line endings are no edit" "$(fix_of pull-request vault)" "$UNEDITED"
+doc --fix
+rc_is "pull-request: --fix exits 0" 0
+is "pull-request: --fix names the note it replaced, first" "$(printf '%s\n' "$OUT" | head -1)" "fixed: claude/pull-request.md -> version $pv (vault)"
+is "pull-request: --fix writes the template" "$(cmp -s "$PRT" "$vault/claude/pull-request.md" && printf same)" "same"
+chk "pull-request: the replaced note is ok" pull-request vault "ok | 0 | -"
+doc --fix
+is "pull-request: --fix again changes nothing" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+cat "$tmp/pr-0.2.0.md" >"$vault/claude/pull-request.md"
+printf -- '- my own pull request rule\n' >>"$vault/claude/pull-request.md"
+cp "$vault/claude/pull-request.md" "$tmp/pr.before"
+doc --fix
+is "pull-request: --fix leaves an edited note alone" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+is "pull-request: the edited note is unchanged" "$(cmp -s "$tmp/pr.before" "$vault/claude/pull-request.md" && printf same)" "same"
+chk "pull-request: an edited note of 0.2.0 warns" pull-request vault "warn | 1 | claude/pull-request.md:none"
+is "pull-request: the fix says to bring an edited note in line by hand" "$(fix_of pull-request vault)" "$EDITED"
+cat "$PRT" >"$vault/claude/pull-request.md"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv - 1))/"
+doc
+chk "pull-request: a lower version warns, with that version" pull-request vault "warn | 1 | claude/pull-request.md:$((pv - 1))"
+is "pull-request: a version changed by hand is an edit" "$(fix_of pull-request vault)" "$EDITED"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv + 1))/"
+doc
+chk "pull-request: a note newer than the template is fine" pull-request vault "ok | 0 | -"
+edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: 99999999999999999999999/"
+doc
+chk "pull-request: a version too long to compare counts as newer" pull-request vault "ok | 0 | -"
+is "pull-request: such a version gives no shell error" "$ERR" ""
 reset
 
 # ---------------------------------------------------------------- index rows and version
@@ -412,6 +502,27 @@ edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
 doc Example
 chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
 reset
+# The board's filters as 0.2.0 wrote them, with no archive branch.
+edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; s/^        - file\.folder/    - file.folder/'
+is "board: the old filters keep one depth line" "$(grep -c '^    - file.folder.split("/").length == 4$' "$T/tasks.base")/$(grep -c 'archive' "$T/tasks.base")" "1/0"
+doc Example
+chk "board: a flat project is not asked for the archive filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Archive/'
+doc Example
+rc_is "board: a missing archive filter leaves exit 0" 0
+chk "board: an archive project whose board takes no archived task warns" board Example "warn | 1 | tasks.base:no-archive-filter"
+is "board: the fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the archive filter share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-archive-filter"
+is "board: the fix holds both" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; copy the filters block from templates/tasks.base.tmpl"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project with the template's filters is ok" board Example "ok | 0 | -"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.
@@ -515,6 +626,43 @@ sb scaffold project Long --path projects/long --keys LG --topics-root a-rather-l
 rm "$vault/projects/long/a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
 doc Long
 chk "hubs: a long path is printed whole" hubs Long "warn | 1 | a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
+reset
+
+# ---------------------------------------------------------------- placeholders
+HUB="$vault/$P/README.md"
+CHUB="$vault/$P/claude/README.md"
+PF="$vault/$P/claude/profile.md"
+doc Example
+rc_is "placeholders: a warning leaves exit 0" 0
+chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
+  "warn | 25 | README.md:14, claude/README.md:20, claude/README.md:21, claude/profile.md:39, claude/profile.md:40"
+is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
+  "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
+# Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
+edit "$HUB" 's#^<One paragraph.*>$#Example is the scratch project. Its code is in `<repo>/src`, see <https://example.com>.#'
+edit "$CHUB" 's#^- <A rule .*>$#- Name a branch feature/<ID>-<slug>.#'
+edit "$CHUB" 's#^- <Live systems: .*>$#- Live systems: none.#'
+edit "$PF" '/^## Stories$/,$s/<[^ >][^>]*>/none/g'
+doc Example
+chk "placeholders: ok once filled; the owner's own angle brackets, inline code and task READMEs are not read" placeholders Example "ok | 0 | -"
+edit "$CHUB" 's/^- Live systems: none\.$/&\
+- <A rule Claude must follow in this project, one per bullet.>/'
+doc Example
+chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:22"
+edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
+doc Example
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:22, claude/profile.md:39"
+edit "$CHUB" '/^- <A rule /d'
+edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
+printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
+edit "$HUB" 's/^type: moc$/&\
+note: "<One paragraph: what the project is, who it is for, and where its code lives.>"/'
+printf '%s\n' '<A rule Claude must follow in this subproject, one per bullet.>' >>"$HUB"
+doc Example
+chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
+sb scaffold subproject Example infra --repos example-infra
+doc Example
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:31"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -696,6 +844,120 @@ else
   printf 'skip  task-location: this file system tells TASKS from tasks\n'
 fi
 
+# ---------------------------------------------------------------- task-layout
+# layout <value>: set task_layout in the profile.
+layout() { edit "$vault/$P/claude/profile.md" "s/^task_layout: .*/task_layout: $1/"; }
+doc Example
+chk "task-layout: ok in a flat project" task-layout Example "ok | 0 | -"
+mkdir -p "$T/archive/2025/EX-0"
+sed 's/^  - EX-2$/  - EX-0/' "$T/EX-2/README.md" >"$T/archive/2025/EX-0/README.md"
+doc Example
+rc_is "task-layout: a warning leaves exit 0" 0
+chk "task-layout: an archive folder in a flat project warns" task-layout Example "warn | 1 | archive:flat"
+is "task-layout: the flat fix names both ways out" "$(fix_of task-layout)" \
+  "set task_layout: archive in the profile, or move each task in $P/tasks/archive back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: the archive folder is no task folder, in a flat project too" no-readme Example "ok | 0 | -"
+chk "task-location: an archived task is in its place, in a flat project too" task-location Example "ok | 0 | -"
+cp "$T/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+is "task-layout: --fix moves nothing in a flat project" "$(printf '%s\n' "$OUT" | head -1)/$(cmp -s "$tmp/EX-2.before" "$T/EX-2/README.md" && printf same)" \
+  "fixed: nothing/same"
+reset
+layout archive
+doc Example
+chk "task-layout: a done task with no status note and no sprint is not due, as nothing dates it" task-layout Example "ok | 0 | -"
+cp "$T/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+is "task-layout --fix: a task it cannot date is not moved" "$(printf '%s\n' "$OUT" | head -1)/$(cmp -s "$tmp/EX-2.before" "$T/EX-2/README.md" && printf same)" \
+  "fixed: nothing/same"
+edit "$T/EX-2/README.md" 's/^## Status notes$/## Status notes\
+\
+**2025-12-01 - Closed/'
+doc Example
+chk "task-layout: a done task with an old status note is due" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$T/EX-2/README.md" '/^\*\*2025-12-01 - Closed$/d'
+is "task-layout: the archive fix names --fix and the way back" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $P/tasks/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+sb task note EX-2 "Done"
+doc Example
+chk "task-layout: a done task with a status note of today stays, 14 days by default" task-layout Example "ok | 0 | -"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-12-27 /'
+doc Example
+chk "task-layout: 14 days after its newest status note it is old enough" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$T/EX-2/README.md" 's/^## Status notes$/## Status notes\
+\
+**2025-12-01 - An older note on top**/'
+edit "$T/EX-2/README.md" 's/^\*\*2025-12-27 /**2025-12-28 /'
+doc Example
+chk "task-layout: the newest status note counts, wherever it is" task-layout Example "ok | 0 | -"
+edit "$T/EX-2/README.md" 's/^\*\*2025-12-28 /**2025-12-02 /'
+sb task set EX-2 sprint=2026-01-14
+doc Example
+chk "task-layout: a sprint id newer than every note counts" task-layout Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^archive_after_days: .*/archive_after_days: 0/'
+doc Example
+chk "task-layout: archive_after_days 0 still waits for the sprint's end" task-layout Example "ok | 0 | -"
+sb task set EX-2 sprint=
+sb task note EX-2 "Closed"
+doc Example
+chk "task-layout: archive_after_days 0 takes a task done today" task-layout Example "warn | 1 | EX-2:to-archive"
+edit "$vault/$P/claude/profile.md" 's/^archive_after_days: .*/archive_after_days: two weeks/'
+doc Example
+chk "task-layout: a value that is no whole number warns, and 14 days count" task-layout Example "warn | 1 | archive_after_days:not-a-number"
+edit "$vault/$P/claude/profile.md" '/^archive_after_days: /d'
+sb task set EX-3 status=abandoned
+sb task note EX-3 "Dropped"
+edit "$T/EX-3/README.md" 's/^\*\*2026-01-10 /**2025-12-27 /'
+doc Example
+chk "task-layout: no key is 14 days, and an abandoned task is archived too" task-layout Example "warn | 1 | EX-3:to-archive"
+reset
+layout Archive
+mkdir -p "$T/archive/2025"
+sb task set EX-1 status=planned
+sb task note EX-2 "Done"
+mv "$T/EX-1" "$T/archive/2025/EX-1"
+mkdir -p "$T/archive/2025/EX-9" "$T/archive/EX-8"
+printf '%s\n' '---' 'type: task' '---' '' '# A task with no year' >"$T/archive/EX-8/README.md"
+doc Example
+chk "task-layout: an open task in the archive warns, the layout in any letter case" task-layout Example "warn | 1 | EX-1:open"
+chk "no-readme: a folder in a year of the archive with no README warns" no-readme Example "warn | 1 | EX-9"
+chk "task-location: a task in the archive with no year folder warns" task-location Example "warn | 1 | tasks/archive/EX-8/README.md"
+rm -r "$T/archive/2025/EX-9" "$T/archive/EX-8"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-06-30 /'
+cp "$T/EX-3/README.md" "$tmp/EX-3.before"
+doc Example --fix
+rc_is "task-layout --fix: exit 0" 0
+is "task-layout --fix: one fixed line per archived task" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-2 -> $P/tasks/archive/2026/EX-2/README.md (Example)"
+exists "task-layout --fix: the task is in the archive, under the year of today" "$T/archive/2026/EX-2/README.md"
+is "task-layout --fix: it went through task archive" "$(grep -c '^archived: "2026-01-10"$' "$T/archive/2026/EX-2/README.md")" "1"
+exists "task-layout --fix: an open task in the archive is never moved" "$T/archive/2025/EX-1/README.md"
+is "task-layout --fix: an open task outside it is never moved" "$(cmp -s "$tmp/EX-3.before" "$T/EX-3/README.md" && printf same)" "same"
+chk "task-layout --fix: the open task is left to the user" task-layout Example "warn | 1 | EX-1:open"
+doc Example --fix
+is "task-layout --fix: nothing left to move" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+reset
+layout archive
+sb task note EX-2 "Done"
+edit "$T/EX-2/README.md" 's/^\*\*2026-01-10 /**2025-06-30 /'
+mkdir -p "$T/archive/2026/EX-2"
+doc Example --fix
+is "task-layout --fix: a task whose destination folder exists is not moved" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+case "$ERR" in *"the destination exists: $P/tasks/archive/2026/EX-2"*) pass "task-layout --fix: stderr says why" ;; *) fail "task-layout --fix: stderr says why" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the task stays in place, and the destination stays empty" \
+  "$(ls "$T/EX-2")/$(ls -A "$T/archive/2026/EX-2")" "README.md/"
+chk "task-layout --fix: the task is still named" task-layout Example "warn | 1 | EX-2:to-archive"
+reset
+layout archive
+set_root tasks_root ../../../outside-proj/tasks
+mkdir -p "$O/tasks/EX-2"
+cp "$T/EX-2/README.md" "$O/tasks/EX-2/README.md"
+doc Example --fix
+is "task-layout --fix: nothing is moved through a tasks root that leaves the project" \
+  "$(printf '%s\n' "$OUT" | head -1)/$(ls "$O/tasks" | tr '\n' ' ')" "fixed: nothing/EX-2 OUTMARK-1 tasks.base "
+rm -r "$O/tasks/EX-2"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {
@@ -804,21 +1066,46 @@ reset
 
 # ---------------------------------------------------------------- subprojects
 SUBS="$vault/$P/claude/subprojects"
+edit "$T/EX-3/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
-is "subprojects: a project with no subproject keeps eighteen rows" "$(scope_rows Example)" "18"
+is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
+is "subprojects: a project with no subproject keeps twenty rows" "$(scope_rows Example)" "20"
+edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
+doc Example
+chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 set_repos '[example-api]' "$tmp/code" '[]'
 add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: a nineteenth row once the project has one" "$(scope_rows Example)" "19"
-is "subprojects: the row sits between repos and sprints" \
-  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "sprints" { printf "%s ", $2 }')" \
-  "repos subprojects sprints "
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "22"
+is "subprojects: its rows sit between repos and sprints" \
+  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
+  "repos subprojects task-subproject sprints "
+chk "task-subproject: a value that names no note warns as <ID>:<value>" task-subproject Example "warn | 1 | EX-3:ghost"
+is "task-subproject: the fix names task set" "$(fix_of task-subproject)" \
+  "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
 chk "subprojects: a repository with no map row" subprojects Example "warn | 1 | infra/example-infra:no-map-row"
 chk "subprojects: the profile's own map check is left as it was" code-doc-map Example "ok | 0 | -"
+chk "board: a project with a subproject and a board with no By subproject view warns" board Example "warn | 1 | tasks.base:no-subproject-view"
+is "board: the fix names what to add" "$(fix_of board)" "add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the missing view share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-subproject-view"
+is "board: the fix holds both" "$(fix_of board)" \
+  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; add the By subproject view and the subproject column from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2025-12-31"/sprint == "2026-01-14"/; s/name: By repo$/name: By subproject/'
+doc Example
+chk "board: ok once the view is back" board Example "ok | 0 | -"
+sb task set EX-3 subproject=infra
+edit "$T/EX-1/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: INFRA/'
+doc Example
+chk "task-subproject: ok when each value names a note, in any letter case" task-subproject Example "ok | 0 | -"
 add_map_row '| example-infra | a new module | docs/infra |'
 doc Example
 rc_is "subprojects: exit 0" 0
@@ -843,6 +1130,7 @@ rm -f "$SUBS/infra.md"
 printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' '---' >"$SUBS/more.md"
 mkdir -p "$vault/$P/docs/more"
 doc Example
+chk "task-subproject: a removed note leaves its tasks with a stale value" task-subproject Example "warn | 2 | EX-1:INFRA, EX-3:infra"
 chk "subprojects: a repo in two subprojects, whatever the case, and a subproject with no repos" subprojects Example \
   "warn | 4 | more/example-infra:no-location, EXAMPLE-INFRA:twice, ops/EXAMPLE-INFRA:no-location, web:no-repos"
 rm -f "$SUBS/more.md" "$SUBS/ops.md" "$SUBS/web.md"
@@ -999,7 +1287,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "29"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "31"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1036,8 +1324,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 29 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "29 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 31 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
+    "31 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1052,16 +1340,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: eighteen rows for each" "$(scope_rows Example)/$(scope_rows Two)" "18/18"
+is "two projects: twenty rows for each" "$(scope_rows Example)/$(scope_rows Two)" "20/20"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/18/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/20/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -1139,6 +1427,95 @@ out_has "session-check: one line when the link directory holds no pointer" "no v
 sb pointer set "$vault"
 run env -u SECOND_BRAIN_VAULT "$SB" session-check
 out_is "session-check: silent when the pointer of the link directory leads to the vault" ""
+
+# ---------------------------------------------------------------- session-check, the session block
+reset
+R="$tmp/code/example-api"
+RULE='rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.'
+mkdir -p "$R/.git" "$R/src/deep" "$tmp/code/outside/.git"
+set_repos '[example-api]' "$tmp/code" '[]'
+# on_branch <repo folder> <HEAD line>: the repository's HEAD file, written as git writes it.
+on_branch() { printf '%s\n' "$2" >"$1/.git/HEAD"; }
+on_branch "$R" 'ref: refs/heads/feature/EX-1-first-task'
+sb task set EX-1 "next=Write the first test"
+start=$SECONDS
+sb session-check --cwd "$R/src/deep"
+rc_is "session-check: exit 0 in a repo of a project" 0
+is "session-check: the block for a ticket branch with a story" "$OUT" "second-brain context for this session:
+project: Example
+sprint: 2026-01-14
+branch: feature/EX-1-first-task
+ticket: EX-1
+story: projects/example/tasks/EX-1/README.md - in-progress, next: Write the first test
+$RULE"
+is "session-check: well under the hook's 5 second timeout" "$(((SECONDS - start) < 5))" "1"
+run bash -c 'cd "$1" && "$2" session-check' _ "$R" "$SB"
+out_has "session-check: the working directory is the default" "ticket: EX-1"
+on_branch "$R" 'ref: refs/heads/fix/ex-9-later'
+sb session-check --cwd "$R"
+out_has "session-check: a key in another letter case names the ticket as the index spells it" "ticket: EX-9"
+out_has "session-check: a ticket branch with no story says how to start one" "story: none - run story-tracker start"
+is "session-check: the block ends with the search and read rule" "$(printf '%s\n' "$OUT" | tail -1)" "$RULE"
+on_branch "$R" 'ref: refs/heads/feature/hex-12-and-EX-3'
+sb session-check --cwd "$R"
+out_has "session-check: a key inside a word is no ticket, the next one is" "ticket: EX-3"
+on_branch "$R" 'ref: refs/heads/main'
+sb session-check --cwd "$R"
+out_has "session-check: a branch that names no ticket" "branch: main
+ticket: none
+$RULE"
+out_lacks "session-check: no story line with no ticket" "story:"
+on_branch "$R" '0123456789abcdef0123456789abcdef01234567'
+sb session-check --cwd "$R"
+out_has "session-check: a detached head" "branch: detached
+ticket: none"
+mv "$R/.git" "$tmp/code/main-git"
+mkdir -p "$tmp/code/main-git/worktrees/w1"
+printf 'gitdir: %s\n' "$tmp/code/main-git/worktrees/w1" >"$R/.git"
+printf '%s\n' 'ref: refs/heads/main' >"$tmp/code/main-git/HEAD"
+printf '%s\n' 'ref: refs/heads/feature/EX-2-second' >"$tmp/code/main-git/worktrees/w1/HEAD"
+sb session-check --cwd "$R/src"
+out_has "session-check: a linked worktree reads the HEAD of its own git folder" "ticket: EX-2
+story: projects/example/tasks/EX-2/README.md - done, next: Frame the story"
+printf 'gitdir: %s\n' "../main-git/worktrees/w1" >"$R/.git"
+sb session-check --cwd "$R"
+out_has "session-check: a git folder named from the repo's own folder" "ticket: EX-2"
+if sb_is_windows; then
+  printf 'gitdir: %s\n' "$(cygpath -m "$tmp/code/main-git/worktrees/w1")" >"$R/.git"
+  sb session-check --cwd "$R"
+  out_has "session-check: on Windows a git folder in the drive form" "ticket: EX-2"
+fi
+rm -f "$R/.git"
+sb session-check --cwd "$R"
+out_has "session-check: a project folder that is no git repository" "branch: none
+ticket: none"
+mkdir -p "$R/.git"
+on_branch "$R" 'ref: refs/heads/feature/EX-1-first-task'
+edit "$vault/$P/sprints/2026-01-14.md" 's/^status: in-progress$/status: done/'
+sb session-check --cwd "$R"
+out_has "session-check: no sprint in progress" "sprint: none"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*$/uses_sprints: false/'
+sb session-check --cwd "$R"
+out_lacks "session-check: no sprint line for a project without sprints" "sprint:"
+sb scaffold subproject Example infra --repos example-infra
+mkdir -p "$tmp/code/example-infra/.git"
+on_branch "$tmp/code/example-infra" 'ref: refs/heads/feature/EX-3-infra'
+sb session-check --cwd "$tmp/code/example-infra"
+out_has "session-check: the subproject of the repo" "project: Example
+subproject: infra"
+out_has "session-check: the subproject's repo names its ticket too" "ticket: EX-3"
+sb session-check --cwd "$tmp/code/outside"
+rc_is "session-check: exit 0 in a repo outside every project" 0
+out_is "session-check: silent in a repo outside every project" ""
+sb session-check --cwd "$tmp/nowhere"
+out_is "session-check: silent for a folder that is not there" ""
+printf '%s\n' '# Index' '' 'No table.' >"$vault/CLAUDE.md"
+sb session-check --cwd "$R"
+rc_is "session-check: exit 0 with an index that has no table" 0
+out_is "session-check: silent with an index that has no table" ""
+run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
+out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+reset
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

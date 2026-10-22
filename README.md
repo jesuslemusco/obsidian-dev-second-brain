@@ -25,12 +25,17 @@ Your notes stay in your vault. The plugin holds no project data and needs no cre
   every Claude session, so Claude knows where each project's notes are.
 - When you ask for something, a skill tells Claude the steps and the `second-brain` helper does
   the reading and writing, straight on the files.
+- Each session in a project's repo starts knowing the project, the sprint, the ticket its branch
+  names and where that ticket's story stands.
+- When Claude reaches for grep, cat or sed on the vault's notes, a hook reminds it of the helper
+  commands. It never blocks a call.
 - You read the result in Obsidian: the notes, the links between them, and a task board per
   project that is a live table of its tickets.
 
 ## What you need
 
-- [Claude Code](https://claude.com/claude-code).
+- [Claude Code](https://claude.com/claude-code), version 2.1.295 or later. The vault search hook
+  tells it to let a call go on when the hook cannot run, which older versions do not know.
 - [Obsidian](https://obsidian.md/download), version 1.9 or later, to read the vault and its task
   boards. The plugin works on the files and never calls the app, so it does not have to be running.
 - macOS, Linux, or Windows with [Git for Windows](https://gitforwindows.org).
@@ -51,7 +56,55 @@ Then set it up:
 3. Run `/obsidian-dev-second-brain:vault-setup project <name>` to add a project.
 4. Ask Claude to start tracking a ticket.
 
-Run `/obsidian-dev-second-brain:vault-doctor` whenever you want the setup checked.
+Ask Claude to check your vault, or run `/obsidian-dev-second-brain:vault-doctor`, whenever you want
+the setup checked.
+
+## Update
+
+Claude Code reads the plugin from a local copy of the marketplace, and it does not refresh that
+copy on its own. It updates the plugin only when the plugin's `version` changes. To get a new
+release:
+
+1. Refresh the marketplace. In your shell:
+   `claude plugin marketplace update second-brain`. Inside Claude Code the same is
+   `/plugin marketplace update second-brain`.
+2. Update the plugin. In your shell:
+   `claude plugin update obsidian-dev-second-brain@second-brain`. Inside Claude Code, run `/plugin`,
+   open the Installed tab, pick the plugin and choose Update now.
+3. Restart Claude Code. `/reload-plugins` loads the new skills and agents into a session that is
+   open, but a restart is the sure way: the session-start hook and the `second-brain` command then
+   come from the new version.
+4. Bring the vault up to the new version. Run `/obsidian-dev-second-brain:vault-doctor check`, then
+   `/obsidian-dev-second-brain:vault-doctor fix`. The doctor warns when the vault's index or
+   conventions note is older than the plugin's template. `fix` repairs what is safe and asks
+   before it changes anything else.
+
+`claude plugin list` shows the version you have. Compare it with the newest section of the
+[changelog](CHANGELOG.md). When nothing is newer, step 2 prints `already at the latest version`.
+
+### When the update does not take
+
+If `claude plugin list` still shows the old version after steps 1 and 2, uninstall the plugin and
+install it again:
+
+```
+claude plugin uninstall obsidian-dev-second-brain@second-brain
+claude plugin install obsidian-dev-second-brain@second-brain
+```
+
+The install refreshes the marketplace first. Your vault and your notes are not touched. Restart
+Claude Code, then run the doctor as in step 4.
+
+An early copy of 0.2.0 never moves to the final 0.2.0, because both say `0.2.0`. Version 0.3.0 and
+later do move with the steps above.
+
+### Update by itself
+
+Auto-update is off for a marketplace you added yourself. To turn it on for `second-brain`, run
+`/plugin` in Claude Code, open the Marketplaces tab, pick `second-brain` and choose Enable
+auto-update. From then on Claude Code refreshes the marketplace and updates the plugin in the
+background during a session, and the next session starts on the new version. It does not run the
+doctor, so do step 4 after a release that changes the vault.
 
 ## Your own skills and agents
 
@@ -72,15 +125,18 @@ Skills and agents you keep straight in `~/.claude`, outside the vault, are never
 
 ## Pull request descriptions
 
-Every pull request description Claude writes uses four headings, in this order: `What was
-changed?`, `What was added?`, `Dependencies:` and `Risks:`, with a few one-line bullets in plain
-English under each. The format is the note `claude/pull-request.md` in your vault: edit it to
-change the format. A project that keeps its own `<project>/claude/pull-request.md` uses that one.
+Every pull request description Claude writes opens with a `Goal`, one or two lines on why the
+pull request exists, then uses four headings, in this order: `What was changed?`, `What was
+added?`, `Dependencies:` and `Risks:`. Every heading is bold, and under each a few one-line
+bullets in plain English start with a bold label. Claude writes it from the branch, with
+`git log <target>..<source>` and `git diff <target>...<source>`, never from memory of the work.
+The format is the note `claude/pull-request.md` in your vault: edit it to change the format. A
+project that keeps its own `<project>/claude/pull-request.md` uses that one.
 
 ## More
 
 - [docs/guide.md](docs/guide.md): what the plugin ships, how a vault is laid out, notes on Windows,
-  and how to run the tests.
+  how to run the tests, and how a release is made.
 - [docs/contract.md](docs/contract.md): every helper command and the format of the notes.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

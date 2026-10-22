@@ -2,14 +2,13 @@
 name: vault-doctor
 description: Check the vault, its projects and the Claude registration against the second-brain standard.
 argument-hint: "[check [project] | fix | snapshot | compare]"
-disable-model-invocation: true
 allowed-tools: Read Grep Bash(second-brain *)
 ---
 
 # Vault doctor
 
 The helper runs the checks. This file says how to read its answer and what may be repaired. The
-first argument is the mode. With none, run check.
+first argument is the mode. With none, take it from the request. With nothing to go on, run check.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
@@ -41,14 +40,25 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 ## fix
 
 1. Start from a check run in this session. Run one when there is none.
-2. Run `second-brain doctor --fix`. It repairs one check only, `status-tag`: the `status/` tag is
-   made to follow `status`. It prints one `fixed:` line per change, then the table.
-3. The proof of that repair is a second `second-brain doctor` run with `status-tag` at `ok`.
-   Compare proves nothing here: it does not cover tags.
-4. Every other check: propose the fix from its `checks.md` entry, one check at a time. Do it only
+2. `second-brain doctor --fix` repairs three checks only. `status-tag`: the `status/` tag is
+   made to follow `status`. `pull-request`: an old note that was never edited is replaced by the
+   template. `task-layout`: in a project whose `task_layout` is `archive`, each task the row names
+   `to-archive` is archived through `second-brain task archive`, which moves its folder to
+   `<tasks root>/archive/<YYYY>/<ID>/` and rewrites the links to it; an open task never moves.
+3. A `task-layout` row with `to-archive` offenders makes the run a bulk change: it moves task
+   folders and rewrites links. Say how many tasks it will archive, the row's count, and name
+   them, then run `second-brain snapshot` before it. Run `second-brain doctor --fix`. It prints
+   one `fixed:` line per change, then the table.
+4. The proof of those repairs is a second `second-brain doctor` run with the checks it repaired
+   at `ok`. Compare covers neither tags nor the pull request note. For the archive it is the
+   proof too: `second-brain compare` with that snapshot lists the aliases of each archived task
+   folder as removed at the old path and added under `archive/<YYYY>/`, and nothing else. An
+   `unresolved added:` line, or a `tasks added:`, `tasks removed:` or `tasks changed:` line, is
+   a link or a task the move broke: report it.
+5. Every other check: propose the fix from its `checks.md` entry, one check at a time. Do it only
    after the user agrees to that one. A fix that touches more than one note is a bulk change:
    snapshot before it and compare after it, as below.
-5. Run check again. Report what is left.
+6. Run check again. Report what is left.
 
 ## snapshot and compare
 
@@ -67,8 +77,9 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 
 - `needs-a-status` is never fixed by guessing. Ask for the status of each note, then set it with
   `second-brain task set <ID> status=<status>`.
-- Never run a bulk fix without a snapshot first. `doctor --fix` needs none: it changes status
-  tags only, and its proof is the second doctor run.
+- Never run a bulk fix without a snapshot first. `doctor --fix` needs none when it changes only
+  status tags and a pull request note that was never edited: its proof is the second doctor run.
+  When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.
 - Never delete a note. The one exception is a file that a fix in `checks.md` says to delete, and
   then only after the user agrees to that fix.
 - Never use `mv`. A move goes through `second-brain move`, run with `--dry-run` first.

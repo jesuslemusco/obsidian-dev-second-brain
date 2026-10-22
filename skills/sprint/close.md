@@ -32,10 +32,17 @@ close first.
    `<project_path>/<sprints_root>/<id>.md`, and the README path of each task on the `done:` line.
    It reads the outcome from those files. If the value is `-`, skip this step. If the session
    does not offer the named skill, say so and go on.
-9. Report the summary: done, carried, backlog, abandoned. Under done, list the tasks whose docs
-   are still waiting: `second-brain task docs <done ids> --project <project>`, with the ids of the
-   `done:` line, prints each task with unticked `- [ ]` lines and its path. If `done:` is `-`, skip
-   this. Recommend the `docs-keeper` agent for them.
-   Do not start it here: the close only reports. Offer to open the next sprint.
-10. Carried tasks now point at the `next:` id before that sprint's note exists. That is expected
+9. `task_layout: archive` in that answer, and a `done:` or `abandoned:` line that is not `-`: ask
+   once whether to archive those tasks now. On a yes, run
+   `second-brain task archive <ID> --project <project>` for each. It moves the folder to
+   `<tasks_root>/archive/<YYYY>/<ID>/` and prints the new path; exit 6 means it is archived
+   already. On a no, or with `flat` or no `task_layout` line, move nothing: the doctor names each
+   one `archive_after_days` days after its last status note or this sprint's end, and
+   `doctor --fix` archives it then. Never archive a task without that yes.
+10. Report the summary: done, carried, backlog, abandoned. Under done, list the tasks whose docs
+    are still waiting: `second-brain task docs <done ids> --project <project>`, with the ids of the
+    `done:` line, prints each task with unticked `- [ ]` lines and its path. If `done:` is `-`,
+    skip this. Recommend the `docs-keeper` agent for them.
+    Do not start it here: the close only reports. Offer to open the next sprint.
+11. Carried tasks now point at the `next:` id before that sprint's note exists. That is expected
     and the doctor does not flag it. The fix is to open the next sprint, never to re-point by hand.

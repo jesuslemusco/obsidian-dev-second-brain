@@ -2,7 +2,11 @@ filters:
   and:
     - file.inFolder("{{TASKS_PATH}}")
     - file.name == "README"
-    - file.folder.split("/").length == {{TASK_DEPTH}}
+    - or:
+        - file.folder.split("/").length == {{TASK_DEPTH}}
+        - and:
+            - file.inFolder("{{TASKS_PATH}}/archive")
+            - file.folder.split("/").length == {{ARCHIVE_DEPTH}}
 formulas:
   task: file.asLink(aliases[0])
   topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))
@@ -25,6 +29,8 @@ properties:
     displayName: Depends on
   note.epic:
     displayName: Epic
+  note.subproject:
+    displayName: Subproject
   note.branch:
     displayName: Branch
   file.mtime:
@@ -77,6 +83,23 @@ views:
         direction: ASC
     order:
       - formula.topics
+      - formula.task
+      - title
+      - status
+      - next
+      - branch
+  - type: table
+    name: By subproject
+    filters:
+      or:
+        - status == "in-progress"
+        - status == "in-review"
+        - status == "planned"
+    groupBy:
+      property: subproject
+      direction: ASC
+    order:
+      - subproject
       - formula.task
       - title
       - status

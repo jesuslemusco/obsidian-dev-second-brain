@@ -147,7 +147,7 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] [--subproject S] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
   "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
@@ -259,13 +259,26 @@ claude/pull-request.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
-is "pull request format: the four headings, in order" "$(grep '^## [WDR]' "$vault/claude/pull-request.md" | tr '\n' '|')" \
-  "## What was changed?|## What was added?|## Dependencies:|## Risks:|"
+is "pull request format: the goal first, then the four headings, in order and bold" "$(grep '^## \*\*' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "## **Goal**|## **What was changed?**|## **What was added?**|## **Dependencies:**|## **Risks:**|"
+is "pull request format: every bullet of the format starts with a bold label" \
+  "$(awk '/^```/ { on = !on; next } on && /^- / { n++; if (/^- \*\*<part>:\*\* </) b++ } END { print b + 0 "/" n + 0 }' "$vault/claude/pull-request.md")" "4/4"
+is "pull request format: the goal is one or two lines, not a bullet" \
+  "$(awk '/^## \*\*Goal\*\*$/ { on = 1; next } /^## / { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
+  "<why this pull request exists, in one or two lines>"
 is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
-  "- Use the four headings below, in this order, and no others.
-- Write short plain English: a few bullets under each heading, one line each.
+  "- Write the description from the branch, never from memory of the work. The source branch holds
+  the work; the target is the branch it merges into, usually \`main\`.
+- Read \`git log <target>..<source>\` for the commits and \`git diff <target>...<source>\` for the
+  changes. Name both branches: the checkout may be on another one. Take the target as the remote
+  has it, as in \`origin/main\`, after a \`git fetch\`. Describe what they show and nothing else.
+- Use the five headings below, in this order, and no others. Every heading is bold.
+- Under \`Goal\`, say in one or two lines why the pull request exists.
+- Under each other heading, write a few bullets in short plain English, one line each. Every
+  bullet starts with a bold label, the part it is about: \`- **doctor:** warns on an old index\`.
 - Name the file, the command or the setting. Leave out what the diff already shows line by line.
-- Under a heading with nothing to say, write \`- None.\`"
+- Under a heading with nothing to say, write \`- **None.**\`"
+line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 2"
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
@@ -279,7 +292,9 @@ file_has "vault Claude hub: names the pull request format note" "$vault/claude/R
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 2"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 3"
+rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
+is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
   "$(($(lineno "$vault/CLAUDE.md" '## In every session') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: a new skill is not created straight in the link directory" "$vault/CLAUDE.md" '~/.claude/skills'
@@ -295,7 +310,7 @@ file_has "index: a rule about one project goes under the project's Rules" "$vaul
 is "index: the rule placement holds in every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 3"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 4"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -355,12 +370,16 @@ line_is "index: one row for the project" "$vault/CLAUDE.md" "| Example | $P | EX
 line_is "profile: ticket keys" "$vault/$P/claude/profile.md" "ticket_keys: [EX, EXOPS]"
 line_is "profile: sprints are on by default" "$vault/$P/claude/profile.md" "uses_sprints: true"
 line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder(\"$P/tasks\")"
-line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '    - file.folder.split("/").length == 6'
+line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '        - file.folder.split("/").length == 6'
+line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base" "            - file.inFolder(\"$P/tasks/archive\")"
+line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
-for v in Active "Current sprint" "By topic" "Needs a status" All; do
+line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
+for v in Active "Current sprint" "By topic" "By subproject" "Needs a status" All; do
   line_is "board: view $v" "$vault/$P/tasks/tasks.base" "    name: $v"
 done
+file_has "tasks hub: names the By subproject view" "$vault/$P/tasks/README.md" '`By subproject`, `Needs a status` and `All`'
 line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tasks.base#Active]]"
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
@@ -446,6 +465,8 @@ out_has "profile --keys: scalar" "project: Example"
 out_has "profile --keys: inline list" "ticket_keys: EX, EXOPS"
 out_has "profile --keys: block list" "tags: type/profile"
 out_has "profile --keys: roots" "tasks_root: tasks"
+out_has "profile --keys: the task layout, flat by default" "task_layout: flat"
+out_has "profile --keys: the days a done task waits for the archive" "archive_after_days: 14"
 out_has "profile --keys: an empty value prints a dash" "persona: -"
 out_has "profile --keys: an empty list prints a dash" "environments: -"
 is "profile: persona sits right after tracker" "$(($(lineno "$vault/$P/claude/profile.md" 'persona:') - $(lineno "$vault/$P/claude/profile.md" 'tracker:')))" "1"
@@ -1259,7 +1280,8 @@ line_is "scaffold roots: topics root in the profile" "$vault/$R/claude/profile.m
 line_is "scaffold roots: sprints root in the profile" "$vault/$R/claude/profile.md" "sprints_root: cadence/sprints"
 for d in tasks docs sprints; do absent "scaffold roots: no default $d folder" "$vault/$R/$d"; done
 line_is "scaffold roots: board folder is the tasks root" "$vault/$R/plan/tasks/tasks.base" "    - file.inFolder(\"$R/plan/tasks\")"
-line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '    - file.folder.split("/").length == 5'
+line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '        - file.folder.split("/").length == 5'
+line_is "scaffold roots: the archive depth counts it too" "$vault/$R/plan/tasks/tasks.base" '            - file.folder.split("/").length == 7'
 line_is "scaffold roots: tasks hub embeds its own board" "$vault/$R/plan/tasks/README.md" "![[$R/plan/tasks/tasks.base#Active]]"
 line_is "scaffold roots: map links the tasks hub" "$vault/$R/README.md" "- [[$R/plan/tasks/README|Roots Tasks Hub]] - one folder per task, and the task board"
 line_is "scaffold roots: map links the topics hub" "$vault/$R/README.md" "- [[$R/knowledge/README|Roots Docs Hub]] - the topics: one folder per subject"
@@ -1498,10 +1520,10 @@ is "no sprints: every map link points at a file" "$(check_links "$vault/$N/READM
 file_lacks "no sprints: the tasks hub names no sprint view" "$vault/$N/tasks/README.md" "Current sprint"
 file_lacks "no sprints: the board has no sprint view, filter or column" "$vault/$N/tasks/tasks.base" "sprint"
 file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/tasks.base" "carried_from"
-for v in Active "By topic" "Needs a status" All; do
+for v in Active "By topic" "By subproject" "Needs a status" All; do
   line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
 done
-is "no sprints: the board keeps its four views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "4"
+is "no sprints: the board keeps its five views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "5"
 line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
 sb context --cwd "$vault/$N"
 out_has "no sprints: context says off" "sprint: off"
@@ -1725,6 +1747,149 @@ rc_is "task set subproject: an unknown subproject gives exit 1" 1
 line_is "task set subproject: the old value stays" "$vault/$M/tasks/MU-2/README.md" "subproject: tools"
 sb task set MU-2 subproject=
 out_is "task set subproject: an empty value removes the key" "subproject: (removed)"
+sb task new MU-3 --project Multi --title "Tools work" --subproject tools
+sb board Multi "By subproject"
+is "board By subproject: active tasks by subproject, none last" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+is "board By subproject: a tenth column names each row's subproject, - for none" \
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s:%s:%s ", NF, $1, $10 }')" "10:MU-1:infra 10:MU-3:tools 10:MU-2:- "
+sb board Multi
+is "board: the other views keep nine columns" "$(printf '%s\n' "$OUT" | awk -F' [|] ' '{ printf "%s ", NF }')" "9 9 9 "
+sb board Multi subproject
+is "board: subproject names the By subproject view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 MU-3 MU-2 "
+sb board Multi --subproject INFRA
+rc_is "board --subproject: exit 0" 0
+is "board --subproject: only that subproject's tasks, the name matched without case" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-1 "
+edit "$vault/$M/tasks/MU-3/README.md" 's/^subproject: tools$/subproject: TOOLS/'
+sb task set MU-3 status=done
+sb board Multi All --subproject tools
+is "board --subproject: a value written in another case counts, in any view" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | tr '\n' ' ')" "MU-3 "
+sb board Multi --subproject tools
+rc_is "board --subproject: the view still applies, exit 0" 0
+out_is "board --subproject: a done task is not in the Active view" ""
+sb board Multi --subproject nope
+rc_is "board --subproject: a name that is no subproject gives exit 1" 1
+err_has "board --subproject: the message says how to list them" "second-brain subproject Multi"
+sb board Multi --subproject
+rc_is "board --subproject: no value gives exit 5" 5
+file_has "story-tracker status: inside a subproject's repo, every board call takes its name" "$here/skills/story-tracker/status.md" \
+  'add `--subproject <name>` to every `board` call'
+file_has "conventions: the board lists the tasks of one subproject" "$vault/obsidian-conventions.md" '`second-brain board <project> --subproject <name>`'
+
+# ---------------------------------------------------------------- task archive
+A="work/shelf"
+AT="$vault/$A/tasks"
+sb scaffold project Shelf --path "$A" --keys SH
+line_is "archive: a new profile is flat" "$vault/$A/claude/profile.md" "task_layout: flat"
+for t in SH-1 SH-2 SH-3 SH-4; do sb task new "$t" --project Shelf --title "Shelf $t"; done
+sb task dep SH-2 add SH-1
+sb task alias SH-3 add old-slug
+sb task set SH-1 status=done
+sb task archive SH-1
+rc_is "archive: a flat project gives exit 5" 5
+err_has "archive: the message names the layout" "task_layout: flat"
+exists "archive: nothing moved in a flat project" "$AT/SH-1/README.md"
+edit "$vault/$A/claude/profile.md" '/^task_layout: flat$/d'
+sb task archive SH-1
+rc_is "archive: no task_layout key means flat" 5
+edit "$vault/$A/claude/profile.md" 's/^tasks_root: tasks$/tasks_root: tasks\
+task_layout: Archive/'
+sb task archive SH-2
+rc_is "archive: an open task gives exit 5" 5
+err_has "archive: the message names the status" "SH-2 is planned"
+exists "archive: the open task stays" "$AT/SH-2/README.md"
+sb sprint open Shelf --end 2026-10-14
+sb task set SH-1 sprint=2026-10-14
+sb task set SH-2 sprint=2026-10-14
+printf '{"nodes":[{"type":"file","file":"%s"}]}\n' "$A/tasks/SH-1/README.md" >"$vault/$A/plan.canvas"
+cp "$vault/$A/plan.canvas" "$tmp/canvas.before"
+sb task archive SH-1
+rc_is "archive: a done task, layout in any letter case, exit 0" 0
+out_is "archive: prints the new path, then the notes whose links it rewrote" "$A/tasks/archive/2026/SH-1/README.md
+links: $A/tasks/SH-2/README.md | 1"
+absent "archive: the live folder is gone" "$AT/SH-1"
+line_is "archive: the date it was archived" "$AT/archive/2026/SH-1/README.md" 'archived: "2026-10-08"'
+line_is "archive: a link to the task follows it" "$AT/SH-2/README.md" "  - \"[[$A/tasks/archive/2026/SH-1/README|SH-1]]\""
+err_has "archive: a canvas that names the old path is reported" "note: $A/plan.canvas mentions $A/tasks/SH-1"
+is "archive: the canvas is not rewritten" "$(cmp -s "$tmp/canvas.before" "$vault/$A/plan.canvas"; echo $?)" "0"
+rm "$vault/$A/plan.canvas"
+sb task archive SH-1
+rc_is "archive: a task is archived once, exit 6" 6
+err_has "archive: the message gives its path" "$A/tasks/archive/2026/SH-1/README.md"
+sb find SH-1
+out_is "archive: find sees an archived task" "$A/tasks/archive/2026/SH-1/README.md"
+sb task head SH-1
+out_has "archive: task head reads an archived task" "path: $A/tasks/archive/2026/SH-1/README.md"
+sb task set SH-1 next="Nothing left"
+out_is "archive: task set edits an archived task" "next: Nothing left"
+sb task note SH-1 "Archived"
+rc_is "archive: task note writes to an archived task" 0
+sb board Shelf All
+out_has "archive: the board lists an archived task" "SH-1 | Shelf SH-1 | done | 2026-10-14 |"
+out_has "archive: a depends_on link reads its status in the archive" "| SH-1:done"
+sb board Shelf "Current sprint"
+out_has "archive: the sprint view lists it too" "SH-1 | Shelf SH-1 | done |"
+sb task tag SH-1 add shelving
+sb topic Shelf shelving
+out_is "archive: topic lists an archived task" "$A/tasks/archive/2026/SH-1/README.md"
+sb task set SH-3 status=abandoned
+sb task archive old-slug
+rc_is "archive: an abandoned task, by an alias" 0
+sb task head old-slug
+out_has "archive: an alias finds an archived task" "path: $A/tasks/archive/2026/SH-3/README.md"
+sb task new SH-1 --project Shelf
+rc_is "archive: task new refuses an archived id, exit 6" 6
+err_has "archive: task new names the archived README" "the task is archived: $A/tasks/archive/2026/SH-1/README.md"
+absent "archive: task new writes nothing then" "$AT/SH-1"
+sb task new archive --project Shelf
+rc_is "archive: the archive folder is no task id, exit 5" 5
+for a in Archive ARCHIVE; do
+  sb task new "$a" --project Shelf
+  rc_is "archive: $a, in another letter case, is no task id either, exit 5" 5
+done
+is "archive: nothing written for it" "$(ls "$AT" | grep -ci '^archive$')/$(ls "$AT/archive")" "1/2026"
+cp "$AT/SH-2/README.md" "$tmp/SH-2.before"
+for a in archive Archive; do
+  sb task alias SH-2 add "$a"
+  rc_is "archive: $a is no task alias, exit 5" 5
+done
+err_has "archive: the alias message names the folder" "archive is the folder of the archived tasks"
+is "archive: the aliases stay as they were" "$(cmp -s "$tmp/SH-2.before" "$AT/SH-2/README.md" && printf same)" "same"
+sb task alias SH-2 add SH-1
+rc_is "archive: an archived id is no alias for another task, exit 6" 6
+mkdir -p "$AT/SH-1"
+cp "$AT/archive/2026/SH-1/README.md" "$AT/SH-1/README.md"
+sb task head SH-1
+rc_is "archive: the same id live and archived is ambiguous, exit 4" 4
+rm -r "$AT/SH-1"
+sb sprint close Shelf --carry SH-2
+rc_is "archive: sprint close sees the archived task" 0
+out_has "archive: it counts as done" "done: SH-1"
+file_has "archive: the close links the archived README" "$vault/$A/sprints/2026-10-14.md" "- [[$A/tasks/archive/2026/SH-1/README|SH-1]] - Shelf SH-1"
+sb task set SH-4 status=done
+sb task archive SH-4 --project Shelf
+rc_is "archive: --project is taken" 0
+sb task new SH-5 --project Shelf --title "Shelf SH-5"
+sb task set SH-5 status=done
+mkdir -p "$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: an existing destination folder, even empty, gives exit 6" 6
+err_has "archive: the message names the destination" "the destination exists: $A/tasks/archive/2026/SH-5"
+exists "archive: the task stays where it was" "$AT/SH-5/README.md"
+is "archive: the destination is left as it was" "$(ls -A "$AT/archive/2026/SH-5")" ""
+file_lacks "archive: no archived date then" "$AT/SH-5/README.md" "archived:"
+rmdir "$AT/archive/2026/SH-5"
+printf 'x\n' >"$AT/archive/2026/SH-5"
+sb task archive SH-5
+rc_is "archive: a file at the destination gives exit 6" 6
+exists "archive: the task stays then too" "$AT/SH-5/README.md"
+rm "$AT/archive/2026/SH-5"
+if ! sb_is_windows; then
+  ln -s "$tmp/nowhere" "$AT/archive/2026/SH-5"
+  sb task archive SH-5
+  rc_is "archive: a link at the destination, even a dead one, gives exit 6" 6
+  exists "archive: the task stays then as well" "$AT/SH-5/README.md"
+  rm "$AT/archive/2026/SH-5"
+fi
 
 # ---------------------------------------------------------------- generated files
 is "generated files: no placeholder left" "$(grep -rl '{{' "$vault" "$tmp/vault2" "$tmp/vault3" "$tmp/vault4" | grep -c . || true)" "0"
@@ -1747,7 +1912,7 @@ out_is "board Current sprint: no rows once the sprint is closed, whatever the bo
 ST="$here/skills/story-tracker/SKILL.md"
 st_desc="$(grep -m1 '^description: ' "$ST")"
 st_desc="${st_desc#description: }"
-for word in "ticket text" summary description "acceptance criteria" draft; do
+for word in "ticket text" summary description "acceptance criteria" draft "where a ticket stands" standup; do
   case "$st_desc" in *"$word"*) pass "story-tracker: the description names $word" ;; *) fail "story-tracker: the description names $word" "in: $st_desc" ;; esac
 done
 is "story-tracker: the description is under the doctor's 200 characters" "$((${#st_desc} < 200))" "1"
@@ -1757,6 +1922,8 @@ case "$draft_row" in
   *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
 esac
 file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
+file_lacks "vault-doctor: a request to check the vault may load it" "$here/skills/vault-doctor/SKILL.md" "disable-model-invocation"
+line_is "vault-setup: it runs only by name" "$here/skills/vault-setup/SKILL.md" "disable-model-invocation: true"
 
 # ---------------------------------------------------------------- docs-keeper on a ticket marked done
 DK="$here/agents/docs-keeper.md"
@@ -1786,6 +1953,50 @@ file_has "scrum-master: carries docs-keeper as an action for the caller" "$here/
 file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.md" 'Do not start it here: the close only reports.'
 file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
 file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
+
+# ---------------------------------------------------------------- skills follow the subproject and layout standards
+ST="$here/skills/story-tracker/SKILL.md"
+STC="$here/skills/story-tracker/create.md"
+CL="$here/skills/sprint/close.md"
+file_has "story-tracker create: task new takes the subproject from context" "$STC" 'Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`'
+file_has "story-tracker create: asks when the repo is in no subproject" "$STC" 'ask which one the story is in, or none'
+file_has "story-tracker create: a name that is no subproject is asked about" "$STC" 'Exit 1 with `--subproject`: the name is no'
+file_has "story-tracker: a story set done in an archive project gets one question" "$ST" 'the profile says `task_layout: archive`: after'
+file_has "story-tracker: the question is asked once" "$ST" 'ask once whether to archive it now'
+file_has "story-tracker: it archives through the helper" "$ST" '`second-brain task archive <ID>`'
+file_has "story-tracker: never archives without a yes" "$ST" 'Never archive a story without that yes.'
+file_has "story-tracker: an archived story is found by id, not by a built path" "$ST" "Take a story's path from \`find\` or \`task head\`; never build it from the id."
+file_has "story-tracker status: what waits on docs comes from task docs" "$here/skills/story-tracker/status.md" '`second-brain task docs <their ids> --project <project>`'
+file_lacks "story-tracker status: no Grep over the READMEs" "$here/skills/story-tracker/status.md" 'One Grep for'
+file_has "sprint close: asks once whether to archive the sprint's done tasks" "$CL" 'once whether to archive those tasks now'
+file_has "sprint close: it archives through the helper" "$CL" '`second-brain task archive <ID> --project <project>`'
+file_has "sprint close: never archives without a yes" "$CL" 'Never archive a task without that yes.'
+is "sprint close: the archive question comes after the achievements and before the report" \
+  "$(($(lineno "$CL" '8. Run `second-brain profile') < $(lineno "$CL" '9. `task_layout: archive`') && $(lineno "$CL" '9. `task_layout: archive`') < $(lineno "$CL" '10. Report the summary')))" "1"
+file_has "sprint: its rules allow task archive after a yes at close" "$here/skills/sprint/SKILL.md" 'a yes at close, `second-brain task archive`'
+file_has "vault-setup: the profile interview asks for task_layout" "$here/skills/vault-setup/SKILL.md" '| `task_layout` |'
+file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKILL.md" '| `archive_after_days` | with `archive` only'
+file_has "vault-setup adopt: asks for task_layout and moves nothing" "$here/skills/vault-setup/adopt.md" 'And `task_layout`. Adopting still moves nothing'
+file_has "vault-setup adopt: names the task-layout check" "$here/skills/vault-setup/adopt.md" '`flat` project: `task-layout`.'
+line_is "vault-setup subproject: a section on its tasks" "$here/skills/vault-setup/subproject.md" "## 3. Its tasks"
+file_has "vault-setup subproject: a task names its subproject" "$here/skills/vault-setup/subproject.md" 'frontmatter, `subproject: <name>`, spelled as the note is named'
+file_has "vault-setup subproject: sets it through task set" "$here/skills/vault-setup/subproject.md" '`second-brain task set <ID> subproject=<name>`'
+file_has "docs-keeper: the path task head prints wins" "$DK" 'The `path:` line wins over the path'
+file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/archive/<YYYY>/<ID>/README.md` once'
+file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
+file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
+file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
+file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
+file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
+file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
+file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conventions.md" '`subproject` is the name of the task'"'"'s subproject, spelled as its note'
+VD="$here/skills/vault-doctor/SKILL.md"
+file_has "vault-doctor fix: --fix repairs three checks" "$VD" 'repairs three checks only'
+file_lacks "vault-doctor fix: no longer says two" "$VD" 'repairs two checks only'
+file_has "vault-doctor fix: names the archive repair" "$VD" '`to-archive` is archived through `second-brain task archive`'
+file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'then run `second-brain snapshot` before it.'
+file_has "vault-doctor fix: compare proves the archive" "$VD" 'For the archive it is the'
+file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.'
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

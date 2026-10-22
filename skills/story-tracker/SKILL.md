@@ -1,6 +1,6 @@
 ---
 name: story-tracker
-description: Write ticket text (summary, description, acceptance criteria) and track stories as one README per task in the Obsidian vault - draft, start, update, recall, list.
+description: Write ticket text (summary, description, acceptance criteria) and track each ticket as one README in the Obsidian vault - draft, start, update, where a ticket stands, a standup of what is active.
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
@@ -27,7 +27,8 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 3. `second-brain profile <project> --keys` prints the settings the steps below name. Exit 1: the
    profile is missing; say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, and stop.
    The subproject (the `subproject:` line, the task's `subproject` key, or the user's word): its
-   settings win, from `second-brain subproject <project> <name>`. Write its name on a new story.
+   settings win, from `second-brain subproject <project> <name>`. A new story names it as step 3
+   of `create.md` says. `task_layout` is `flat` or `archive`; a profile with no such line is `flat`.
 4. `second-brain profile <project> stories`: what this project does differently. Exit 1 here only
    means there is no Stories section; carry on. Read other sections only when a step names them.
 
@@ -39,7 +40,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 | start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then "Edit an existing story" |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
-| status | "What is active", a standup summary, the stories on a topic or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. Read-only, no branch check |
+| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. Read-only, no branch check |
 | environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
 
 Ticket text, in draft mode or when the user asks for text to paste into the tracker: fill
@@ -57,6 +58,8 @@ README, when there is one, and no other sections.
   accepts the alias. Never create a folder for an alias, or a second README for a tracked id.
 - The path is outside the profile's `tasks_root`: the story predates the layout. Say so and offer
   to move it with `second-brain move`.
+- The path is `<tasks_root>/archive/<YYYY>/<ID>/README.md`: the story is archived. Read and edit
+  it as any other. Take a story's path from `find` or `task head`; never build it from the id.
 - Read cheapest first: `second-brain task head <ID>` (it shows the path, and `envs` for a set),
   then `second-brain outline <path>` and a ranged read of one section. A whole README last.
 
@@ -106,6 +109,16 @@ commit, before you reason about, recall or review a ticket.
   and ask it for Workflow 5, a ticket marked done. Start it with or without a `## Docs to update`
   section. Do not make the doc edits yourself. When the session cannot start an agent, say so and
   name `docs-keeper` as the one to run now.
+- The story is set to `done` or `abandoned` and the profile says `task_layout: archive`: after
+  the docs-keeper hand-off, ask once whether to archive it now. On a yes, run
+  `second-brain task archive <ID>`. It moves the folder to `<tasks_root>/archive/<YYYY>/<ID>/`
+  and rewrites the links to it; report the path it prints. On a no, or in a `flat` project, move
+  nothing: the doctor names a done task `archive_after_days` days after its last status note or
+  its sprint's end, and `doctor --fix` archives it then. Never archive a story without that yes.
+- An archived story set back to `planned`, `in-progress` or `in-review` is an open task in the
+  archive, which the doctor warns about. Ask whether to move it back; on a yes, run
+  `second-brain move "<its folder>" "<project path>/<tasks_root>/<ID>"`, with `--dry-run` first,
+  then `second-brain task set <ID> archived=`.
 - Topic tags stay true: `second-brain task tag <ID> add <tag>` when the story reaches another
   topic whose folder exists, `remove <tag>` when it moves off one.
 - Dependencies stay true: `second-brain task dep <ID> add <other ID>` when the story waits on
@@ -131,7 +144,7 @@ corrected assumption, a validation result): ask the user whether to log it. Neve
 
 - A bare alias link such as `[[EX-123]]` does not resolve, because every story is named
   `README.md`. Write the path form, `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`, with
-  the pipe as `\|` inside a table cell.
+  the pipe as `\|` inside a table cell. For an archived story, the path is the one `find` prints.
 - After writing links, run `second-brain unresolved <project>`. None of your links may be listed.
 - Move or rename a note only with `second-brain move` / `second-brain rename`, so the links to
   it are rewritten. Add `--dry-run` first to see what would change. Never fall back to `mv`,

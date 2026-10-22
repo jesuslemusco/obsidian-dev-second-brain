@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-10-22
 
 Tasks can be archived and seen by subproject, every session starts knowing its project and ticket,
 and the doctor checks more of what the skills write.

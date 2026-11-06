@@ -2503,7 +2503,7 @@ file_has "reviewer: logs each issue with a proposed fix" "$here/agents/reviewer.
 file_has "reviewer: runs every check" "$here/agents/reviewer.md" "You run every check: the implementer runs none."
 file_has "spec skill: shows the Build section when spec-lead stops" "$here/skills/spec/SKILL.md" 'show the owner the `## Build` section: `second-brain spec status <ID>`'
 
-file_has "spec tasks template: every task is built first, then reviewed" "$here/templates/spec-tasks.md.tmpl" "Every task is built first, in order, then each is reviewed in"
+file_has "spec tasks template: every task is built first, then reviewed" "$here/templates/spec-tasks.md.tmpl" "All tasks are built, then reviewed, in order."
 file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
 

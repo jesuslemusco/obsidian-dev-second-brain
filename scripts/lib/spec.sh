@@ -78,12 +78,29 @@ sb_spec_resolve() {
     [ -n "$SB_SP_REPO" ] || SB_SP_REPO="-"
     return 0
   fi
-  [ -n "$SB_SP_REPO" ] || sb_die 1 "$SB_P_NAME lists no repo for the spec: add one to repos in $SB_P_PATH/claude/profile.md"
-  row="$(sb_spec_repo_row "$SB_SP_REPO")" || sb_die 1 "$SB_SP_REPO is not in repos of $SB_P_NAME"
-  IFS=$'\t' read -r name path state <<EOF
+  SB_SP_ERR=""
+  if [ -z "$SB_SP_REPO" ]; then
+    SB_SP_ERR="$SB_P_NAME lists no repo for the spec: add one to repos in $SB_P_PATH/claude/profile.md"
+  elif ! row="$(sb_spec_repo_row "$SB_SP_REPO")"; then
+    SB_SP_ERR="$SB_SP_REPO is not in repos of $SB_P_NAME"
+  else
+    IFS=$'\t' read -r name path state <<EOF
 $row
 EOF
-  sb_spec_need_folder "$name" "$path" "$state"
+    case "$state" in
+      ok) ;;
+      missing) SB_SP_ERR="the folder of $name is missing: $(sb_path_out "$path")" ;;
+      *) SB_SP_ERR="no location is recorded for $name: set repos_root or repo_paths in $SB_P_PATH/claude/profile.md" ;;
+    esac
+  fi
+  if [ -n "$SB_SP_ERR" ]; then
+    # With SB_SP_SOFT=1 the caller prints what holds first, then exits with the reason.
+    [ "${SB_SP_SOFT:-0}" = "1" ] || sb_die 1 "$SB_SP_ERR"
+    [ -n "$SB_SP_REPO" ] || SB_SP_REPO="-"
+    SB_SP_DIR=""
+    SB_SP_SHOW="-"
+    return 0
+  fi
   SB_SP_REPO="$name"
   SB_SP_DIR="$path/spec/$SB_T_ID"
   SB_SP_SHOW="$(sb_path_out "$SB_SP_DIR")"
@@ -110,14 +127,181 @@ sb_spec_write() {
   printf '%s\n' "$show"
 }
 
-# second-brain spec <ID> | spec new <ID>, each with [--project P].
-cmd_spec() {
-  local new=0 id="" project=""
-  local usage="usage: second-brain spec <ID> [--project P] | spec new <ID> [--project P]"
-  if [ "${1:-}" = "new" ]; then
-    new=1
-    shift
+# Set SB_SP_FILE to the absolute path of the spec file of a part, or exit 1 when it is missing.
+# Called in the main shell, never in a command substitution, so that the exit stops the command.
+sb_spec_need_file() {
+  SB_SP_FILE="$SB_SP_DIR/$1.md"
+  [ -f "$SB_SP_FILE" ] || sb_die 1 "no $1.md at $SB_SP_SHOW: run second-brain spec new $SB_T_ID"
+}
+
+# Read a tasks.md, or stdin with no file; print one TSV row per task item: id, todo or done, title ("-" when none).
+sb_spec_task_rows() {
+  LC_ALL=C awk "$(sb_awk_lib)"'
+    { sub(/\r$/, "") }
+    /^(```|~~~)/ { fence = !fence; next }
+    fence { next }
+    /^- \[[ xX]\] T[0-9]+([ \t:]|$)/ {
+      st = (substr($0, 4, 1) == " " ? "todo" : "done")
+      rest = substr($0, 7); id = rest; sub(/[ \t:].*$/, "", id)
+      t = substr(rest, length(id) + 1); sub(/^[ \t]*[-:]?[ \t]*/, "", t); gsub(/\t/, " ", t); t = trim(t)
+      print id "\t" st "\t" (t == "" ? "-" : t)
+    }' "$@"
+}
+
+# Tick a task item of a tasks.md, keeping the file's line endings; fenced code is not read.
+# Returns 1 when no item has the id, 4 when two items have it, 6 when it is ticked already and 2
+# when the file cannot be written.
+sb_spec_tick_file() {
+  local file="$1" tmp rc=0
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-tick.XXXXXX")" || return 2
+  LC_ALL=C SB_ID="$2" awk '
+    BEGIN { want = toupper(ENVIRON["SB_ID"]); hit = 0 }
+    {
+      raw = $0; line = raw; sub(/\r$/, "", line)
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
+      else if (!fence && line ~ /^- \[[ xX]\] T[0-9]+([ \t:]|$)/) {
+        id = substr(line, 7); sub(/[ \t:].*$/, "", id)
+        if (toupper(id) == want && hit++ == 0) {
+          if (substr(line, 4, 1) != " ") was = 1
+          else raw = "- [x]" substr(raw, 6)
+        }
+      }
+      print raw
+    }
+    END { exit(!hit ? 1 : (hit > 1 ? 4 : (was ? 6 : 0))) }' "$file" >"$tmp" || rc=$?
+  if [ "$rc" -eq 0 ]; then cat "$tmp" >"$file" || rc=2; fi
+  rm -f "$tmp"
+  return "$rc"
+}
+
+# Print the item of one task of a tasks.md, as written: its line and the lines under it, to the next
+# line at the start of a line outside fenced code. Returns 1 when no item has the id, 4 when two do.
+sb_spec_task_item() {
+  LC_ALL=C SB_ID="$2" awk "$(sb_awk_lib)"'
+    BEGIN { want = toupper(ENVIRON["SB_ID"]) }
+    { sub(/\r$/, "") }
+    /^[ \t]*(```|~~~)/ { fence = !fence; if (on) print; next }
+    on && !fence && /^[^ \t]/ { on = 0 }
+    !fence && /^- \[[ xX]\] T[0-9]+([ \t:]|$)/ {
+      id = substr($0, 7); sub(/[ \t:].*$/, "", id)
+      if (toupper(id) == want) { found++; if (found == 1) on = 1 }
+    }
+    on { print }
+    END { exit(!found ? 1 : (found > 1 ? 4 : 0)) }' "$1"
+}
+
+# Print the value of one field line of a task item on stdin: "  - <Field>: <value>".
+sb_spec_field() {
+  LC_ALL=C SB_F="$1" awk "$(sb_awk_lib)"'
+    BEGIN { f = tolower(ENVIRON["SB_F"]) ":" }
+    {
+      line = $0; sub(/^[ \t]+-[ \t]+/, "", line)
+      if ($0 ~ /^[ \t]+-[ \t]/ && tolower(substr(line, 1, length(f))) == f) { print trim(substr(line, length(f) + 1)); exit }
+    }'
+}
+
+# Print the level-2 sections of a file that the comma-separated names pick, each as "### <heading>",
+# a blank line and its body. Mode "id" matches a heading whose first word is the name (R1 in
+# "## R1 - Login"), mode "name" the whole heading; both without letter case. Exits 1 with
+# "none<TAB>name" or "two<TAB>name" on stderr for the first name with no section, or with two.
+sb_spec_sections() {
+  LC_ALL=C SB_MODE="$2" SB_NAMES="$3" awk "$(sb_awk_lib)"'
+    function key(h,   k) { k = h; if (ENVIRON["SB_MODE"] == "id") sub(/[ \t].*$/, "", k); return tolower(trim(k)) }
+    { sub(/\r$/, "") }
+    /^(```|~~~)/ { fence = !fence }
+    !fence && /^## / { h = $0; sub(/^##[ \t]+/, "", h); sub(/[ \t#]+$/, "", h); cur = key(h); if (!(cur in head)) { head[cur] = h; body[cur] = "" } else { dup[cur] = 1; cur = "" }; next }
+    !fence && /^# / { cur = ""; next }
+    cur != "" { body[cur] = body[cur] $0 "\n" }
+    END {
+      n = split(ENVIRON["SB_NAMES"], nm, ",")
+      for (i = 1; i <= n; i++) {
+        k = tolower(trim(nm[i])); if (k == "") continue
+        if (!(k in head)) { print "none\t" trim(nm[i]) > "/dev/stderr"; exit 1 }
+        if (k in dup) { print "two\t" trim(nm[i]) > "/dev/stderr"; exit 1 }
+        b = body[k]; sub(/^\n+/, "", b); sub(/\n+$/, "", b)
+        printf "### %s\n\n%s\n\n", head[k], b
+      }
+    }' "$1"
+}
+
+# Print the context packet of one task: what the implementer is given, and nothing else.
+sb_spec_packet() {
+  local task="$1" tfile rfile dfile item reqs design title branch row name path state out miss rc
+  local vrow vname vhome vfile vshow vstate vr
+  sb_spec_need_file tasks
+  tfile="$SB_SP_FILE"
+  sb_spec_need_file requirements
+  rfile="$SB_SP_FILE"
+  sb_spec_need_file design
+  dfile="$SB_SP_FILE"
+  rc=0
+  item="$(sb_spec_task_item "$tfile" "$task")" || rc=$?
+  case "$rc" in
+    0) ;;
+    4) sb_die 1 "two items in $SB_SP_SHOW/tasks.md have the id $task: give each task its own id" ;;
+    *) sb_die 1 "no task $task in $SB_SP_SHOW/tasks.md" ;;
+  esac
+  task="$(printf '%s\n' "$item" | sb_spec_task_rows | cut -f1)"
+  title="$(printf '%s\n' "$item" | sb_spec_task_rows | cut -f3)"
+  reqs="$(printf '%s\n' "$item" | sb_spec_field Requirements)"
+  design="$(printf '%s\n' "$item" | sb_spec_field Design)"
+  case "$(printf '%s' "$reqs" | tr '[:upper:]' '[:lower:]')" in
+    '' | '-' | none | n/a | '<'*) sb_die 1 "$task names no requirement in $SB_SP_SHOW/tasks.md" ;;
+  esac
+  case "$reqs$design" in *,) sb_die 1 "a field of $task ends in a comma: write each field of a task on one line" ;; esac
+  case "$(printf '%s' "$design" | tr '[:upper:]' '[:lower:]')" in '-' | none | n/a | '<'*) design="" ;; esac
+  [ "$SB_SP_REPO" != "-" ] || sb_die 1 "$SB_P_NAME lists no repo to build $task in: add one to repos in $SB_P_PATH/claude/profile.md"
+  row="$(sb_spec_repo_row "$SB_SP_REPO")" || sb_die 1 "$SB_SP_REPO is not in repos of $SB_P_NAME"
+  IFS=$'\t' read -r name path state <<EOF
+$row
+EOF
+  sb_spec_need_folder "$name" "$path" "$state"
+  branch="$(sb_fm_get "$SB_T_FILE" branch 2>/dev/null)"
+  vrow="$(sb_val_rows "$name")"
+  IFS=$'\t' read -r vname vhome vfile vshow vstate vr <<EOF
+$vrow
+EOF
+  out="$(mktemp "${TMPDIR:-/tmp}/sb-packet.XXXXXX")" || sb_die 1 "cannot write a temp file"
+  {
+    printf 'story: %s\ntask: %s\ntitle: %s\nrepo: %s\nrepo_path: %s\nbranch: %s\n' \
+      "$SB_T_ID" "$task" "$title" "$name" "$(sb_path_out "$path")" "${branch:--}"
+    if [ "$vstate" = "ok" ]; then printf 'validation: %s\n' "$vshow"; else printf 'validation: none (%s)\n' "${vstate:-unknown}"; fi
+    printf '\n## Task\n\n%s\n\n## Requirements\n\n' "$item"
+  } >"$out"
+  if ! miss="$(sb_spec_sections "$rfile" id "$reqs" 2>&1 >>"$out")"; then
+    rm -f "$out"
+    case "$miss" in
+      two*) sb_die 1 "$SB_SP_SHOW/requirements.md has two sections for ${miss#*$'\t'}: give each requirement its own id" ;;
+      *) sb_die 1 "$task names ${miss#*$'\t'}, which $SB_SP_SHOW/requirements.md has no section for" ;;
+    esac
   fi
+  if [ -n "$design" ]; then
+    printf '## Design\n\n' >>"$out"
+    if ! miss="$(sb_spec_sections "$dfile" name "$design" 2>&1 >>"$out")"; then
+      rm -f "$out"
+      case "$miss" in
+        two*) sb_die 1 "$SB_SP_SHOW/design.md has two sections named ${miss#*$'\t'}: give each its own heading" ;;
+        *) sb_die 1 "$task names the design section ${miss#*$'\t'}, which $SB_SP_SHOW/design.md does not have" ;;
+      esac
+    fi
+  fi
+  if [ "$vstate" = "ok" ]; then
+    { printf '## Validation\n\n'; sb_section "$vfile" "$name"; } >>"$out"
+  fi
+  cat "$out"
+  rm -f "$out"
+}
+
+# second-brain spec [new | tasks | tick | packet] <ID> [<task>], each with [--project P].
+cmd_spec() {
+  local sub="" id="" task="" project="" rc
+  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task>, each with [--project P]"
+  case "${1:-}" in
+    new | tasks | tick | packet)
+      sub="$1"
+      shift
+      ;;
+  esac
   while [ $# -gt 0 ]; do
     case "$1" in
       --project)
@@ -127,24 +311,60 @@ cmd_spec() {
         ;;
       -*) sb_die 5 "$usage" ;;
       *)
-        [ -z "$id" ] || sb_die 5 "$usage"
-        id="$1"
+        if [ -z "$id" ]; then
+          id="$1"
+        elif [ -z "$task" ] && { [ "$sub" = "tick" ] || [ "$sub" = "packet" ]; }; then
+          task="$1"
+        else
+          sb_die 5 "$usage"
+        fi
         shift
         ;;
     esac
   done
   [ -n "$id" ] || sb_die 5 "$usage"
+  case "$sub" in tick | packet) [ -n "$task" ] || sb_die 5 "$usage" ;; esac
   sb_need_task "$id" "$project"
   sb_need_profile
+  SB_SP_SOFT=0
+  [ -n "$sub" ] || SB_SP_SOFT=1
   sb_spec_resolve
-  if [ "$new" -eq 1 ]; then
-    sb_spec_write requirements Requirements
-    sb_spec_write design Design
-    sb_spec_write tasks Tasks
-    return 0
-  fi
+  case "$sub" in
+    new)
+      sb_spec_write requirements Requirements
+      sb_spec_write design Design
+      sb_spec_write tasks Tasks
+      return 0
+      ;;
+    tasks)
+      sb_spec_need_file tasks
+      sb_spec_task_rows "$SB_SP_FILE"
+      return 0
+      ;;
+    tick)
+      rc=0
+      sb_spec_need_file tasks
+      sb_spec_tick_file "$SB_SP_FILE" "$task" || rc=$?
+      case "$rc" in
+        0) printf 'ticked: %s\n' "$task" ;;
+        6) sb_die 6 "$task is ticked already in $SB_SP_SHOW/tasks.md" ;;
+        4) sb_die 1 "two items in $SB_SP_SHOW/tasks.md have the id $task: give each task its own id" ;;
+        2) sb_die 1 "cannot write $SB_SP_SHOW/tasks.md" ;;
+        *) sb_die 1 "no task $task in $SB_SP_SHOW/tasks.md" ;;
+      esac
+      return 0
+      ;;
+    packet)
+      sb_spec_packet "$task"
+      return 0
+      ;;
+  esac
   printf 'id: %s\ndelivery: %s\nspec_home: %s\nrepo: %s\ndir: %s\n' \
     "$SB_T_ID" "$SB_SP_DELIVERY" "$SB_SP_HOME" "$SB_SP_REPO" "$SB_SP_SHOW"
+  if [ -n "${SB_SP_ERR:-}" ]; then
+    printf 'requirements: -\ndesign: -\ntasks: -\n'
+    sb_die 1 "$SB_SP_ERR"
+  fi
   printf 'requirements: %s/requirements.md\ndesign: %s/design.md\ntasks: %s/tasks.md\n' \
     "$SB_SP_SHOW" "$SB_SP_SHOW" "$SB_SP_SHOW"
 }

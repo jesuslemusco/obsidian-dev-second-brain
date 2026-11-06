@@ -418,8 +418,11 @@ Rules that hold for every command:
 | `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README, live or archived, or the id is another task's alias; a folder with no README gets one. Exit 5 for the id `archive` in any letter case, and for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none; with `--envs` the subproject's own environments come first |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder to `<tasks_root>/archive/<YYYY>/<ID>/` with `move`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`; exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too; exit 1 for an unknown task. A move that fails exits as `move` does |
-| `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task; with `repo`, also when the project lists no repo, the repo has no recorded location or its folder is missing. The message says which |
+| `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task; with `repo`, also when the project lists no repo, the repo has no recorded location or its folder is missing. Then it prints the lines first, with `dir` and the three files as `-`, so `delivery` is still read. The message says which |
 | `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, the task's title filled in. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
+| `spec tasks <ID> [--project P]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does |
+| `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings; the task id is matched without letter case, and fenced code is not read. Exit 1 when no item has it, two items have it, `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
+| `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | the packet is all an implementer is given. `validation` is the repo's `validation.md` path, or `none (<state>)` and no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
 | `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing` means the file is not there, `no-section` that it has no `## <repo>` section, `empty` that nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
 | `validation <project> <repo>` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | writes a missing file with the repo's section, or adds the section to a file without it, from `validation-repo.md.tmpl`, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
@@ -729,6 +732,34 @@ carries the full vault path for a `README.md` and the alias as display text.
   a load-time command that fails its permission check aborts the whole skill. When the helper is
   missing the skill says so and stops; it does not guess paths.
 - Agents call skills through the Skill tool as `obsidian-dev-second-brain:<name>`.
+- **A spec-driven story is built in two halves.** The `spec` skill runs in the owner's session,
+  and `spec-writer` drafts requirements, then design, then tasks.
+- The owner approves each phase. An approval is a status note in exactly these words:
+  `Spec: <phase> approved by the owner.`
+- A phase changed after its approval gets the note `Spec: <phase> reopened.` An approval counts
+  only when it is newer than every `reopened` note of its own phase or an earlier one.
+- Only the owner's session asks the owner: a subagent has no AskUserQuestion.
+- Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
+  first commits the spec files on the story's branch, so the tree is clean.
+- `spec-lead` checks the approval note itself. It launches `reviewer` on the untouched branch
+  first, then for each `todo` task in order `implementer`, then `reviewer`.
+- The output of `spec packet`, and the commit line, are all `implementer` is given.
+  `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
+- `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
+  the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
+- A FAIL goes back to `implementer` with the findings at most twice. A BLOCKED, or an
+  implementer reply that starts `BLOCKED:`, stops the build at once: no retry can fix it.
+- Each step is a `Build:` status note ending `at <short hash>.` The newest one says where a new
+  `spec-lead` goes on from, so a build resumes in a new session.
+- The four agents and their tools:
+
+| Agent | Tools | Job |
+|---|---|---|
+| `spec-writer` | Bash, Read, Glob, Grep, Edit, Write | writes the spec file of one phase; `spec new` lays out the empty templates |
+| `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
+| `reviewer` | Bash, Read, Glob, Grep | runs the validation steps and reads the diff; edits no file; ends with a verdict line |
+
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production. Confirmed means the user says so, or the change's story shows it: its last environment
   is `done`, or the story is `done` when the project has no environments. The code a doc is checked

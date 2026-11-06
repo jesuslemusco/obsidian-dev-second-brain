@@ -24,6 +24,15 @@ A project can build its stories from a spec, and every project says how its code
   its README, scripts and CI config for the user to confirm.
 - The project's Claude hub links to `claude/validation.md`, and `subproject <project> <name>`
   shows the three keys.
+- A new `spec` skill builds a story from its spec. It drafts the requirements, the design and the
+  tasks through the new `spec-writer` agent, and the owner approves each one. Then the new
+  `spec-lead` agent builds the tasks one at a time: `implementer` gets the task's context packet
+  alone, and `reviewer` runs the repo's validation steps and reads the diff. Only a passing review
+  ticks a task, and a task that fails three times stops the build for the owner.
+- `second-brain spec tasks <ID>` lists a story's tasks, `spec tick <ID> <task>` ticks one, and
+  `spec packet <ID> <task>` prints a task's context packet: the task, its requirements, the design
+  sections it names and the repo's validation steps.
+- `story-tracker` offers the `spec` skill when work starts on a story whose `delivery` is `spec`.
 - The conventions note is at version 5: it names the `spec` and `subproject` note types and a
   task's `delivery`. The doctor's `conventions` check warns about an older note.
 

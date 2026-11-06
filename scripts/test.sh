@@ -1050,6 +1050,7 @@ line_is "sprint note: end" "$S1" "end: 2026-10-14"
 line_is "sprint note: in progress" "$S1" "status: in-progress"
 line_is "sprint note: goal quoted" "$S1" 'goal: "Ship: invoices"'
 line_is "sprint note: up-link" "$S1" "> Up: [[$P/sprints/README|Example Sprints Hub]]"
+line_is "sprint note: its dates and the board view of its tasks" "$S1" "2026-10-01 to 2026-10-14. Its tasks are the board's \`Current sprint\` view."
 is "sprint note: body sections" "$(grep '^## ' "$S1" | tr '\n' '|')" "## Goal|## Notes|## Close|"
 line_is "sprint open: hub gets one link line" "$vault/$P/sprints/README.md" "- [[$P/sprints/2026-10-14|Example Sprint 2026-10-14]] - 2026-10-01 to 2026-10-14"
 line_is "sprint open: board literal rewritten" "$vault/$P/tasks/tasks.base" '        - sprint == "2026-10-14"'

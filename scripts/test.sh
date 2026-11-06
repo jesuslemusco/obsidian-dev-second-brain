@@ -2010,7 +2010,8 @@ file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help
-out_has "help: lists spec" "spec <ID> [--project P] | spec new <ID> [--project P]"
+out_has "help: lists spec" "spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)"
+out_has "help: lists spec tick and packet" "spec tick <ID> <task> | spec packet <ID> <task>"
 out_has "help: lists validation" "validation <project> [repo] | validation new <project> <repo>"
 S="work/specs"
 SPF="$vault/$S/claude/profile.md"
@@ -2222,6 +2223,164 @@ out_lacks "validation: a repo home writes no vault note" "$P4/claude/validation.
 file_lacks "validation: and the Claude hub does not link to one" "$vault/$P4/claude/README.md" "claude/validation|"
 sb unresolved RepoHome
 out_is "validation: so the hub's links resolve" ""
+
+# ---------------------------------------------------------------- spec tasks, tick and packet
+SD="$vault/$S/tasks/SP-1/spec"
+edit "$SPF" 's/^spec_home: repo$/spec_home: vault/'
+sb task set SP-1 subproject= branch=feature/SP-1-first
+printf '%s\n' '# SP-1 - Requirements' '' '## R1 - Login form' '' 'WHEN a user opens the page, THE app SHALL show a form.' '' \
+  '- [ ] The form has two fields.' '' '## R2 - Bad password' '' 'IF the password is wrong, THEN the app SHALL say so.' '' '## R3 - Unused' '' 'Left out.' >"$SD/requirements.md"
+printf '%s\n' '# SP-1 - Design' '' '## Approach' '' 'A new route.' '' '## Components' '' 'The form.' '' '## Testing' '' 'A browser check.' >"$SD/design.md"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' '  - Check: open the page' '' \
+  '- [x] T2 - The error' '  - Requirements: R2, R9' '  - Design: Approach' '- [ ] T3 - Nothing named' '  - Requirements: <R1, R2>' '- [ ] T4 - No design' '  - Requirements: r2' '  - Design: none' >"$SD/tasks.md"
+sb spec tasks SP-1
+rc_is "spec tasks: exit 0" 0
+out_is "spec tasks: one row per item, in order" "T1${TAB}todo${TAB}The login form
+T2${TAB}done${TAB}The error
+T3${TAB}todo${TAB}Nothing named
+T4${TAB}todo${TAB}No design"
+sb spec packet SP-1 t1
+rc_is "spec packet: exit 0, the task matched without letter case" 0
+is "spec packet: the header lines first" "$(printf '%s\n' "$OUT" | head -7)" "story: SP-1
+task: T1
+title: The login form
+repo: spec-app
+repo_path: $oT/scode/spec-app
+branch: feature/SP-1-first
+validation: $S/claude/validation.md"
+out_has "spec packet: the item as written" "  - Files: src/login.ts"
+out_has "spec packet: the requirement it names, with its checks" "### R1 - Login form
+
+WHEN a user opens the page, THE app SHALL show a form.
+
+- [ ] The form has two fields."
+out_lacks "spec packet: no requirement it does not name" "R2 - Bad password"
+out_has "spec packet: each design heading it names, without letter case" "### Approach
+
+A new route.
+
+### Components
+
+The form."
+out_lacks "spec packet: no design heading it does not name" "### Testing"
+out_has "spec packet: the repo's validation steps" "## Validation
+
+### Set up and start"
+out_lacks "spec packet: no other task" "T2 - The error"
+sb spec packet SP-1 T2
+rc_is "spec packet: a requirement with no section exits 1" 1
+err_has "spec packet: and names it" "T2 names R9, which $S/tasks/SP-1/spec/requirements.md has no section for"
+sb spec packet SP-1 T3
+rc_is "spec packet: a task that names no requirement exits 1" 1
+sb spec packet SP-1 T4
+rc_is "spec packet: a task with no design exits 0" 0
+out_lacks "spec packet: and has no design part" "## Design"
+out_has "spec packet: a requirement id is matched without letter case" "### R2 - Bad password"
+sb spec packet SP-1 T9
+rc_is "spec packet: an unknown task exits 1" 1
+sb spec packet SP-1
+rc_is "spec packet: no task exits 5" 5
+CRT="$SD/tasks.md"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$CRT" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$CRT"
+sb spec tick SP-1 T1
+rc_is "spec tick: exit 0" 0
+out_is "spec tick: names the task" "ticked: T1"
+line_is "spec tick: the box is ticked" "$CRT" "- [x] T1 - The login form$CR"
+is "spec tick: every line keeps its CRLF" "$(grep -vc "$CR\$" "$CRT" || true)" "0"
+sb spec tick SP-1 T1
+rc_is "spec tick: a ticked task exits 6" 6
+sb spec tick SP-1 T9
+rc_is "spec tick: an unknown task exits 1" 1
+sb spec tasks SP-1
+out_has "spec tasks: the ticked task is done" "T1${TAB}done${TAB}The login form"
+mv "$CRT" "$tmp/tasks.md.away"
+sb spec tasks SP-1
+rc_is "spec tasks: no tasks.md exits 1" 1
+err_has "spec tasks: and names spec new" "run second-brain spec new SP-1"
+mv "$tmp/tasks.md.away" "$CRT"
+
+# ---------------------------------------------------------------- the spec skill and its agents
+SK="$here/skills/spec/SKILL.md"
+sk_desc="$(sed -n 's/^description: //p' "$SK")"
+is "spec skill: the description is under 200 characters" "$((${#sk_desc} < 200))" "1"
+case "$sk_desc" in *"spec-driven"*) pass "spec skill: the description names spec-driven" ;; *) fail "spec skill: the description names spec-driven" "in: $sk_desc" ;; esac
+file_has "spec skill: carries the conventions pointer" "$SK" 'Conventions: before writing notes, run `second-brain conventions`'
+file_has "spec skill: its first tool call is the context" "$SK" 'Your first tool call is `second-brain context`'
+for ph in requirements design tasks; do
+  file_has "spec skill: the $ph approval note" "$SK" "Spec: $ph approved by the owner."
+done
+file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
+file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
+file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" 'Resume
+  `spec-lead` with SendMessage'
+for a in spec-writer spec-lead implementer reviewer; do
+  AF="$here/agents/$a.md"
+  line_is "$a: named as its file" "$AF" "name: $a"
+  ad="$(sed -n 's/^description: //p' "$AF")"
+  is "$a: the description is under 200 characters" "$((${#ad} < 200))" "1"
+  file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
+done
+line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
+for a in spec-writer implementer reviewer docs-keeper scrum-master; do
+  if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
+done
+line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
+file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
+file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
+file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"
+file_has "spec-lead: two retries at most" "$here/agents/spec-lead.md" "retries for a task. Still FAIL"
+file_has "reviewer: a step not run is never a pass" "$here/agents/reviewer.md" "A step that could not be run is never a PASS."
+file_has "implementer: never the vault or tasks.md" "$here/agents/implementer.md" 'Never the vault, the spec files or `tasks.md`'
+file_has "spec-writer: every task's packet must build" "$here/agents/spec-writer.md" 'Run `second-brain spec packet <ID> T<n>` for every task.'
+file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
+file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
+file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
+
+# ---------------------------------------------------------------- spec tasks: review edge cases
+printf '%s\n' '# SP-1 - Tasks' '' 'An example:' '' '```' '- [ ] T1 - Example' '```' '' '- [ ] T1 - The real one' '  - Requirements: R1' '  - Design: None' \
+  '  - Check: run it' '    ```sh' '#!/bin/sh' '    ```' '  - Files: a.sh' '- [ ] T2: Colon form' '  - Requirements: R1,' '- [ ] T5 - Twice' '  - Requirements: R1' '- [ ] T5 - Twice again' '  - Requirements: R1' >"$CRT"
+sb spec tasks SP-1
+out_is "spec tasks: fenced code is not read, and T2: is a task" "T1${TAB}todo${TAB}The real one
+T2${TAB}todo${TAB}Colon form
+T5${TAB}todo${TAB}Twice
+T5${TAB}todo${TAB}Twice again"
+sb spec packet SP-1 T1
+rc_is "spec packet: Design: None names no section, in any letter case" 0
+out_has "spec packet: a fence inside the item keeps the lines after it" "  - Files: a.sh"
+sb spec packet SP-1 T2
+rc_is "spec packet: a field that ends in a comma exits 1" 1
+err_has "spec packet: and says to write it on one line" "write each field of a task on one line"
+sb spec packet SP-1 T5
+rc_is "spec packet: two items with one id exit 1" 1
+err_has "spec packet: and say so" "have the id T5"
+sb spec tick SP-1 T5
+rc_is "spec tick: two items with one id exit 1" 1
+sb spec tick SP-1 T1
+line_is "spec tick: the fenced example is left alone" "$CRT" "- [ ] T1 - Example"
+line_is "spec tick: the real item is ticked" "$CRT" "- [x] T1 - The real one"
+printf '\n## R1 - Again\n' >>"$SD/requirements.md"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' >"$CRT"
+sb spec packet SP-1 T1
+rc_is "spec packet: a requirement with two sections exits 1" 1
+err_has "spec packet: and names it" "has two sections for R1"
+edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
+edit "$SPF" "s|^repos_root: \"$tmp/scode\"\$|repos_root: \"\"|"
+sb spec SP-1
+rc_is "spec: a repo spec with no recorded location still exits 1" 1
+out_has "spec: but prints the delivery first" "delivery: direct"
+out_has "spec: and the folder as -" "dir: -"
+edit "$SPF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|; s/^spec_home: repo$/spec_home: vault/"
+for a in implementer reviewer; do
+  line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
+done
+file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
+file_has "spec-lead: a BLOCKED review stops at once" "$here/agents/spec-lead.md" "7. BLOCKED: stop at once and report."
+file_has "spec-lead: commits the tick of a repo spec" "$here/agents/spec-lead.md" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
+file_has "spec-lead: a new lead goes on from the newest Build note" "$here/agents/spec-lead.md" 'the newest note that starts `Build:`'
+file_has "reviewer: a BLOCKED verdict" "$here/agents/reviewer.md" '`VERDICT: BLOCKED`: a step could not be run'
+file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'Read nothing outside `repo_path`'
+file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
+file_has "spec skill: commits a repo spec before the build" "$here/skills/spec/SKILL.md" 'commit -m "<ID>: spec"'
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

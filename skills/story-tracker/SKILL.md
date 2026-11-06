@@ -90,6 +90,14 @@ commit, before you reason about, recall or review a ticket.
   No branch yet: `none yet`, and name the branch the repo was on, so a later session knows the
   code read was not this ticket's. A changed canonical branch also gets a status note.
 
+## Spec-driven stories
+
+Before work starts on a story, in start mode or on a move to `in-progress`, run
+`second-brain spec <ID>`. It prints `delivery` even when it exits 1 because the repo of a repo
+spec cannot be reached. `delivery: spec`: say the story is built from a spec and offer
+`/obsidian-dev-second-brain:spec <ID>`, which drafts the spec with the owner and hands the build
+to `spec-lead`. Do not plan or write its code here.
+
 ## Edit an existing story
 
 - The README is a human-facing document. Preserve its narrative; change only what moved.

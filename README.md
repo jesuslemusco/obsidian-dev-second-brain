@@ -11,8 +11,9 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
   optional per project.
 - **Docs.** Keep a project's docs in step with its code. Marking a ticket done updates its docs.
 - **Spec-driven stories.** A project, a subproject or one story can be built from a spec:
-  requirements, design and tasks, approved before any code. The spec lives in the task's folder
-  or in the repo, as the project chooses.
+  requirements, design and tasks, which you approve one at a time. Then `spec-lead` builds the
+  tasks one by one: `implementer` gets only that task's context, and `reviewer` checks the result
+  with the project's validation steps. Only a passing review ticks a task.
 - **Validation.** Every project says how each repo is run and checked, in a `validation.md` in the
   vault or in the repo, so a change is checked by the same steps every time.
 - **Several repos.** A project made of several repos can split them into subprojects, each with

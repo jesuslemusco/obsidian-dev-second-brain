@@ -2316,8 +2316,7 @@ for ph in requirements design tasks; do
 done
 file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
 file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
-file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" 'Resume
-  `spec-lead` with SendMessage'
+file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" "Resume \`spec-lead\` with SendMessage and the owner's answer as written."
 for a in spec-lead implementer reviewer; do
   AF="$here/agents/$a.md"
   line_is "$a: named as its file" "$AF" "name: $a"

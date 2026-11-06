@@ -2066,6 +2066,12 @@ is "spec new: the Serves line is the first under R1" "$(section_of "$SPR" "R1 - 
 line_is "spec new: the requirement is in the WHEN form" "$SPR" "<WHEN a trigger, THE part of the system SHALL respond so.>"
 line_is "spec new: the tasks file has the task line" "$vault/$S/tasks/SP-1/spec/tasks.md" "- [ ] T1 - <What the task builds.>"
 line_is "spec new: and its requirements line" "$vault/$S/tasks/SP-1/spec/tasks.md" "  - Requirements: <R1, R2>"
+SPD="$vault/$S/tasks/SP-1/spec/design.md"
+line_is "spec new: the design keeps the headings a task names" "$SPD" "How First spec is built. Keep each heading short, and never rename or remove one a task names."
+for h in "## Context" "## Approach" "## Components" "## Errors and edge cases" "## Testing"; do
+  line_is "spec new: the design has $h" "$SPD" "$h"
+done
+line_is "spec new: the design asks for each part's job" "$SPD" "<Each part added or changed, and its job.>"
 echo "kept" >>"$SPR"
 sb spec new SP-1
 rc_is "spec new again: exit 0" 0

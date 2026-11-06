@@ -35,7 +35,7 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 specs:    spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)
-          spec tick <ID> <task> | spec packet <ID> <task>
+          spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>
           validation <project> [repo] | validation new <project> <repo>
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]

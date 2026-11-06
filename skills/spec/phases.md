@@ -20,11 +20,16 @@ Use what this session already knows, and read only what is missing:
 ## requirements
 
 - One `## R<n> - <short name>` section per requirement, numbered from R1.
+- Each section opens with `- Serves: AC1, AC3`: the story's criteria the requirement meets.
+  `AC<n>` is the n-th line of the story's `## Acceptance criteria`, counted as section 4 of
+  `docs/contract.md` says.
 - The requirement in one sentence: `WHEN <trigger>, THE <part of the system> SHALL <response>.`
   Use `IF <condition>, THEN` for an unwanted case and `WHILE <state>,` for a state.
 - Under it, `- [ ]` acceptance checks someone else can run, each with what to look for.
-- Every acceptance criterion of the story is met by at least one requirement. What the story
-  leaves out stays out.
+- Every criterion of the story is named on a `- Serves:` line, and every requirement serves at
+  least one. What the story leaves out stays out.
+- Once the file is written, run `second-brain doctor <project>`: its `spec-trace` row must name
+  no offender of this story.
 
 ## design
 

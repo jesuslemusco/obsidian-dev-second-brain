@@ -1110,6 +1110,68 @@ EOF
     "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
 }
 
+# Check the trace of each open spec story: every criterion of its README named on a "- Serves:"
+# line of its requirements.md, and every requirement serving criteria the story has. A done or
+# abandoned story, one whose delivery that holds is direct, one with no requirements.md and one
+# whose spec is in a repo with no recorded location or no folder are not opened.
+sb_doc_check_spec_trace() {
+  local bad="" nl=$'\n' tab=$'\t' map path id sub own holds rest line
+  local SB_T_FILE SB_T_ID SB_SP_SOFT=1 SB_SP_ERR SB_SP_DELIVERY SB_SP_HOME SB_SP_REPO SB_SP_DIR SB_SP_SHOW
+  local SB_S_FILE SB_S_NAME
+  map="$nl"
+  # One pass over the open tasks: path, id, subproject and the task's own delivery, or "-".
+  while IFS=$'\t' read -r path id sub own <&4; do
+    [ -n "$path" ] || continue
+    case "$own" in
+      spec) ;;
+      -)
+        # With no value of its own, the subproject's or the profile's holds, read once per subproject.
+        case "$map" in
+          *"$nl$sub$tab"*)
+            rest="${map#*"$nl$sub$tab"}"
+            holds="${rest%%"$nl"*}"
+            ;;
+          *)
+            SB_S_FILE=""
+            [ "$sub" = "-" ] || sb_sub_resolve "$sub" || SB_S_FILE=""
+            holds="$(sb_spec_value delivery "$SB_S_FILE" "$SB_P_PROFILE")"
+            map="$map$sub$tab$holds$nl"
+            ;;
+        esac
+        [ "$holds" = "spec" ] || continue
+        ;;
+      *) continue ;;
+    esac
+    SB_T_FILE="$path"
+    SB_T_ID="$id"
+    # sb_spec_resolve keeps an old SB_SP_ERR on the vault path: one unreachable repo would hide the rest.
+    SB_SP_ERR=""
+    sb_spec_resolve
+    [ -z "$SB_SP_ERR" ] && [ -f "$SB_SP_DIR/requirements.md" ] || continue
+    while IFS= read -r line; do
+      [ -z "$line" ] || bad="$bad$id:$line$nl"
+    done <<EOF
+$(sb_spec_trace "$SB_T_FILE" "$SB_SP_DIR/requirements.md")
+EOF
+  done 4<<EOF
+$(printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
+    NF < 14 || $3 == "done" || $3 == "abandoned" { next }
+    {
+      path = $1; own = "-"; k = 0
+      while ((getline line < path) > 0) {
+        k++; sub(/\r$/, "", line)
+        if (k == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+        if (line == "---") break
+        if (line ~ /^delivery:/) { v = tolower(unq(substr(line, 10))); gsub(/\t/, " ", v); if (v != "") own = v; break }
+      }
+      close(path)
+      print path "\t" $2 "\t" $14 "\t" own
+    }')
+EOF
+  sb_doc_report warn spec-trace "$SB_P_NAME" "$bad" \
+    "add the criterion's AC<n> to the - Serves: line of the requirement that meets it, or write a requirement for it, and give every requirement a - Serves: line that names only criteria the story has"
+}
+
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
@@ -1258,7 +1320,7 @@ sb_doc_rows() {
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
-      delivery validation sprints unresolved_links bare_links line_endings depends_on; do
+      delivery validation spec_trace sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

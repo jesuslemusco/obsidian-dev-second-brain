@@ -59,7 +59,8 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
    change in the free-text answer. Approve only when the owner picks it. A change: make it, then
    go back to item 4.
 6. Approved: `second-brain task note <ID> "Spec: <phase> approved by the owner." --session ${CLAUDE_SESSION_ID}`.
-   Then the next phase.
+   After the tasks note, run `second-brain spec link <ID>`: it links the story's Approach,
+   Changes and Verification to the spec, so the story does not repeat it. Then the next phase.
 
 ## Step 3 - Ready to build
 

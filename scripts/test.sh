@@ -2390,6 +2390,63 @@ file_has "implementer: reads nothing outside the repo" "$here/agents/implementer
 file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
 file_has "spec skill: commits a repo spec before the build" "$here/skills/spec/SKILL.md" 'commit -m "<ID>: spec"'
 
+# ---------------------------------------------------------------- spec link
+sb help
+out_has "help: lists spec link" "spec packet <ID> <task> | spec link <ID>"
+for n in 2 3 4 5; do sb task new "SP-$n" --project Specs --title "Linked $n"; done
+for n in 2 3 5; do sb task set "SP-$n" delivery=spec; sb spec new "SP-$n"; done
+L2="$vault/$S/tasks/SP-2/README.md"
+sb spec link SP-2
+rc_is "spec link: exit 0" 0
+out_is "spec link: names each section it changed" "linked: Approach / Key decisions
+linked: Changes
+linked: Verification"
+is "spec link: the design link opens Approach, the template text gone" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$L2")" "
+See [[$S/tasks/SP-2/spec/design|SP-2 Design]]."
+is "spec link: the tasks link replaces None yet. in Changes" \
+  "$(awk '/^## Changes/ { on = 1; next } on && /^## / { exit } on' "$L2")" "
+See [[$S/tasks/SP-2/spec/tasks|SP-2 Tasks]]."
+line_is "spec link: and opens Verification" "$L2" "See [[$S/tasks/SP-2/spec/tasks|SP-2 Tasks]]."
+sb unresolved Specs
+out_is "spec link: its links resolve" ""
+cp "$L2" "$tmp/sp2.before"
+sb spec link SP-2
+out_is "spec link again: no change" "no change"
+if cmp -s "$L2" "$tmp/sp2.before"; then pass "spec link again: the README is byte-identical"; else fail "spec link again: the README is byte-identical"; fi
+L3="$vault/$S/tasks/SP-3/README.md"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$L3" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$L3"
+sb spec link SP-3
+rc_is "spec link: a CRLF README takes the links" 0
+is "spec link: every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+L4="$vault/$S/tasks/SP-4/README.md"
+cp "$L4" "$tmp/sp4.before"
+sb spec link SP-4
+out_is "spec link: a direct story is not built from a spec" "no change: SP-4 is not built from a spec (delivery: direct)"
+if cmp -s "$L4" "$tmp/sp4.before"; then pass "spec link: a direct story's README is byte-identical"; else fail "spec link: a direct story's README is byte-identical"; fi
+L5="$vault/$S/tasks/SP-5/README.md"
+awk '{ print } /^## Approach \/ Key decisions$/ { getline; print; getline; print "- Keep this decision."; next }' "$L5" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$L5"
+sb spec link SP-5
+is "spec link: other text stays under the link" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$L5" | head -4)" "
+See [[$S/tasks/SP-5/spec/design|SP-5 Design]].
+
+- Keep this decision."
+rm "$vault/$S/tasks/SP-5/spec/design.md"
+sb spec link SP-5
+rc_is "spec link: a missing design.md exits 1" 1
+edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
+sb task new SP-6 --project Specs --title "Repo link"
+sb task set SP-6 delivery=spec
+sb spec new SP-6
+sb spec link SP-6
+line_is "spec link: a repo spec names the file and the repo" "$vault/$S/tasks/SP-6/README.md" 'See `spec/SP-6/design.md` in the `spec-app` repo.'
+edit "$SPF" 's/^spec_home: repo$/spec_home: vault/'
+file_has "spec skill: runs spec link after the tasks approval" "$here/skills/spec/SKILL.md" 'After the tasks note, run `second-brain spec link <ID>`'
+file_has "spec phases: each requirement opens with its Serves line" "$here/skills/spec/phases.md" 'Each section opens with `- Serves: AC1, AC3`'
+file_has "spec phases: every criterion is served" "$here/skills/spec/phases.md" 'Every criterion of the story is named on a `- Serves:` line'
+file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md" 'its `spec-trace` row must name'
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

@@ -224,6 +224,53 @@ sb_spec_sections() {
     }' "$1"
 }
 
+# Read a task's README and its requirements.md; print each break in the trace between them once,
+# one per line: AC<n> for each criterion no requirement serves, in order, then the id of each
+# requirement with no good item on its "- Serves:" lines or with an item that is not good, in file
+# order. A criterion is a "- [ ]", "- [x]" or "- [X]" line under the README's "## Acceptance
+# criteria", numbered from 1; a good item is AC<n>, in any letter case, for a criterion the story
+# has. Frontmatter of the README, fenced code, a CR at a line's end and a BOM are not read.
+# Usage: sb_spec_trace <readme> <requirements>
+sb_spec_trace() {
+  LC_ALL=C awk "$(sb_awk_lib)"'
+    BEGIN { nac = 0; nr = 0 }
+    FNR == 1 { readme = (FILENAME == ARGV[1]); fence = 0; fm = 0; on = 0; cur = 0; sub(/^\357\273\277/, "") }
+    { sub(/\r$/, "") }
+    readme && FNR == 1 && $0 == "---" { fm = 1; next }
+    fm { if ($0 == "---") fm = 0; next }
+    /^[ \t]*(```|~~~)/ { fence = !fence; next }
+    fence { next }
+    readme {
+      if (/^## /) { h = $0; sub(/^##[ \t]+/, "", h); sub(/[ \t#]+$/, "", h); on = (tolower(h) == "acceptance criteria") }
+      else if (/^# /) on = 0
+      else if (on && /^- \[[ xX]\]( |$)/) nac++
+      next
+    }
+    /^## / {
+      h = $0; sub(/^##[ \t]+/, "", h); sub(/[ \t#]+$/, "", h); sub(/[ \t].*$/, "", h); cur = 0
+      if (h ~ /^[Rr][0-9]+$/) { cur = ++nr; rid[nr] = h }
+      next
+    }
+    /^# / { cur = 0; next }
+    cur && tolower(substr($0, 1, 9)) == "- serves:" {
+      n = split(substr($0, 10), it, ",")
+      for (i = 1; i <= n; i++) {
+        v = trim(it[i])
+        if (v == "") continue
+        if (v ~ /^[Aa][Cc][1-9][0-9]*$/ && substr(v, 3) + 0 <= nac) { good[cur] = 1; served[substr(v, 3) + 0] = 1 }
+        else bad[cur] = 1
+      }
+    }
+    END {
+      for (i = 1; i <= nac; i++) if (!(i in served)) print "AC" i
+      for (i = 1; i <= nr; i++) {
+        if ((i in good) && !(i in bad)) continue
+        k = tolower(rid[i])
+        if (!(k in said)) { said[k] = 1; print rid[i] }
+      }
+    }' "$1" "$2"
+}
+
 # Print the context packet of one task: what the implementer is given, and nothing else.
 sb_spec_packet() {
   local task="$1" tfile rfile dfile item reqs design title branch row name path state out miss rc
@@ -292,12 +339,122 @@ EOF
   rm -f "$out"
 }
 
-# second-brain spec [new | tasks | tick | packet] <ID> [<task>], each with [--project P].
+# Write the spec links into a spec story's README: design.md as the first line of
+# "## Approach / Key decisions", tasks.md as the first line of "## Changes" and "## Verification".
+# A section that holds only "None yet." or the task template's text gets the link alone; any other
+# keeps its text under the link; one with its link is left alone. Line endings, the final newline,
+# frontmatter and fenced code are kept. Prints "linked: <heading>" per change, or "no change".
+sb_spec_link() {
+  local dl tl tmpl tmp out miss nofinal=0 rc=0 line
+  if [ "$SB_SP_DELIVERY" != "spec" ]; then
+    printf 'no change: %s is not built from a spec (delivery: %s)\n' "$SB_T_ID" "$SB_SP_DELIVERY"
+    return 0
+  fi
+  [ -z "${SB_SP_ERR:-}" ] || sb_die 1 "$SB_SP_ERR"
+  sb_spec_need_file design
+  sb_spec_need_file tasks
+  if [ "$SB_SP_HOME" = "vault" ]; then
+    dl="See [[$SB_SP_SHOW/design|$SB_T_ID Design]]."
+    tl="See [[$SB_SP_SHOW/tasks|$SB_T_ID Tasks]]."
+  else
+    dl="See \`spec/$SB_T_ID/design.md\` in the \`$SB_SP_REPO\` repo."
+    tl="See \`spec/$SB_T_ID/tasks.md\` in the \`$SB_SP_REPO\` repo."
+  fi
+  tmpl="$(sb_plugin_root)/templates/task-readme.md.tmpl"
+  [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-link.XXXXXX")" || sb_die 1 "cannot write a temp file"
+  out="$(SB_OUT="$tmp" SB_DL="$dl" SB_TL="$tl" SB_NOFINAL="$nofinal" \
+    SB_T1="$(sb_section "$tmpl" "Approach / Key decisions" 2>/dev/null)" \
+    SB_T2="$(sb_section "$tmpl" "Changes" 2>/dev/null)" \
+    SB_T3="$(sb_section "$tmpl" "Verification" 2>/dev/null)" LC_ALL=C awk "$(sb_awk_lib)"'
+    function norm(s,   n, i, a, o) {
+      n = split(s, a, "\n"); o = ""
+      for (i = 1; i <= n; i++) { sub(/\r$/, "", a[i]); a[i] = trim(a[i]); if (a[i] != "") o = o (o == "" ? "" : "\n") a[i] }
+      return o
+    }
+    BEGIN {
+      want["approach / key decisions"] = 1; want["changes"] = 2; want["verification"] = 3
+      name[1] = "Approach / Key decisions"; name[2] = "Changes"; name[3] = "Verification"
+      link[1] = ENVIRON["SB_DL"]; link[2] = ENVIRON["SB_TL"]; link[3] = ENVIRON["SB_TL"]
+      tm[1] = norm(ENVIRON["SB_T1"]); tm[2] = norm(ENVIRON["SB_T2"]); tm[3] = norm(ENVIRON["SB_T3"])
+    }
+    {
+      if (NR == 1) eol = ($0 ~ /\r$/ ? "\r" : "")
+      line[NR] = $0; t = $0; sub(/\r$/, "", t); if (NR == 1) sub(/^\357\273\277/, "", t)
+      txt[NR] = t
+    }
+    END {
+      n = NR; fm = 0; fence = 0; cur = 0
+      for (i = 1; i <= n; i++) {
+        t = txt[i]; kind[i] = ""
+        if (i == 1 && t == "---") { fm = 1; continue }
+        if (fm) { if (t == "---") fm = 0; continue }
+        if (t ~ /^[ \t]*(```|~~~)/) { fence = !fence; sec[i] = cur; continue }
+        if (!fence && t ~ /^##? /) {
+          cur = 0
+          if (t ~ /^## /) { h = t; sub(/^##[ \t]+/, "", h); sub(/[ \t#]+$/, "", h); h = tolower(h); if ((h in want) && !(want[h] in at)) { cur = want[h]; at[cur] = i } }
+          continue
+        }
+        sec[i] = cur
+      }
+      for (k = 1; k <= 3; k++) {
+        if (!(k in at)) { print "missing\t" name[k]; continue }
+        body = ""; has = 0
+        for (i = at[k] + 1; i <= n && sec[i] == k; i++) { body = body txt[i] "\n"; if (trim(txt[i]) == link[k]) has = 1 }
+        last[k] = i - 1
+        if (has) continue
+        b = norm(body)
+        mode[k] = ((b == "None yet." || (tm[k] != "" && b == tm[k])) ? "replace" : "insert")
+        print "linked\t" name[k]
+      }
+      o = ENVIRON["SB_OUT"]
+      for (i = 1; i <= n; i++) {
+        k = 0
+        for (j = 1; j <= 3; j++) if ((j in mode) && at[j] == i) k = j
+        if (!k) { if (!skip[i]) out_line(line[i], i == n); continue }
+        out_line(line[i], 0)
+        if (mode[k] == "replace") {
+          out_line(eol, 0); out_line(link[k] eol, 0); out_line(eol, last[k] == n)
+          for (m = i + 1; m <= last[k]; m++) skip[m] = 1
+          if (last[k] == n) { done_last = 1 }
+        } else {
+          if (i < n && trim(txt[i + 1]) == "") { out_line(line[i + 1], 0); skip[i + 1] = 1 }
+          else out_line(eol, 0)
+          out_line(link[k] eol, 0); out_line(eol, 0)
+        }
+      }
+    }
+    function out_line(s, islast) {
+      if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > o
+      else print s > o
+    }' "$SB_T_FILE")" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$tmp"
+    sb_die 1 "cannot read $SB_T_REL"
+  fi
+  miss=0
+  while IFS=$'\t' read -r rc line; do
+    case "$rc" in
+      missing) printf 'note: no ## %s in %s\n' "$line" "$SB_T_REL" >&2 ;;
+      linked) miss=1; printf 'linked: %s\n' "$line" ;;
+    esac
+  done <<EOF
+$out
+EOF
+  if [ "$miss" -eq 1 ]; then
+    cat "$tmp" >"$SB_T_FILE" || { rm -f "$tmp"; sb_die 1 "cannot write $SB_T_REL"; }
+  else
+    printf 'no change\n'
+  fi
+  rm -f "$tmp"
+}
+
+# second-brain spec [new | tasks | tick | packet | link] <ID> [<task>], each with [--project P].
 cmd_spec() {
   local sub="" id="" task="" project="" rc
-  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task>, each with [--project P]"
+  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>, each with [--project P]"
   case "${1:-}" in
-    new | tasks | tick | packet)
+    new | tasks | tick | packet | link)
       sub="$1"
       shift
       ;;
@@ -327,7 +484,7 @@ cmd_spec() {
   sb_need_task "$id" "$project"
   sb_need_profile
   SB_SP_SOFT=0
-  [ -n "$sub" ] || SB_SP_SOFT=1
+  case "$sub" in '' | link) SB_SP_SOFT=1 ;; esac
   sb_spec_resolve
   case "$sub" in
     new)
@@ -356,6 +513,10 @@ cmd_spec() {
       ;;
     packet)
       sb_spec_packet "$task"
+      return 0
+      ;;
+    link)
+      sb_spec_link
       return 0
       ;;
   esac

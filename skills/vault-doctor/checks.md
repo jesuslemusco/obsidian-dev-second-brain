@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then twenty-two for each project, and `subprojects` and `task-subproject` as well for a
+the vault, then twenty-three for each project, and `subprojects` and `task-subproject` as well for a
 project that has a subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
@@ -185,6 +185,12 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 - Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text (`<repo>:placeholders`). A repo whose `validation.md` lives in the repo, and whose location is not recorded, is `<repo>:no-location`. A project with no repo is named for a missing `claude/validation.md` (`claude/validation.md:missing`).
 - Why: the agents that build and review a change run the steps in a repo's section. With none, a change is called done on the builder's word, which is how bugs that only show when the code runs get through.
 - Fix: `no-location`: record where the repo is, in `repos_root` or `repo_paths`. Otherwise run `second-brain validation new <project> <repo>`, which writes the file or adds the section and never changes one that is there. Then ask how the repo is set up and started, which checks must pass, how a change is checked as a user would and what a pass is. The repo's own README, scripts and CI config are where to look first; write only what the user confirms. Never invent a step.
+
+### spec-trace
+
+- Means: an open story whose `delivery` that holds is `spec` has a criterion, a `- [ ]`, `- [x]` or `- [X]` line under its README's `## Acceptance criteria`, that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`, the n-th criterion); or a requirement, a `## R<n>` section, has no `- Serves:` line, names no criterion, or has an item that is not an `AC<n>` the story has (`<ID>:R<n>`). A done or abandoned story, one with no `requirements.md` and one whose spec is in a repo with no recorded location or no folder are not read.
+- Why: the `- Serves:` lines are how the owner sees that the spec covers the story. A criterion no requirement serves is never built or reviewed, so the story is called done while what it promised is missing; a requirement that serves none is work the story did not ask for.
+- Fix: add the criterion's `AC<n>` to the `- Serves:` line of the requirement that meets it, or write a requirement for it, and give every requirement a `- Serves:` line that names only criteria the story has. Ask the owner which requirement meets a criterion; `--fix` changes nothing here.
 
 ### sprints
 

@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Implement a story spec-driven - draft its requirements, design and tasks with the owner, one approved phase at a time, then have spec-lead build and review each task.
+description: Implement a story spec-driven - write its requirements, design and tasks with the owner in this chat, one approved phase at a time, then have spec-lead build and review each task.
 argument-hint: "<ticket id>"
 allowed-tools: Read Bash(second-brain *)
 ---
@@ -9,11 +9,12 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 
 # Spec
 
-A spec-driven story is built in two halves. The spec is made here, in the owner's session:
-`spec-writer` drafts each phase, and the owner approves it or says what to change. The build runs
-in `spec-lead` once the owner has approved the task list: it builds and reviews one task at a
-time and stops only on a task it cannot get through review. The owner talks to this session
-alone. An agent has no AskUserQuestion, so it can never ask the owner anything.
+A spec-driven story is built in two halves. The spec is written here, in the owner's session:
+you draft each phase with the context this session already has, ask the owner as you go, and the
+owner approves it or says what to change. The build runs in `spec-lead` once the owner has
+approved the task list: it builds and reviews one task at a time and stops only on a task it
+cannot get through review. The owner talks to this session alone. An agent has no
+AskUserQuestion, so it can never ask the owner anything.
 
 The session id for notes is `${CLAUDE_SESSION_ID}`.
 
@@ -44,19 +45,20 @@ file is missing: `second-brain spec new <ID>` lays out the empty templates.
 
 ## Step 2 - One phase at a time
 
-For requirements, then design, then tasks:
+For requirements, then design, then tasks, write the phase yourself, in this session. Read
+`${CLAUDE_SKILL_DIR}/phases.md` once: what to read and the rules of each phase.
 
-1. Launch `obsidian-dev-second-brain:spec-writer` with the Agent tool. Its prompt: the project, the
-   ticket id, the phase. Keep its agent id, and wait for its report.
-2. Read the file it wrote, at the path `spec <ID>` prints. Show the owner the path and the phase
-   in short: each requirement with its checks, each design decision, or each task with the
-   requirements it meets. Pass on its questions.
-3. Ask with AskUserQuestion whether to approve the phase or change it; the owner says what to
-   change in the free-text answer. Approve only when the owner picks it.
-4. A change: resume `spec-writer` with SendMessage and the owner's words as written, wait for its
-   report, then go back to item 2. Its agent id is gone in a new session: launch it again with
-   the owner's words.
-5. Approved: `second-brain task note <ID> "Spec: <phase> approved by the owner." --session ${CLAUDE_SESSION_ID}`.
+1. Read only what this session does not have yet, as `phases.md` says: the story, the approved
+   phases, the code the story touches and the repo's validation steps. Never the whole repo.
+2. Ask the owner, with AskUserQuestion, what the story and the code do not settle, before you
+   write what depends on it. Never invent a requirement, a decision or a task.
+3. Write the phase file with the Edit or Write tool.
+4. Show the owner the path and the phase in short: each requirement with its checks, each design
+   decision, or each task with the requirements it meets.
+5. Ask with AskUserQuestion whether to approve the phase or change it; the owner says what to
+   change in the free-text answer. Approve only when the owner picks it. A change: make it, then
+   go back to item 4.
+6. Approved: `second-brain task note <ID> "Spec: <phase> approved by the owner." --session ${CLAUDE_SESSION_ID}`.
    Then the next phase.
 
 ## Step 3 - Ready to build
@@ -92,7 +94,7 @@ For requirements, then design, then tasks:
 
 - Only the owner approves. Never write an approval note the owner did not give, and never pass
   on an agent's word as theirs.
-- This skill writes no spec text and no code. `spec new` lays out the empty templates,
-  `spec-writer` writes the spec and `implementer` the code. `spec-lead` alone launches
-  `implementer` and `reviewer`.
+- This skill writes the spec and no code. `spec new` lays out the empty templates, the skill
+  fills them, and `implementer` writes the code. `spec-lead` alone launches `implementer` and
+  `reviewer`.
 - Never start the build before the tasks approval note is written.

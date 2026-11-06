@@ -24,8 +24,8 @@ A project can build its stories from a spec, and every project says how its code
   its README, scripts and CI config for the user to confirm.
 - The project's Claude hub links to `claude/validation.md`, and `subproject <project> <name>`
   shows the three keys.
-- A new `spec` skill builds a story from its spec. It drafts the requirements, the design and the
-  tasks through the new `spec-writer` agent, and the owner approves each one. Then the new
+- A new `spec` skill builds a story from its spec. It writes the requirements, the design and the
+  tasks with the owner in the chat, and the owner approves each one. Then the new
   `spec-lead` agent builds the tasks one at a time: `implementer` gets the task's context packet
   alone, and `reviewer` runs the repo's validation steps and reads the diff. Only a passing review
   ticks a task, and a task that fails three times stops the build for the owner.

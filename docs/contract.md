@@ -835,3 +835,8 @@ carries the full vault path for a `README.md` and the alias as display text.
 - Do not name any file-sync product.
 - Tests may use other made-up keys (`ZZ`, `TWO`) where they need two projects or a clash.
 - Short sentences. One idea per bullet.
+- Name a file by its path and code by its function. Do not describe them.
+- One idea per bullet.
+- Do not restate: say a rule once, in its home.
+- A rule stated in several files has one home. The others point to it by path, and by heading
+  when it is one section.

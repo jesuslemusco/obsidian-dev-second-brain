@@ -2050,6 +2050,8 @@ line_is "spec new: and the spec type" "$SPR" "type: spec"
 line_is "spec new: and links up to the task" "$SPR" "> Up: [[$S/tasks/SP-1/README|SP-1]]"
 file_has "spec new: the task's title is filled in" "$SPR" "What First spec must do."
 line_is "spec new: requirements open at R1" "$SPR" "## R1 - <short name>"
+SERVES="- Serves: <AC1, AC3: the story's criteria this requirement meets>"
+is "spec new: the Serves line is the first under R1" "$(section_of "$SPR" "R1 - <short name>" | head -1)" "$SERVES"
 line_is "spec new: the tasks file has the task line" "$vault/$S/tasks/SP-1/spec/tasks.md" "- [ ] T1 - <What the task builds.>"
 line_is "spec new: and its requirements line" "$vault/$S/tasks/SP-1/spec/tasks.md" "  - Requirements: <R1, R2>"
 echo "kept" >>"$SPR"
@@ -2082,6 +2084,7 @@ out_has "spec_home repo: the tasks file is in it" "tasks: $oT/scode/spec-app/spe
 sb spec new SP-1
 out_has "spec_home repo: spec new writes in the repo" "$oT/scode/spec-app/spec/SP-1/requirements.md"
 is "spec_home repo: a repo spec file has no frontmatter" "$(head -1 "$tmp/scode/spec-app/spec/SP-1/requirements.md")" "# SP-1 - Requirements"
+is "spec_home repo: the Serves line is the first under R1" "$(section_of "$tmp/scode/spec-app/spec/SP-1/requirements.md" "R1 - <short name>" | head -1)" "$SERVES"
 file_lacks "spec_home repo: and no up link" "$tmp/scode/spec-app/spec/SP-1/requirements.md" "> Up:"
 edit "$SPF" "s|^repos_root: \"$tmp/scode\"\$|repos_root: \"$tmp/nowhere\"|"
 sb spec SP-1

@@ -309,11 +309,17 @@ tags:
   `type/spec`) and opens with `> Up:` and a link to the task's README.
 - With `repo` they sit in `spec/<ID>/` in the story's repo, with no frontmatter and no up link.
 - A task folder with a `spec/` folder is still one task.
-- In `requirements.md` each requirement is a `## R<n> - <name>` section: the requirement, then its
-  acceptance checks as `- [ ]` lines. In `tasks.md` each task is one item,
-  `- [ ] T<n> - <what it builds>`, with four indented lines: `- Requirements: R1, R2`,
-  `- Design: <design.md headings>`, `- Files: <paths>` and `- Check: <how it is checked>`.
-  A task is ticked only when its review passes.
+- In `requirements.md` each requirement is a `## R<n> - <name>` section: a `- Serves:` line
+  directly under the heading, then the requirement, then its acceptance checks as `- [ ]` lines.
+- The `- Serves:` line names the story's criteria the requirement meets: `- Serves: AC1, AC3`.
+  The items are comma separated. `AC<n>` is the n-th criterion of the story, counted from 1 by
+  position. It is matched without letter case: `ac2` is `AC2`.
+- A criterion is a line that starts with `- [ ]`, `- [x]` or `- [X]` under `## Acceptance criteria`
+  in the task's README, up to the next level-2 heading. Lines in fenced code are not read. Lines in
+  `###` subsections are counted, in the order they come.
+- In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
+  `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
+  `- Check: <how it is checked>`. A task is ticked only when its review passes.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
 - Strings are written double-quoted when they contain `: `, `#`, start with `-` or `[`, or look

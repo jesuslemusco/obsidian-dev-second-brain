@@ -1,7 +1,7 @@
 # Doctor checks
 
 One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then twenty for each project, and `subprojects` and `task-subproject` as well for a
+the vault, then twenty-two for each project, and `subprojects` and `task-subproject` as well for a
 project that has a subproject. Every entry is a heading, a blank line and three lines,
 `Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
 `ok`, and run a fix only after the user agrees to it.
@@ -173,6 +173,18 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 - Means: a task's `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`): the note was renamed or removed, or the value was written by hand. Only a project with a subproject gets this row.
 - Why: the board's `By subproject` view and `second-brain board <project> --subproject <name>` file the task under a name that leads nowhere, and the skills read a subproject's branches and docs from its note, so for this task they find none.
 - Fix: ask which subproject the task belongs to, then `second-brain task set <ID> subproject=<name>`, which checks the name. A task in no subproject: `second-brain task set <ID> subproject=`.
+
+### delivery
+
+- Means: a `delivery` that is not `direct` or `spec`, or a `spec_home` or `validation_home` that is not `vault` or `repo`, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task (`<ID>:delivery`).
+- Why: a value that is not allowed means the default, so a story the owner meant to build from a spec is built straight from its README, or its spec and its checks are looked for in the wrong place.
+- Fix: ask which value was meant and write it. A task's `delivery`: `second-brain task set <ID> delivery=<direct or spec>`, or `delivery=` to take the subproject's or the profile's. A key in the profile or a subproject note: edit it there.
+
+### validation
+
+- Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text (`<repo>:placeholders`). A repo whose `validation.md` lives in the repo, and whose location is not recorded, is `<repo>:no-location`. A project with no repo is named for a missing `claude/validation.md` (`claude/validation.md:missing`).
+- Why: the agents that build and review a change run the steps in a repo's section. With none, a change is called done on the builder's word, which is how bugs that only show when the code runs get through.
+- Fix: `no-location`: record where the repo is, in `repos_root` or `repo_paths`. Otherwise run `second-brain validation new <project> <repo>`, which writes the file or adds the section and never changes one that is there. Then ask how the repo is set up and started, which checks must pass, how a change is checked as a user would and what a pass is. The repo's own README, scripts and CI config are where to look first; write only what the user confirms. Never invent a step.
 
 ### sprints
 

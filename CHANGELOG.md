@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 - unreleased
+
+A project can build its stories from a spec, and every project says how its code is run and checked.
+
+- Three new profile keys, also in a subproject's note: `delivery` (`direct` or `spec`),
+  `spec_home` (`vault` or `repo`) and `validation_home` (`vault` or `repo`). A task may set its own
+  `delivery` with `second-brain task set <ID> delivery=spec`. The most specific value wins: the
+  task's, its subproject's, then the profile's.
+- `second-brain spec <ID>` prints the delivery and the spec folder that hold for a story, and the
+  paths of its `requirements.md`, `design.md` and `tasks.md`: in `spec/` in the task's folder, or in
+  `spec/<ID>/` in the story's repo. `second-brain spec new <ID>` writes them from three new
+  templates and never overwrites.
+- Every project has a `validation.md`: how to set up and start each repo, the checks that must
+  pass, how to check a change as a user would, and what a pass is. It is `claude/validation.md` in
+  the vault, one section per repo, or a file at each repo's root. `scaffold project` writes the
+  vault note. `second-brain validation <project> [repo]` lists the files or prints one repo's
+  steps, and `second-brain validation new <project> <repo>` adds a missing file or section.
+- Two new doctor checks. `delivery` warns about a value that is not allowed. `validation` warns
+  about a repo with no `validation.md`, no section in it, or a section that still holds the
+  template's text.
+- `vault-setup` asks for the three keys, and a new `validation` mode drafts each repo's steps from
+  its README, scripts and CI config for the user to confirm.
+- The project's Claude hub links to `claude/validation.md`, and `subproject <project> <name>`
+  shows the three keys.
+- The conventions note is at version 5: it names the `spec` and `subproject` note types and a
+  task's `delivery`. The doctor's `conventions` check warns about an older note.
+
 ## 0.3.0 - 2026-10-22
 
 Tasks can be archived and seen by subproject, every session starts knowing its project and ticket,

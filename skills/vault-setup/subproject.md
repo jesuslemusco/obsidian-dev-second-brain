@@ -32,6 +32,8 @@ In one round:
    replace the placeholder line. With none, leave it.
 4. For every repository, add its Code to doc map rows as section 2 of `repo.md` says, with the
    subproject's docs folder, `<topics root>/<name>/`, in the Docs cell where its docs live there.
+5. `delivery`, `spec_home` and `validation_home` left empty take the profile's. Ask whether this
+   subproject differs. Then write each repository's validation steps as `validation.md` says.
 
 ## 3. Its tasks
 

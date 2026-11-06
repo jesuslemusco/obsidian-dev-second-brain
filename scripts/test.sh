@@ -310,7 +310,7 @@ file_has "index: a rule about one project goes under the project's Rules" "$vaul
 is "index: the rule placement holds in every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 4"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 5"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -362,6 +362,7 @@ rc_is "scaffold project: exit 0" 0
 out_is "scaffold project: lists what it created" "$P/README.md
 $P/claude/README.md
 $P/claude/profile.md
+$P/claude/validation.md
 $P/tasks/README.md
 $P/tasks/tasks.base
 $P/docs/README.md
@@ -1271,6 +1272,7 @@ rc_is "scaffold roots: exit 0" 0
 out_is "scaffold roots: hubs and board only under the given roots" "$R/README.md
 $R/claude/README.md
 $R/claude/profile.md
+$R/claude/validation.md
 $R/plan/tasks/README.md
 $R/plan/tasks/tasks.base
 $R/knowledge/README.md
@@ -1309,6 +1311,7 @@ sb scaffold project Dot --path "$D" --topics-root .
 out_is "scaffold topics root dot: no topics hub" "$D/README.md
 $D/claude/README.md
 $D/claude/profile.md
+$D/claude/validation.md
 $D/tasks/README.md
 $D/tasks/tasks.base
 $D/sprints/README.md"
@@ -1510,6 +1513,7 @@ rc_is "no sprints: scaffold exit 0" 0
 out_is "no sprints: no sprints hub is created" "$N/README.md
 $N/claude/README.md
 $N/claude/profile.md
+$N/claude/validation.md
 $N/tasks/README.md
 $N/tasks/tasks.base
 $N/docs/README.md"
@@ -1647,6 +1651,9 @@ base_branch: develop
 production_branch: release
 branch_pattern: feature/<ID>-<slug>
 environments: dev, prod
+delivery: direct
+spec_home: vault
+validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 SF="$vault/$M/claude/subprojects/infra.md"
 edit "$SF" 's|^base_branch: ""$|base_branch: main|; s|^branch_pattern: ""$|branch_pattern: "infra/<ID>"|; s|^environments: \[\]$|environments:\
@@ -1661,6 +1668,9 @@ base_branch: main
 production_branch: release
 branch_pattern: infra/<ID>
 environments: staging, live
+delivery: direct
+spec_home: vault
+validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 
 sb repo Multi
@@ -1997,6 +2007,221 @@ file_has "vault-doctor fix: names the archive repair" "$VD" '`to-archive` is arc
 file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'then run `second-brain snapshot` before it.'
 file_has "vault-doctor fix: compare proves the archive" "$VD" 'For the archive it is the'
 file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.'
+
+# ---------------------------------------------------------------- spec-driven delivery
+sb help
+out_has "help: lists spec" "spec <ID> [--project P] | spec new <ID> [--project P]"
+out_has "help: lists validation" "validation <project> [repo] | validation new <project> <repo>"
+S="work/specs"
+SPF="$vault/$S/claude/profile.md"
+mkdir -p "$tmp/scode/spec-app" "$tmp/scode/spec-infra"
+sb scaffold project Specs --path "$S" --keys SP
+out_has "validation: scaffold project writes claude/validation.md" "$S/claude/validation.md"
+line_is "validation: the note is typed" "$vault/$S/claude/validation.md" "type: validation"
+line_is "validation: the note links up to the Claude hub" "$vault/$S/claude/validation.md" "> Up: [[$S/claude/README|Specs Claude Hub]]"
+file_has "validation: the Claude hub links to it" "$vault/$S/claude/README.md" "[[$S/claude/validation|Specs Validation]]"
+for k in "delivery: direct" "spec_home: vault" "validation_home: vault"; do
+  line_is "profile template: $k" "$SPF" "$k"
+done
+sb validation Specs
+rc_is "validation: a project with no repo exits 0" 0
+out_is "validation: and prints no row" ""
+edit "$SPF" "s|^repos: \\[\\]\$|repos: [spec-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|"
+sb task new SP-1 --project Specs --title "First spec"
+sb spec SP-1
+rc_is "spec: exit 0" 0
+out_is "spec: the vault home by default, in the task's folder" "id: SP-1
+delivery: direct
+spec_home: vault
+repo: spec-app
+dir: $S/tasks/SP-1/spec
+requirements: $S/tasks/SP-1/spec/requirements.md
+design: $S/tasks/SP-1/spec/design.md
+tasks: $S/tasks/SP-1/spec/tasks.md"
+sb spec new SP-1
+rc_is "spec new: exit 0" 0
+out_is "spec new: names the three files it wrote" "$S/tasks/SP-1/spec/requirements.md
+$S/tasks/SP-1/spec/design.md
+$S/tasks/SP-1/spec/tasks.md"
+SPR="$vault/$S/tasks/SP-1/spec/requirements.md"
+line_is "spec new: a vault spec file has its alias" "$SPR" '  - "SP-1 Requirements"'
+line_is "spec new: and the spec type" "$SPR" "type: spec"
+line_is "spec new: and links up to the task" "$SPR" "> Up: [[$S/tasks/SP-1/README|SP-1]]"
+file_has "spec new: the task's title is filled in" "$SPR" "What First spec must do."
+line_is "spec new: requirements open at R1" "$SPR" "## R1 - <short name>"
+line_is "spec new: the tasks file has the task line" "$vault/$S/tasks/SP-1/spec/tasks.md" "- [ ] T1 - <What the task builds.>"
+line_is "spec new: and its requirements line" "$vault/$S/tasks/SP-1/spec/tasks.md" "  - Requirements: <R1, R2>"
+echo "kept" >>"$SPR"
+sb spec new SP-1
+rc_is "spec new again: exit 0" 0
+out_is "spec new again: writes nothing" ""
+err_has "spec new again: names what exists" "exists: $S/tasks/SP-1/spec/requirements.md"
+line_is "spec new again: never overwrites" "$SPR" "kept"
+sb unresolved Specs
+out_is "spec: the vault spec files' links resolve" ""
+sb find SP-1 --project Specs
+out_is "spec: the task is still one task" "$S/tasks/SP-1/README.md"
+sb task set SP-1 delivery=maybe
+rc_is "delivery: task set refuses another value" 5
+sb task set SP-1 delivery=spec
+rc_is "delivery: task set writes spec" 0
+sb spec SP-1
+out_has "delivery: the task's own value wins" "delivery: spec"
+edit "$SPF" 's/^delivery: direct$/delivery: SPEC/'
+sb task set SP-1 delivery=
+sb spec SP-1
+out_has "delivery: removed, the profile's holds, in any letter case" "delivery: spec"
+edit "$SPF" 's/^delivery: SPEC$/delivery: maybe/'
+sb spec SP-1
+out_has "delivery: a value that is not allowed means direct" "delivery: direct"
+edit "$SPF" 's/^delivery: maybe$/delivery: direct/; s/^spec_home: vault$/spec_home: repo/'
+sb spec SP-1
+out_has "spec_home repo: the folder is spec/<ID> in the repo" "dir: $oT/scode/spec-app/spec/SP-1"
+out_has "spec_home repo: the tasks file is in it" "tasks: $oT/scode/spec-app/spec/SP-1/tasks.md"
+sb spec new SP-1
+out_has "spec_home repo: spec new writes in the repo" "$oT/scode/spec-app/spec/SP-1/requirements.md"
+is "spec_home repo: a repo spec file has no frontmatter" "$(head -1 "$tmp/scode/spec-app/spec/SP-1/requirements.md")" "# SP-1 - Requirements"
+file_lacks "spec_home repo: and no up link" "$tmp/scode/spec-app/spec/SP-1/requirements.md" "> Up:"
+edit "$SPF" "s|^repos_root: \"$tmp/scode\"\$|repos_root: \"$tmp/nowhere\"|"
+sb spec SP-1
+rc_is "spec_home repo: a missing repo folder exits 1" 1
+err_has "spec_home repo: and says so" "the folder of spec-app is missing"
+edit "$SPF" "s|^repos_root: \"$tmp/nowhere\"\$|repos_root: \"\"|"
+sb spec SP-1
+rc_is "spec_home repo: no recorded location exits 1" 1
+err_has "spec_home repo: and says so" "no location is recorded for spec-app"
+edit "$SPF" 's|^repos: \[spec-app\]$|repos: []|'
+sb spec SP-1
+rc_is "spec_home repo: no repo exits 1" 1
+err_has "spec_home repo: and says so" "Specs lists no repo for the spec"
+edit "$SPF" "s|^repos: \\[\\]\$|repos: [spec-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|"
+sb scaffold subproject Specs infra --repos spec-infra
+SPS="$vault/$S/claude/subprojects/infra.md"
+edit "$SPS" 's/^spec_home: ""$/spec_home: vault/; s/^delivery: ""$/delivery: spec/'
+sb task set SP-1 subproject=infra
+sb spec SP-1
+out_has "subproject: its spec_home wins over the profile's" "spec_home: vault"
+out_has "subproject: its delivery wins over the profile's" "delivery: spec"
+out_has "subproject: the story's repo is the subproject's first" "repo: spec-infra"
+sb subproject Specs infra
+out_has "subproject: shows the delivery that holds" "delivery: spec"
+out_has "subproject: and the validation home, the profile's" "validation_home: vault"
+sb spec
+rc_is "spec: no id exits 5" 5
+sb spec SP-1 SP-2
+rc_is "spec: two ids exit 5" 5
+sb spec SP-404 --project Specs
+rc_is "spec: an unknown task exits 1" 1
+
+# ---------------------------------------------------------------- validation.md
+sb validation Specs
+out_is "validation: one row per repo, the vault home, no section yet" "spec-app${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section
+spec-infra${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section"
+sb validation Specs spec-app
+rc_is "validation: a repo with no section exits 1" 1
+err_has "validation: and names validation new" "has no ## spec-app section: run second-brain validation new"
+sb validation new Specs spec-app
+rc_is "validation new: exit 0" 0
+out_is "validation new: names the file" "$S/claude/validation.md"
+line_is "validation new: adds the repo's section" "$vault/$S/claude/validation.md" "## spec-app"
+line_is "validation new: with the check as a user would" "$vault/$S/claude/validation.md" "### Check as a user would"
+echo "- npm test" >>"$vault/$S/claude/validation.md"
+sb validation new Specs SPEC-APP
+rc_is "validation new again: exit 0" 0
+out_is "validation new again: writes nothing" ""
+err_has "validation new again: names what exists" "exists: $S/claude/validation.md"
+sb validation Specs Spec-App
+rc_is "validation: the repo is matched without letter case" 0
+is "validation: the path comes first" "$(printf '%s\n' "$OUT" | head -1)" "path: $S/claude/validation.md"
+out_has "validation: then the repo's steps" "### Set up and start"
+out_has "validation: to the end of its section" "- npm test"
+sb validation Specs nope
+rc_is "validation: a repo that is not the project's exits 1" 1
+sb validation Specs spec-app extra
+rc_is "validation: too many arguments exit 5" 5
+sb validation new Specs
+rc_is "validation new: no repo exits 5" 5
+edit "$SPS" 's/^validation_home: ""$/validation_home: repo/'
+sb validation Specs
+out_has "validation: a subproject's home wins for its repos" "spec-infra${TAB}repo${TAB}$oT/scode/spec-infra/validation.md${TAB}missing"
+out_has "validation: the profile's holds for the others" "spec-app${TAB}vault${TAB}$S/claude/validation.md${TAB}ok"
+sb validation new Specs spec-infra
+out_is "validation new: a repo home writes at the repo's root" "$oT/scode/spec-infra/validation.md"
+is "validation new: a repo file opens with its title" "$(head -1 "$tmp/scode/spec-infra/validation.md")" "# spec-infra validation"
+line_is "validation new: then the repo's section" "$tmp/scode/spec-infra/validation.md" "## spec-infra"
+file_lacks "validation new: a repo file has no frontmatter" "$tmp/scode/spec-infra/validation.md" "type: validation"
+sb validation Specs
+out_has "validation: the repo file is ok" "spec-infra${TAB}repo${TAB}$oT/scode/spec-infra/validation.md${TAB}ok"
+rm -rf "$tmp/scode/spec-infra"
+sb validation Specs spec-infra
+rc_is "validation: a repo home whose folder is missing exits 1" 1
+err_has "validation: and says so" "the folder of spec-infra is missing"
+sb scaffold project Specs --path "$S" --keys SP
+err_has "validation: a second scaffold leaves the note alone" "exists: $S/claude/validation.md"
+VS="$here/skills/vault-setup/SKILL.md"
+file_has "vault-setup: lists the validation mode" "$VS" '| validation <project> | link]'
+file_has "vault-setup: asks for delivery" "$VS" '| `delivery` | whether stories are built from an approved spec'
+file_has "vault-setup: asks for spec_home" "$VS" '| `spec_home` | with `spec`:'
+file_has "vault-setup: asks for validation_home" "$VS" '| `validation_home` | whether `validation.md`'
+file_has "vault-setup: project mode ends with the validation steps" "$VS" "10. Write each repo's validation steps as"
+file_has "vault-setup validation: never invents a step" "$here/skills/vault-setup/validation.md" "Never invent a step."
+file_has "vault-setup validation: writes only what the user confirms" "$here/skills/vault-setup/validation.md" "Write only what they confirm"
+file_has "vault-setup repo: a new repo gets its validation steps" "$here/skills/vault-setup/repo.md" "Write the repository's validation steps"
+
+# ---------------------------------------------------------------- spec and validation edge cases
+sb validation Specs nope
+rc_is "validation: an unknown repo exits 1" 1
+out_is "validation: and prints nothing" ""
+sb validation new Specs nope
+rc_is "validation new: an unknown repo exits 1" 1
+out_is "validation new: and writes nothing" ""
+sb validation Specs --x
+rc_is "validation: a flag as the second argument exits 5" 5
+sb validation new Specs -h
+rc_is "validation new: a flag exits 5" 5
+sb task set SP-1 delivery=Spec
+rc_is "delivery: task set takes any letter case" 0
+line_is "delivery: and writes it in lower case" "$vault/$S/tasks/SP-1/README.md" "delivery: spec"
+sb task set SP-1 delivery=
+# The vault note in CRLF: a new section keeps the line endings, after one blank line.
+VN="$vault/$S/claude/validation.md"
+edit "$SPF" 's|^repos: \[spec-app\]$|repos: [spec-app, spec-web]|'
+mkdir -p "$tmp/scode/spec-web"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$VN" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$VN"
+sb validation new Specs spec-web
+rc_is "validation new: a CRLF note takes a new section" 0
+is "validation new: every line keeps its CRLF" "$(grep -vc "$CR\$" "$VN" || true)" "0"
+is "validation new: one blank line before the new section" \
+  "$(awk '{ sub(/\r$/, "") } $0 == "## spec-web" { print prev } { prev = $0 }' "$VN")" ""
+is "validation new: and not two" \
+  "$(awk '{ sub(/\r$/, "") } $0 == "## spec-web" { print p2 } { p2 = prev; prev = $0 }' "$VN" | grep -c . || true)" "1"
+# A section with nothing under its heading is empty, not written.
+edit "$SPF" 's|^repos: \[spec-app, spec-web\]$|repos: [spec-app, spec-web, spec-gone]|'
+printf '\r\n## spec-gone\r\n' >>"$VN"
+sb validation Specs
+out_has "validation: a section with nothing under it is empty" "spec-gone${TAB}vault${TAB}$S/claude/validation.md${TAB}empty"
+sb validation new Specs spec-gone
+err_has "validation new: an empty section is left alone" "exists: $S/claude/validation.md"
+edit "$SPF" 's|^repos: \[spec-app, spec-web, spec-gone\]$|repos: [spec-app]|'
+# The story's repo: with no repo in the profile, the project's first repo, a subproject's.
+P3="work/subonly"
+mkdir -p "$tmp/socode/so-api"
+sb scaffold project SubOnly --path "$P3" --keys SO
+edit "$vault/$P3/claude/profile.md" "s|^repos_root: \"\"\$|repos_root: \"$tmp/socode\"|; s|^spec_home: vault\$|spec_home: repo|"
+sb scaffold subproject SubOnly api --repos so-api
+sb task new SO-1 --project SubOnly --title "No subproject"
+sb spec SO-1
+rc_is "spec: a project whose only repo is a subproject's exits 0" 0
+out_has "spec: and the story's repo is that repo" "repo: so-api"
+# A repo home in the profile: no hub link, and no vault note.
+P4="work/repohome"
+mkdir -p "$vault/$P4/claude"
+printf -- '---\ntype: profile\nvalidation_home: repo\n---\n' >"$vault/$P4/claude/profile.md"
+sb scaffold project RepoHome --path "$P4" --keys RH
+out_lacks "validation: a repo home writes no vault note" "$P4/claude/validation.md"
+file_lacks "validation: and the Claude hub does not link to one" "$vault/$P4/claude/README.md" "claude/validation|"
+sb unresolved RepoHome
+out_is "validation: so the hub's links resolve" ""
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

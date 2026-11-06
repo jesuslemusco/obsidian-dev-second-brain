@@ -21,6 +21,9 @@ environments: []
 repos: []
 repos_root: ""
 repo_paths: []
+delivery: direct
+spec_home: vault
+validation_home: vault
 achievements_skill: ""
 tags:
   - type/profile
@@ -43,6 +46,11 @@ one section at a time. Keep it to facts about the project; the workflow lives in
   `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under the tasks root.
   `archive_after_days:` is how long a done task stays in the live folder before the doctor names it,
   counted from its newest status note or its sprint's end; `doctor --fix` then archives it.
+- Delivery: `delivery:` above is `direct | spec`. `spec` builds each story from a spec of
+  requirements, design and tasks, approved before any code; a subproject or a story may set its
+  own. `spec_home:` puts the spec in the task's folder (`vault`) or in `spec/<ID>/` in the repo
+  (`repo`). `validation_home:` puts `validation.md`, how to run and check each repo, in
+  `claude/validation.md` (`vault`) or at the root of each repo (`repo`).
 
 ## Topics
 

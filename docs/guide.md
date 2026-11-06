@@ -63,8 +63,10 @@ claude/pull-request.md            the format of every pull request description C
 <project>/
   README.md
   claude/profile.md               the project's settings, read by every skill and agent
+  claude/validation.md            how to run and check each repo
   claude/subprojects/<name>.md    one note per subproject, when the project has several repos
   tasks/<TICKET-ID>/README.md     one task per folder
+  tasks/<TICKET-ID>/spec/         its spec, for a story built from one
   tasks/tasks.base                the task board (Obsidian Bases)
   docs/                           the project's docs, organised by topic
   sprints/<YYYY-MM-DD>.md         one note per sprint, named by its end date
@@ -109,6 +111,36 @@ the live folder `archive_after_days` days after its last status note or its spri
 default, and `second-brain doctor --fix` archives it. It never moves an open task. When a story is
 set done, and when a sprint closes, Claude asks once whether to archive the done tasks now; nothing
 moves without a yes. `vault-setup` asks for the layout when it sets up or adopts a project.
+
+## Spec-driven delivery
+
+A story can be built from a spec instead of straight from its README. The spec has three files:
+`requirements.md`, numbered requirements with checks someone else can run; `design.md`, how it is
+built; and `tasks.md`, the build plan, one task at a time, each naming its requirements, design
+sections, files and check.
+
+- `delivery: spec` in the profile makes it the project's default. A subproject's note, or one
+  story with `second-brain task set EX-2 delivery=spec`, can say otherwise. The story's own value
+  wins, then its subproject's, then the profile's.
+- `spec_home` says where specs live: `vault`, in `spec/` in the task's folder, or `repo`, in
+  `spec/<ID>/` in the story's repo, where it is reviewed with the code. The profile or a
+  subproject's note sets it.
+- `second-brain spec EX-2` prints what holds for the story and the paths of its three files.
+  `second-brain spec new EX-2` writes them from the templates.
+
+Every project also has a `validation.md` that says, for each repo, how to set it up and start it,
+which checks must pass, how to check a change as a user would, and what a pass is. Unit tests
+alone miss the bugs a user would hit, so the check as a user would is part of every repo's steps.
+
+- `validation_home: vault`, the default, keeps every repo's section in `claude/validation.md`.
+  `repo` puts a `validation.md` at the root of each repo. A subproject's note can set it for its
+  repos.
+- `second-brain validation <project>` lists each repo's file and whether it has its section.
+  `second-brain validation <project> <repo>` prints the steps, and
+  `second-brain validation new <project> <repo>` adds a missing file or section.
+- `/obsidian-dev-second-brain:vault-setup validation <project>` drafts each repo's steps from its
+  README, scripts and CI config, and writes what you confirm. The doctor's `validation` check
+  names a repo whose steps are missing or still the template's text.
 
 ## On Windows
 

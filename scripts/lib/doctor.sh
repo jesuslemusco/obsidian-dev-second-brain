@@ -1030,6 +1030,86 @@ sb_doc_check_task_subproject() {
     "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
 }
 
+# Return 0 when a delivery, spec_home or validation_home value is empty or allowed, in any letter case.
+sb_doc_choice_ok() {
+  local v
+  v="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+  [ -n "$v" ] || return 0
+  case "$1:$v" in
+    delivery:direct | delivery:spec | spec_home:vault | spec_home:repo | validation_home:vault | validation_home:repo) return 0 ;;
+  esac
+  return 1
+}
+
+# Check the delivery, spec_home and validation_home values of the profile, the subproject notes and
+# the tasks.
+sb_doc_check_delivery() {
+  local bad="" nl=$'\n' f n k v
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] || continue
+    if [ "$f" = "$SB_P_PROFILE" ]; then n=profile; else n="$(sb_sub_name "$f")"; fi
+    for k in delivery spec_home validation_home; do
+      v="$(sb_fm_get "$f" "$k" 2>/dev/null)"
+      sb_doc_choice_ok "$k" "$v" || bad="$bad$n:$k$nl"
+    done
+  done <<EOF
+$SB_P_PROFILE
+$(sb_sub_files "$SB_P_PATH")
+EOF
+  bad="$bad$(printf '%s\n' "$SB_DOC_FILES" | LC_ALL=C awk "$(sb_awk_lib)"'
+    $0 == "" { next }
+    {
+      path = $0; n = split(path, part, "/"); id = (n >= 2 ? part[n - 1] : path); k = 0
+      while ((getline line < path) > 0) {
+        k++; sub(/\r$/, "", line)
+        if (k == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+        if (line == "---") break
+        if (line ~ /^delivery:/) {
+          v = tolower(unq(substr(line, 10)))
+          if (v != "" && v != "direct" && v != "spec") print id ":delivery"
+          break
+        }
+      }
+      close(path)
+    }')"
+  sb_doc_report warn delivery "$SB_P_NAME" "$bad" \
+    "write delivery as direct or spec, and spec_home and validation_home as vault or repo, or remove the key"
+}
+
+# Check that each repo of the project has a validation.md with its section, and that the section is
+# written: not empty and free of the template's placeholders. A repo home with no recorded location
+# is named here; one whose folder is missing is the repos check's.
+sb_doc_check_validation() {
+  local bad="" nl=$'\n' rows name home file show state rstate
+  if [ ! -f "$SB_P_PROFILE" ]; then
+    sb_doc_row ok validation "$SB_P_NAME" "" "-"
+    return 0
+  fi
+  rows="$(sb_val_rows)"
+  if [ -z "$rows" ]; then
+    if [ "$(sb_spec_value validation_home "$SB_P_PROFILE")" = "vault" ] && [ ! -f "$SB_P_DIR/claude/validation.md" ]; then
+      bad="claude/validation.md:missing"
+    fi
+  else
+    while IFS=$'\t' read -r name home file show state rstate; do
+      [ -n "$name" ] || continue
+      if [ "$state" = "unknown" ]; then
+        bad="$bad$name:no-location$nl"
+        continue
+      fi
+      if [ "$home" = "repo" ] && [ "$rstate" != "ok" ]; then continue; fi
+      case "$state" in
+        missing | no-section | empty) bad="$bad$name:$state$nl" ;;
+        ok) if sb_val_placeholders "$file" "$name"; then bad="$bad$name:placeholders$nl"; fi ;;
+      esac
+    done <<EOF
+$rows
+EOF
+  fi
+  sb_doc_report warn validation "$SB_P_NAME" "$bad" \
+    "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+}
+
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
@@ -1178,7 +1258,7 @@ sb_doc_rows() {
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
-      sprints unresolved_links bare_links line_endings depends_on; do
+      delivery validation sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
   done 3<<EOF

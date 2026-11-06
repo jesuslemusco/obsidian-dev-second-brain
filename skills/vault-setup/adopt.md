@@ -45,6 +45,8 @@ nothing and rewrites no note body.
   stay where they are, and the doctor's `task-layout` row names the ones due. Archiving them is a
   bulk move, taken later and only when the user asks: `second-brain snapshot`, then
   `second-brain doctor <project> --fix`, then `second-brain compare`.
+- And `delivery`, `spec_home` and `validation_home`. For every repository, write its validation
+  steps as `validation.md`, beside this file, says.
 - For every repository named, add its Code to doc map rows as section 2 of `repo.md`, beside
   this file, says. Existing docs may answer: quote them and confirm with the user. Never invent.
 - Fill the seven sections from what the user says and from existing notes. Quote, do not invent.

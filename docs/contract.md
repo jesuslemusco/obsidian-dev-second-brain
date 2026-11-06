@@ -85,9 +85,11 @@ index_version: 3
   claude/profile.md
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/subprojects/<name>.md  one per subproject; none by default
+  claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
   tasks/tasks.base
   tasks/<TICKET-ID>/README.md
+  tasks/<TICKET-ID>/spec/       the story's spec, with spec_home: vault
   tasks/archive/<YYYY>/<TICKET-ID>/README.md   a done or abandoned task, with task_layout: archive
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
@@ -121,6 +123,9 @@ environments: []
 repos: [example-api, example-web]
 repos_root: "~/code/acme"
 repo_paths: []
+delivery: direct
+spec_home: vault
+validation_home: vault
 achievements_skill: ""
 tags:
   - type/profile
@@ -160,6 +165,21 @@ tags:
   with `~`. `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
   Both may be empty; then a repo's location is unknown and the skills ask for it.
 - `achievements_skill` names a skill to hand finished stories to, or is empty.
+- `delivery` is how a story is built. `direct`: from its README. `spec`: from a spec of
+  requirements, design and tasks that the owner approves first. A subproject's note and a task
+  may set it too. The most specific value wins: the task's, then its subproject's, then the
+  profile's.
+- `spec_home` is where a story's spec lives. `vault`: in the task's folder, `spec/` next to its
+  `README.md`. `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
+- The story's repo is the first repo of its subproject, else the project's first repo, in the
+  order `repo <project>` lists them.
+- `validation_home` is where `validation.md` lives. `vault`: `claude/validation.md` in the project.
+  `repo`: `validation.md` at the root of each repo. A subproject's note may set it for its repos.
+- These three take any letter case.
+- A missing or empty key passes to the next level. At the profile it means the default: `direct`,
+  `vault` and `vault`.
+- The first value found decides. One that is not allowed means the default, and the doctor's
+  `delivery` check warns about it.
 
 ### Profile sections
 
@@ -196,6 +216,9 @@ production_branch: ""
 branch_pattern: ""
 environments: []
 repo_paths: []
+delivery: ""
+spec_home: ""
+validation_home: ""
 tags:
   - type/subproject
 ---
@@ -204,8 +227,9 @@ tags:
 - `repos` lists the subproject's repositories, the first the default for branch checks. Each one
   belongs to one subproject. It need not be in the profile's `repos`: the project's repositories
   are the profile's, then each subproject's that the profile does not list.
-- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` mean what
-  they mean in the profile. One that is absent or empty (`""`, `[]`) takes the profile's value. So
+- `base_branch`, `production_branch`, `branch_pattern`, `environments`, `repo_paths`, `delivery`,
+  `spec_home` and `validation_home` mean what they mean in the profile. One that is absent or
+  empty (`""`, `[]`) takes the profile's value. So
   a subproject cannot have fewer environments than the project; the empty list means "as the
   project".
 - An empty effective `production_branch` still means the effective `base_branch`.
@@ -219,6 +243,23 @@ tags:
   the way up whose name is a repo of the project, the profile's included. A directory in a
   repository of the profile alone is in no subproject, and neither is a folder of the vault.
 - A project with no `claude/subprojects/` folder behaves exactly as before.
+
+### Validation
+
+`validation.md` says how to run and check a repo's code. Agents read a repo's part before they
+build or review a change, through `second-brain validation <project> <repo>`.
+
+- A repo's home is the `validation_home` of the subproject that lists it, else the profile's.
+- `vault`: one note, `<project>/claude/validation.md`, written from `validation.md.tmpl`, with one
+  `## <repo>` section per repo. `scaffold project` writes it, with a section for each repo it knows,
+  when the profile's home is `vault`. The project's Claude hub then links to it.
+- `repo`: `validation.md` at the root of the repo, a `# <repo> validation` title and one
+  `## <repo>` section. Nothing in the vault points to it.
+- A section is written from `validation-repo.md.tmpl` and keeps its four level-3 headings:
+  `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
+- A section is written when something is under its heading. One with nothing is `empty`.
+- `validation new <project> <repo>` writes a missing file and adds a missing section, in the line
+  endings the file has. It never changes a section that is there.
 
 ## 4. A task
 
@@ -238,6 +279,7 @@ next: "<one phrase: the next action>"
 branch: "none yet"
 epic: "-"
 subproject: example-infra     # omit the key when the task is in no subproject
+delivery: spec                # optional; omit it to take the subproject's or the profile's
 sprint: "2026-10-14"          # omit the key when the task is in the backlog
 carried_from: []              # sprint ids this task was carried over from
 depends_on:                   # optional; the tasks this one waits on, as quoted path links
@@ -257,6 +299,21 @@ tags:
 - `depends_on` lists the tasks this one waits on, each a path link to the other task's README
   with its folder id as display text, double-quoted. It is changed with `task dep`. The reverse,
   the tasks that wait on this one, is never stored: Obsidian shows it as backlinks.
+- `delivery` is `direct` or `spec`. `task set <ID> delivery=<value>` writes it in lower case. Any
+  other value exits 5, and `delivery=` removes the key.
+- `spec <ID>` prints the `delivery` that holds for the task.
+- A spec is three files: `requirements.md`, `design.md` and `tasks.md`. `spec new` writes them
+  from `spec-requirements.md.tmpl`, `spec-design.md.tmpl` and `spec-tasks.md.tmpl`.
+- With `spec_home: vault` they sit in `spec/` in the task's folder. Each carries frontmatter
+  (the alias `"<ID> Requirements"`, `"<ID> Design"` or `"<ID> Tasks"`, `type: spec`, the tag
+  `type/spec`) and opens with `> Up:` and a link to the task's README.
+- With `repo` they sit in `spec/<ID>/` in the story's repo, with no frontmatter and no up link.
+- A task folder with a `spec/` folder is still one task.
+- In `requirements.md` each requirement is a `## R<n> - <name>` section: the requirement, then its
+  acceptance checks as `- [ ]` lines. In `tasks.md` each task is one item,
+  `- [ ] T<n> - <what it builds>`, with four indented lines: `- Requirements: R1, R2`,
+  `- Design: <design.md headings>`, `- Files: <paths>` and `- Check: <how it is checked>`.
+  A task is ticked only when its review passes.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
 - Strings are written double-quoted when they contain `: `, `#`, start with `-` or `[`, or look
@@ -347,7 +404,7 @@ Rules that hold for every command:
 | `project --name N` / `--key K` / `--cwd DIR` | one TSV row: name, path, keys | `K` is a key prefix or a full id (`EX` or `EX-123`). With no flag it uses the working directory. Exit 1 none, exit 4 several (prints them) |
 | `repo <project> [name]` | with no name, one TSV row per repo in the profile's order, then each subproject's repos the profile does not list, by subproject name: name, path, state (`ok`, `missing`, or `unknown` when no location is recorded; path is then `-`). With a name, the path alone | paths are absolute, with `~` expanded. With a name: exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `subproject <project>` | one TSV row per subproject, by name: name, repos (comma separated, or `-`), docs folder as a vault path | exit 0 with no rows for a project with none; exit 1 when the profile is missing |
-| `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are each the note's value, or the profile's when the note's is absent or empty; lists are joined with `, `. `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it (the note's entry, the profile's, then `repos_root`), or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
+| `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `delivery`, `spec_home`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are each the note's value, or the profile's when the note's is absent or empty; lists are joined with `, `. `delivery`, `spec_home` and `validation_home` are the values that hold, the defaults included (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it (the note's entry, the profile's, then `repos_root`), or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
 | `profile <project> --keys` | profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | section name matched case-insensitively; exit 1 when absent |
 | `board <project> [view] [--subproject S]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs | depends_on`, and in the `By subproject` view a tenth cell, `subproject` (`-` for none) | default view `Active` (status planned, in-progress or in-review); `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README, spelled as on disk for a task of the project whatever the link's letter case, and that task's status, `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
@@ -361,6 +418,11 @@ Rules that hold for every command:
 | `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README, live or archived, or the id is another task's alias; a folder with no README gets one. Exit 5 for the id `archive` in any letter case, and for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none; with `--envs` the subproject's own environments come first |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder to `<tasks_root>/archive/<YYYY>/<ID>/` with `move`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`; exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too; exit 1 for an unknown task. A move that fails exits as `move` does |
+| `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task; with `repo`, also when the project lists no repo, the repo has no recorded location or its folder is missing. The message says which |
+| `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, the task's title filled in. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
+| `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing` means the file is not there, `no-section` that it has no `## <repo>` section, `empty` that nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
+| `validation <project> <repo>` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing |
+| `validation new <project> <repo>` | the path of the file it wrote or added the section to | writes a missing file with the repo's section, or adds the section to a file without it, from `validation-repo.md.tmpl`, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks, and a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
 | `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
@@ -511,6 +573,8 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
+| project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
+| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
@@ -573,7 +637,9 @@ Two more library files: `scripts/lib/graph.sh` (`cmd_outline`, `cmd_backlinks`, 
 `cmd_move`, `cmd_rename`; private helpers `sb_graph_*`) and `scripts/lib/platform.sh` (what differs
 between systems; private helpers `sb_plat_*`). `cmd_pointer` lives in `scripts/lib/link.sh`.
 `scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and
-`sb_need_sub`; `sb_scaffold_subproject` is in `scaffold.sh`.
+`sb_need_sub`; `sb_scaffold_subproject` is in `scaffold.sh`. `scripts/lib/spec.sh` holds
+`cmd_spec`, `cmd_validation` and their helpers, `sb_spec_*` and `sb_val_*`; the doctor and
+`scaffold project` call `sb_spec_value`, `sb_val_rows` and `sb_val_placeholders`.
 
 Inside the helper every absolute path is in the shell's own form, which on Windows is Git Bash's
 `/c/...`. `sb_path_in` turns a path that was read into that form and `sb_path_out` turns one into
@@ -630,7 +696,7 @@ line that holds only an empty placeholder is dropped. A filled file must contain
 | `vault-claude-hub.md.tmpl` | `<vault>/claude/README.md` | none |
 | `pull-request.md.tmpl` | `<vault>/claude/pull-request.md` | none |
 | `project-readme.md.tmpl` | `<project>/README.md` | `PROJECT`, `PROJECT_PATH`, `TASKS_HUB_LINE`, `TOPICS_HUB_LINE`, `SPRINTS_HUB_LINE` |
-| `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH` |
+| `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH`, `VALIDATION_LINE` (empty when the profile's `validation_home` is `repo`) |
 | `profile.md.tmpl` | `<project>/claude/profile.md` | `PROJECT`, `PROJECT_PATH`, `TICKET_KEYS`, `TASKS_ROOT`, `TOPICS_ROOT`, `SPRINTS_ROOT` |
 | `hub.md.tmpl` | `tasks/README.md`, `docs/README.md`, `sprints/README.md` | `PROJECT`, `PROJECT_PATH`, `HUB_NAME`, `HUB_TITLE`, `HUB_INTRO` |
 | `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `SPRINT_ID` |
@@ -640,6 +706,9 @@ line that holds only an empty placeholder is dropped. A filled file must contain
 | `sprint-note.md.tmpl` | a sprint note | `PROJECT`, `SPRINT_ID`, `START`, `END`, `UP_LINK` |
 | `subproject.md.tmpl` | `<project>/claude/subprojects/<name>.md` | `PROJECT`, `SUBPROJECT`, `REPOS`, `UP_LINK`, `PROFILE_LINK`, `DOCS_LINK` |
 | `subproject-docs.md.tmpl` | `<topics_root>/<name>/README.md` | `PROJECT`, `SUBPROJECT`, `UP_LINK`, `NOTE_LINK` |
+| `validation.md.tmpl` | `<project>/claude/validation.md` | `PROJECT`, `PROJECT_PATH` |
+| `validation-repo.md.tmpl` | one `## <repo>` section of a `validation.md` | `REPO` |
+| `spec-requirements.md.tmpl`, `spec-design.md.tmpl`, `spec-tasks.md.tmpl` | the body of a spec file, under the frontmatter and up link the helper writes in the vault | `ID`, `TITLE` |
 
 Links inside generated notes follow the conventions: a bare `[[Alias]]` does not resolve, so a link
 carries the full vault path for a `README.md` and the alias as display text.

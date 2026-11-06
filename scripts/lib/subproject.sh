@@ -84,6 +84,9 @@ sb_sub_show() {
   for k in repos base_branch production_branch branch_pattern environments; do
     printf '%s: %s\n' "$k" "$(sb_sub_value "$SB_S_FILE" "$k")"
   done
+  for k in delivery spec_home validation_home; do
+    printf '%s: %s\n' "$k" "$(sb_spec_value "$k" "$SB_S_FILE" "$SB_P_PROFILE")"
+  done
   # Where each of its repos is, as the repo command finds it: the note's entry, the profile's, or
   # repos_root.
   rows="$(sb_repo_rows_at "$SB_P_PATH")"

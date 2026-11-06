@@ -2,7 +2,7 @@
 aliases:
   - Obsidian Conventions
 type: onboarding
-conventions_version: 4
+conventions_version: 5
 tags:
   - type/onboarding
 ---
@@ -65,7 +65,8 @@ tags:
   alias is the only name that tells them apart.
 - **`type`** and the `type/<type>` tag - one of `task`, `bug`, `investigation`, `architecture`,
   `runbook`, `validation`, `tool`, `ops`, `onboarding`, `data-source`, `data-output`, `sprint`,
-  `profile`, `moc`. A project may add its own. `moc` is for hubs.
+  `profile`, `subproject`, `spec`, `moc`. A project may add its own. `moc` is for hubs. `spec` is a
+  story's `requirements.md`, `design.md` or `tasks.md`, in `spec/` in its task folder.
 - **`status`** - tasks use `planned`, `in-progress`, `in-review`, `done`, `abandoned`. The tag is
   the rollup: `status/done` for `done` and `abandoned`, `status/active` for the rest.
 - **Task notes** also carry `title`, `next`, `branch`, `epic` and `carried_from` (the sprint ids a
@@ -73,6 +74,8 @@ tags:
   `depends_on` lists the tasks one waits on as quoted path links; `second-brain task dep` edits it.
   `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
   is named; a task in no subproject has no such key. `archived` is the date `task archive` moved it.
+  `delivery` is `spec` or `direct` for a story that differs from its project; `second-brain spec`
+  says which holds and where its spec is.
 
 YAML traps. Quote a value when:
 

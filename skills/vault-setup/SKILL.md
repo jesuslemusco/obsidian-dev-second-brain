@@ -1,16 +1,17 @@
 ---
 name: vault-setup
 description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
-argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | link]"
+argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | validation <project> | link]"
 disable-model-invocation: true
 allowed-tools: Read Glob Bash(second-brain *)
 ---
 
 # Vault setup
 
-Six modes: init sets up a vault, project adds a project, adopt brings an existing project onto
+Seven modes: init sets up a vault, project adds a project, adopt brings an existing project onto
 the standard, repo adds a repository to a project, subproject adds a subproject (repos with their
-own branches and docs folder), link registers the vault's own skills and agents. The first
+own branches and docs folder), validation writes how to run and check each repo, link registers
+the vault's own skills and agents. The first
 argument is the mode. With none, ask which.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
@@ -58,8 +59,9 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    that says when the project applies; whether the project runs sprints. A folder that already
    holds notes is a case for adopt.
 2. Run `second-brain scaffold project <name> --path <path> --keys <K1,K2> --use-when "<one line>"`.
-   It creates the project hub, `claude/README.md`, `claude/profile.md`, the tasks hub and its
-   board, the docs hub and the sprints hub, adds the index row, and never overwrites.
+   It creates the project hub, `claude/README.md`, `claude/profile.md`, `claude/validation.md`,
+   the tasks hub and its board, the docs hub and the sprints hub, adds the index row, and never
+   overwrites.
    - No sprints: add `--no-sprints`. It writes `uses_sprints: false` into the profile and creates
      no sprints hub and no `Current sprint` view. Then skip the two sprint rows of the interview.
    - Exit 5 or 6: show the message and ask. 6 means the name, the path or a key already belongs
@@ -82,6 +84,9 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    | `sprint_length_days` | the sprint length in days | `14` |
    | `sprint_anchor_end` | the end date of the current or next sprint | `"2026-01-14"` |
    | `achievements_skill` | the skill finished stories are handed to, if any | `"<skill name>"` or `""` |
+   | `delivery` | whether stories are built from an approved spec of requirements, design and tasks, or straight from the README | `spec` or `direct` |
+   | `spec_home` | with `spec`: whether a story's spec lives in its task folder or in `spec/<ID>/` in the repo | `vault` or `repo` |
+   | `validation_home` | whether `validation.md`, how to run and check each repo, is `claude/validation.md` or a file at each repo's root | `vault` or `repo` |
 
 4. Write the answers into the frontmatter of `<path>/claude/profile.md` with the Edit tool. Quote
    strings and the sprint end date. Write a folder under the home directory as `~/...`. On Windows
@@ -102,10 +107,15 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    and the profile, and the doctor's `placeholders` check warns about each one. Ask for one
    paragraph on the project and for its rules. Write them in place of those lines, and delete a
    line the user has nothing for. Never invent a rule.
+10. Write each repo's validation steps as `${CLAUDE_SKILL_DIR}/validation.md` says. With
+    `validation_home: repo`, the `claude/validation.md` that step 2 wrote is not used: ask, then
+    delete it and its line in `claude/README.md`.
 
-## adopt <path>, repo <project> and subproject <project>
+## adopt <path>, repo <project>, subproject <project> and validation <project>
 
-Each has its own file: read it only in that mode, and follow it. Adopt, for a project that
+Each has its own file: read it only in that mode, and follow it. Validation, to write or fix how
+each repo is run and checked: `${CLAUDE_SKILL_DIR}/validation.md`; project, adopt, repo and
+subproject end with it for the repos they add. Adopt, for a project that
 already holds notes: `${CLAUDE_SKILL_DIR}/adopt.md`. Repo, to add a repository to an existing
 project: `${CLAUDE_SKILL_DIR}/repo.md`. Project and adopt use its section 2, once per repository.
 Subproject: `${CLAUDE_SKILL_DIR}/subproject.md`; offer it in project and adopt when the user names

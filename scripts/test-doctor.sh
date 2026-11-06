@@ -635,7 +635,7 @@ PF="$vault/$P/claude/profile.md"
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 25 | README.md:14, claude/README.md:20, claude/README.md:21, claude/profile.md:39, claude/profile.md:40"
+  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:42, claude/profile.md:43"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -648,10 +648,10 @@ chk "placeholders: ok once filled; the owner's own angle brackets, inline code a
 edit "$CHUB" 's/^- Live systems: none\.$/&\
 - <A rule Claude must follow in this project, one per bullet.>/'
 doc Example
-chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:22"
+chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:22, claude/profile.md:39"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:42"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
@@ -662,7 +662,7 @@ doc Example
 chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
 sb scaffold subproject Example infra --repos example-infra
 doc Example
-chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:31"
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:35"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -1071,7 +1071,7 @@ subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty rows" "$(scope_rows Example)" "20"
+is "subprojects: a project with no subproject keeps twenty-two rows" "$(scope_rows Example)" "22"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
 chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
@@ -1081,7 +1081,7 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "22"
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "24"
 is "subprojects: its rows sit between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects task-subproject sprints "
@@ -1287,7 +1287,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "31"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "33"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1324,8 +1324,8 @@ print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["off
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 31 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos then sprints" "$got" \
-    "31 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}1 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 33 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery and validation, then sprints" "$got" \
+    "33 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}3 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1340,16 +1340,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: twenty rows for each" "$(scope_rows Example)/$(scope_rows Two)" "20/20"
+is "two projects: twenty-two rows for each" "$(scope_rows Example)/$(scope_rows Two)" "22/22"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/20/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/22/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -1515,6 +1515,58 @@ rc_is "session-check: exit 0 with an index that has no table" 0
 out_is "session-check: silent with an index that has no table" ""
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
 out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+reset
+
+# ---------------------------------------------------------------- delivery and validation
+PROFILE="$vault/$P/claude/profile.md"
+doc Example
+chk "delivery: ok with the template's values" delivery Example "ok | 0 | -"
+chk "validation: ok for a project with no repo that has its note" validation Example "ok | 0 | -"
+rm "$vault/$P/claude/validation.md"
+doc Example
+chk "validation: a project with no repo names a missing note" validation Example "warn | 1 | claude/validation.md:missing"
+reset
+edit "$PROFILE" 's/^delivery: direct$/delivery: always/; s/^spec_home: vault$/spec_home: Repo/'
+sb task set EX-3 delivery=spec
+awk '{ print } /^status: / { print "delivery: someday" }' "$T/EX-1/README.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$T/EX-1/README.md"
+doc Example
+chk "delivery: a profile value and a task value that are not allowed, never another letter case" delivery Example "warn | 2 | profile:delivery, EX-1:delivery"
+is "delivery: the fix names the values" "$(fix_of delivery)" \
+  "write delivery as direct or spec, and spec_home and validation_home as vault or repo, or remove the key"
+reset
+mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
+edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/code\"|"
+doc Example
+chk "validation: a repo with no section in the vault note" validation Example "warn | 1 | example-api:no-section"
+is "validation: the fix names validation new" "$(fix_of validation)" \
+  "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+sb validation new Example example-api
+doc Example
+chk "validation: a section that still holds the template's text" validation Example "warn | 1 | example-api:placeholders"
+edit "$vault/$P/claude/validation.md" 's/^- <.*>$/- make test/'
+doc Example
+chk "validation: ok once the section is written" validation Example "ok | 0 | -"
+sb scaffold subproject Example infra --repos example-infra
+edit "$vault/$P/claude/subprojects/infra.md" 's/^validation_home: ""$/validation_home: repo/; s/^delivery: ""$/delivery: later/'
+doc Example
+chk "validation: a subproject's repo home with no file" validation Example "warn | 1 | example-infra:missing"
+chk "delivery: a subproject note's value is named by the subproject" delivery Example "warn | 1 | infra:delivery"
+sb validation new Example example-infra
+doc Example
+chk "validation: a repo file that still holds the template's text" validation Example "warn | 1 | example-infra:placeholders"
+rm -rf "$tmp/code/example-infra"
+doc Example
+chk "validation: a repo home whose folder is missing is left to the repos check" validation Example "ok | 0 | -"
+reset
+# ---------------------------------------------------------------- validation edge cases
+mkdir -p "$tmp/code/example-api"
+edit "$PROFILE" "s|^repos: .*|repos: [example-api, example-ghost]|; s|^repos_root: .*|repos_root: \"\"|; s|^repo_paths: .*|repo_paths: [\"example-api=$tmp/code/example-api\"]|; s|^validation_home: vault\$|validation_home: repo|"
+doc Example
+chk "validation: a repo home with no recorded location is named, as repos says nothing" validation Example "warn | 2 | example-api:missing, example-ghost:no-location"
+chk "validation: while repos leaves it" repos Example "ok | 0 | -"
+printf '# example-api validation\n\n## example-api\n' >"$tmp/code/example-api/validation.md"
+doc Example
+chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
 reset
 
 # ---------------------------------------------------------------- result

@@ -10,6 +10,11 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
 - **Sprints.** Open a sprint, plan it, see its status, close it and carry work over. Sprints are
   optional per project.
 - **Docs.** Keep a project's docs in step with its code. Marking a ticket done updates its docs.
+- **Spec-driven stories.** A project, a subproject or one story can be built from a spec:
+  requirements, design and tasks, approved before any code. The spec lives in the task's folder
+  or in the repo, as the project chooses.
+- **Validation.** Every project says how each repo is run and checked, in a `validation.md` in the
+  vault or in the repo, so a change is checked by the same steps every time.
 - **Several repos.** A project made of several repos can split them into subprojects, each with
   its own branches, docs folder and rules, under one ticket key and one board.
 - **Fast answers.** A helper command, `second-brain`, answers from the vault's files in one call,

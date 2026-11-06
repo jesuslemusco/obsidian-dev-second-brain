@@ -33,6 +33,7 @@ with the Edit tool. Never invent a name, a location, a kind of change or a doc.
 ## 3. Finish
 
 1. Run `second-brain repo <project>` and show the rows: each path and whether it exists.
-2. Run `second-brain doctor <project>`. `code-doc-map` and `repos` must be `ok`. Report every row
+2. Write the repository's validation steps as `validation.md`, beside this file, says.
+3. Run `second-brain doctor <project>`. `code-doc-map` and `repos` must be `ok`. Report every row
    that is not `ok`, with its fix.
-3. Say what was added: the name, its location, its map rows and, if any, the debt line.
+4. Say what was added: the name, its location, its map rows and, if any, the debt line.

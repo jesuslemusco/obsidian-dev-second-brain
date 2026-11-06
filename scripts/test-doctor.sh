@@ -1544,6 +1544,9 @@ is "validation: the fix names validation new" "$(fix_of validation)" \
 sb validation new Example example-api
 doc Example
 chk "validation: a section that still holds the template's text" validation Example "warn | 1 | example-api:placeholders"
+edit "$vault/$P/claude/validation.md" '/^- <What a pass needs: every check above passes, the user steps work, nothing else broke\.>$/!s/^- <.*>$/- make test/'
+doc Example
+chk "validation: a section with only the A pass line left unfilled" validation Example "warn | 1 | example-api:placeholders"
 edit "$vault/$P/claude/validation.md" 's/^- <.*>$/- make test/'
 doc Example
 chk "validation: ok once the section is written" validation Example "ok | 0 | -"

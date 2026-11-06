@@ -2139,6 +2139,15 @@ rc_is "validation new: exit 0" 0
 out_is "validation new: names the file" "$S/claude/validation.md"
 line_is "validation new: adds the repo's section" "$vault/$S/claude/validation.md" "## spec-app"
 line_is "validation new: with the check as a user would" "$vault/$S/claude/validation.md" "### Check as a user would"
+is "validation new: the section holds the template's four parts, word for word" "$(section_of "$vault/$S/claude/validation.md" spec-app)" \
+  "### Set up and start
+- <The commands that install, build and start it from a fresh clone, in order.>
+### Checks
+- <Each command that must pass, such as the tests, linter and build, and what it proves.>
+### Check as a user would
+- <The steps that use the change as a user does, and what to look for.>
+### A pass
+- <What a pass needs: every check above passes, the user steps work, nothing else broke.>"
 echo "- npm test" >>"$vault/$S/claude/validation.md"
 sb validation new Specs SPEC-APP
 rc_is "validation new again: exit 0" 0

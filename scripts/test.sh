@@ -289,6 +289,26 @@ line_is "index: the pull request rule opens its bullet" "$vault/CLAUDE.md" \
   "- Write a pull request description in the format of"
 file_has "vault Claude hub: names the pull request format note" "$vault/claude/README.md" \
   '`pull-request.md` here is the format of every pull request'
+line_is "vault Claude hub: what it holds" "$vault/claude/README.md" \
+  'Your own skills and agents that serve every project live here:'
+line_is "vault Claude hub: a project's skill or agent goes in its claude folder" "$vault/claude/README.md" \
+  '1. Create the file here, or in `<project>/claude/` for one that serves a single project.'
+line_is "vault Claude hub: name equals the folder or file name" "$vault/claude/README.md" \
+  '2. Give its frontmatter at least `name`, the same as the skill folder or agent file name, and a'
+line_is "vault Claude hub: the description is one sentence" "$vault/claude/README.md" \
+  '   one-sentence `description`.'
+line_is "vault Claude hub: a project-specific name has the project prefix" "$vault/claude/README.md" \
+  '3. Names share one namespace. Prefix a project-specific name with the project: `example-deploy`.'
+line_is "vault Claude hub: link --apply registers it" "$vault/claude/README.md" \
+  '4. Run `second-brain link --apply` to link it into `~/.claude/skills/` or `~/.claude/agents/`.'
+line_is "vault Claude hub: the vault file is the only copy" "$vault/claude/README.md" \
+  '   The file in the vault stays the only copy.'
+line_is "vault Claude hub: each one is listed with its use when line" "$vault/claude/README.md" \
+  '5. List it below, or in the project'"'"'s `claude/README.md`, with its "use when" line.'
+line_is "vault Claude hub: a rename, move or delete fixes the link" "$vault/claude/README.md" \
+  '6. On a rename, move or delete, fix or remove the link in the same change.'
+line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/README.md" \
+  '   `second-brain link --check` lists dangling links.'
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"

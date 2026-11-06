@@ -547,6 +547,7 @@ file_lacks "task new --envs: later environments wait for their tickets" "$T7" " 
 is "task new --envs: additions sit before the description" "$(($(lineno "$T7" '## Description') > $(lineno "$T7" '## Environments')))" "1"
 file_has "task new --envs: the per-environment heading form" "$T7" '`### <ENV> - <ID> (<status>)`'
 file_has "task new --envs: the first environment's heading, with its status" "$T7" '`### DEV - EX-7 (planned)`'
+line_is "task new --envs: a later ticket is added as an alias" "$T7" "- Add a later environment's ticket to \`envs:\` and run \`second-brain task alias EX-7 add <ID>\`."
 for t in EX-4 EX-5 EX-6; do sb task new "$t" --project Example --title "Task $t"; done
 
 # ---------------------------------------------------------------- task set

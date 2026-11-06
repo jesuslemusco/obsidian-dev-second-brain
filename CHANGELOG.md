@@ -31,13 +31,17 @@ A project can build its stories from a spec, and every project says how its code
   shows the three keys.
 - A new `spec` skill builds a story from its spec. It writes the requirements, the design and the
   tasks with the owner in the chat, and the owner approves each one. Then the new
-  `spec-lead` agent builds the tasks one at a time: `implementer` gets the task's context packet
+  `spec-lead` agent builds the tasks: `implementer` gets each task's context packet
   alone, and `reviewer` runs the repo's validation steps and reads the diff. Only a passing review
   ticks a task, and a task that fails three times stops the build for the owner.
 - `second-brain spec tasks <ID>` lists a story's tasks, `spec tick <ID> <task>` ticks one, and
   `spec packet <ID> <task>` prints a task's context packet: the task, its requirements, the design
   sections it names and the repo's validation steps.
 - `story-tracker` offers the `spec` skill when work starts on a story whose `delivery` is `spec`.
+- The build runs in two passes: `implementer` builds every task, running no check, then
+  `reviewer` runs every check task by task. `spec-lead` keeps track in the story's `## Build`
+  section, written by `second-brain spec status`, and `reviewer` logs each issue with a proposed
+  fix through `second-brain spec issue`, which `spec-lead` hands back to `implementer`.
 - The conventions note is at version 5: it names the `spec` and `subproject` note types and a
   task's `delivery`. The doctor's `conventions` check warns about an older note.
 

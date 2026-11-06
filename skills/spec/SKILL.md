@@ -40,7 +40,8 @@ Read the story's status notes: `second-brain outline <path>`, then a ranged read
 
 A phase changed after it was approved has a note `Spec: <phase> reopened.`. An approval counts
 only when it is newer than every `reopened` note of its own phase or an earlier one. The first
-phase with no approval that counts is the one to work on. All three count: go to Step 3. A spec
+phase with no approval that counts is the one to work on. All three count: show the owner the
+build so far, `second-brain spec status <ID>`, then go to Step 3. A spec
 file is missing: `second-brain spec new <ID>` lays out the empty templates.
 
 ## Step 2 - One phase at a time
@@ -82,6 +83,7 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
 
 ## Step 4 - When spec-lead stops
 
+- Whenever it stops or finishes, show the owner the `## Build` section: `second-brain spec status <ID>`.
 - It stopped on a task, or on the baseline: show the owner its report and ask what to do. Resume
   `spec-lead` with SendMessage and the owner's answer as written. In a new session its agent id
   is gone: launch it again as Step 3 says. It finds where the build stands from the `Build:`

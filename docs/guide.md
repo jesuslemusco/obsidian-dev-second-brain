@@ -148,15 +148,17 @@ ask you anything, so every question comes through your session. Once you approve
 
 - First `reviewer` runs the repo's validation steps on the untouched branch. A branch that fails
   before any change stops the build.
-- Then, one task at a time, `implementer` gets the task's context packet, `second-brain spec
-  packet EX-2 T1`, and nothing else: the task, its requirements, the design sections it names and
-  the repo's validation steps. It commits the task.
-- `reviewer` reads the diff, runs the validation steps, including the check as a user would, and
-  ends with PASS, FAIL or BLOCKED. Only a PASS ticks the task. A FAIL goes back with the
-  findings, twice at most, and then the build stops and asks you. BLOCKED, a step it could not
-  run, stops the build at once.
-- Every step is a status note on the story. When the last task passes, the story moves to
-  `in-review`.
+- Then `implementer` builds every task, one fresh run per task. It gets the task's context
+  packet, `second-brain spec packet EX-2 T1`, and nothing else, and commits the task. It runs no
+  check: the reviewer runs them all.
+- Then `reviewer` reviews each task in order: it reads the task's commits, runs the validation
+  steps, including the check as a user would, and ends with PASS, FAIL or BLOCKED. It logs each
+  issue in the story with a proposed fix. Only a PASS ticks the task. A FAIL goes back to
+  `implementer` with those issues, twice at most, and then the build stops and asks you.
+  BLOCKED, a step it could not run, stops the build at once.
+- `spec-lead` keeps track in the story's `## Build` section: one line per task with its state,
+  its commits and its issues. `second-brain spec status EX-2` prints it, and your session shows
+  it whenever the build stops. When the last task passes, the story moves to `in-review`.
 
 Every project also has a `validation.md` that says, for each repo, how to set it up and start it,
 which checks must pass, how to check a change as a user would, and what a pass is. Unit tests

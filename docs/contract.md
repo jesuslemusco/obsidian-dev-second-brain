@@ -320,6 +320,11 @@ tags:
 - In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
   `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
   `- Check: <how it is checked>`. A task is ticked only when its review passes.
+- A spec story's README gets a `## Build` section, before `## Status notes`, that
+  `spec status` and `spec issue` write; it is never edited by hand. One line per task of
+  `tasks.md`, in its order: `- T<n> - <state> - commits <hashes or -> - <title>`, each issue a
+  line under it, `  - Issue <date>: <issue> Fix: <fix>`. A task first written starts `todo`, or
+  `passed` when ticked. A row whose task left `tasks.md` stays at the end.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
 - Strings are written double-quoted when they contain `: `, `#`, start with `-` or `[`, or look
@@ -430,6 +435,9 @@ Rules that hold for every command:
 | `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings; the task id is matched without letter case, and fenced code is not read. Exit 1 when no item has it, two items have it, `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
 | `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | the packet is all an implementer is given. `validation` is the repo's `validation.md` path, or `none (<state>)` and no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
 | `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` holds as `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`; with `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one with its link is left alone. Line endings and the final newline are kept, frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story: `no change: <ID> is not built from a spec (delivery: direct)`, nothing written. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
+| `spec status <ID> [--project P]` | the body of the README's `## Build` section, or nothing when it has none | |
+| `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`; `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`, and `--commit` adds a hash to its commits once. Adds a status note, `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` has no such task or is missing |
+| `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds `  - Issue <date>: <issue> Fix: <fix>` under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
 | `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing` means the file is not there, `no-section` that it has no `## <repo>` section, `empty` that nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
 | `validation <project> <repo>` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | writes a missing file with the repo's section, or adds the section to a file without it, from `validation-repo.md.tmpl`, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
@@ -752,23 +760,27 @@ carries the full vault path for a `README.md` and the alias as display text.
   spec in place of repeating it.
 - Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
   first commits the spec files on the story's branch, so the tree is clean.
-- `spec-lead` checks the approval note itself. It launches `reviewer` on the untouched branch
-  first, then for each `todo` task in order `implementer`, then `reviewer`.
+- `spec-lead` checks the approval note itself, and keeps track of the build in the story's
+  `## Build` section. It launches `reviewer` on the untouched branch first. Then it builds every
+  task, one `implementer` run per task, then reviews them in order, one `reviewer` run per task.
+- `implementer` runs no check: `reviewer` runs them all. `reviewer` logs each issue with its
+  proposed fix through `spec issue`, and `spec-lead` gives the issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
   `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
 - `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
   the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
-- A FAIL goes back to `implementer` with the findings at most twice. A BLOCKED, or an
+- A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the
+  review of later tasks. A BLOCKED, or an
   implementer reply that starts `BLOCKED:`, stops the build at once: no retry can fix it.
-- Each step is a `Build:` status note ending `at <short hash>.` The newest one says where a new
-  `spec-lead` goes on from, so a build resumes in a new session.
+- Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on
+  from the `## Build` section, so a build resumes in a new session.
 - The three agents and their tools:
 
 | Agent | Tools | Job |
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
-| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | runs the validation steps and reads the diff; edits no file; ends with a verdict line |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; runs no check; reads and writes nothing outside the repo |
+| `reviewer` | Bash, Read, Glob, Grep | runs every check and reads the diff; edits no file; logs issues with `spec issue`; ends with a verdict line |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production. Confirmed means the user says so, or the change's story shows it: its last environment

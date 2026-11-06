@@ -2382,9 +2382,9 @@ for a in implementer reviewer; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
 file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
-file_has "spec-lead: a BLOCKED review stops at once" "$here/agents/spec-lead.md" "7. BLOCKED: stop at once and report."
+file_has "spec-lead: a BLOCKED review stops at once" "$here/agents/spec-lead.md" '4. BLOCKED: `second-brain spec status <ID> <task> blocked`, stop at once and report.'
 file_has "spec-lead: commits the tick of a repo spec" "$here/agents/spec-lead.md" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
-file_has "spec-lead: a new lead goes on from the newest Build note" "$here/agents/spec-lead.md" 'the newest note that starts `Build:`'
+file_has "spec-lead: a new lead goes on from the Build section" "$here/agents/spec-lead.md" 'Where the build stands is the `## Build` section.'
 file_has "reviewer: a BLOCKED verdict" "$here/agents/reviewer.md" '`VERDICT: BLOCKED`: a step could not be run'
 file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'Read nothing outside `repo_path`'
 file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
@@ -2446,6 +2446,61 @@ file_has "spec skill: runs spec link after the tasks approval" "$here/skills/spe
 file_has "spec phases: each requirement opens with its Serves line" "$here/skills/spec/phases.md" 'Each section opens with `- Serves: AC1, AC3`'
 file_has "spec phases: every criterion is served" "$here/skills/spec/phases.md" 'Every criterion of the story is named on a `- Serves:` line'
 file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md" 'its `spec-trace` row must name'
+
+# ---------------------------------------------------------------- spec status and spec issue
+sb help
+out_has "help: lists spec status and spec issue" 'spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"'
+sb spec status SP-2
+rc_is "spec status: a story with no build exits 0" 0
+out_is "spec status: and prints nothing" ""
+sb spec status SP-2 t1 built --commit abc1234 --session s-1
+rc_is "spec status: exit 0" 0
+out_is "spec status: names the task and its state" "T1: built"
+line_is "spec status: the row, with its commit" "$L2" '- T1 - built - commits `abc1234` - <What the task builds.>'
+is "spec status: the section sits before the status notes" \
+  "$(($(lineno "$L2" '## Build') < $(lineno "$L2" '## Status notes')))" "1"
+file_has "spec status: adds a status note" "$L2" 'Build: T1 built at abc1234.**'
+sb spec status SP-2 T1 failed --commit def5678
+sb spec status SP-2 T1 in-review --commit abc1234
+line_is "spec status: a second commit is added once" "$L2" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>'
+sb spec issue SP-2 T1 "The form has one field." --fix "Add the password field."
+rc_is "spec issue: exit 0" 0
+out_is "spec issue: names the task" "T1: issue"
+line_is "spec issue: the issue sits under the row, with its fix" "$L2" '  - Issue 2026-10-08: The form has one field. Fix: Add the password field.'
+file_has "spec issue: adds a status note" "$L2" 'Build: T1 issue: The form has one field. Fix: Add the password field.**'
+is "spec status: one Build section, however often it is written" "$(grep -c '^## Build$' "$L2")" "1"
+printf '%s\n' '' '- [ ] T2 - The second task' '  - Requirements: R1' >>"$vault/$S/tasks/SP-2/spec/tasks.md"
+sb spec status SP-2 T2 built --commit 0a1b2c3
+sb spec status SP-2
+out_is "spec status: prints the section, in the order of tasks.md, issues kept" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>
+  - Issue 2026-10-08: The form has one field. Fix: Add the password field.
+- T2 - built - commits `0a1b2c3` - The second task'
+sb spec status SP-2 T1 done
+rc_is "spec status: another state exits 5" 5
+sb spec status SP-2 T1 built --commit xyz
+rc_is "spec status: a commit that is not hex exits 5" 5
+sb spec status SP-2 T9 built
+rc_is "spec status: a task tasks.md lacks exits 1" 1
+sb spec status SP-2 T1
+rc_is "spec status: a task with no state exits 5" 5
+sb spec issue SP-2 T1 "No fix given."
+rc_is "spec issue: no --fix exits 5" 5
+sb spec tick SP-2 T1 --commit abc
+rc_is "spec tick: --commit is not its flag, exit 5" 5
+sb spec status SP-3 T1 todo
+rc_is "spec status: a CRLF README takes the section" 0
+is "spec status: every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+SL="$here/agents/spec-lead.md"
+file_has "spec-lead: builds every task first" "$SL" "## 2. Build every task"
+file_has "spec-lead: then reviews every task" "$SL" "## 3. Review every task"
+file_has "spec-lead: a failed task holds up the later reviews" "$SL" "A task that fails holds up the review of the tasks after it"
+file_has "spec-lead: records each step in the Build section" "$SL" 'second-brain spec status <ID> <task> built --commit <short hash>'
+file_has "spec-lead: gives the logged issues back to the implementer" "$SL" "the task's issues and proposed fixes as \`spec status\` prints them"
+file_has "spec-lead: keeps track of the build" "$SL" "You keep track of the build."
+file_has "implementer: runs no check" "$here/agents/implementer.md" "Run no check, test, linter or build: the reviewer runs them all"
+file_has "reviewer: logs each issue with a proposed fix" "$here/agents/reviewer.md" 'second-brain spec issue <story> <task>'
+file_has "reviewer: runs every check" "$here/agents/reviewer.md" "You run every check: the implementer runs none."
+file_has "spec skill: shows the Build section when spec-lead stops" "$here/skills/spec/SKILL.md" 'show the owner the `## Build` section: `second-brain spec status <ID>`'
 
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"

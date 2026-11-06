@@ -2024,6 +2024,9 @@ sb scaffold project Specs --path "$S" --keys SP
 out_has "validation: scaffold project writes claude/validation.md" "$S/claude/validation.md"
 line_is "validation: the note is typed" "$vault/$S/claude/validation.md" "type: validation"
 line_is "validation: the note links up to the Claude hub" "$vault/$S/claude/validation.md" "> Up: [[$S/claude/README|Specs Claude Hub]]"
+file_has "validation: the note holds one section per repo" "$vault/$S/claude/validation.md" 'code, in one `## <repo>` section per repo.'
+line_is "validation: the note names the command agents read it with" "$vault/$S/claude/validation.md" 'section with `second-brain validation "Specs" <repo>` before they build or review a change.'
+line_is "validation: the note names validation new" "$vault/$S/claude/validation.md" '`second-brain validation new "Specs" <repo>` adds a missing section.'
 file_has "validation: the Claude hub links to it" "$vault/$S/claude/README.md" "[[$S/claude/validation|Specs Validation]]"
 for k in "delivery: direct" "spec_home: vault" "validation_home: vault"; do
   line_is "profile template: $k" "$SPF" "$k"

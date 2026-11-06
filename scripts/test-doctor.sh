@@ -1071,7 +1071,7 @@ subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty-two rows" "$(scope_rows Example)" "22"
+is "subprojects: a project with no subproject keeps twenty-three rows" "$(scope_rows Example)" "23"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
 chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
@@ -1081,7 +1081,7 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "24"
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "25"
 is "subprojects: its rows sit between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects task-subproject sprints "
@@ -1287,7 +1287,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "33"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "34"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1323,9 +1323,10 @@ print(by["alias-unique"]["offenders"][0])
 print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["offenders"])
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
+print(names.index("spec-trace") - names.index("validation"), by["spec-trace"]["result"], by["spec-trace"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 33 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery and validation, then sprints" "$got" \
-    "33 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}3 warn ['gone-repo']${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 34 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
+    "34 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1340,16 +1341,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: twenty-two rows for each" "$(scope_rows Example)/$(scope_rows Two)" "22/22"
+is "two projects: twenty-three rows for each" "$(scope_rows Example)/$(scope_rows Two)" "23/23"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/22/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/23/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -1567,6 +1568,204 @@ chk "validation: while repos leaves it" repos Example "ok | 0 | -"
 printf '# example-api validation\n\n## example-api\n' >"$tmp/code/example-api/validation.md"
 doc Example
 chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
+reset
+
+# ---------------------------------------------------------------- spec-trace
+TRACE_FIX="add the criterion's AC<n> to the - Serves: line of the requirement that meets it, or write a requirement for it, and give every requirement a - Serves: line that names only criteria the story has"
+# criteria <ID> <line>...: put the lines under the task's ## Acceptance criteria, in place of its own.
+criteria() {
+  printf '%s\n' "${@:2}" >"$tmp/lines"
+  SB_L="$tmp/lines" awk '
+    /^## / { on = 0 }
+    $0 == "## Acceptance criteria" { print; print ""; while ((getline l < ENVIRON["SB_L"]) > 0) print l; print ""; on = 1; next }
+    !on' "$T/$1/README.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$T/$1/README.md"
+}
+# reqs <file> <line>...: write a requirements.md that holds the lines under its title.
+reqs() {
+  mkdir -p "$(dirname "$1")"
+  printf '%s\n' '# Requirements' '' "${@:2}" >"$1"
+}
+# trace_files <dir>: list the task READMEs and spec files under a folder, for a cmp after --fix.
+trace_files() { find "$1" -type f \( -name README.md -o -name requirements.md -o -name design.md -o -name tasks.md \) | LC_ALL=C sort; }
+SPR="$T/EX-3/spec/requirements.md"
+doc Example
+chk "spec-trace: a project with no spec story is ok" spec-trace Example "ok | 0 | -"
+sb task set EX-3 delivery=spec
+sb spec new EX-3
+rc_is "spec-trace: spec new writes the spec of a story" 0
+doc Example
+chk "spec-trace: the template's Serves line names R1, and leaves every criterion unserved" spec-trace Example \
+  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+is "spec-trace: the fix says how to add the criterion or a requirement" "$(fix_of spec-trace)" "$TRACE_FIX"
+is "spec-trace: the Fix of checks.md says the same, code marks aside" \
+  "$(awk '/^### / { on = ($0 == "### spec-trace") } on && /^- Fix: / { print }' "$CHECKS" | tr -d '`' | grep -c -F "$TRACE_FIX")" "1"
+rc_is "spec-trace: a warning leaves exit 0" 0
+
+# R3: a criterion no requirement serves.
+criteria EX-3 '- [ ] one' '- [x] two' '- [X] three'
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' 'The first.' '' '## R2 - three' '' '- Serves: AC3'
+doc Example
+chk "spec-trace: three criteria with AC1 and AC3 served name <ID>:AC2 alone" spec-trace Example "warn | 1 | EX-3:AC2"
+doc Example --json
+out_has "spec-trace: --json holds the same row" \
+  "{\"result\": \"warn\", \"check\": \"spec-trace\", \"scope\": \"Example\", \"count\": 1, \"offenders\": [\"EX-3:AC2\"], \"fix\": \"$TRACE_FIX\"}"
+criteria EX-3 '- [ ] one' '- [ ] two' '- [ ] three'
+doc Example
+chk "spec-trace: a ticked criterion, - [x] or - [X], is counted like an unticked one" spec-trace Example "warn | 1 | EX-3:AC2"
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## R2 - three' '' '- Serves: ac2,AC3'
+doc Example
+chk "spec-trace: ok once a Serves line names it, in any letter case and with no blank after a comma" spec-trace Example "ok | 0 | -"
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## Notes' '' '- Serves: AC2' '' '# Part two' '' '- Serves: AC2' '' '## R2 - three' '' '- Serves: AC3'
+doc Example
+chk "spec-trace: a Serves line under a heading that is no requirement is not read" spec-trace Example "warn | 1 | EX-3:AC2"
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## R2 - three' '' '- SERVES: AC3' '- serves: AC2'
+doc Example
+chk "spec-trace: every Serves line of a requirement counts, the word in any letter case" spec-trace Example "ok | 0 | -"
+criteria EX-3 '- [ ] one' '' '### More' '' '- [ ] two' '' '```' '- [ ] not a criterion' '```' '- [ ]three is not one either'
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1, AC2'
+doc Example
+chk "spec-trace: a ### subsection keeps the criteria; fenced code and a marker with no blank after it do not count" \
+  spec-trace Example "ok | 0 | -"
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1, AC3'
+doc Example
+chk "spec-trace: so AC3 is a criterion the story does not have" spec-trace Example "warn | 2 | EX-3:AC2, EX-3:R1"
+
+# R4: a requirement with no criterion.
+criteria EX-3 '- [ ] one' '- [ ] two' '- [ ] three' '- [ ] four'
+reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - none' '' 'No Serves line.'
+doc Example
+chk "spec-trace: a requirement with no Serves line is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
+reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - five' '' '- Serves: AC5'
+doc Example
+chk "spec-trace: AC5 on a story with four criteria is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
+reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - empty' '' '- Serves:'
+doc Example
+chk "spec-trace: an empty Serves line is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
+reqs "$SPR" '## R1 - three' '' '- Serves: AC1, AC2, AC3' '' '## R2 - fenced' '' '```' '- Serves: AC4' '```' '' '  ~~~' '- Serves: AC4' '  ~~~'
+doc Example
+chk "spec-trace: a Serves line inside fenced code is not read" spec-trace Example "warn | 2 | EX-3:AC4, EX-3:R2"
+is "spec-trace: <ID>:AC<n> and <ID>:R<n> share the one row" "$(printf '%s\n' "$OUT" | grep -c ' | spec-trace | Example | ')" "1"
+reqs "$SPR" '## R1 - three' '' '- Serves: AC1, AC2, AC3, AC0' '' '## R2 - four' '' '- Serves: AC4, , ' '' '## r3 - five' '' '- Serves: AC1, AC5'
+doc Example
+chk "spec-trace: a bad item makes its requirement an offender, as written, and its good items still serve" spec-trace Example "warn | 2 | EX-3:R1, EX-3:r3"
+reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - one' '' '## R2 - two' '' '## Rx - not one' ''
+doc Example
+chk "spec-trace: two sections with one id are each read, the id named once" spec-trace Example "warn | 1 | EX-3:R2"
+# The BOM sits on the first requirement's heading, so a BOM left in place would hide R1.
+printf '\357\273\277## R1 - one\r\n\r\n- Serves: AC1, AC3\r\n\r\n## R2 - none\r\n' >"$SPR"
+to_crlf "$T/EX-3/README.md"
+doc Example
+chk "spec-trace: CRLF files and a BOM read as the same lines" spec-trace Example "warn | 3 | EX-3:AC2, EX-3:AC4, EX-3:R2"
+edit "$T/EX-3/README.md" '/^## Acceptance criteria/d'
+reqs "$SPR" '## R1 - one' '' '- Serves: AC1'
+doc Example
+chk "spec-trace: a story with no criteria section has no criterion" spec-trace Example "warn | 1 | EX-3:R1"
+reqs "$SPR" 'No requirement yet.'
+doc Example
+chk "spec-trace: and with no requirement either, no offender" spec-trace Example "ok | 0 | -"
+reset
+
+# R5: the stories the check reads. Each requirements.md here serves nothing.
+reqs "$T/EX-1/spec/requirements.md" '## R1 - one'
+reqs "$SPR" '## R1 - one'
+doc Example
+chk "spec-trace: a direct story is not read, its spec files aside" spec-trace Example "ok | 0 | -"
+sb task set EX-3 delivery=spec
+doc Example
+chk "spec-trace: a spec story whose requirements serve nothing" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+sb task set EX-3 status=done
+doc Example
+chk "spec-trace: a done story is not read" spec-trace Example "ok | 0 | -"
+sb task set EX-3 status=abandoned
+doc Example
+chk "spec-trace: an abandoned story is not read" spec-trace Example "ok | 0 | -"
+sb task set EX-3 status=in-progress
+doc Example
+chk "spec-trace: set back to in-progress, its offenders come back" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+edit "$T/EX-3/README.md" '/^status: /d'
+doc Example
+chk "spec-trace: a story with no status is read" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+edit "$T/EX-3/README.md" 's/^title: /status: someday\
+title: /'
+doc Example
+chk "spec-trace: a story whose status is not one of the five is read" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+edit "$PROFILE" 's/^task_layout: flat$/task_layout: archive/'
+sb task set EX-3 status=done
+sb task archive EX-3
+rc_is "spec-trace: the story is archived" 0
+doc Example
+chk "spec-trace: an archived story is not read" spec-trace Example "ok | 0 | -"
+sb task set EX-3 status=in-progress
+doc Example
+chk "spec-trace: one set back to open in the archive is read, from the spec folder that moved with it" spec-trace Example \
+  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+chk "spec-trace: and task-layout names it too" task-layout Example "warn | 1 | EX-3:open"
+reset
+reqs "$T/EX-1/spec/requirements.md" '## R1 - one'
+reqs "$SPR" '## R1 - one'
+edit "$PROFILE" 's/^delivery: direct$/delivery: spec/'
+sb task set EX-3 delivery=direct
+doc Example
+chk "spec-trace: with delivery: spec in the profile, a story with no key is read and a task's own direct is not" spec-trace Example \
+  "warn | 3 | EX-1:AC1, EX-1:AC2, EX-1:R1"
+sb task set EX-3 delivery=
+doc Example
+chk "spec-trace: the offenders of two stories share the one row, the first five shown" spec-trace Example \
+  "warn | 6 | EX-1:AC1, EX-1:AC2, EX-1:R1, EX-3:AC1, EX-3:AC2"
+rm -rf "$T/EX-1/spec" "$T/EX-3/spec"
+doc Example
+chk "spec-trace: a spec story with no spec folder is not read" spec-trace Example "ok | 0 | -"
+mkdir -p "$T/EX-3/spec"
+doc Example
+chk "spec-trace: nor one with a spec folder and no requirements.md" spec-trace Example "ok | 0 | -"
+reset
+
+# R5: a spec in the repo.
+mkdir -p "$tmp/spec-code/example-api"
+edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/spec-code\"|; s/^spec_home: vault\$/spec_home: repo/; s/^validation_home: vault\$/validation_home: repo/"
+sb task set EX-3 delivery=spec
+sb spec new EX-3
+rc_is "spec-trace: spec new writes the spec in the repo" 0
+reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2'
+doc Example
+chk "spec-trace: with spec_home: repo, the spec in the repo is read, not one in the task folder" spec-trace Example \
+  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+{ trace_files "$vault/$P/tasks"; trace_files "$tmp/spec-code"; } >"$tmp/trace.files"
+while IFS= read -r f; do
+  mkdir -p "$tmp/before$(dirname "$f")"
+  cp "$f" "$tmp/before$f"
+done <"$tmp/trace.files"
+doc Example --fix
+is "spec-trace: --fix fixes nothing for it" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+chk "spec-trace: and the row is the same after --fix" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
+changed=""
+while IFS= read -r f; do
+  cmp -s "$tmp/before$f" "$f" || changed="$changed $f"
+done <"$tmp/trace.files"
+is "spec-trace: --fix leaves every spec file and task README byte-identical" \
+  "$(trace_files "$vault/$P/tasks" | grep -c .)/$(trace_files "$tmp/spec-code" | grep -c .)/$changed" "5/3/"
+edit "$PROFILE" 's|^repos_root: .*|repos_root: ""|'
+doc Example
+chk "spec-trace: a repo with no recorded location gives no offender" spec-trace Example "ok | 0 | -"
+chk "spec-trace: the validation check names the location" validation Example "warn | 1 | example-api:no-location"
+edit "$PROFILE" "s|^repos_root: .*|repos_root: \"$tmp/spec-code\"|"
+mv "$tmp/spec-code/example-api" "$tmp/spec-code/example-api.away"
+doc Example
+chk "spec-trace: a repo whose folder is missing gives no offender" spec-trace Example "ok | 0 | -"
+chk "spec-trace: the repos check names the folder" repos Example "warn | 1 | example-api"
+mv "$tmp/spec-code/example-api.away" "$tmp/spec-code/example-api"
+# A repo story that cannot be reached comes first; a vault story after it is still read.
+sb scaffold subproject Example infra --repos example-infra
+edit "$vault/$P/claude/subprojects/infra.md" 's/^spec_home: ""$/spec_home: vault/'
+edit "$PROFILE" 's|^repos_root: .*|repos_root: ""|; s/^delivery: direct$/delivery: spec/'
+sb task set EX-3 subproject=infra
+reqs "$T/EX-3/spec/requirements.md" '## R1 - one' '' '- Serves: AC1'
+doc Example
+chk "spec-trace: a story whose repo cannot be reached hides no later story" spec-trace Example "warn | 1 | EX-3:AC2"
+edit "$vault/$P/claude/subprojects/infra.md" 's/^delivery: ""$/delivery: direct/'
+sb task set EX-3 delivery=
+doc Example
+chk "spec-trace: a subproject's delivery holds for its story with no key of its own" spec-trace Example "ok | 0 | -"
 reset
 
 # ---------------------------------------------------------------- result

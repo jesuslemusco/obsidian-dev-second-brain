@@ -17,9 +17,14 @@ A project can build its stories from a spec, and every project says how its code
   the vault, one section per repo, or a file at each repo's root. `scaffold project` writes the
   vault note. `second-brain validation <project> [repo]` lists the files or prints one repo's
   steps, and `second-brain validation new <project> <repo>` adds a missing file or section.
-- Two new doctor checks. `delivery` warns about a value that is not allowed. `validation` warns
+- Three new doctor checks. `delivery` warns about a value that is not allowed. `validation` warns
   about a repo with no `validation.md`, no section in it, or a section that still holds the
-  template's text.
+  template's text. `spec-trace` warns about an open spec story with a criterion no requirement
+  serves, or a requirement that serves none.
+- Each requirement of a spec names the story's criteria it serves on a `- Serves: AC1, AC3` line,
+  which the requirements template writes.
+- `second-brain spec link <ID>` links a spec story's Approach, Changes and Verification to its
+  `design.md` and `tasks.md`; the `spec` skill runs it when the owner approves the task list.
 - `vault-setup` asks for the three keys, and a new `validation` mode drafts each repo's steps from
   its README, scripts and CI config for the user to confirm.
 - The project's Claude hub links to `claude/validation.md`, and `subproject <project> <name>`

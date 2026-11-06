@@ -133,6 +133,13 @@ sections, files and check.
 - `second-brain spec EX-2` prints what holds for the story and the paths of its three files.
   `second-brain spec new EX-2` writes them from the templates.
 
+A spec story keeps what you manage it by: its status, branch and place on the board and in a
+sprint, why it exists, its acceptance criteria, its key decisions and its dated log. What it is
+built from lives in its spec. Each requirement names the criteria it serves on a `- Serves:` line,
+such as `- Serves: AC1, AC3`, and the doctor's `spec-trace` check names a criterion no requirement
+serves. When you approve the task list, `second-brain spec link EX-2` links the story's Approach,
+Changes and Verification to the spec, so the story does not repeat it.
+
 Ask Claude to implement a story spec-driven, or run `/obsidian-dev-second-brain:spec EX-2`. The
 spec is written with you, in the chat: Claude drafts the requirements with what your session
 already knows of the story and the code, asks you what they do not settle, and you approve them

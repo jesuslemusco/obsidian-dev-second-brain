@@ -1621,6 +1621,8 @@ line_is "scaffold subproject: the note's type" "$vault/$M/claude/subprojects/inf
 line_is "scaffold subproject: the note's repos" "$vault/$M/claude/subprojects/infra.md" "repos: [multi-infra]"
 line_is "scaffold subproject: the note has a Rules section" "$vault/$M/claude/subprojects/infra.md" "## Rules"
 line_is "scaffold subproject: the docs hub links up to the topics hub" "$vault/$M/docs/infra/README.md" "> Up: [[$M/docs/README|Multi Docs Hub]]"
+line_is "scaffold subproject: the docs hub points to the note" "$vault/$M/docs/infra/README.md" "The subproject's repositories, branches and rules are in [[$M/claude/subprojects/infra|Multi infra Subproject]]."
+line_is "scaffold subproject: the docs hub says each folder is a topic" "$vault/$M/docs/infra/README.md" "Each folder under this one is a topic, tagged with its path below the topics root."
 line_is "scaffold subproject: the topics hub links down to it" "$vault/$M/docs/README.md" "- [[$M/docs/infra/README|Multi infra Docs]] - the docs of the infra subproject"
 sb scaffold subproject Multi infra
 rc_is "scaffold subproject: again, exit 0" 0

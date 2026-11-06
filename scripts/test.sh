@@ -1623,6 +1623,12 @@ $M/docs/infra/README.md"
 line_is "scaffold subproject: the note's type" "$vault/$M/claude/subprojects/infra.md" "type: subproject"
 line_is "scaffold subproject: the note's repos" "$vault/$M/claude/subprojects/infra.md" "repos: [multi-infra]"
 line_is "scaffold subproject: the note has a Rules section" "$vault/$M/claude/subprojects/infra.md" "## Rules"
+line_is "scaffold subproject: the note says how to read its settings" "$vault/$M/claude/subprojects/infra.md" 'Read these settings with `second-brain subproject "Multi" "infra"`, which fills in'
+line_is "scaffold subproject: the first repo is the default for branch checks" "$vault/$M/claude/subprojects/infra.md" '- `repos`: the subproject'"'"'s repositories, the first the default for branch checks.'
+line_is "scaffold subproject: an empty key takes the profile's value" "$vault/$M/claude/subprojects/infra.md" '- `base_branch` to `validation_home` are the profile'"'"'s keys. One left empty takes the value in'
+line_is "scaffold subproject: the note links the profile" "$vault/$M/claude/subprojects/infra.md" "  [[$M/claude/profile|Multi Profile]]."
+line_is "scaffold subproject: the note links its docs" "$vault/$M/claude/subprojects/infra.md" "- Its docs live in [[$M/docs/infra/README|Multi infra Docs]]."
+line_is "scaffold subproject: the Rules placeholder" "$vault/$M/claude/subprojects/infra.md" "- <A rule Claude must follow in this subproject, one per bullet.>"
 line_is "scaffold subproject: the docs hub links up to the topics hub" "$vault/$M/docs/infra/README.md" "> Up: [[$M/docs/README|Multi Docs Hub]]"
 line_is "scaffold subproject: the docs hub points to the note" "$vault/$M/docs/infra/README.md" "The subproject's repositories, branches and rules are in [[$M/claude/subprojects/infra|Multi infra Subproject]]."
 line_is "scaffold subproject: the docs hub says each folder is a topic" "$vault/$M/docs/infra/README.md" "Each folder under this one is a topic, tagged with its path below the topics root."

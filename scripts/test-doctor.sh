@@ -662,7 +662,7 @@ doc Example
 chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
 sb scaffold subproject Example infra --repos example-infra
 doc Example
-chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:35"
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status

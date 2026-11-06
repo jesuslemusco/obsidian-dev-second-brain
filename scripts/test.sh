@@ -387,6 +387,13 @@ line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "
 line_is "tasks hub: names its folder" "$vault/$P/tasks/README.md" 'The hub of `tasks/`.'
 line_is "project hub: the Claude hub line" "$vault/$P/README.md" "- [[$P/claude/README|Example Claude Hub]] - rules, profile, skills and agents"
 line_is "project hub: the placeholder paragraph" "$vault/$P/README.md" "<One paragraph: what the project is, who it is for, and where its code lives.>"
+line_is "Claude hub: what Claude reads first" "$vault/$P/claude/README.md" "What Claude reads before it works on Example: the rules below, then the profile."
+line_is "Claude hub: the profile line" "$vault/$P/claude/README.md" "- Profile: [[$P/claude/profile|Example Profile]] - ticket keys, folders, sprint"
+line_is "Claude hub: the profile line ends at the doc map" "$vault/$P/claude/README.md" "  cadence, repos and the doc map."
+line_is "Claude hub: the rule placeholder" "$vault/$P/claude/README.md" "- <A rule Claude must follow in this project, one per bullet.>"
+line_is "Claude hub: the live systems placeholder" "$vault/$P/claude/README.md" "- <Live systems: what is read-only unless you ask for a write. Detail goes in the profile.>"
+line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/claude/README.md" 'Project skills live in `claude/skills/<name>/SKILL.md`. Prefix each name with the project.'
+line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
 printf 'kept\n' >>"$vault/$P/README.md"
 cp "$vault/$P/claude/profile.md" "$tmp/profile.before"
 sb scaffold project Example --path "$P" --keys EX,EXOPS

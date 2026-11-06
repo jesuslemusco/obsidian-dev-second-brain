@@ -732,8 +732,8 @@ carries the full vault path for a `README.md` and the alias as display text.
   a load-time command that fails its permission check aborts the whole skill. When the helper is
   missing the skill says so and stops; it does not guess paths.
 - Agents call skills through the Skill tool as `obsidian-dev-second-brain:<name>`.
-- **A spec-driven story is built in two halves.** The `spec` skill runs in the owner's session,
-  and `spec-writer` drafts requirements, then design, then tasks.
+- **A spec-driven story is built in two halves.** The `spec` skill runs in the owner's session
+  and writes requirements, then design, then tasks there, with the context the session has.
 - The owner approves each phase. An approval is a status note in exactly these words:
   `Spec: <phase> approved by the owner.`
 - A phase changed after its approval gets the note `Spec: <phase> reopened.` An approval counts
@@ -751,11 +751,10 @@ carries the full vault path for a `README.md` and the alias as display text.
   implementer reply that starts `BLOCKED:`, stops the build at once: no retry can fix it.
 - Each step is a `Build:` status note ending `at <short hash>.` The newest one says where a new
   `spec-lead` goes on from, so a build resumes in a new session.
-- The four agents and their tools:
+- The three agents and their tools:
 
 | Agent | Tools | Job |
 |---|---|---|
-| `spec-writer` | Bash, Read, Glob, Grep, Edit, Write | writes the spec file of one phase; `spec new` lays out the empty templates |
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
 | `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
 | `reviewer` | Bash, Read, Glob, Grep | runs the validation steps and reads the diff; edits no file; ends with a verdict line |

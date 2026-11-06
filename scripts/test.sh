@@ -2313,7 +2313,7 @@ file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUs
 file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
 file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" 'Resume
   `spec-lead` with SendMessage'
-for a in spec-writer spec-lead implementer reviewer; do
+for a in spec-lead implementer reviewer; do
   AF="$here/agents/$a.md"
   line_is "$a: named as its file" "$AF" "name: $a"
   ad="$(sed -n 's/^description: //p' "$AF")"
@@ -2321,7 +2321,7 @@ for a in spec-writer spec-lead implementer reviewer; do
   file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
 done
 line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
-for a in spec-writer implementer reviewer docs-keeper scrum-master; do
+for a in implementer reviewer docs-keeper scrum-master; do
   if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
 done
 line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
@@ -2331,7 +2331,12 @@ file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1
 file_has "spec-lead: two retries at most" "$here/agents/spec-lead.md" "retries for a task. Still FAIL"
 file_has "reviewer: a step not run is never a pass" "$here/agents/reviewer.md" "A step that could not be run is never a PASS."
 file_has "implementer: never the vault or tasks.md" "$here/agents/implementer.md" 'Never the vault, the spec files or `tasks.md`'
-file_has "spec-writer: every task's packet must build" "$here/agents/spec-writer.md" 'Run `second-brain spec packet <ID> T<n>` for every task.'
+file_has "spec phases: every task's packet must build" "$here/skills/spec/phases.md" 'Run `second-brain spec packet <ID> T<n>` for every task.'
+file_has "spec skill: writes each phase in this session" "$here/skills/spec/SKILL.md" "write the phase yourself, in this session"
+file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKILL.md" "Read only what this session does not have yet"
+file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
+file_has "spec phases: never the whole repo" "$here/skills/spec/phases.md" "and what they call. Not the whole"
+if [ -e "$here/agents/spec-writer.md" ]; then fail "spec-writer: the agent is gone"; else pass "spec-writer: the agent is gone"; fi
 file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
 file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
 file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'

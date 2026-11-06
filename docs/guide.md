@@ -14,8 +14,7 @@ command and note format is in the [contract](contract.md).
 | `vault-doctor` | skill | Check the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
-| `spec` | skill | Builds a story from a spec: drafts its requirements, design and tasks with you, one approved phase at a time, then hands the build to `spec-lead`. |
-| `spec-writer` | agent | Drafts one phase of a spec and writes only that file. |
+| `spec` | skill | Builds a story from a spec: writes its requirements, design and tasks with you in the chat, one approved phase at a time, then hands the build to `spec-lead`. |
 | `spec-lead` | agent | Builds the approved tasks one at a time through `implementer` and `reviewer`, and ticks only what passes review. |
 | `implementer` | agent | Builds and commits one task from its context packet alone. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
@@ -135,9 +134,10 @@ sections, files and check.
   `second-brain spec new EX-2` writes them from the templates.
 
 Ask Claude to implement a story spec-driven, or run `/obsidian-dev-second-brain:spec EX-2`. The
-spec is made with you: `spec-writer` drafts the requirements, you approve them or say what to
-change, then the design, then the tasks. Agents cannot ask you anything, so every question comes
-through your session. Once you approve the tasks, `spec-lead` builds them on the story's branch:
+spec is written with you, in the chat: Claude drafts the requirements with what your session
+already knows of the story and the code, asks you what they do not settle, and you approve them
+or say what to change. Then the design, then the tasks. The build runs in agents, which cannot
+ask you anything, so every question comes through your session. Once you approve the tasks, `spec-lead` builds them on the story's branch:
 
 - First `reviewer` runs the repo's validation steps on the untouched branch. A branch that fails
   before any change stops the build.

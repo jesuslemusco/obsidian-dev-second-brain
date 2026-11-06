@@ -2004,10 +2004,11 @@ file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conve
 VD="$here/skills/vault-doctor/SKILL.md"
 file_has "vault-doctor fix: --fix repairs three checks" "$VD" 'repairs three checks only'
 file_lacks "vault-doctor fix: no longer says two" "$VD" 'repairs two checks only'
-file_has "vault-doctor fix: names the archive repair" "$VD" '`to-archive` is archived through `second-brain task archive`'
-file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'then run `second-brain snapshot` before it.'
-file_has "vault-doctor fix: compare proves the archive" "$VD" 'For the archive it is the'
-file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.'
+file_has "vault-doctor fix: names the checks --fix repairs" "$VD" '`status-tag`, `pull-request` and'
+file_has "vault-doctor checks: names the archive repair" "$here/skills/vault-doctor/checks.md" '`to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>`'
+file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'Then run `second-brain snapshot` before it.'
+file_has "vault-doctor fix: compare proves the archive" "$VD" 'After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.'
+file_has "vault-doctor fix: an archive by --fix is a bulk change" "$VD" 'offenders makes the `--fix` run a bulk change: it moves'
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help

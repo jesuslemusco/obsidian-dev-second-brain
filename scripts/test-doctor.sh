@@ -251,6 +251,68 @@ is "pull-request: --fix leaves an edited note alone" "$(printf '%s\n' "$OUT" | h
 is "pull-request: the edited note is unchanged" "$(cmp -s "$tmp/pr.before" "$vault/claude/pull-request.md" && printf same)" "same"
 chk "pull-request: an edited note of 0.2.0 warns" pull-request vault "warn | 1 | claude/pull-request.md:none"
 is "pull-request: the fix says to bring an edited note in line by hand" "$(fix_of pull-request vault)" "$EDITED"
+# The note as version 2 of the template wrote it: a later template still counts it unedited.
+cat >"$tmp/pr-2.md" <<'EOF'
+---
+aliases:
+  - Pull Request Format
+type: onboarding
+pull_request_version: 2
+tags:
+  - type/onboarding
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Pull request format
+
+Every pull request description Claude writes follows this format. A project that keeps its own
+`<project>/claude/pull-request.md` uses that one instead. Edit this note to change the format.
+
+## The rules
+
+- Write the description from the branch, never from memory of the work. The source branch holds
+  the work; the target is the branch it merges into, usually `main`.
+- Read `git log <target>..<source>` for the commits and `git diff <target>...<source>` for the
+  changes. Name both branches: the checkout may be on another one. Take the target as the remote
+  has it, as in `origin/main`, after a `git fetch`. Describe what they show and nothing else.
+- Use the five headings below, in this order, and no others. Every heading is bold.
+- Under `Goal`, say in one or two lines why the pull request exists.
+- Under each other heading, write a few bullets in short plain English, one line each. Every
+  bullet starts with a bold label, the part it is about: `- **doctor:** warns on an old index`.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write `- **None.**`
+
+## The format
+
+```markdown
+## **Goal**
+
+<why this pull request exists, in one or two lines>
+
+## **What was changed?**
+
+- **<part>:** <behaviour that works differently now>
+
+## **What was added?**
+
+- **<part>:** <a new file, command, check or option>
+
+## **Dependencies:**
+
+- **<part>:** <what must be merged, installed or set first>
+
+## **Risks:**
+
+- **<part>:** <what could break, and for whom>
+```
+EOF
+cat "$tmp/pr-2.md" >"$vault/claude/pull-request.md"
+doc
+chk "pull-request: the note of version 2 warns, with its version" pull-request vault "warn | 1 | claude/pull-request.md:2"
+is "pull-request: the note of version 2, never edited, is left to --fix" "$(fix_of pull-request vault)" "$UNEDITED"
+doc --fix
+is "pull-request: --fix replaces the note of version 2 with the template" "$(cmp -s "$PRT" "$vault/claude/pull-request.md" && printf same)" "same"
 cat "$PRT" >"$vault/claude/pull-request.md"
 edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv - 1))/"
 doc

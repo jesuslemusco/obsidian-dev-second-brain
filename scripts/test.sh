@@ -385,6 +385,8 @@ line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tas
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
 line_is "tasks hub: names its folder" "$vault/$P/tasks/README.md" 'The hub of `tasks/`.'
+line_is "project hub: the Claude hub line" "$vault/$P/README.md" "- [[$P/claude/README|Example Claude Hub]] - rules, profile, skills and agents"
+line_is "project hub: the placeholder paragraph" "$vault/$P/README.md" "<One paragraph: what the project is, who it is for, and where its code lives.>"
 printf 'kept\n' >>"$vault/$P/README.md"
 cp "$vault/$P/claude/profile.md" "$tmp/profile.before"
 sb scaffold project Example --path "$P" --keys EX,EXOPS

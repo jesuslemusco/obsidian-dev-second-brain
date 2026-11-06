@@ -17,6 +17,13 @@ Use what this session already knows, and read only what is missing:
   repo. Note the branch and short hash you read.
 - How the repo is checked: `second-brain validation <project> <repo>`.
 
+## How the build runs
+
+Write every phase for the build `agents/spec-lead.md` runs: `implementer` builds every task in
+order and runs no check; then `reviewer` reviews each task in order and runs every check. So no
+requirement or task asks the implementer to run a check. A check that needs the whole branch,
+such as every suite passing, belongs to the final validation, not to one task's review.
+
 ## requirements
 
 - One `## R<n> - <short name>` section per requirement, numbered from R1.

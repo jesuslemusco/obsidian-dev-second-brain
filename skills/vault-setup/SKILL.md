@@ -172,7 +172,7 @@ its fix.
 
 ## Rules
 
-- Never delete.
+- Never delete a file without asking.
 - Never overwrite an existing file. The scaffold commands skip what exists.
 - Never move a note with `mv`. A move is `second-brain snapshot`, then `second-brain move`.
 - Outside the vault, this skill itself writes two things only: the pointer, with

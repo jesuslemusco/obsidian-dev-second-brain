@@ -449,12 +449,153 @@ EOF
   rm -f "$tmp"
 }
 
-# second-brain spec [new | tasks | tick | packet | link] <ID> [<task>], each with [--project P].
+# Rewrite the "## Build" section of the task README in SB_T_FILE: one row per task of tasks.md,
+# "- T<n> - <state> - commits <list or -> - <title>", each with its issues under it as
+# "  - Issue <date>: <issue> Fix: <fix>". Rows come from tasks.md in order, a ticked task starting as
+# passed; rows of tasks no longer there are kept at the end. Then set the state, add the commit or
+# add the issue of one task. The section is made before "## Status notes" when the README has none.
+# Line endings and the final newline are kept. Returns 1 when tasks.md has no such task.
+sb_spec_build_write() {
+  local task="$1" state="$2" commit="$3" issue="$4" fix="$5" tmp nofinal=0 rc=0
+  sb_spec_need_file tasks
+  [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
+  SB_OUT="$tmp" SB_ROWS="$(sb_spec_task_rows "$SB_SP_FILE")" SB_TASK="$task" SB_STATE="$state" \
+    SB_COMMIT="$commit" SB_ISSUE="$issue" SB_FIX="$fix" SB_DATE="$(sb_today)" SB_NOFINAL="$nofinal" \
+    LC_ALL=C awk "$(sb_awk_lib)"'
+    function out_line(s, islast) {
+      if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > o
+      else print s > o
+    }
+    function addrow(id, st, cm, ti,   k) {
+      k = toupper(id)
+      if (k in idx) return idx[k]
+      nr++; rid[nr] = id; rst[nr] = st; rcm[nr] = cm; rti[nr] = ti; nis[nr] = 0; idx[k] = nr
+      return nr
+    }
+    {
+      if (NR == 1) eol = ($0 ~ /\r$/ ? "\r" : "")
+      line[NR] = $0; t = $0; sub(/\r$/, "", t); if (NR == 1) sub(/^\357\273\277/, "", t); txt[NR] = t
+    }
+    END {
+      n = NR; o = ENVIRON["SB_OUT"]; fm = 0; fence = 0; at = 0; last = 0; before = 0
+      for (i = 1; i <= n; i++) {
+        t = txt[i]
+        if (i == 1 && t == "---") { fm = 1; continue }
+        if (fm) { if (t == "---") fm = 0; continue }
+        if (t ~ /^[ \t]*(```|~~~)/) { fence = !fence; if (at && !last) inb[i] = 1; continue }
+        if (!fence && t ~ /^##? /) {
+          if (at && !last) last = i - 1
+          h = tolower(t); sub(/[ \t#]+$/, "", h)
+          if (!at && h == "## build") { at = i; continue }
+          if (!before && h == "## status notes") before = i
+          continue
+        }
+        if (at && !last) inb[i] = 1
+      }
+      if (at && !last) last = n
+      # The rows in the section as it is: kept with their issues.
+      nr = 0; cur = 0
+      if (at) for (i = at + 1; i <= last; i++) {
+        t = txt[i]
+        if (t ~ /^- T[0-9]+ - /) {
+          m = split(t, f, " - ")
+          ti = ""; for (j = 4; j <= m; j++) ti = ti (j > 4 ? " - " : "") f[j]
+          cm = f[3]; sub(/^commits[ \t]*/, "", cm)
+          ex_id[++ne] = substr(f[1], 3); ex_st[ne] = f[2]; ex_cm[ne] = cm; ex_ti[ne] = ti; ex_ni[ne] = 0; cur = ne
+          continue
+        }
+        if (cur && t ~ /^[ \t]+- /) { ex_is[cur, ++ex_ni[cur]] = trim(substr(t, index(t, "-") + 2)) }
+      }
+      # tasks.md first, in its order; then any row it no longer has.
+      nt = split(ENVIRON["SB_ROWS"], tr, "\n")
+      for (i = 1; i <= nt; i++) {
+        if (tr[i] == "") continue
+        split(tr[i], c, "\t")
+        r = addrow(c[1], (c[2] == "done" ? "passed" : "todo"), "-", c[3])
+        rti[r] = c[3]
+      }
+      for (e = 1; e <= ne; e++) {
+        k = toupper(ex_id[e]); r = (k in idx) ? idx[k] : addrow(ex_id[e], ex_st[e], ex_cm[e], ex_ti[e])
+        rst[r] = ex_st[e]; rcm[r] = ex_cm[e]
+        for (j = 1; j <= ex_ni[e]; j++) ris[r, ++nis[r]] = ex_is[e, j]
+      }
+      k = toupper(ENVIRON["SB_TASK"])
+      if (!(k in idx)) exit 3
+      r = idx[k]
+      if (ENVIRON["SB_STATE"] != "") rst[r] = ENVIRON["SB_STATE"]
+      cmt = ENVIRON["SB_COMMIT"]
+      if (cmt != "") {
+        q = "`" cmt "`"
+        if (rcm[r] == "-" || rcm[r] == "") rcm[r] = q
+        else if (index(", " rcm[r] ", ", ", " q ", ") == 0) rcm[r] = rcm[r] ", " q
+      }
+      if (ENVIRON["SB_ISSUE"] != "") ris[r, ++nis[r]] = "Issue " ENVIRON["SB_DATE"] ": " ENVIRON["SB_ISSUE"] " Fix: " ENVIRON["SB_FIX"]
+      # The section, as it is written.
+      sec = "## Build" eol "\n" eol
+      for (r = 1; r <= nr; r++) {
+        sec = sec "\n- " rid[r] " - " rst[r] " - commits " rcm[r] " - " rti[r] eol
+        for (j = 1; j <= nis[r]; j++) sec = sec "\n  - " ris[r, j] eol
+      }
+      ns = split(sec, sl, "\n")
+      if (at) {
+        for (i = 1; i < at; i++) out_line(line[i], 0)
+        for (j = 1; j <= ns; j++) out_line(sl[j], last == n && j == ns)
+        if (last < n) out_line(eol, 0)
+        for (i = last + 1; i <= n; i++) out_line(line[i], i == n)
+      } else if (before) {
+        for (i = 1; i < before; i++) out_line(line[i], 0)
+        for (j = 1; j <= ns; j++) out_line(sl[j], 0)
+        out_line(eol, 0)
+        for (i = before; i <= n; i++) out_line(line[i], i == n)
+      } else {
+        for (i = 1; i <= n; i++) out_line(line[i], 0)
+        out_line(eol, 0)
+        for (j = 1; j <= ns; j++) out_line(sl[j], j == ns)
+      }
+    }' "$SB_T_FILE" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$tmp"
+    [ "$rc" -eq 3 ] && return 1
+    sb_die 1 "cannot write $SB_T_REL"
+  fi
+  cat "$tmp" >"$SB_T_FILE" || { rm -f "$tmp"; sb_die 1 "cannot write $SB_T_REL"; }
+  rm -f "$tmp"
+}
+
+# second-brain spec status <ID> [<task> <state> [--commit H]] and spec issue <ID> <task> "<issue>"
+# --fix "<fix>": the build log of a spec story, in its README. Each change adds a status note.
+sb_spec_build() {
+  local sub="$1" task="$2" state="$3" commit="$4" issue="$5" fix="$6" session="$7" note
+  if [ "$sub" = "status" ] && [ -z "$task" ]; then
+    sb_section "$SB_T_FILE" "Build" 2>/dev/null || true
+    return 0
+  fi
+  if [ "$sub" = "status" ]; then
+    case "$state" in
+      todo | built | in-review | passed | failed | blocked) ;;
+      *) sb_die 5 "a build state is one of: todo, built, in-review, passed, failed, blocked" ;;
+    esac
+    case "$commit" in '' | [0-9a-fA-F]*) ;; *) sb_die 5 "--commit takes a commit hash: $commit" ;; esac
+    case "$commit" in *[!0-9a-fA-F]*) sb_die 5 "--commit takes a commit hash: $commit" ;; esac
+  fi
+  sb_spec_build_write "$task" "$state" "$commit" "$issue" "$fix" || sb_die 1 "no task $task in $SB_SP_SHOW/tasks.md"
+  task="$(printf '%s' "$task" | tr '[:lower:]' '[:upper:]')"
+  if [ "$sub" = "status" ]; then
+    note="Build: $task $state${commit:+ at $commit}."
+  else
+    note="Build: $task issue: $issue Fix: $fix"
+  fi
+  sb_add_status_note "$SB_T_FILE" "$(sb_note_line "$note" "$session")" || sb_die 1 "cannot edit $SB_T_REL"
+  printf '%s: %s\n' "$task" "${state:-issue}"
+}
+
+# second-brain spec [new | tasks | tick | packet | link | status | issue] <ID> ..., each with [--project P].
 cmd_spec() {
-  local sub="" id="" task="" project="" rc
-  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>, each with [--project P]"
+  local sub="" id="" task="" project="" rc third="" commit="" fix="" session="${CLAUDE_SESSION_ID:-}" hasfix=0
+  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID> | spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> \"<issue>\" --fix \"<fix>\", each with [--project P] (status and issue also take --session S)"
   case "${1:-}" in
-    new | tasks | tick | packet | link)
+    new | tasks | tick | packet | link | status | issue)
       sub="$1"
       shift
       ;;
@@ -466,12 +607,20 @@ cmd_spec() {
         project="$2"
         shift 2
         ;;
+      --commit | --fix | --session)
+        case "$sub:$1" in status:--commit | issue:--fix | status:--session | issue:--session) ;; *) sb_die 5 "$usage" ;; esac
+        [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
+        case "$1" in --commit) commit="$2" ;; --fix) fix="$2"; hasfix=1 ;; *) session="$2" ;; esac
+        shift 2
+        ;;
       -*) sb_die 5 "$usage" ;;
       *)
         if [ -z "$id" ]; then
           id="$1"
-        elif [ -z "$task" ] && { [ "$sub" = "tick" ] || [ "$sub" = "packet" ]; }; then
+        elif [ -z "$task" ] && case "$sub" in tick | packet | status | issue) true ;; *) false ;; esac; then
           task="$1"
+        elif [ -z "$third" ] && { [ "$sub" = "status" ] || [ "$sub" = "issue" ]; }; then
+          third="$1"
         else
           sb_die 5 "$usage"
         fi
@@ -480,7 +629,10 @@ cmd_spec() {
     esac
   done
   [ -n "$id" ] || sb_die 5 "$usage"
-  case "$sub" in tick | packet) [ -n "$task" ] || sb_die 5 "$usage" ;; esac
+  case "$sub" in tick | packet | issue) [ -n "$task" ] || sb_die 5 "$usage" ;; esac
+  if [ "$sub" = "status" ] && [ -n "$task" ] && [ -z "$third" ]; then sb_die 5 "$usage"; fi
+  if [ "$sub" = "status" ] && [ -z "$task" ] && [ -n "$commit" ]; then sb_die 5 "$usage"; fi
+  if [ "$sub" = "issue" ] && { [ -z "$third" ] || [ "$hasfix" -eq 0 ] || [ -z "$fix" ]; }; then sb_die 5 "$usage"; fi
   sb_need_task "$id" "$project"
   sb_need_profile
   SB_SP_SOFT=0
@@ -517,6 +669,14 @@ cmd_spec() {
       ;;
     link)
       sb_spec_link
+      return 0
+      ;;
+    status)
+      sb_spec_build status "$task" "$third" "$commit" "" "" "$session"
+      return 0
+      ;;
+    issue)
+      sb_spec_build issue "$task" "" "" "$third" "$fix" "$session"
       return 0
       ;;
   esac

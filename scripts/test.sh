@@ -384,6 +384,7 @@ file_has "tasks hub: names the By subproject view" "$vault/$P/tasks/README.md" '
 line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tasks.base#Active]]"
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
+line_is "tasks hub: names its folder" "$vault/$P/tasks/README.md" 'The hub of `tasks/`.'
 printf 'kept\n' >>"$vault/$P/README.md"
 cp "$vault/$P/claude/profile.md" "$tmp/profile.before"
 sb scaffold project Example --path "$P" --keys EX,EXOPS

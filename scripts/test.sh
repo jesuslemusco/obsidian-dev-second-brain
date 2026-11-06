@@ -1944,8 +1944,8 @@ case "$desc" in *"a ticket is marked done"*) pass "docs-keeper: the description 
 line_is "docs-keeper: Workflow 5 is there" "$DK" "## Workflow 5 - Ticket marked done"
 file_has "docs-keeper: Workflow 5 runs step 7 on the docs to update" "$DK" 'run step 7 of Workflow 1 on them'
 file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'The "Code to doc map" names the docs to check.'
-file_has "docs-keeper: Workflow 5 sends a gap to the debt file" "$DK" "A gap found but not fixed goes to the profile's debt file"
-file_has "docs-keeper: Workflow 5 gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
+file_has "docs-keeper: a gap not fixed goes to the debt file, as Boundaries says" "$DK" "A gap found but not fixed goes to the profile's debt file"
+file_has "docs-keeper: Boundaries gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
 file_has "docs-keeper: Workflow 5 stops when every line is ticked" "$DK" 'With every line already ticked: go to step 6. Do not check the map again.'
 file_has "docs-keeper: Workflow 5 diffs the merge commit" "$DK" 'diff <merge>^1 <merge>'
 file_has "docs-keeper: Workflow 5 diffs a branch not merged yet" "$DK" 'diff origin/<production_branch>...<branch>'

@@ -44,6 +44,9 @@ A project can build its stories from a spec, and every project says how its code
   fix through `second-brain spec issue`, which `spec-lead` hands back to `implementer`.
 - The conventions note is at version 5: it names the `spec` and `subproject` note types and a
   task's `delivery`. The doctor's `conventions` check warns about an older note.
+- The skills, agents, templates and docs are trimmed to short plain English. Each changed template
+  goes up one version: `index_version` to 4, `conventions_version` to 6 and `pull_request_version`
+  to 3. Run the doctor's `check` and `fix`, then update by hand each note it names.
 
 ## 0.3.0 - 2026-10-22
 

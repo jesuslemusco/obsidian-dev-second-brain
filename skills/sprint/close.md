@@ -47,5 +47,5 @@ Step 0 of `SKILL.md` has run.
     - Recommend the `docs-keeper` agent for those tasks.
     - Do not start it here: the close only reports.
     - Offer to open the next sprint.
-11. Carried tasks point at the `next:` id before that sprint's note exists. That is expected: open
-    the next sprint, and never re-point them by hand.
+11. Carried tasks point at the `next:` id before that sprint's note exists. That is expected.
+    Opening the next sprint fixes it: never re-point them by hand.

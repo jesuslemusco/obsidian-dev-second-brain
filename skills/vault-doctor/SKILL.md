@@ -79,8 +79,8 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 
 ## Rules
 
-- Never delete a note. The one exception is a file that the `checks.md` fix the user agreed to
-  says to delete.
-- Never use `mv`. A move goes through `second-brain move`, run with `--dry-run` first.
+- Never delete a note, except a file that a `checks.md` fix says to delete, after the user agrees to
+  that fix.
+- Run `second-brain move` with `--dry-run` first.
 - The helper prints `-` for an empty cell. Read it as empty.
 - A template named in `checks.md` is under the plugin root, in `templates/`.

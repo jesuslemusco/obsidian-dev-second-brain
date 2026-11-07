@@ -47,6 +47,8 @@ A project can build its stories from a spec, and every project says how its code
 - The skills, agents, templates and docs are trimmed to short plain English. Each changed template
   goes up one version: `index_version` to 4, `conventions_version` to 6 and `pull_request_version`
   to 3. Run the doctor's `check` and `fix`, then update by hand each note it names.
+- `scripts/test-doctor.sh` defines `exists`, so its two `task-layout --fix` checks on the archive
+  run again; they were skipped before.
 
 ## 0.3.0 - 2026-10-22
 

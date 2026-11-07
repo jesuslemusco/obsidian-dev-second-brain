@@ -59,6 +59,9 @@ rc_is() {
 is() {
   if [ "$2" = "$3" ]; then pass "$1"; else fail "$1" "got:    $2" "wanted: $3"; fi
 }
+exists() {
+  if [ -e "$2" ]; then pass "$1"; else fail "$1" "missing: $2"; fi
+}
 out_is() { is "$1" "$OUT" "$2"; }
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac

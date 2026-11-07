@@ -2599,6 +2599,27 @@ file_has "spec tasks template: every task is built first, then reviewed" "$here/
 file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
 
+# ---------------------------------------------------------------- README: each rule it points to has a home
+RM="$here/README.md"
+line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
+for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Validation' \
+  'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
+  line_is "README: $pf has the heading $ph" "$here/$pf" "$ph"
+done
+for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
+  file_has "README: points to $pf" "$RM" "\`$pf\`"
+  exists "README: $pf exists" "$here/$pf"
+done
+file_has "README: the hand-off to docs-keeper is in story-tracker" "$here/skills/story-tracker/SKILL.md" \
+  'The story reaches production: start the `docs-keeper` agent'
+file_has "README: vault-setup link leaves a foreign entry alone" "$here/skills/vault-setup/SKILL.md" \
+  'It is normal and never touched'
+file_has "README: --fix changes three checks without asking" "$here/skills/vault-doctor/SKILL.md" \
+  '`second-brain doctor --fix` repairs three checks only'
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

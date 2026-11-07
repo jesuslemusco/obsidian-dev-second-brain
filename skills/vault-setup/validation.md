@@ -10,8 +10,8 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
    - `vault`: every repo's section is in `claude/validation.md`.
    - `repo`: each repo has a `validation.md` at its root.
 3. To change a home, ask, then edit `validation_home` with the Edit tool.
-4. State `unknown`: first record where the repo is stored, as step 4 of `## 1. The repository` in
-   `repo.md` says.
+4. State `unknown`: ask where the repo is stored and record it, as steps 2 and 4 of
+   `## 1. The repository` in `repo.md` say.
 
 ## 2. Write each repo's section
 

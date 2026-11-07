@@ -697,7 +697,7 @@ PF="$vault/$P/claude/profile.md"
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:42, claude/profile.md:43"
+  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:41, claude/profile.md:42"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -713,7 +713,7 @@ doc Example
 chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:42"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:41"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"

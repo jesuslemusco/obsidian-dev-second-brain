@@ -426,6 +426,21 @@ line_is "Claude hub: the rule placeholder" "$vault/$P/claude/README.md" "- <A ru
 line_is "Claude hub: the live systems placeholder" "$vault/$P/claude/README.md" "- <Live systems: what is read-only unless you ask for a write. Detail goes in the profile.>"
 line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/claude/README.md" 'Project skills live in `claude/skills/<name>/SKILL.md`. Prefix each name with the project.'
 line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
+PF="$vault/$P/claude/profile.md"
+line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
+line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or'
+line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
+line_is "profile: when a done task is due for the archive" "$PF" '- `archive_after_days:` is how many days a done task waits, counted from its newest status note or'
+line_is "profile: what spec delivery builds a story from" "$PF" '- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design'
+line_is "profile: a spec is approved before code, and a subproject or story may set its own" "$PF" '  and tasks, approved before any code. A subproject or a story may set its own.'
+line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
+line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
+line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
+line_is "profile: what repos_root holds" "$PF" '- `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.'
+line_is "profile: turning sprints off" "$PF" '- Set `uses_sprints: false` above to turn sprints off; the cadence lines then do not apply.'
+line_is "profile: docs follow production" "$PF" 'Docs follow production: a doc is updated only after its change is confirmed deployed to production,'
+line_is "profile: the branch production runs" "$PF" 'which runs `production_branch` above, or `base_branch` when that is empty. Say here how a'
+line_is "profile: every repository has a row in the code to doc map" "$PF" 'Every repository in `repos` has at least one row, added in the same change as the repository.'
 printf 'kept\n' >>"$vault/$P/README.md"
 cp "$vault/$P/claude/profile.md" "$tmp/profile.before"
 sb scaffold project Example --path "$P" --keys EX,EXOPS

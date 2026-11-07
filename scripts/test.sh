@@ -554,6 +554,12 @@ file_lacks "task new: never writes jira_id" "$T1" "jira_id"
 file_lacks "task new: no sprint key in the backlog" "$T1" "sprint:"
 is "task new: body sections in order" "$(grep '^## ' "$T1" | tr '\n' '|')" \
   "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+line_is "task new: the branch line names the canonical branch" "$T1" '**Branch:** `none yet` - <the branch; the canonical one when several carry the ticket id>'
+line_is "task new: the description's context line" "$T1" "<Context: what is broken or missing, who asked, where in the system it lives.>"
+line_is "task new: findings only from evidence, else the section goes" "$T1" "<Only when evidence exists: conclusion first, then the evidence. Otherwise delete the section.>"
+line_is "task new: a criterion someone else can check" "$T1" "- [ ] <a condition someone else can check>"
+line_is "task new: the ticket's top 4 criteria only" "$T1" "- [ ] <the top 4 only, as in the ticket>"
+line_is "task new: what the code confirmed" "$T1" "<What the code confirmed: files, functions, behaviour, any mismatch with the ticket.>"
 cp "$T1" "$tmp/t1.before"
 sb task new EX-1 --project Example --title Again
 rc_is "task new: existing folder gives exit 6" 6

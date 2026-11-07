@@ -93,8 +93,8 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 
 - Start one with `/obsidian-dev-second-brain:spec EX-2`, or with the request under
   [What to say](#what-to-say).
-- Claude writes the requirements, then the design, then the tasks with you in the chat. You approve
-  each phase or say what to change, as `skills/spec/SKILL.md` says.
+- You approve each phase or say what to change, as
+  `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
 - A project's default, and where its specs live, are `delivery` and `spec_home` under
   `### Profile frontmatter` in `docs/contract.md`.

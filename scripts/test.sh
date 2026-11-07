@@ -430,7 +430,8 @@ PF="$vault/$P/claude/profile.md"
 line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
 line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or'
 line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
-line_is "profile: when a done task is due for the archive" "$PF" '- `archive_after_days:` is how many days a done task waits, counted from its newest status note or'
+line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
+line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
 line_is "profile: what spec delivery builds a story from" "$PF" '- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design'
 line_is "profile: a spec is approved before code, and a subproject or story may set its own" "$PF" '  and tasks, approved before any code. A subproject or a story may set its own.'
 line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'

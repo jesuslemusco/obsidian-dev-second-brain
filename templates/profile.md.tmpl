@@ -43,8 +43,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or
   abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under
   the tasks root.
-- `archive_after_days:` is how many days a done task waits, counted from its newest status note or
-  its sprint's end, before the doctor names it and `doctor --fix` archives it.
+- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest
+  status note or its sprint's end, before the doctor names it and `doctor --fix` archives it.
 - `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design
   and tasks, approved before any code. A subproject or a story may set its own.
 - `spec_home:` puts the spec in the task's folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).

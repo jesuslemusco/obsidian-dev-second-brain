@@ -43,7 +43,6 @@ commits, the files already in the task folder.
 
 ## 2. Verify against the code, read-only
 
-- Ground the story in the code before you write it.
 - Edit no code, and write no file but the task README.
 - Stay in the repository and on the ref the branch check settled.
 - Say so when you read a file at another ref.

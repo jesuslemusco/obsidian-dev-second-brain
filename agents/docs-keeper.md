@@ -34,7 +34,7 @@ one project are in the `## Docs` section of its profile.
 6. `second-brain subproject "$p"` lists each subproject's repos and docs folder. The job is in one
    when the context's `subproject:` line or the story's `subproject` key names it, or the change
    is in one of its repos. Then:
-   - `second-brain subproject "$p" <name>` prints its branches. They win over the profile's.
+   - `second-brain subproject "$p" <name>` prints its branches, used as `## The code ref` says.
    - Its docs are in its docs folder, `<topics_root>/<name>/`. A vault doc for its repository
      goes there, not elsewhere.
    - Follow the rules under `## Rules` in its note.
@@ -125,11 +125,10 @@ one project are in the `## Docs` section of its profile.
 ## Workflow 4 - Topic folder onboarding
 
 1. Read the profile's "Reference implementation" and mirror its shape.
-2. Give the folder a hub: a `README.md` with a unique alias and `type: moc`.
-3. From the hub, link down to each child and up to the parent hub, in the path form.
-4. Give each child an up-link to the hub.
-5. Write real `[[wikilinks]]`: a Dataview-rendered link makes no graph edge.
-6. Keep each note's frontmatter; add only the missing keys.
+2. Give the folder a hub, a `README.md` with `type: moc`, and link it and each child as the
+   conventions say.
+3. Write real `[[wikilinks]]`: a Dataview-rendered link makes no graph edge.
+4. Keep each note's frontmatter; add only the missing keys.
 
 ## Workflow 5 - Ticket marked done
 
@@ -150,7 +149,7 @@ The caller, usually the `story-tracker` skill, gives the project, the ticket id 
      then `git -C "<path>" diff <merge>^1 <merge>`.
    - A branch not merged yet: `git -C "<path>" diff origin/<production_branch>...<branch>`.
    - With neither, report that the change was not found and stop.
-   - Then run Workflow 1 steps 3-5, as confirmed. The "Code to doc map" names the docs to check.
+   - Then run Workflow 1 steps 3-5, as confirmed.
    - Update what the change made wrong, or report that nothing needs an edit.
 5. A gap found but not fixed: append it to the debt file, as `## Boundaries` says.
 6. Add a status note to the ticket naming what was updated, ticked and left as debt:
@@ -168,8 +167,6 @@ Read cheapest first: a whole note is the last resort.
 - Before you change or remove a note: `second-brain backlinks "<vault path>"`.
 - Part of a note: `second-brain outline "<vault path>"`, then a ranged Read.
 - Text: `second-brain search <project> "<text>" --in <subpath>`.
-- Move or rename only with `second-brain move` / `second-brain rename`, never `mv`.
-- After writing links: `second-brain unresolved <project>` must not list a link you wrote.
 - An edit that does not match: check for non-breaking spaces before concluding the text is absent.
 
 ## Boundaries

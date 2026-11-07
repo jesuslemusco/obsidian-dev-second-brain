@@ -2620,6 +2620,50 @@ file_has "README: vault-setup link leaves a foreign entry alone" "$here/skills/v
 file_has "README: --fix changes three checks without asking" "$here/skills/vault-doctor/SKILL.md" \
   '`second-brain doctor --fix` repairs three checks only'
 
+# ---------------------------------------------------------------- guide: each rule it points to has a home
+GD="$here/docs/guide.md"
+line_is "guide: keeps the What to say heading that its links name" "$GD" "## What to say"
+for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The index' \
+  'docs/contract.md|## 3. The project' 'docs/contract.md|### Profile frontmatter' \
+  'docs/contract.md|### Subprojects' 'docs/contract.md|### Validation' 'docs/contract.md|## 4. A task' \
+  'docs/contract.md|### Links between notes' 'docs/contract.md|### link, doctor, snapshot' \
+  'docs/contract.md|## 9. Skills and agents' 'templates/obsidian-conventions.md.tmpl|## The short version' \
+  'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
+  'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
+  'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/spec/SKILL.md|## Step 3 - Ready to build'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
+  line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"
+done
+for pf in skills/sprint/close.md skills/spec/SKILL.md agents/spec-lead.md .github/workflows/test.yml \
+  .github/workflows/e2e.yml scripts/e2e-claude.sh .claude-plugin/plugin.json CHANGELOG.md; do
+  file_has "guide: points to $pf" "$GD" "\`$pf\`"
+  exists "guide: $pf exists" "$here/$pf"
+done
+for s in test test-link test-graph test-doctor test-snapshot leak-check; do
+  line_is "guide: Development lists scripts/$s.sh" "$GD" "bash scripts/$s.sh"
+done
+line_is "guide: Development lists the plugin validation" "$GD" "claude plugin validate . --strict"
+file_has "guide: version changes only at the end of a release" "$GD" \
+  'Neither a feature branch nor the release branch changes `version`.'
+file_has "guide: a failing e2e request is fixed in the description" "$GD" \
+  "fixed in the skill's \`description\`, in the user's words"
+file_has "guide: a task is never filed in its topic" "$here/templates/obsidian-conventions.md.tmpl" \
+  'Never file a task inside the topic it is'
+file_has "guide: vault-setup runs only by name" "$here/docs/contract.md" \
+  '`vault-setup` is the one: it writes the pointer and the links'
+file_has "guide: adopt writes the roots into the profile" "$here/skills/vault-setup/adopt.md" \
+  'It writes the roots into the new profile'
+file_has "guide: vault-setup asks whether the project runs sprints" "$here/skills/vault-setup/SKILL.md" \
+  '- No sprints: add `--no-sprints`'
+file_has "guide: vault-setup asks for the task layout" "$here/skills/vault-setup/SKILL.md" \
+  '| `task_layout` | whether a done or abandoned task moves once'
+file_has "guide: the status overview flags a story waiting on a task not done" "$here/skills/story-tracker/status.md" \
+  'story waits on each task in its `depends_on` cell that is not `done`'
+file_has "guide: no build starts without the repo's steps" "$here/skills/spec/SKILL.md" \
+  '`second-brain validation <project> <repo>` must print the repo'"'"'s steps'
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

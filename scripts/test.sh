@@ -342,7 +342,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 5"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 6"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -355,8 +355,8 @@ for c in "<project>/tasks/<TICKET-ID>/README.md" "topic tag" "unique **alias**" 
   out_has "conventions: the short version covers: $c" "$c"
 done
 sb conventions "note metadata"
-out_has "conventions: a named section, any case" "YAML traps"
-out_lacks "conventions: stops at the next section" "A **topic** is a folder"
+out_has "conventions: a named section, any case" "Every substantive note carries frontmatter."
+out_lacks "conventions: stops at the next section" "In a tag, spaces and underscores"
 sb conventions Helper commands
 out_has "conventions: a section name of several words" 'second-brain backlinks "<vault path>"'
 sb conventions "in the obsidian app"

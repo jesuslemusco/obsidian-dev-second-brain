@@ -2,25 +2,21 @@
 aliases:
   - Obsidian Conventions
 type: onboarding
-conventions_version: 5
+conventions_version: 6
 tags:
   - type/onboarding
 ---
 
 # Obsidian conventions
 
-How this vault is organized and how to work in it: where notes and tasks live, how they are tagged
-and linked, how to search, and which helper command does what. It applies to every project in
-the vault. Skills and agents read "The short version" before they write notes.
-
 ## The short version
 
 1. Every task is `<project>/tasks/<TICKET-ID>/README.md`. Never file a task inside the topic it is
-   about. With no ticket yet, the folder is a kebab-case slug. A project whose profile says
-   `task_layout: archive` moves a done task once, to `tasks/archive/<YYYY>/<TICKET-ID>/`.
-2. A note says what it is about with **topic tags**. A topic tag is a folder path under the project's
+   about. With no ticket yet, the folder is a kebab-case slug. With `task_layout: archive` in the
+   profile, a done task moves once, to `tasks/archive/<YYYY>/<TICKET-ID>/`.
+2. A note's **topic tags** say what it is about. A topic tag is a folder path under the project's
    **topics root** (`docs/` unless the profile says otherwise), lowercased: `billing/invoices`.
-   Tag only folders that exist; a cross-cutting note carries no topic tag.
+   Tag only folders that exist. A cross-cutting note carries no topic tag.
 3. Every note has a unique **alias**; a task's first alias is its folder name. Aliases are for
    finding a note, not for linking to it.
 4. **Links carry a path**: `[[<vault path or unique file name>|<alias>]]`, and the full vault path
@@ -34,16 +30,15 @@ the vault. Skills and agents read "The short version" before they write notes.
    and `status/active` for the rest. Change both with `second-brain task set <ID> status=<status>`.
 8. **Quote a YAML value** that holds a colon then a space or a `#`, starts with `-` or `[`, is a
    lone dash, or looks like a date or a number: `- "Runbook: rotate the API keys"`, `epic: "-"`.
-9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date. A task joins it with
-   the property `sprint: "<id>"`, always quoted. No `sprint` key means backlog.
+9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date, which is its id.
+   A task joins it with the property `sprint: "<id>"`, always quoted. No `sprint` key means backlog.
 10. Find things with the **helper**: `second-brain find`, `board` and `topic` for metadata,
     `second-brain search` for text. Scope every search.
 11. After editing links, `second-brain unresolved <project>` must not list a link you wrote.
 
 ## Note metadata
 
-Every substantive note carries frontmatter. Properties feed Bases; tags feed the tag pane, search
-and the graph.
+Every substantive note carries frontmatter.
 
 ```yaml
 ---
@@ -61,46 +56,37 @@ tags:
 ---
 ```
 
-- **`aliases`** - at least one, unique across the vault. Most notes are named `README.md`, so the
-  alias is the only name that tells them apart.
 - **`type`** and the `type/<type>` tag - one of `task`, `bug`, `investigation`, `architecture`,
   `runbook`, `validation`, `tool`, `ops`, `onboarding`, `data-source`, `data-output`, `sprint`,
-  `profile`, `subproject`, `spec`, `moc`. A project may add its own. `moc` is for hubs. `spec` is a
-  story's `requirements.md`, `design.md` or `tasks.md`, in `spec/` in its task folder.
-- **`status`** - tasks use `planned`, `in-progress`, `in-review`, `done`, `abandoned`. The tag is
-  the rollup: `status/done` for `done` and `abandoned`, `status/active` for the rest.
-- **Task notes** also carry `title`, `next`, `branch`, `epic` and `carried_from` (the sprint ids a
-  task was carried over from). The ticket id is the folder name and the first alias, not a property.
-  `depends_on` lists the tasks one waits on as quoted path links; `second-brain task dep` edits it.
-  `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
-  is named; a task in no subproject has no such key. `archived` is the date `task archive` moved it.
-  `delivery` is `spec` or `direct` for a story that differs from its project; `second-brain spec`
-  says which holds and where its spec is.
-
-YAML traps. Quote a value when:
-
-- it contains a colon then a space: `- "Runbook: rotate the API keys"` (else it is read as a key)
-- it is a lone dash: `epic: "-"` (else it is read as empty)
-- it is a sprint id, or any string shaped like a date or a number: `sprint: "2026-10-14"` (else it
-  may be read as a date and miss the board filter)
-- it contains `#`, or starts with `-` or `[`
+  `profile`, `subproject`, `spec`, `moc`. A project may add its own.
+- `moc` is for hubs. `spec` is a story's `requirements.md`, `design.md` or `tasks.md`, in `spec/`
+  in its task folder.
+- The ticket id is the folder name and the first alias, not a property.
+- A task note may also carry:
+  - `carried_from` - the sprint ids it was carried over from.
+  - `depends_on` - the tasks it waits on, as quoted path links. `second-brain task dep` edits it.
+  - `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
+    is named.
+  - `archived` - the date `task archive` moved it.
+  - `delivery` - `spec` or `direct`, for a story that differs from its project. `second-brain spec`
+    says which holds and where its spec is.
 
 ## Topic tags
 
-A **topic** is a folder under the project's topics root. Its **tag** is that folder's path below the
-topics root, lowercased, with spaces and underscores written as hyphens:
+In a tag, spaces and underscores in a folder name become hyphens:
 
 ```
 folder  <project>/docs/billing/Invoices/   ->  tag  billing/invoices
 folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 ```
 
-- Use the **deepest folder** the note is really about. A sub-topic implies its parent; do not add both.
-- **Several topics, several tags. Cross-cutting, no tag.** Do not invent a catch-all such as `general`.
-- **Only tag folders that exist.** Organizational folders (`tasks/`, `sprints/`) are not topics.
+- Tag the **deepest folder** the note is about, not its parent as well.
+- A note on several topics carries a tag for each.
+- Never invent a catch-all such as `general`.
+- Organizational folders (`tasks/`, `sprints/`) are not topics.
 - **Tag to folder:** read the tag as a path under the topics root, matching case-insensitively and
-  treating `_` and spaces as `-`. That folder's `README.md` is the topic's hub. With
-  `topics_root: "."` in the profile, topic folders sit at the project root.
+  treating `_` and spaces as `-`. That folder's `README.md` is the topic's hub.
+- With `topics_root: "."` in the profile, topic folders sit at the project root.
 
 ## Tasks
 
@@ -112,79 +98,75 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 <project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md   # an archived task
 ```
 
-- One folder per task, directly under `tasks/`; its name is the README's first alias.
-- The profile's `task_layout` is `flat`, the default, or `archive`. With `archive`, a done or
-  abandoned task is moved once, with `second-brain task archive <ID>`, to
-  `tasks/archive/<YYYY>/<ID>/`, the year it was archived, and gets `archived: "<date>"`. Every
-  command still finds it by id, and links to it follow it. A `.base` or `.canvas` file that names
-  its old path is not rewritten. A `flat` project never moves a task, and no task is named `archive`.
-- No ticket yet: the folder is a kebab-case slug. Once the ticket exists, add the id as an alias
-  with `second-brain task alias <slug> add <ID>`; every command then accepts the id. The folder
-  keeps the slug: renaming a task folder is not supported yet.
-- A goal tracked as one ticket per environment is **one** folder and one README, under the first
-  environment's id, with every id in `aliases` and an `envs:` mapping in the frontmatter.
-- The **task board** (`tasks.base`, Obsidian Bases) is a live table over the README frontmatter,
-  with the views `Active`, `Current sprint`, `By topic`, `By subproject`, `Needs a status` and
-  `All`. Nothing is added to it by hand. A status edited in the board changes the property only;
-  fix the `status/` tag the next time the note is touched.
-- A task of one subproject carries its name in `subproject`. Every task stays in the one `tasks/`
-  folder: the `By subproject` view groups them, and
-  `second-brain board <project> --subproject <name>` lists the tasks of one subproject.
+- The profile's `task_layout` is `flat`, the default, or `archive`. A `flat` project never moves
+  a task.
+- With `archive`, `second-brain task archive <ID>` moves a done or abandoned task. `<YYYY>` is the
+  year it was archived. Every command still finds it by id.
+- `task archive` moves the folder with `second-brain move`; `## Moving and renaming` says what that
+  rewrites.
+- No task is named `archive`.
+- Once a slug-named task has its ticket, add the id as an alias with
+  `second-brain task alias <slug> add <ID>`. Every command then accepts the id.
+- The folder keeps the slug: renaming a task folder is not supported yet.
+- A goal tracked as one ticket per environment is **one** task, under the first environment's id,
+  with every id in `aliases` and an `envs:` mapping in the frontmatter.
+- The **task board**, `tasks.base`, is a live table over the README frontmatter, with the views
+  `Active`, `Current sprint`, `By topic`, `By subproject`, `Needs a status` and `All`. Nothing is
+  added to it by hand.
+- A status edited in the board changes the property only: fix the `status/` tag the next time the
+  note is touched.
+- A subproject's tasks stay in the one `tasks/` folder.
 - A status note is one line, newest first, under `## Status notes`:
   `` **YYYY-MM-DD (session `<id>`) - <text>** ``.
 
 ## Sprints
 
-- One note per sprint, named by its end date, which is its id. The profile holds the cadence
-  (`sprint_length_days`, `sprint_anchor_end`) and may name another folder than `sprints/`.
+- The profile holds the cadence (`sprint_length_days`, `sprint_anchor_end`) and may name another
+  folder than `sprints/`.
 - Carrying a task over appends the old id to `carried_from` and sets `sprint` to the next id.
-- One sprint is in progress at a time. Its task list is the board's `Current sprint` view; nothing
-  is typed into the sprint note until it closes.
-- A project whose profile says `uses_sprints: false` has no sprints: no sprint notes, no `sprint`
-  on its tasks, no `Current sprint` view. Its tasks are tracked by status alone.
+- One sprint is in progress at a time.
+- Its task list is the board's `Current sprint` view. Nothing is typed into the sprint note until
+  it closes.
+- With `uses_sprints: false` in the profile, a project has no sprint notes, no `sprint` on its
+  tasks and no `Current sprint` view.
 
 ## Hubs and links
 
-- **Every folder `README.md` is a hub** (`type: moc`). It links down to its notes and up to its
-  parent hub. Every other note starts with an up-link line: `> Up: [[<path>|<Hub alias>]]`.
-- **Links resolve by file name or path, never by alias.** Write a link the way Obsidian generates
-  it, with the alias as display text:
-  - the full vault path when the file name is not unique, which is every `README.md`:
+- Write a link the way Obsidian generates it:
+  - the full vault path when the file name is not unique:
     `[[clients/acme/projects/example/tasks/EX-123/README|EX-123]]`
   - the bare file name when it is unique in the vault: `[[obsidian-conventions|Obsidian Conventions]]`
   - `\|` instead of `|` when the link sits in a table cell
 - Get the path from the alias: `second-brain find "<alias>"`.
-- **Check what you wrote:** `second-brain unresolved <project>` lists links that go nowhere.
 
 ## Moving and renaming
 
-Use `second-brain move "<vault path>" "<folder or new vault path>"` and
-`second-brain rename "<vault path>" "<new name>"`. The helper moves the file or the folder, then
-rewrites every link to it and the links inside it. Do not use `mv`: links are left to fix by hand.
+`second-brain move "<vault path>" "<folder or new vault path>"` and
+`second-brain rename "<vault path>" "<new name>"` move the file or the folder, then rewrite every
+link to it and the links inside it.
 
 - A destination that is an existing folder, or that ends with `/`, takes the item under its own
-  name. Missing folders are created.
-- Add `--dry-run` to see what would move and which notes would be rewritten. Nothing is written.
+  name.
+- Missing folders are created.
+- `--dry-run` lists what would move and which notes would be rewritten, and writes nothing.
 - `rename` never changes the extension: the new name may repeat it or leave it out. To change an
   extension, use `move`.
 - A new name cannot hold any of `# ^ [ ] | \ : * ? " < >`, a backtick or a control character,
-  nor start or end with a space. Obsidian allows none of them. A folder that is there already
-  keeps its name and can still take a note.
-- The index, this note and a project's profile stay where they are. The helper finds them at a
-  fixed path and does not move them, nor a folder that holds one.
-- Before a file is touched, every rewritten line is read again. When a link on it would not lead
-  to its file any more, nothing is moved and the note and line are named.
+  nor start or end with a space. A folder that is there already keeps its name and can still take
+  a note.
+- The index, this note and a project's profile never move, nor does a folder that holds one.
+- When a rewritten link would no longer lead to its file, nothing is moved, and the note and line
+  are named.
 - When a note with a link to rewrite cannot be written, nothing is moved and the note is named.
-- A note that changes while the command runs is left as it is. The command names it, rewrites
-  the others and exits 1.
+- A note that changes while the command runs is left as it is. The command names it, rewrites the
+  others and exits 1.
 - A `.canvas` or `.base` file is never edited. The helper names the ones that mention the old
   path; fix those by hand.
 
 ## Helper commands
 
-The helper, `second-brain`, reads and writes the vault's files. It never calls Obsidian, so every
-command works while the app is closed. A vault path is relative to the vault root, with forward
-slashes. `second-brain help` lists everything.
+A vault path is relative to the vault root, with forward slashes. `second-brain help` lists every
+command.
 
 | Need | Command |
 |---|---|
@@ -197,57 +179,50 @@ slashes. `second-brain help` lists everything.
 | Read or set a task property | `second-brain task head <ID>`, `second-brain task set <ID> status=done` |
 | Headings of a long note | `second-brain outline "<vault path>"` |
 | Text inside one folder | `second-brain search <project> "<text>" --in <subpath>` |
-| Move or rename a note | `second-brain move ...`, `second-brain rename ...` |
 
 A search splits the text into terms at spaces and lists the notes that hold every term, in any
-letter case. A part in double quotes is one term, a phrase: `second-brain search <project>
+letter case. A part in double quotes is one term: `second-brain search <project>
 '"exact phrase" word'`. Each note gives at most three lines: for one term the first lines that
 hold it, for several the lines that hold the most terms. To see every line of one note, read it.
 
 ## Limits of the helper
 
-- It reads links from the files, not from Obsidian. A link resolves by its vault path, by its path
-  from the note's folder, or by the end of a path.
-- Its board views are fixed. A view changed or added in `tasks.base` shows in Obsidian only.
-- A move never edits a `.canvas` or `.base` file.
+- A link resolves by its vault path, by its path from the note's folder, or by the end of a path.
+- Its board views are fixed: a view changed or added in `tasks.base` shows in Obsidian only.
 - Letter case is ignored for ASCII letters only, in links and in searches.
 - A markdown link must sit on one line. One whose text holds `\]`, or whose target has blanks
   around it, is not read.
 - A link inside a comment (`%%` or HTML) or inside math counts like any other.
-- A note behind a symlink is not seen. The helper does not follow one.
-- A name must have the same Unicode form in the link and on disk. An NFC link to a file whose
-  name is stored as NFD is unresolved.
-- One note or folder that cannot be read stops every move: a link in it could be missed.
-  `unresolved` and `backlinks` name it and go on.
-- A note that awk cannot read whole stops every move too: one with a NUL byte, on some systems.
-  A note that holds the control byte 1 is never rewritten.
+- A note behind a symlink is not seen.
+- A name must have the same Unicode form, NFC or NFD, in the link and on disk.
+- A note or folder that cannot be read stops every move. `unresolved` and `backlinks` name it and
+  go on.
+- A note that awk cannot read whole stops every move too, such as one with a NUL byte on some
+  systems.
+- A note that holds the control byte 1 is never rewritten.
 
 ## Searching
 
-Search by metadata first and by text last. Scope every search to one project, and for tasks to the
-READMEs one level under `tasks/`, or three under `tasks/archive/`: task folders hold large logs and
-data.
-
+- Search by metadata first and by text last.
+- Scope a search to one project, and for tasks to the READMEs one level under `tasks/`, or three
+  under `tasks/archive/`.
 - **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias or an archived task:
   `second-brain find <ID>`.
-- **Active tasks**, with sprint, topics, branch and next action: `second-brain board <project>`.
-- **Tasks on a topic**, sub-topics included: `second-brain topic <project> billing/invoices`.
-- **From a topic tag to its docs:** the tag is the folder path. Start at that folder's `README.md`.
-- **Full text:** `second-brain search <project> "<text>"`, inside the narrowest folder that could
-  hold it. Never grep the whole vault.
+- **Full text:** search inside the narrowest folder that could hold it, with `--in`. Never grep
+  the whole vault.
 
 ## In the Obsidian app
 
-Obsidian is the viewer. Claude and the helper work on the files, and the app shows them. It does
-not have to be open.
+Obsidian is the viewer: Claude and the helper work on the files, and the app need not be open.
 
 - **Quick switcher** matches aliases: type a ticket id or a hub name.
-- **Tag pane** shows the topic tree with counts; **Bookmarks** can hold each project's board.
+- **Tag pane** shows the topic tree with counts.
+- **Bookmarks** can hold each project's board.
 - **Bases** renders the task board; status, sprint and branch are editable in the table.
 
 ## Per-project specifics
 
-This note holds the rules. A project holds only what is particular to it:
+A project holds only what is particular to it:
 
 - `<project>/claude/profile.md` - ticket keys, folders, sprint cadence, repos, branches, environments.
 - `<project>/claude/README.md` - its skills and agents, and its rules for live systems.

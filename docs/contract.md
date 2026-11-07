@@ -41,8 +41,7 @@ The interfaces every part of this plugin agrees on. Change this file first, then
 - A check that goes by the path alone, such as `unresolved-links`, lists the inner project's notes
   under both projects.
 - A path names no project folder when, with `//` and `/./` folded, it is `.` or holds a `..` part
-  or a backslash. The doctor's `index` check reports it as `<Project>:no-folder` without looking
-  on disk. The doctor prints no project rows for it, and opens and writes nothing under it.
+  or a backslash. What the doctor does with one is under `### link, doctor, snapshot`.
 
 The file opens with frontmatter that holds `index_version`, a whole number:
 
@@ -132,13 +131,13 @@ tags:
 - `tasks_root`, `topics_root` and `sprints_root` are folders inside the project, written with
   forward slashes.
 - Every command drops a slash in front of or behind a root: `/tasks` is `tasks`.
-- A root that holds a `..` part or a backslash leaves the project. The doctor's `profile` check
-  then fails, and the doctor checks the project under that root's default.
+- A root that holds a `..` part or a backslash leaves the project. What the doctor does with one
+  is under `### link, doctor, snapshot`.
 - `task_layout` is `flat` or `archive`, in any letter case. A missing key or another value is
   `flat`.
 - `flat`: every task stays in `<tasks_root>/<ID>/`.
-- `archive`: a done or abandoned task moves once, through `task archive`, to
-  `<tasks_root>/archive/<YYYY>/<ID>/`, the year it was archived.
+- `archive`: a done or abandoned task moves to the archive through `task archive`, as its row
+  under `## 7. The helper` says.
 - Commands find a task at either depth in both layouts.
 - `archive_after_days` is a whole number of days, 14 when the key is absent.
 - With `archive`, a done or abandoned task outside the archive is due once that many days have
@@ -147,9 +146,9 @@ tags:
 - A task with neither date is never due. `task archive <ID>` archives it by hand.
 - `uses_sprints: false`, in any letter case, turns sprints off. Any other value, or no key, uses
   sprints.
-- With `false` the project has no sprints hub and no `Current sprint` view, and the three sprint
-  keys are ignored. Every `sprint` command exits 5, `task set` refuses a sprint id, and
-  `board <project> "Current sprint"` has no rows.
+- With `false` the project has no sprints hub, its board has no `Current sprint` view and no
+  sprint columns, and the three sprint keys are ignored. How each command treats such a project
+  is in its row under `## 7. The helper`.
   - To turn sprints on later, set the key to `true` and run `scaffold project` again. It creates
     the hub. It names on stderr what to add by hand in files that exist: the map line in the
     project README, and the board's `Current sprint` view and sprint columns.
@@ -368,7 +367,7 @@ Body: an up-link to the sprints hub, then `## Goal`, `## Notes`, `## Close`.
 - It shows `file.asLink(aliases[0])` as the task name.
 - The `Current sprint` view filters on one literal sprint id, which `sprint open` rewrites.
 - `By subproject` shows the active tasks grouped by `subproject`, with a `Subproject` column.
-- A project with `uses_sprints: false` has no `Current sprint` view and no sprint columns.
+- For a project that does not use sprints, see `uses_sprints` under `### Profile frontmatter`.
 - `board <project> "Current sprint"` goes by the sprint in progress, not by the literal. The
   doctor's `board` check warns when the two differ.
 
@@ -413,7 +412,7 @@ Rules that hold for every command:
 | `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `delivery`, `spec_home`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are as `### Subprojects` says; lists are joined with `, `. `delivery`, `spec_home` and `validation_home` include the defaults (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it, or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
 | `profile <project> --keys` | the profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
-| `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
+| `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, live or archived, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
@@ -557,16 +556,18 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   fail row, with the fail offenders only.
 - `subprojects` and `task-subproject` are the exceptions: a project with no subproject note gets no
   row for them.
-- The doctor follows no `..`. An index path or a profile root is judged as it is written. Nothing
-  is opened through one that holds a `..` part or a backslash, or through a root that starts with
-  `/`.
+- The doctor follows no `..`. An index path or a profile root is judged as it is written.
+- For an index path that names no project folder (`## 2. The index`), the doctor prints no
+  project rows, and opens and writes nothing under it.
+- A project whose root leaves it (`### Profile frontmatter`) is checked under that root's default.
+  Nothing is opened through that root, or through a root that starts with `/`.
 - The doctor does not check where a project folder that is a link inside the vault leads.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
-| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`), or has a name, a key or a path on two rows (`<value>:twice`, compared as `## 2. The index` says) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
+| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that names no project folder is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, compared as `## 2. The index` says) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn), or its `pull_request_version` is missing or lower than the template's (warn, `claude/pull-request.md:<version or none>`). A note was never edited when, CRs dropped, it holds a text the plugin wrote: the helper knows each by its `cksum`. The fix of an edited one says to bring it in line with the template by hand |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
@@ -758,8 +759,7 @@ text.
 - When the helper is missing, the skill says so and stops. It does not guess paths.
 - Agents call skills through the Skill tool as `obsidian-dev-second-brain:<name>`.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
-  design, then tasks in the owner's session. `spec-lead` builds them, as `agents/spec-lead.md`
-  says.
+  design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:
   `Spec: <phase> approved by the owner.`
 - A phase changed after its approval gets the note `Spec: <phase> reopened.` An approval counts
@@ -789,8 +789,8 @@ text.
 | Agent | Tools | Job |
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
-| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; runs no check; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | runs every check and reads the diff; edits no file; logs issues with `spec issue`; ends with a verdict line |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
+| `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production.

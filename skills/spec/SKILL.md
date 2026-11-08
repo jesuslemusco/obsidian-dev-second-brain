@@ -67,8 +67,8 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
    - The repo is the one `second-brain spec <ID>` names, at the path
      `second-brain repo <project> <repo>` prints.
    - The branch is the story's `branch`, from `second-brain task head <ID>`.
-   - No branch yet: ask, then cut it from the base branch as the branch check says, named by
-     `branch_pattern`. Record it with `second-brain task set <ID> branch=<branch>`.
+   - No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.
+     Record it with `second-brain task set <ID> branch=<branch>`.
 2. The repo must be on that branch, with nothing uncommitted.
    - On another branch: ask, then `git -C "<path>" switch <branch>`.
    - Never stash or discard the owner's changes: ask them to.

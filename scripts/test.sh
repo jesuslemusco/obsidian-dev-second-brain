@@ -2672,6 +2672,7 @@ line_is "guide: a feature branch is cut from main and merges into the release" "
   '- A feature branch is cut from `main` and merges into the release branch.'
 line_is "guide: a story that needs another story's code is cut from its branch" "$GD" \
   "- A story that needs another story's code not yet in \`main\` is cut from that story's branch. It"
+line_is "guide: that story merges after the one it needs" "$GD" '  merges into the release branch after that story.'
 line_is "guide: the release goes to main in one pull request" "$GD" \
   '- One pull request takes the release branch into `main`.'
 ST="$here/skills/story-tracker/SKILL.md"
@@ -2679,8 +2680,8 @@ line_is "story-tracker: a new story's branch is cut from the base branch" "$ST" 
   "- A new story's branch is cut from the base branch."
 line_is "story-tracker: a story that needs another story's code is cut from its branch" "$ST" \
   "  - A story that needs another story's code not yet in the base branch is cut from that story's"
-file_has "spec skill: cuts a missing branch from the base branch, as the branch check says" "$here/skills/spec/SKILL.md" \
-  'No branch yet: ask, then cut it from the base branch as the branch check says'
+file_has "spec skill: cuts a missing branch as the branch check says" "$here/skills/spec/SKILL.md" \
+  'No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.'
 line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
   "- \`base_branch\` is the branch a new story's branch is cut from, as"
 

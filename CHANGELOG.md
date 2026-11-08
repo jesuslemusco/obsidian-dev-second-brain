@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.7.0 - unreleased
+
+- The `spec` skill runs the build in your session. It launches `implementer` and `reviewer`
+  itself with the Agent tool, one at a time, and takes each report from the agent's result, so
+  no report is relayed by hand.
+- The `spec-lead` agent is gone. Its build and review order moved into the skill as it was.
+- The skill's build part is in the new `skills/spec/build.md`, read only when a build starts.
+  `skills/spec/SKILL.md` stays a short router.
+- Each launch names its model by role: `opus` for `implementer` and for `reviewer`.
+- A spec story's build progress is in `build.json` in its task folder in the vault, whatever its
+  `spec_home`, never in its README. Per task it holds a build state, a review state, the commits,
+  each issue with its proposed fix, and the time each state was set.
+- The new `building` state is set before each `implementer` launch, a retry included.
+  `in-review` is set before each `reviewer` launch.
+- `second-brain spec status <ID> <task> <state>` sets the field its state belongs to, and adds no
+  status note. `spec issue` adds the issue to `build.json`.
+- `second-brain spec status <ID>` prints one line per task:
+  `T1 - build: built - review: failed - commits <hashes> - <title>`, its issues under it.
+  `--json` has the keys `id`, `build`, `review`, `commits`, `title` and `issues`.
+- Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
+  The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
+  README.
+- The skill shows you `spec status <ID>` after each task, when the build stops or finishes, and
+  when a session resumes a build. The build started, stopped and why, and finished, and each
+  ruling, stay in the README as status notes.
+- `implementer` and `reviewer` get the story, the task and the session id, and run
+  `second-brain spec packet` themselves. The skill never prints a packet into your session.
+- The packet has `commits` and `diff` lines. `diff` names a temp file the helper writes with each
+  of the task's commits, and `reviewer` reads the change from it.
+- A task may name `- Provides: <signatures>`. A task that names `- Uses: T<n>` gets those lines
+  in its packet, under `## Uses`. On a retry the packet holds the task's logged issues, under
+  `## Issues`.
+- `implementer` replies with its commit and one line. `reviewer` logs its findings with
+  `spec issue` and replies with its verdict and the number of issues.
+- The tasks phase checks every task's packet without printing it.
+- `SECOND_BRAIN_NOW` sets the time `build.json` records, for tests.
+
 ## 0.6.0 - 2026-11-08
 
 - The test workflow runs the doctor tests in a job of their own on each runner, in parallel with

@@ -33,7 +33,7 @@ The owner answers in this chat, so make each answer easy.
 
 ## How the build runs
 
-Write every phase for the build `agents/spec-lead.md` runs.
+Write every phase for the build `build.md` runs.
 
 - No requirement or task asks `implementer` to run a check: `reviewer` runs every check.
 - A check that needs the whole branch, such as every suite passing,
@@ -72,11 +72,15 @@ Write every phase for the build `agents/spec-lead.md` runs.
 - A check names a command the reviewer runs, or a step it takes, and what that prints or shows:
   `- Check: open the login page, send an empty form - expected: shows "Email is required"`.
 - A check with no command or step, or no expected result, is vague: rewrite it with the owner.
+- A task whose code later tasks call adds `- Provides: <signatures>` lines: the names, arguments
+  and results they call.
+- A task that calls them adds one line, `- Uses: T1, T2`. Its packet then holds those
+  `- Provides:` lines. It uses only earlier tasks.
 - Every requirement is met by at least one task.
-- Run `second-brain spec packet <ID> T<n>` for every task. It must succeed: fix what it names,
-  such as a requirement or a design heading that does not exist.
-- The packet is all the implementer sees: read one back and check it is enough to build the task
-  from.
+- Run `second-brain spec packet <ID> T<n> >/dev/null` for every task. It must succeed: fix what
+  it names, such as a requirement or a design heading that does not exist.
+- Never print a packet here: the agents fetch their own. The packet is all the implementer sees,
+  and `spec-checker` reads the spec as it would, as `## The spec check` says.
 - Leave every box unticked.
 
 ## The spec check

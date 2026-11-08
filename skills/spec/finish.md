@@ -1,8 +1,8 @@
 # Finishing a passed build
 
-Read this file only when `spec-lead` finished with every task passed.
+Read this file only when the build finished with every task passed, as `build.md` says.
 
-- `<path>` is the repo's path and `<branch>` the story's branch, as in Step 3 of `SKILL.md`.
+- `<path>` is the repo's path and `<branch>` the story's branch, as in `build.md`.
 - Every `task note` takes `--session <session id>`, the session id for notes in `SKILL.md`.
 - The story's `branch` stays `<branch>` whatever the owner picks: review fixes go on it.
 

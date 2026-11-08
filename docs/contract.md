@@ -335,6 +335,9 @@ tags:
   `- Check: <command or step> - expected: <what it prints or shows>`.
 - A task item may add `- Provides: <signatures>` lines: what later tasks call. A task that calls
   them names those tasks on one line, `- Uses: T1, T2`.
+- A task item may add `- Bundle: <n>`, a whole number. The tasks with the same number are one
+  bundle, and stand next to each other in `tasks.md`.
+- `none`, `n/a`, `-`, an empty value or one that starts with `<` names no bundle.
 - A spec story's build progress is `build.json` in its task folder in the vault, whatever its
   `spec_home`, so a build never dirties the repo's tree. The README holds none of it.
 - `spec status` and `spec issue` write `build.json`. It is never edited by hand.
@@ -481,7 +484,7 @@ Rules that hold for every command:
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task. With `repo`, also exit 1 when the project lists no repo, or the repo has no recorded location or no folder; the message says which. The lines are then still printed, with `dir` and the three files as `-`, so `delivery` can be read |
 | `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, with the task's title. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
-| `spec tasks <ID> [--project P] [--json]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does. `--json` prints the rows with the keys `id`, `state` and `title` |
+| `spec tasks <ID> [--project P] [--json]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none), bundle (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | the bundle is the item's `- Bundle:` line, read as section 4 says, with `Bundle` in any letter case, and printed as a number. Exit 1 with no row when a bundle is not a whole number, or when a bundle's tasks are not next to each other; the message names the task. Exit 1 when `tasks.md` is missing; otherwise exits as `spec` does. `--json` prints the rows with the keys `id`, `state`, `title` and `bundle` |
 | `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings. The task id is matched without letter case; fenced code is not read. Exit 1 when no item or two items have it, or `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
 | `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch`, `validation`, `commits`, `fails` and `diff` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none), `## Uses` (for each task its `- Uses:` line names, `### <task> - <title>` and that item's `- Provides:` lines, as written; left out when it names none), `## Issues` (the task's issues in `build.json`, as `spec status` prints them; left out when there is none), `## Checks` (the checks `implementer` runs before it commits: `- task: <the item's Check, as written>`, then `- each task: <command>` for each command `validation run <project> <repo> --when each-task` runs, in order) and `## Validation` (the repo's section) | `validation` is the repo's `validation.md` path, or `none (<state>)` with no `## Validation` part and no `each task` line. A task with no `Check`, or one that is `none`, `n/a` or `-` or starts with `<` as the template's does, has `- task: none`. A check with no command is not in `## Checks`. `commits` is the task's commits in `build.json`, comma separated, or `-`. `fails` is the task's `fails` (section 4). With `fails: 0`, `diff` is a temp file outside the repo and the vault that the command writes with `git show` of each of those commits, in order, and `## Issues` holds every issue. With more, the packet is a fix's: `diff` holds only the fix's commits, and `## Issues` only the findings the fix answers (section 4). `diff` is `none (no commit)` with no commit, `none (no fix commit)` for a fix with none yet, and `none (git show failed)` when git shows none of them; a commit git cannot show is named on stderr as `note: git show <hash> failed in <repo>`. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` or `Uses` names nothing. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), a task it uses is not in `tasks.md`, is not an earlier task or has no `- Provides:` line, `build.json` is not a JSON object with a `tasks` array, or the project has no repo to build in |
 | `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` that holds is `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`. With `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one that has its link is left alone. Line endings and the final newline are kept; frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story prints `no change: <ID> is not built from a spec (delivery: direct)` and writes nothing. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
@@ -868,9 +871,39 @@ text.
   `spec_home: repo` the skill first commits the spec files on the story's branch.
 - The skill checks the approval notes itself, and keeps the build's progress in `build.json`
   through `spec status` and `spec issue`.
-- It launches `reviewer` on the untouched branch first. Then it builds each task with one
-  `implementer` run and has a fresh `reviewer` review it right after, before the next task
-  starts.
+- **The baseline.** A new build first launches `reviewer` on the untouched branch, in baseline
+  mode, unless the branch starts on the base branch.
+- The branch starts on the base branch when `git merge-base --is-ancestor HEAD <base>` exits 0.
+  With `spec_home: repo`, HEAD is taken before the skill commits the spec.
+- The base branch is the subproject's `base_branch`, or the profile's. `<base>` is
+  `origin/<base branch>` when the repo has it, else `<base branch>`.
+- When it does, the skill skips the baseline and writes the status note
+  `Build: baseline skipped: the branch starts at <short hash> on <base>.`
+- Any other result runs the baseline, such as on a branch cut from `release/<version>` or with
+  commits the base lacks.
+- A resumed build skips the baseline, whatever the start. The final validation always runs.
+- **Each task in turn.** The skill builds each task with one `implementer` run, and has a fresh
+  `reviewer` review it right after, before the next task starts.
+- **Bundles.** In the tasks phase the skill may mark small, alike tasks with `- Bundle: <n>`. The
+  owner approves the bundles with the task list.
+- A bundle's tasks go to one fresh `implementer` run. It builds them in order, one commit per
+  task, and fetches each task's packet as it starts that task.
+- Inside a bundle, each task is built test-first and runs its own packet's `## Checks` before its
+  commit.
+- Then one fresh `reviewer` reads each task's packet and diff. It judges each task against its own
+  requirements, logs each finding on its task, and gives one verdict per task.
+- It runs each task's `Check`, and the `each task` checks and user steps once for the bundle.
+- The next task or bundle starts only once every task of the bundle has passed.
+- Before the run, the skill sets each task it builds `building`. Before the review, it sets each
+  task it reviews `in-review`. It sets each task's result from the agent's report on that task.
+- The run stops at the first task it cannot commit. The tasks after it go back to `todo`, and the
+  build stops at that task.
+- A task of a bundle that fails its review takes the fix loop alone, in order, with a review of
+  its own fix. Its own `fails` picks each round, so the cap counts per task.
+- A bundle resumes in a new session from `build.json`. A task cut off while `building` takes its
+  commit as a task alone does. Then the tasks left to build go to one fresh run, and the tasks
+  left to review to one review.
+- One task or bundle at a time, never in parallel.
 - No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
   one at a time, and names each launch's model by role and round.
 - `implementer` runs on `opus`, and on `fable`, the stronger model, from the fourth fix round on.
@@ -878,8 +911,9 @@ text.
   branch.
 - Each `implementer` launch is named, `<ID>-<task>-implementer`, and from the fourth fix round on
   `<ID>-<task>-implementer-2`. A fix reaches the agent of that name again with SendMessage.
+- A bundle's run is named `<ID>-bundle-<n>-implementer`. Fix rounds 1 to 3 of its tasks go to it.
 - In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
-  place, with the same name and model.
+  place, with the same name and model. For a task of a bundle, it is given that task alone.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
 - It sets a task `building` before each `implementer` launch or fix message, and `in-review`
   before each `reviewer` launch on it. It sets each result as the agent reports it.
@@ -929,8 +963,11 @@ text.
   to the tree is a finding.
 - `implementer` and `reviewer` are given the story, the task and the session id, and run
   `spec packet <ID> <task>` themselves. The skill never prints a packet into the owner's session.
+- For a bundle, they are given its number and its tasks in place of the task, and run
+  `spec packet` once per task.
 - The packet, and the commit line, are all `implementer` is given. On a fix the packet holds the
   findings of the last failed review.
+- In a bundle, each task's packet and commit line are all it is given, and no other task's.
 - `reviewer` reads the task's diff from the file the packet's `diff:` line names.
 - A task's review reads only its diff, first against the task's requirements and acceptance
   checks, then for code quality.
@@ -943,8 +980,12 @@ text.
 - `implementer` replies with a `Commit:` line, one line on what it built, a `Test:` line, and a
   `Check:` line with the result of each check it ran.
 - A stop is a first line `BLOCKED: <why>`, then the `Check:` lines of the checks it ran.
+- In a bundle, it replies with one report per task, in order, each under a line `Task: <task>`.
+  A stop is the report of the task it stopped at, and no report follows it.
 - `reviewer` logs each issue with its proposed fix through `spec issue`, then replies with its
   verdict and the number of issues: `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
+- In a bundle, it replies with one verdict line per task, in order:
+  `<task>: VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.
 - In baseline mode there is no task to log on: `reviewer` puts its findings in the reply.
 - In user and branch mode, `reviewer` logs a finding on the task whose `- Files:` line holds its
   file, and puts the rest in the reply.
@@ -977,8 +1018,8 @@ text.
 
 | Agent | Tools | Job |
 |---|---|---|
-| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds one task test-first, runs its packet's checks and commits it on the story's branch; reads and writes nothing outside the repo but its packet |
-| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff and runs each user step with its tool; edits no file; logs its issues with `spec issue` |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds one task test-first, or each task of a bundle in turn, runs its packet's checks and commits it on the story's branch; reads and writes nothing outside the repo but its packets |
+| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff of a task, or of each task of a bundle, and runs each user step with its tool; edits no file; logs its issues with `spec issue` |
 | `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to

@@ -10,6 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        # The doctor tests run in a job of their own, in parallel: on Windows they take longest.
+        suites: [doctor, rest]
     # On Windows this is Git Bash, the shell Claude Code runs the helper in.
     defaults:
       run:
@@ -17,14 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Leak check
+        if: matrix.suites == 'rest'
         run: bash scripts/leak-check.sh
       - name: Scratch-vault tests
+        if: matrix.suites == 'rest'
         run: bash scripts/test.sh
       - name: Link tests
+        if: matrix.suites == 'rest'
         run: bash scripts/test-link.sh
       - name: Graph tests
+        if: matrix.suites == 'rest'
         run: bash scripts/test-graph.sh
       - name: Doctor tests
+        if: matrix.suites == 'doctor'
         run: bash scripts/test-doctor.sh
       - name: Snapshot tests
+        if: matrix.suites == 'rest'
         run: bash scripts/test-snapshot.sh

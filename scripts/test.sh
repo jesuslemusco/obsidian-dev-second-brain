@@ -368,7 +368,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 6"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 7"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -458,8 +458,10 @@ line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `f
 line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
-line_is "profile: what spec delivery builds a story from" "$PF" '- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design'
-line_is "profile: a spec is approved before code, and a subproject or story may set its own" "$PF" '  and tasks, approved before any code. A subproject or a story may set its own.'
+file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \
+  '- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back'
+line_is "profile: delivery points to the contract" "$PF" \
+  "  as \`### Profile frontmatter\` in the plugin's \`docs/contract.md\` says."
 line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
 line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
 line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
@@ -756,6 +758,56 @@ sb task head EX-404
 rc_is "task head: unknown task gives exit 1" 1
 sb task head
 rc_is "task head: no id gives exit 5" 5
+
+# ---------------------------------------------------------------- task head --json
+# json_ok <desc>: OUT parses as one JSON value. json_is <desc> <python> <wanted>: the python, run
+# with the parsed value as d, prints the wanted text. Both skip when python3 is not installed.
+HAS_PY=0
+command -v python3 >/dev/null 2>&1 && HAS_PY=1
+NL=$'\n'
+json_ok() {
+  if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
+  if printf '%s\n' "$OUT" | python3 -I -c 'import json,sys; json.load(sys.stdin.buffer)' \
+    2>"$tmp/pyerr"; then
+    pass "$1"
+  else
+    fail "$1" "$(cat "$tmp/pyerr")" "in: $OUT"
+  fi
+}
+json_is() {
+  if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
+  # A Python built for Windows ends the lines it prints with CRLF; tr takes that away.
+  is "$1" "$(printf '%s\n' "$OUT" | python3 -I -c "import json,sys
+d = json.load(sys.stdin.buffer)
+$2" 2>&1 | tr -d '\r')" "$3"
+}
+# The task head lines rebuilt from its JSON.
+HEAD_PY='for k, v in d.items():
+    if isinstance(v, list): v = (", " if k == "topics" else ",").join(v) or "-"
+    print(k + ": " + v)'
+sb task head EX-1
+text="$OUT"
+sb task head EX-1 --json
+rc_is "task head --json: exit 0" 0
+json_ok "task head --json: parses as JSON"
+json_is "task head --json: the same fields as the text, in its order" "$HEAD_PY" "$text"
+out_has "task head --json: one object, a key per line" \
+  "{${NL}  \"id\": \"EX-1\",${NL}  \"path\": \"$P/tasks/EX-1/README.md\","
+out_has "task head --json: quotes are escaped" '"title": "Fix: totals \"rounded\" twice"'
+out_has "task head --json: topics is an array" '"topics": ["billing/invoices"]'
+out_has "task head --json: no environment set is an empty array" '"envs": []'
+out_has "task head --json: a missing value is a dash" '"epic": "-"'
+is "task head --json: the object closes on the last line" "$(printf '%s\n' "$OUT" | tail -1)" "}"
+sb task head EX-7 --json
+out_has "task head --json: each environment is an item" \
+  '"envs": ["dev:EX-7:done", "qa:EX-70:planned"]'
+sb task head EX-7
+text="$OUT"
+sb task head --json EX-7
+json_is "task head --json: the flag may come first" "$HEAD_PY" "$text"
+sb task head EX-404 --json
+rc_is "task head --json: unknown task gives exit 1" 1
+out_is "task head --json: and prints nothing" ""
 sb task bogus
 rc_is "task: unknown subcommand gives exit 5" 5
 
@@ -1843,12 +1895,19 @@ line_is "task new --subproject --envs: the subproject's first environment" "$TM"
 is "task new --subproject: the key sits after epic" "$(($(lineno "$TM" 'subproject:') - $(lineno "$TM" 'epic:')))" "1"
 sb task head MU-1
 out_has "task head: shows the subproject" "subproject: infra"
+text="$OUT"
+sb task head MU-1 --json
+out_has "task head --json: the subproject key, before topics" \
+  ",${NL}  \"subproject\": \"infra\",${NL}  \"topics\": "
+json_is "task head --json: with a subproject, the same fields as the text" "$HEAD_PY" "$text"
 sb task new MU-2 --project Multi --subproject nope
 rc_is "task new --subproject: an unknown subproject gives exit 1" 1
 absent "task new --subproject: and writes no README" "$vault/$M/tasks/MU-2/README.md"
 sb task new MU-2 --project Multi --title "App work"
 sb task head MU-2
 out_lacks "task head: no subproject line on a task with none" "subproject:"
+sb task head MU-2 --json
+out_lacks "task head --json: no subproject key on a task with none" '"subproject"'
 sb task set MU-2 subproject=Tools
 out_is "task set subproject: written as the note is named" "subproject: tools"
 is "task set subproject: the key sits after epic" "$(($(lineno "$vault/$M/tasks/MU-2/README.md" 'subproject:') - $(lineno "$vault/$M/tasks/MU-2/README.md" 'epic:')))" "1"
@@ -2248,7 +2307,8 @@ is "validation new: the section holds the template's four parts, word for word" 
 ### Checks
 - <Each command that must pass, such as the tests, linter and build, and what it proves.>
 ### Check as a user would
-- <The steps that use the change as a user does, and what to look for.>
+- <One line per step that uses the change as a user does: its tool, then what to look for.>
+- <A tool is a skill by name, such as a browser-testing skill, a command, an API call or a query.>
 ### A pass
 - <What a pass needs: every check above passes, the user steps work, nothing else broke.>"
 echo "- npm test" >>"$vault/$S/claude/validation.md"
@@ -2286,7 +2346,10 @@ sb scaffold project Specs --path "$S" --keys SP
 err_has "validation: a second scaffold leaves the note alone" "exists: $S/claude/validation.md"
 VS="$here/skills/vault-setup/SKILL.md"
 file_has "vault-setup: lists the validation mode" "$VS" '| validation <project> | link]'
-file_has "vault-setup: asks for delivery" "$VS" '| `delivery` | whether stories are built from an approved spec'
+file_has "vault-setup: asks for delivery, a fallback" "$VS" \
+  '| `delivery` | what a story with no `delivery` of its own falls back to, as `### Profile'
+file_has "vault-setup subproject: delivery is a fallback" "$here/skills/vault-setup/subproject.md" \
+  '- `delivery` is a fallback, as `### Profile frontmatter` in `docs/contract.md` says.'
 file_has "vault-setup: asks for spec_home" "$VS" '| `spec_home` | with `spec`:'
 file_has "vault-setup: asks for validation_home" "$VS" '| `validation_home` | whether `validation.md`'
 file_has "vault-setup: project mode ends with the validation steps" "$VS" "10. Write each repo's validation steps as"
@@ -2356,7 +2419,8 @@ sb task set SP-1 subproject= branch=feature/SP-1-first
 printf '%s\n' '# SP-1 - Requirements' '' '## R1 - Login form' '' 'WHEN a user opens the page, THE app SHALL show a form.' '' \
   '- [ ] The form has two fields.' '' '## R2 - Bad password' '' 'IF the password is wrong, THEN the app SHALL say so.' '' '## R3 - Unused' '' 'Left out.' >"$SD/requirements.md"
 printf '%s\n' '# SP-1 - Design' '' '## Approach' '' 'A new route.' '' '## Components' '' 'The form.' '' '## Testing' '' 'A browser check.' >"$SD/design.md"
-printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' '  - Check: open the page' '' \
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' \
+  '  - Check: open /login - expected: shows `Sign in: email, password`' '' \
   '- [x] T2 - The error' '  - Requirements: R2, R9' '  - Design: Approach' '- [ ] T3 - Nothing named' '  - Requirements: <R1, R2>' '- [ ] T4 - No design' '  - Requirements: r2' '  - Design: none' >"$SD/tasks.md"
 sb spec tasks SP-1
 rc_is "spec tasks: exit 0" 0
@@ -2374,6 +2438,8 @@ repo_path: $oT/scode/spec-app
 branch: feature/SP-1-first
 validation: $S/claude/validation.md"
 out_has "spec packet: the item as written" "  - Files: src/login.ts"
+out_has "spec packet: the check and its expected result, as written" \
+  '  - Check: open /login - expected: shows `Sign in: email, password`'
 out_has "spec packet: the requirement it names, with its checks" "### R1 - Login form
 
 WHEN a user opens the page, THE app SHALL show a form.
@@ -2431,13 +2497,19 @@ is "spec skill: the description is under 200 characters" "$((${#sk_desc} < 200))
 case "$sk_desc" in *"spec-driven"*) pass "spec skill: the description names spec-driven" ;; *) fail "spec skill: the description names spec-driven" "in: $sk_desc" ;; esac
 file_has "spec skill: carries the conventions pointer" "$SK" 'Conventions: before writing notes, run `second-brain conventions`'
 file_has "spec skill: its first tool call is the context" "$SK" 'Your first tool call is `second-brain context`'
+file_has "spec skill: an inherited spec becomes the story's own delivery" "$SK" \
+  '5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the'
+file_has "spec skill: so story-tracker never weighs it" "$SK" \
+  'subproject or the profile becomes the story'"'"'s own, so story-tracker never weighs it.'
+file_lacks "README: no longer says the profile decides a spec" "$here/README.md" \
+  'or set `delivery: spec` in'
 for ph in requirements design tasks; do
   file_has "spec skill: the $ph approval note" "$SK" "Spec: $ph approved by the owner."
 done
 file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
 file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
 file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" "Resume \`spec-lead\` with SendMessage and the owner's answer as written."
-for a in spec-lead implementer reviewer; do
+for a in spec-lead implementer reviewer spec-checker; do
   AF="$here/agents/$a.md"
   line_is "$a: named as its file" "$AF" "name: $a"
   ad="$(sed -n 's/^description: //p' "$AF")"
@@ -2445,10 +2517,89 @@ for a in spec-lead implementer reviewer; do
   file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
 done
 line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
-for a in implementer reviewer docs-keeper scrum-master; do
+for a in implementer reviewer docs-keeper scrum-master spec-checker; do
   if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
 done
-line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
+line_is "reviewer: edits no file, and has the Skill tool" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep, Skill"
+SC="$here/agents/spec-checker.md"
+line_is "spec-checker: reads, and has no tool that writes" "$SC" "tools: Read, Glob, Grep"
+line_is "spec-checker: runs on opus" "$SC" "model: opus"
+for g in 'a requirement or design heading a task names that the files lack.' 'a requirement no task meets.' \
+  'a task that needs a later one.'; do
+  line_is "spec-checker: a tasks.md gap, $g" "$SC" "- In \`tasks.md\`: $g"
+done
+file_has "spec-checker: its prompt is the spec files' paths alone" "$SC" \
+  'Your prompt is the paths of'
+file_has "spec-checker: reads nothing but those files" "$SC" \
+  '- Read nothing else: not the story, not the code, not another file in the folder.'
+file_has "spec-checker: a vague task check is a gap" "$SC" \
+  'a task with no `- Check: <command or step> - expected: <what it prints or shows>`'
+file_has "spec-checker: reports one line per gap" "$SC" \
+  '- One line per gap: `- <file> > <heading> - <what an agent could not build> - <a question>`.'
+file_has "spec-checker: says when there is no gap" "$SC" 'No gap: reply `No gaps.` and nothing else.'
+file_has "spec-checker: proposes no fix" "$SC" '- Propose no fix: the caller closes each gap with the owner.'
+line_is "spec-checker: writes nothing" "$SC" "- Write nothing, anywhere."
+PH="$here/skills/spec/phases.md"
+file_has "spec phases: one question per AskUserQuestion call" "$PH" \
+  '- Ask one question at a time: one question per AskUserQuestion call. Wait for its answer.'
+file_has "spec phases: the draft in chunks of 200 to 300 words" "$PH" \
+  '- Show the draft in chunks of about 200 to 300 words'
+file_has "spec phases: each chunk asks what is wrong or missing, as plain text" "$PH" \
+  "- End each chunk with the line \`What's wrong or missing?\` as plain text, not an AskUserQuestion"
+line_is "spec phases: then stops for the owner's answer" "$PH" "  call. Then stop for the owner's answer."
+line_is "spec phases: the check runs once the last chunk's fixes are written" "$PH" \
+  'For design and tasks, once the owner has answered the last chunk and its fixes are written:'
+line_is "spec phases: approval only after the last chunk" "$PH" "- Ask for the approval only after the last chunk."
+file_has "spec phases: each task check names its expected result" "$PH" \
+  '`- Check: <command or step> - expected: <what it prints or shows>`.'
+file_has "spec phases: a vague check is rewritten with the owner" "$PH" \
+  '- A check with no command or step, or no expected result, is vague: rewrite it with the owner.'
+line_is "spec phases: the spec check has a section" "$PH" "## The spec check"
+file_has "spec phases: launches spec-checker" "$PH" '1. Launch `odsb:spec-checker` with the Agent tool.'
+line_is "spec phases: the design check reads requirements and design" "$PH" \
+  '   - Design: `requirements.md` and `design.md`.'
+line_is "spec phases: the tasks check reads all three files" "$PH" \
+  '   - Tasks: `requirements.md`, `design.md` and `tasks.md`.'
+file_has "spec phases: shows the owner the gaps" "$PH" '3. Show the owner the gaps, numbered, as it wrote them.'
+file_has "spec phases: closes each gap with the owner" "$PH" \
+  '4. Close each gap with the owner, and write the answer in the phase file.'
+line_is "spec phases: a gap the owner rejects is left" "$PH" '   - The owner says a gap is not one: leave it.'
+line_is "spec phases: a gap in an approved phase reopens it" "$PH" \
+  '   - A gap in an approved phase: write `Spec: <phase> reopened.` as a status note, then go back to'
+line_is "spec phases: and goes back to that phase" "$PH" '     that phase.'
+line_is "spec skill: a change at approval is shown, then asked again" "$SK" \
+  '   - A change: make it, show the changed chunk, then ask again.'
+file_has "spec skill: asks as the chat rules say" "$SK" 'Ask as `## The chat` in `phases.md` says.'
+file_has "spec skill: shows the phase in chunks" "$SK" \
+  '4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.'
+file_has "spec skill: spec-checker reads design and tasks before approval" "$SK" \
+  '5. Design and tasks: have `spec-checker` read the spec, and close its gaps with the owner, as'
+line_is "spec tasks template: the check names its expected result" "$here/templates/spec-tasks.md.tmpl" \
+  '  - Check: <The command or step the reviewer runs.> - expected: <What it prints or shows.>'
+line_is "contract: spec-checker and its tools" "$here/docs/contract.md" \
+  '| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |'
+line_is "contract: a task check names its expected result" "$here/docs/contract.md" \
+  '  `- Check: <command or step> - expected: <what it prints or shows>`.'
+line_is "guide: lists spec-checker" "$here/docs/guide.md" \
+  '| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |'
+file_has "changelog: names spec-checker" "$here/CHANGELOG.md" \
+  'the new `spec-checker` agent reads the spec'
+file_has "validation template: each user step names its tool" "$here/templates/validation-repo.md.tmpl" \
+  "- <One line per step that uses the change as a user does: its tool, then what to look for.>"
+file_has "validation template: a tool is a skill, a command, an API call or a query" "$here/templates/validation-repo.md.tmpl" \
+  "a skill by name, such as a browser-testing skill, a command, an API call or a query."
+file_has "reviewer: runs each user step with the tool its line names" "$here/agents/reviewer.md" "that runs it. Run the step with that tool."
+file_has "reviewer: a skill runs through the Skill tool" "$here/agents/reviewer.md" "- A skill: call it with the Skill tool"
+file_has "reviewer: a step whose tool it cannot run is BLOCKED and names the tool" "$here/agents/reviewer.md" "found, is BLOCKED. Name the tool."
+file_has "reviewer: screenshots go in a temp folder outside the repo" "$here/agents/reviewer.md" "make one temp folder outside the repo with \`mktemp -d\`"
+file_has "reviewer: names the screenshots folder" "$here/agents/reviewer.md" "Name the temp folder that holds the"
+file_has "reviewer: keeps step 0's status output" "$here/agents/reviewer.md" "Keep the \`status --porcelain\` output: the user steps are checked against it."
+file_has "reviewer: removes only an untracked path step 0 did not list" "$here/agents/reviewer.md" "Remove only an untracked (\`??\`) path that step 0's output did not list, and name it."
+file_has "reviewer: a tracked file a step changed is a finding, never deleted" "$here/agents/reviewer.md" "A tracked file a step changed is a finding. Never delete it."
+file_has "reviewer: never resets the owner's work" "$here/agents/reviewer.md" "Never run \`git checkout\`, \`restore\`, \`reset\`, \`clean\` or \`stash\`."
+file_has "reviewer: a line with no tool runs with Bash only when Bash can do it" "$here/agents/reviewer.md" "run it with Bash when Bash can do what it says."
+file_has "reviewer: a browser line with no tool is BLOCKED" "$here/agents/reviewer.md" "A line that needs a browser and names no tool is BLOCKED. Name the step and ask for its tool."
+file_has "vault-setup: drafts each user step's tool from the repo" "$here/skills/vault-setup/validation.md" "Draft the tool from the repo"
 file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
 file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
 file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"
@@ -2461,7 +2612,62 @@ file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKIL
 file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
 file_has "spec phases: never the whole repo" "$here/skills/spec/phases.md" "and what they call. Not the whole"
 if [ -e "$here/agents/spec-writer.md" ]; then fail "spec-writer: the agent is gone"; else pass "spec-writer: the agent is gone"; fi
-file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: weighs a story when work starts" "$ST" \
+  'Weigh how a story is built when work starts on it: in start mode once the story exists, or on a'
+file_has "story-tracker: its own delivery is the key in its frontmatter" "$ST" \
+  "A story has its own \`delivery\` when its README's frontmatter sets the key to \`direct\` or"
+file_has "story-tracker: the spec command does not tell where delivery comes from" "$ST" \
+  '`second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the'
+file_lacks "story-tracker: no longer reads the delivery that holds" "$ST" 'Read its `delivery` line'
+file_has "story-tracker: a story with its own delivery is never weighed again" "$ST" \
+  'A story with its own `delivery` is never weighed again.'
+file_has "story-tracker: its own spec offers the spec skill" "$ST" \
+  '`spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.'
+file_has "story-tracker: a delivery the owner names is written, not weighed" "$ST" \
+  'The owner says how to build it, such as "spec-driven": write it with'
+file_has "story-tracker: an approved spec note makes a story spec" "$ST" \
+  '- A story with a `Spec: <phase> approved by the owner.` status note is `spec`: its spec was'
+file_has "story-tracker: that story's spec key is written" "$ST" \
+  '  - Write `second-brain task set <ID> delivery=spec`, then go on as for a story with its own'
+file_has "story-tracker create: start mode reaches the weighing" "$STC" \
+  '6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.'
+file_has "story-tracker: a spec helps a big, unclear or unattended story" "$ST" \
+  'Spec-driven: the story is big, unclear, or meant to run without the owner.'
+file_has "story-tracker: gives the signs of a spec" "$ST" \
+  'Signs: many files or repos, open questions in the criteria, a long unattended build.'
+file_has "story-tracker: a simple story is set direct with no question" "$ST" \
+  'Weighed direct: run `second-brain task set <ID> delivery=direct` and ask nothing. Say so in one'
+line_is "story-tracker: it says so in one line, with the reason" "$ST" '  line, with the reason.'
+file_has "story-tracker: a spec story is described in three lines" "$ST" \
+  'describe the story in at most three lines: what it changes, what it'
+file_has "story-tracker: the description names what it touches and the criteria" "$ST" \
+  'touches and how many criteria it has. Then say why a spec helps.'
+file_has "story-tracker: the owner is asked" "$ST" \
+  'Ask the owner with AskUserQuestion: `spec` or `direct`.'
+file_has "story-tracker: the answer is written" "$ST" \
+  'Write the answer with `second-brain task set <ID> delivery=<answer>`.'
+line_is "story-tracker: an answered spec offers the spec skill" "$ST" \
+  '  - `spec`: offer `/odsb:spec <ID>`.'
+line_is "story-tracker: direct goes on" "$ST" '  - `direct`: go on here.'
+file_has "conventions: a task's delivery is set when work starts" \
+  "$here/templates/obsidian-conventions.md.tmpl" \
+  '  - `delivery` - `spec` or `direct`, how the story is built, set when work starts on it.'
+file_lacks "guide: the profile's delivery is no default" "$here/docs/guide.md" \
+  "A project's default, and where"
+file_has "contract: an inherited delivery is what spec falls back to" "$here/docs/contract.md" \
+  '- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`'
+file_has "contract: story-tracker weighs a story with no delivery of its own" \
+  "$here/docs/contract.md" \
+  '- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and'
+file_has "contract: points to the weighing in story-tracker" "$here/docs/contract.md" \
+  'the story'"'"'s own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.'
+st_desc="$(sed -n 's/^description: //p' "$ST")"
+st_check="story-tracker: the description leaves spec requests to the spec skill"
+case "$st_desc" in
+  *[Ss][Pp][Ee][Cc]*) fail "$st_check" "in: $st_desc" ;;
+  *) pass "$st_check" ;;
+esac
 file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
 file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
 
@@ -2499,7 +2705,7 @@ rc_is "spec: a repo spec with no recorded location still exits 1" 1
 out_has "spec: but prints the delivery first" "delivery: direct"
 out_has "spec: and the folder as -" "dir: -"
 edit "$SPF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|; s/^spec_home: repo$/spec_home: vault/"
-for a in implementer reviewer; do
+for a in implementer reviewer spec-checker; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
 file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
@@ -2627,6 +2833,117 @@ file_has "spec tasks template: every task is built first, then reviewed" "$here/
 file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
 
+# ---------------------------------------------------------------- spec and validation --json
+sb help
+out_has "help: names the commands that take --json" \
+  "json:     task head, spec tasks, spec status <ID> and validation <project> [repo] take --json"
+sb task new SP-9 --project Specs --title "Json story"
+sb task set SP-9 delivery=spec
+sb spec tasks SP-9 --json
+rc_is "spec tasks --json: no tasks.md exits 1" 1
+out_is "spec tasks --json: and prints nothing" ""
+sb spec new SP-9
+L9="$vault/$S/tasks/SP-9/README.md"
+printf '%s\n' '# SP-9 - Tasks' '' '- [ ] T1 - Say "hi" \ there' '  - Requirements: R1' \
+  '- [x] T2 - Two - parts' '  - Requirements: R1' '- [ ] T3' >"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec tasks SP-9 --json
+rc_is "spec tasks --json: exit 0" 0
+json_ok "spec tasks --json: parses as JSON"
+out_is "spec tasks --json: one object per row, quotes and backslashes escaped" '[
+  {"id": "T1", "state": "todo", "title": "Say \"hi\" \\ there"},
+  {"id": "T2", "state": "done", "title": "Two - parts"},
+  {"id": "T3", "state": "todo", "title": "-"}
+]'
+sb spec tasks SP-9
+text="$OUT"
+sb spec tasks SP-9 --json
+json_is "spec tasks --json: the same fields as the text" \
+  'for r in d: print("\t".join([r["id"], r["state"], r["title"]]))' "$text"
+sb spec status SP-9 --json
+rc_is "spec status --json: a story with no build exits 0" 0
+out_is "spec status --json: and prints an empty array" "[]"
+sb spec status SP-9 T1 built --commit abc1234
+sb spec status SP-9 T1 in-review --commit def5678
+line_is "spec status: a row with no commit keeps commits - over a second write" "$L9" \
+  '- T2 - passed - commits - - Two - parts'
+line_is "spec status: and so does a row with no title" "$L9" '- T3 - todo - commits - - -'
+sb spec issue SP-9 T1 'Say "hi" \ there.' --fix "Tab${TAB}here."
+sb spec status SP-9 T2 passed --commit 0a1b2c3
+sb spec status SP-9 T3 todo --commit 1234abc
+sb spec status SP-9 --json
+rc_is "spec status --json: exit 0" 0
+json_ok "spec status --json: parses as JSON"
+row1='{"id": "T1", "state": "in-review", "commits": ["abc1234", "def5678"], '
+row1="$row1"'"title": "Say \"hi\" \\ there", '
+row1="$row1"'"issues": ["Issue 2026-10-08: Say \"hi\" \\ there. Fix: Tab\there."]}'
+out_is "spec status --json: one object per row, commits and issues as arrays" "[
+  $row1,
+  "'{"id": "T2", "state": "passed", "commits": ["0a1b2c3"], "title": "Two - parts", "issues": []},
+  {"id": "T3", "state": "todo", "commits": ["1234abc"], "title": "-", "issues": []}
+]'
+sb spec status SP-9
+text="$OUT"
+sb spec status SP-9 --json
+json_is "spec status --json: the same fields as the text" 'for r in d:
+    c = ", ".join("`" + h + "`" for h in r["commits"]) or "-"
+    print("- %s - %s - commits %s - %s" % (r["id"], r["state"], c, r["title"]))
+    for i in r["issues"]: print("  - " + i)' "$text"
+edit "$L9" 's/^- T2 - passed - commits `0a1b2c3` - /- T2 - passed - commits - - /'
+sb spec status SP-9 --json
+out_has "spec status --json: a row with no commit, its title holding a dash" \
+  '{"id": "T2", "state": "passed", "commits": [], "title": "Two - parts", "issues": []}'
+sb spec status SP-9 T1 built --json
+rc_is "spec status --json: a task and a state exit 5" 5
+file_has "spec status --json: and nothing is written" "$L9" \
+  '- T1 - in-review - commits `abc1234`, `def5678` - '
+printf '%s\n' '# SP-9 - Tasks' '' '- [ ] T1 - Say "hi" \ there' '  - Requirements: R1' '- [ ] T3' \
+  >"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec status SP-9 T1 built
+sb spec status SP-9 T1 built
+line_is "spec status: a row whose task left tasks.md keeps its title over two writes" "$L9" \
+  '- T2 - passed - commits - - Two - parts'
+is "spec status: and it stays at the end" "$(section_of "$L9" Build | tail -1)" \
+  '- T2 - passed - commits - - Two - parts'
+printf '%s\n' "- [ ] T4 - $(printf 'Caf\303\251 \001') a${CR}b" >>"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec tasks SP-9 --json
+json_ok "spec tasks --json: a title with UTF-8, a control character and a CR parses as JSON"
+out_has "spec tasks --json: UTF-8 bytes are kept, \\u0001 and \\r are escaped" \
+  "$(printf '{"id": "T4", "state": "todo", "title": "Caf\303\251 \\u0001 a\\rb"}')"
+json_is "spec tasks --json: and the title reads back as written" \
+  'print(d[-1]["title"] == "Caf\u00e9 \x01 a\rb")' "True"
+sb spec SP-9 --json
+rc_is "spec --json: the spec form takes no --json, exit 5" 5
+sb spec tick SP-9 T1 --json
+rc_is "spec tick --json: exit 5" 5
+sb validation Specs
+text="$OUT"
+sb validation Specs --json
+rc_is "validation --json: exit 0" 0
+json_ok "validation --json: parses as JSON"
+json_is "validation --json: the same fields as the text" \
+  'for r in d: print("\t".join([r["name"], r["home"], r["path"], r["state"]]))' "$text"
+vrow="{\"name\": \"spec-app\", \"home\": \"vault\", "
+vrow="$vrow\"path\": \"$S/claude/validation.md\", \"state\": \"ok\"}"
+out_has "validation --json: one object per repo" "$vrow"
+sb validation RepoHome --json
+rc_is "validation --json: a project with no repo exits 0" 0
+out_is "validation --json: and prints an empty array" "[]"
+sb validation Specs spec-app
+text="$OUT"
+sb validation Specs spec-app --json
+rc_is "validation <repo> --json: exit 0" 0
+json_ok "validation <repo> --json: parses as JSON"
+json_is "validation <repo> --json: the same fields as the text" 'print("path: " + d["path"])
+if d["body"]: print(d["body"])' "$text"
+out_has "validation <repo> --json: one object, the path first" \
+  "{${NL}  \"path\": \"$S/claude/validation.md\",${NL}  \"body\": \""
+out_has "validation <repo> --json: the body's lines are escaped" '\n\n### Checks'
+sb validation Specs nope --json
+rc_is "validation <repo> --json: an unknown repo exits 1" 1
+out_is "validation <repo> --json: and prints nothing" ""
+sb validation new Specs spec-app --json
+rc_is "validation new --json: exit 5" 5
+
 # ---------------------------------------------------------------- README: each rule it points to has a home
 RM="$here/README.md"
 line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
@@ -2637,6 +2954,10 @@ for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Vali
   file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
   line_is "README: $pf has the heading $ph" "$here/$pf" "$ph"
 done
+file_has "README: points to the guide's Spec-driven delivery" "$RM" \
+  '`## Spec-driven delivery` in `docs/guide.md`'
+line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
+  "## Spec-driven delivery"
 for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
@@ -2659,7 +2980,9 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
   'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
-  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build'; do
+  'skills/story-tracker/SKILL.md|## Spec-driven stories' \
+  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build' \
+  'skills/spec/phases.md|## The chat' 'skills/spec/phases.md|## The spec check'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
   line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"
@@ -2711,6 +3034,90 @@ file_has "spec skill: cuts a missing branch as the branch check says" "$here/ski
   'No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.'
 line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
   "- \`base_branch\` is the branch a new story's branch is cut from, as"
+
+# ---------------------------------------------------------------- a passed spec build is finished
+FN="$here/skills/spec/finish.md"
+exists "spec finish: the step has its own file" "$FN"
+file_has "spec skill: reads finish.md only when the build finished" "$SK" \
+  'Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.'
+file_has "spec finish: read only when every task passed" "$FN" \
+  'Read this file only when `spec-lead` finished with every task passed.'
+file_has "spec finish: the story's branch stays its own" "$FN" \
+  "- The story's \`branch\` stays \`<branch>\` whatever the owner picks: review fixes go on it."
+file_lacks "spec finish: never sets the story's branch" "$FN" 'task set <ID> branch='
+file_has "spec finish: asks the owner with AskUserQuestion" "$FN" \
+  '- Ask with AskUserQuestion, with three options:'
+file_has "spec finish: offers a merge into the target" "$FN" '  - Merge `<branch>` into `<target>`.'
+file_has "spec finish: offers a pull request into the target" "$FN" \
+  '  - Open a pull request from `<branch>` into `<target>`.'
+file_has "spec finish: offers to keep the branch" "$FN" '  - Keep `<branch>` as it is.'
+file_has "spec finish: another target is asked again" "$FN" \
+  '- The owner names another target in the free-text answer: ask again, with the three options for'
+file_has "spec finish: any other answer keeps the branch" "$FN" \
+  '- Do only what the owner picks. Any other answer is `## 5. Keep`.'
+line_is "spec finish: has the Keep heading it points to" "$FN" '## 5. Keep'
+file_has "spec finish: the target is the open release branch" "$FN" \
+  '- The target is the open release branch, `release/<version>`.'
+line_is "spec finish: lists the release branch names" "$FN" \
+  "  git -C \"<path>\" for-each-ref --format='%(refname:lstrip=-2)' \\"
+line_is "spec finish: local and remote, highest first, once each" "$FN" \
+  "    'refs/heads/release/*' 'refs/remotes/*/release/*' | sort -rVu"
+file_lacks "spec finish: no sort by the full ref name" "$FN" 'branch -a --list'
+file_has "spec finish: the highest tag is the last release shipped" "$FN" \
+  '- The highest `v<version>` tag is the last release that shipped.'
+file_has "spec finish: the tags are listed highest first" "$FN" \
+  "git -C \"<path>\" tag --list 'v*' --sort=-v:refname"
+file_has "spec finish: only a release above that tag is open" "$FN" \
+  '- Only a release branch higher than that tag is open.'
+file_has "spec finish: with no tag every release is open" "$FN" \
+  '- With no `v<version>` tag, every release branch is open.'
+file_has "spec finish: the target is the highest open one" "$FN" \
+  '- The target is the highest open release branch.'
+file_has "spec finish: no open release asks the owner" "$FN" \
+  '- No release branch is open: ask the owner to name the target, or a version to cut.'
+file_has "spec finish: base_branch only with no release branch" "$FN" \
+  '- No release branch at all: the target is `base_branch`.'
+file_lacks "spec finish: no repo path the project's repo lacks" "$FN" '`docs/guide.md`'
+file_has "spec finish: does only what the owner picks" "$FN" '- Do only what the owner picks.'
+file_has "spec finish: finds the worktree that holds the target" "$FN" \
+  'git -C "<path>" worktree list --porcelain'
+file_has "spec finish: merges in that worktree" "$FN" \
+  'git -C "<where>" merge --no-ff <branch> -m "Merge <branch> into <target>"'
+file_has "spec finish: a merge pushes nothing" "$FN" 'The merge is local. It pushes nothing.'
+file_has "spec finish: a merge sets next" "$FN" \
+  'second-brain task set <ID> next="Owner reviews the merge into <target>"'
+file_has "spec finish: a merge records a status note" "$FN" \
+  '"Finish: merged <branch> into <target> at <short hash>."'
+file_has "spec finish: names the push and the pull request before they run" "$FN" \
+  '1. Before either runs, name both: the push of `<branch>` to `origin`, and the pull request into'
+file_has "spec finish: a pull request sets next" "$FN" \
+  'second-brain task set <ID> next="Owner reviews the pull request"'
+file_has "spec finish: a pull request records a status note" "$FN" \
+  '"Finish: opened a pull request into <target>: <url>."'
+file_has "spec finish: the description follows the pull request format" "$FN" \
+  '4. Write the description in the pull request format the index points to.'
+file_lacks "spec finish: no template path the project's repo lacks" "$FN" 'pull-request.md.tmpl'
+file_has "spec finish: a failed pick writes a note" "$FN" \
+  '"Finish: <pick> into <target> failed: <reason>; <what ran>."'
+line_is "spec finish: has the failure heading it points to" "$FN" '## 7. A pick that fails'
+file_has "spec finish: deleting the branch needs discard typed" "$FN" \
+  '- Delete the branch only when the owner types `discard`. A pick or a yes is not enough.'
+file_has "spec finish: discard detaches before it deletes" "$FN" \
+  '- `git -C "<path>" switch --detach`, then `git -C "<path>" branch -D <branch>`.'
+file_has "spec finish: discard sets next" "$FN" \
+  'second-brain task set <ID> next="<branch> was discarded; the owner decides what follows"'
+file_has "spec finish: discard keeps the hash in the note" "$FN" \
+  '"Finish: the owner typed discard; <branch> was at <short hash>."'
+file_has "spec finish: never forces a push" "$FN" '- Never force a push or rewrite history.'
+file_has "guide: points to the finishing step" "$GD" 'as `skills/spec/finish.md` says.'
+file_lacks "guide: does not restate the finishing step" "$GD" 'only when you type `discard`'
+file_has "changelog: names the finishing step" "$here/CHANGELOG.md" '`skills/spec/finish.md`'
+line_is "contract: a merge or a pull request runs only on the pick" "$here/docs/contract.md" \
+  "- A merge or a pull request runs only on the owner's pick."
+line_is "contract: each push or pull request is named before it runs" "$here/docs/contract.md" \
+  '- Each push or pull request is named before it runs.'
+file_has "contract: deleting the branch needs discard typed" "$here/docs/contract.md" \
+  "- The story's branch is deleted only when the owner types \`discard\`."
 
 # ---------------------------------------------------------------- result
 if [ -f "$tmp/undefined" ]; then

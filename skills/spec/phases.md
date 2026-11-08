@@ -19,6 +19,18 @@ Read only what this session does not have yet:
 
 Note the branch and short hash of the code you read.
 
+## The chat
+
+The owner answers in this chat, so make each answer easy.
+
+- Ask one question at a time: one question per AskUserQuestion call. Wait for its answer.
+- Show the draft in chunks of about 200 to 300 words: a few requirements, design sections or
+  tasks.
+- End each chunk with the line `What's wrong or missing?` as plain text, not an AskUserQuestion
+  call. Then stop for the owner's answer.
+- Fix what the owner names before you show the next chunk.
+- Ask for the approval only after the last chunk.
+
 ## How the build runs
 
 Write every phase for the build `agents/spec-lead.md` runs.
@@ -56,13 +68,31 @@ Write every phase for the build `agents/spec-lead.md` runs.
   handful of files.
 - Each item is `- [ ] T<n> - <what it builds>`, then four indented lines, each on one line:
   `- Requirements: R1, R2`, `- Design: <headings of design.md>`, `- Files: <paths>` and
-  `- Check: <how the reviewer knows it works>`.
+  `- Check: <command or step> - expected: <what it prints or shows>`.
+- A check names a command the reviewer runs, or a step it takes, and what that prints or shows:
+  `- Check: open the login page, send an empty form - expected: shows "Email is required"`.
+- A check with no command or step, or no expected result, is vague: rewrite it with the owner.
 - Every requirement is met by at least one task.
 - Run `second-brain spec packet <ID> T<n>` for every task. It must succeed: fix what it names,
   such as a requirement or a design heading that does not exist.
 - The packet is all the implementer sees: read one back and check it is enough to build the task
   from.
 - Leave every box unticked.
+
+## The spec check
+
+For design and tasks, once the owner has answered the last chunk and its fixes are written:
+
+1. Launch `odsb:spec-checker` with the Agent tool. Its prompt is the paths of the spec files
+   written so far, one per line, and nothing else.
+   - Design: `requirements.md` and `design.md`.
+   - Tasks: `requirements.md`, `design.md` and `tasks.md`.
+2. It replies with one line per gap, or `No gaps.`.
+3. Show the owner the gaps, numbered, as it wrote them.
+4. Close each gap with the owner, and write the answer in the phase file.
+   - The owner says a gap is not one: leave it.
+   - A gap in an approved phase: write `Spec: <phase> reopened.` as a status note, then go back to
+     that phase.
 
 ## A change the owner asks for
 

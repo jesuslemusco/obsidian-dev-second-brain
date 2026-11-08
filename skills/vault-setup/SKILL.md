@@ -89,7 +89,7 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    | `sprint_length_days` | the sprint length in days | `14` |
    | `sprint_anchor_end` | the end date of the current or next sprint | `"2026-01-14"` |
    | `achievements_skill` | the skill finished stories are handed to, if any | `"<skill name>"` or `""` |
-   | `delivery` | whether stories are built from an approved spec of requirements, design and tasks, or straight from the README | `spec` or `direct` |
+   | `delivery` | what a story with no `delivery` of its own falls back to, as `### Profile frontmatter` in `docs/contract.md` says: an approved spec, or straight from the README | `spec` or `direct` |
    | `spec_home` | with `spec`: whether a story's spec lives in its task folder or in `spec/<ID>/` in the repo | `vault` or `repo` |
    | `validation_home` | whether `validation.md`, how to run and check each repo, is `claude/validation.md` or a file at each repo's root | `vault` or `repo` |
 

@@ -1706,6 +1706,16 @@ chk "validation: a section with only the A pass line left unfilled" validation E
 edit "$vault/$P/claude/validation.md" 's/^- <.*>$/- make test/'
 doc Example
 chk "validation: ok once the section is written" validation Example "ok | 0 | -"
+grep -F -- '- <A tool is a skill by name, ' "$here/templates/validation-repo.md.tmpl" >>"$vault/$P/claude/validation.md"
+doc Example
+chk "validation: a section that still holds the user steps' tool line" validation Example "warn | 1 | example-api:placeholders"
+edit "$vault/$P/claude/validation.md" '/^- <A tool is a skill by name, /d'
+printf '%s\n' '- <The steps that use the change as a user does, and what to look for.>' >>"$vault/$P/claude/validation.md"
+doc Example
+chk "validation: a section that still holds a retired placeholder of an earlier template" validation Example "warn | 1 | example-api:placeholders"
+edit "$vault/$P/claude/validation.md" '/^- <The steps that use the change as a user does, /d'
+doc Example
+chk "validation: ok again once the retired line is gone" validation Example "ok | 0 | -"
 sb scaffold subproject Example infra --repos example-infra
 edit "$vault/$P/claude/subprojects/infra.md" 's/^validation_home: ""$/validation_home: repo/; s/^delivery: ""$/delivery: later/'
 doc Example

@@ -23,6 +23,8 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
    - Exit 1 about a repo: say which case it is and stop.
 4. `delivery: direct`: ask whether to build this story from a spec. Yes:
    `second-brain task set <ID> delivery=spec`.
+5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the
+   subproject or the profile becomes the story's own, so story-tracker never weighs it.
 
 ## Step 1 - Where the spec stands
 
@@ -48,15 +50,16 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
 
 1. Read only what this session does not have yet, as `## What to read, once` in `phases.md` says.
 2. Ask the owner, with AskUserQuestion, what the story and the code do not settle, before you
-   write what depends on it.
+   write what depends on it. Ask as `## The chat` in `phases.md` says.
    - Never invent a requirement, a decision or a task.
 3. Write the phase file with the Edit or Write tool.
-4. Show the owner the path and the phase in short: each requirement with its checks, each design
-   decision, or each task with the requirements it meets.
-5. Ask with AskUserQuestion whether to approve the phase or change it. The owner says what to
+4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.
+5. Design and tasks: have `spec-checker` read the spec, and close its gaps with the owner, as
+   `## The spec check` in `phases.md` says.
+6. Ask with AskUserQuestion whether to approve the phase or change it. The owner says what to
    change in the free-text answer.
-   - A change: make it, then go back to item 4.
-6. The owner picks approve: `second-brain task note <ID> "Spec: <phase> approved by the owner." --session ${CLAUDE_SESSION_ID}`.
+   - A change: make it, show the changed chunk, then ask again.
+7. The owner picks approve: `second-brain task note <ID> "Spec: <phase> approved by the owner." --session ${CLAUDE_SESSION_ID}`.
    - After the tasks note, run `second-brain spec link <ID>`.
    - Then go on to the next phase.
 
@@ -93,6 +96,7 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
   Step 2 for that phase.
   - The owner approves the phases after it again too. Only then does the build go on.
 - It finished: show the task list, one commit per task, and the final validation result.
+  - Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.
   - The story is `in-review`: story-tracker takes it from there.
 
 ## Rules

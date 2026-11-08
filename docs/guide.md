@@ -17,6 +17,7 @@ Start with the [README](../README.md). Every helper command and note format is i
 | `spec-lead` | agent | Builds the approved tasks through `implementer` and `reviewer`. |
 | `implementer` | agent | Builds and commits one task from its context packet alone. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
+| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
 | `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
 
 ## What to say
@@ -95,12 +96,21 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   [What to say](#what-to-say).
 - You approve each phase or say what to change, as
   `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
+- The skill asks one question at a time and shows each draft in short chunks, as
+  `## The chat` in `skills/spec/phases.md` says.
+- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
+  lists what it could not build from it. You close each gap first, as
+  `## The spec check` in `skills/spec/phases.md` says.
+- When work starts on a story with no `delivery` of its own, Claude weighs it. A simple one is
+  built direct with no question. For one that needs a spec, Claude asks you. The signs are under
+  `## Spec-driven stories` in `skills/story-tracker/SKILL.md`.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
-- A project's default, and where its specs live, are `delivery` and `spec_home` under
+- A project's `delivery` is a fallback, and `spec_home` says where its specs live. Both are under
   `### Profile frontmatter` in `docs/contract.md`.
 - `second-brain spec EX-2` prints the story's `delivery`, `spec_home` and the paths of its three
   spec files.
-- The spec files' shape is under `## 4. A task` in `docs/contract.md`.
+- The spec files' shape is under `## 4. A task` in `docs/contract.md`, such as each task's
+  `- Check: <command or step> - expected: <what it prints or shows>` line.
 - The doctor's `spec-trace` check names an acceptance criterion that no requirement serves.
 - Once you approve the tasks, the story's Approach, Changes and Verification link to the spec.
 - The build runs in agents, which cannot ask you anything. Every question comes through your
@@ -109,6 +119,8 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   that stop it are in `agents/spec-lead.md`.
 - `second-brain spec status EX-2` prints where the build stands, one line per task.
 - When the last task passes, the story moves to `in-review`.
+- Then Claude asks whether to merge the branch into the release branch, open a pull request into
+  it, or keep it, as `skills/spec/finish.md` says.
 
 ### Validation steps
 
@@ -119,6 +131,9 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
+  in `docs/contract.md` says.
+- The plugin ships no browser. Name the browser skill or command your repo uses.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
 

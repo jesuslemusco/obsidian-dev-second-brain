@@ -45,8 +45,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
   the tasks root.
 - With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest
   status note or its sprint's end, before the doctor names it and `doctor --fix` archives it.
-- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design
-  and tasks, approved before any code. A subproject or a story may set its own.
+- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back to,
+  as `### Profile frontmatter` in the plugin's `docs/contract.md` says.
 - `spec_home:` puts the spec in the task's folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).
 - `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo's root (`repo`).
 

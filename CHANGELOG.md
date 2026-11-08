@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- The test workflow runs the doctor tests in a job of their own on each runner, in parallel with
+  the leak check and the other suites. On Windows they took 17 of the run's 40 minutes.
+- `--json` on `task head`, `spec tasks`, `spec status <ID>` and `validation <project> [repo]`
+  prints the same fields as one JSON value, as `doctor --json` does, so an agent never misreads a
+  field. `docs/contract.md` section 7 gives each shape.
+- A `## Build` row with no commit keeps `commits -` when `spec status` or `spec issue` writes the
+  section again.
+- A `## Build` row whose task left `tasks.md` keeps its title when the section is written again.
+- The `spec` skill asks one question at a time and shows each draft in chunks of about 200 to 300
+  words, as `## The chat` in `skills/spec/phases.md` says.
+- Each task's check names its command or step and its expected result:
+  `- Check: <command or step> - expected: <what it prints or shows>`. The tasks template shows it.
+- Before you approve the design, and again the tasks, the new `spec-checker` agent reads the spec
+  files alone and lists what it could not build from them. You close each gap before you approve.
+- `story-tracker` weighs a story with no `delivery` of its own when work starts on it. A simple
+  one is set `direct` with no question. For one that needs a spec it asks the owner, and on
+  `spec` offers `/odsb:spec <ID>`.
+- A `delivery` from the profile or a subproject is now a fallback, as `### Profile frontmatter` in
+  `docs/contract.md` says. The `spec` skill writes `delivery=spec` on a story that inherits it.
+- The conventions note is at version 7: a task's `delivery` is set when work starts on it. The
+  doctor's `conventions` check warns about an older note. Its fix is under `### conventions` in
+  `skills/vault-doctor/checks.md`.
+- Upgrading: a story built from an inherited `spec` before 0.6.0 has no `delivery` of its own.
+  `story-tracker` takes its `Spec: <phase> approved by the owner.` note as `spec` and writes the
+  key. To set it ahead, run `second-brain task set <ID> delivery=spec`.
+- Each step under `### Check as a user would` names its tool: a skill such as a browser-testing
+  skill, a command, an API call or a query. The plugin ships no browser.
+- `reviewer` has the Skill tool and runs each step with its tool. A step it cannot run is BLOCKED
+  and names the tool, and a browser step's screenshots go in a temp folder it names.
+- A step written before, with no tool, runs through Bash when Bash can do what it says. One that
+  needs a browser is BLOCKED and asks for its tool.
+- `reviewer` removes only an untracked path its first `git status --porcelain` did not list, and
+  never runs `git checkout`, `restore`, `reset`, `clean` or `stash`.
+- The doctor's `validation` check also warns about the earlier template's user-check line.
+- When a spec build passes, the `spec` skill asks whether to merge the branch into the release
+  branch, open a pull request into it, or keep it, as the new `skills/spec/finish.md` says. It
+  names each push or pull request before it runs, and deletes the branch only when the owner
+  types `discard`.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

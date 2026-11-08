@@ -168,6 +168,10 @@ tags:
   requirements, design and tasks that the owner approves first.
 - A subproject's note and a task may set `delivery` too. The most specific value wins: the
   task's, then its subproject's, then the profile's.
+- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`
+  skill fall back to.
+- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and writes
+  the story's own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.
 - `spec_home` is where a story's spec lives. `vault`: `spec/` next to the task's `README.md`.
   `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
 - The story's repo is the first repo of its subproject, else the project's first repo, in the
@@ -256,6 +260,8 @@ tags:
   `## <repo>` section. Nothing in the vault points to it.
 - A section is written from `validation-repo.md.tmpl` and keeps its four level-3 headings:
   `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
+- Each step under `### Check as a user would` is one line that starts with the tool that runs it:
+  a skill by its name, a command, an API call or a query.
 - A section is written when something is under its heading. One with nothing is `empty`.
 
 ## 4. A task
@@ -313,7 +319,7 @@ tags:
 - Fenced code in the README or in `requirements.md` is not read.
 - In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
   `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
-  `- Check: <how it is checked>`.
+  `- Check: <command or step> - expected: <what it prints or shows>`.
 - A spec story's README gets a `## Build` section, before `## Status notes`. `spec status` and
   `spec issue` write it; it is never edited by hand.
 - `## Build` has one line per task of `tasks.md`, in its order:
@@ -399,6 +405,15 @@ Rules that hold for every command:
   `/c/...`.
 - Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_CLAUDE_HOME` (link
   directory), `SECOND_BRAIN_TODAY` (today's date, for tests).
+- `--json` prints the same fields as the text, as one JSON value and nothing else on stdout.
+- With `--json`, exit codes and stderr do not change.
+- Only a form whose row below names `--json` takes it.
+- In JSON a row is an object, its keys the field names. Rows are an array of objects, `[]` when
+  there is none.
+- A list field is an array of strings, `[]` for `-`.
+- A count is a number.
+- Any other field is a string, `-` when empty, as in the text.
+- A string escapes `"`, `\` and every control character.
 
 | Command | Output | Notes |
 |---|---|---|
@@ -416,7 +431,7 @@ Rules that hold for every command:
 | `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
 | `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, live or archived, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
-| `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | |
+| `task head <ID> [--project P] [--json]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | `--json` prints one object whose keys are the lines' keys, `subproject` only when set. `topics` and `envs` are arrays, each env as `<env>:<id>:<status>` |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
 | `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only. Setting `status` also sets the `status/` tag, and setting `type` the `type/` tag. `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for a list key (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>`, and is written as its note is named; exit 1 when none matches |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; exit 5 for a `type/` or `status/` tag |
@@ -427,15 +442,15 @@ Rules that hold for every command:
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task. With `repo`, also exit 1 when the project lists no repo, or the repo has no recorded location or no folder; the message says which. The lines are then still printed, with `dir` and the three files as `-`, so `delivery` can be read |
 | `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, with the task's title. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
-| `spec tasks <ID> [--project P]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does |
+| `spec tasks <ID> [--project P] [--json]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does. `--json` prints the rows with the keys `id`, `state` and `title` |
 | `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings. The task id is matched without letter case; fenced code is not read. Exit 1 when no item or two items have it, or `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
 | `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | `validation` is the repo's `validation.md` path, or `none (<state>)` with no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
 | `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` that holds is `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`. With `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one that has its link is left alone. Line endings and the final newline are kept; frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story prints `no change: <ID> is not built from a spec (delivery: direct)` and writes nothing. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
-| `spec status <ID> [--project P]` | the body of the README's `## Build` section, or nothing when it has none | |
+| `spec status <ID> [--project P] [--json]` | the body of the README's `## Build` section, or nothing when it has none | `--json` prints the task rows, with the keys `id`, `state`, `commits`, `title` and `issues`. `commits` holds the hashes without their backticks. `issues` holds the row's issue lines, each as written from `Issue` on. Other lines are not read |
 | `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`. `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`. `--commit` adds a hash to its commits once. Adds the status note `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` is missing or has no such task |
 | `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue line (section 4) under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
-| `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
-| `validation <project> <repo>` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing |
+| `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
+| `validation <project> <repo> [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
@@ -598,7 +613,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
 | project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
-| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
+| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
 | project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A requirement is a `## ` heading whose first word is `R` and a number. Criteria and `- Serves:` lines are read as `## 4. A task` says; the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
@@ -803,6 +818,11 @@ text.
   only when it is newer than every `reopened` note of its own phase or an earlier one.
 - Only the owner's session asks the owner: a subagent has no AskUserQuestion.
 - When the owner approves the task list, the skill runs `spec link <ID>`.
+- Before the owner approves the design, and again the tasks, the skill launches `spec-checker`.
+  Its prompt is the paths of the spec files written so far, and nothing else.
+- `spec-checker` reads and never writes. Its reply lists what it could not build from the files.
+- The skill shows the owner the gaps and closes each one with the owner before it asks for the
+  approval.
 - Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
   first commits the spec files on the story's branch.
 - `spec-lead` checks the approval note itself, and keeps track of the build in the story's
@@ -810,10 +830,27 @@ text.
 - `spec-lead` launches `reviewer` on the untouched branch first. Then it builds every task, one
   `implementer` run per task, then reviews them in order, one `reviewer` run per task.
 - `implementer` runs no check: `reviewer` runs them all.
+- `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
+  skill through the Skill tool, anything else through Bash.
+- A line that names no tool runs through Bash when Bash can do what it says. One that needs a
+  browser and names no tool is BLOCKED: the verdict names the step and asks for its tool.
+- A step whose tool `reviewer` cannot run, such as a skill that is not installed, is BLOCKED, and
+  the verdict names the tool.
+- Plugin agents cannot set `mcpServers`, so a browser comes from a skill or a command, never from
+  an MCP server.
+- The plugin ships no browser. A repo's `validation.md` names the one it uses.
+- A browser step saves its screenshots in a temp folder outside the repo, and `reviewer` names
+  the folder in its findings.
+- `reviewer` keeps the `git status --porcelain` output of its first step. After the user steps it
+  removes only an untracked (`??`) path that output did not list, and names it.
+- A tracked file a user step changed is a finding, never deleted.
+- `reviewer` never runs `git checkout`, `restore`, `reset`, `clean` or `stash`. Any other change
+  to the tree is a finding.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
   issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
-- `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
+- `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
+  to what they are given.
 - `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
   the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
 - A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the review
@@ -821,13 +858,19 @@ text.
 - A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
 - Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on from
   the `## Build` section, so a build resumes in a new session.
-- The three agents and their tools:
+- When `spec-lead` finishes with every task passed, the skill asks the owner whether to merge the
+  story's branch, open a pull request, or keep the branch, as `skills/spec/finish.md` says.
+- A merge or a pull request runs only on the owner's pick.
+- Each push or pull request is named before it runs.
+- The story's branch is deleted only when the owner types `discard`.
+- The four agents and their tools:
 
 | Agent | Tools | Job |
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
 | `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
+| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff and runs each user step with its tool; edits no file |
+| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production.

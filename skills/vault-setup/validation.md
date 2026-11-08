@@ -26,6 +26,11 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
      what it proves.
    - `### Check as a user would`: the steps that use a change as a user does, such as opening the
      page, calling the endpoint or running the command, and what to look for.
+   - Each user step is one line that starts with its tool, as `### Validation` in
+     `docs/contract.md` says. Draft the tool from the repo: a command from its scripts, an API
+     call from its routes, a query from its database config.
+   - A step on a page needs a browser, and the plugin ships none. Offer a browser skill this
+     session lists, else ask which skill or command the repo uses.
    - `### A pass`: what must be true for a change to pass.
 4. Show the draft and ask the user to confirm or correct each part.
 5. Write only what they confirm, in place of the `<...>` lines, with the Edit tool.

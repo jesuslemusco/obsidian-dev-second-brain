@@ -27,6 +27,15 @@
 - Upgrading: a story built from an inherited `spec` before 0.6.0 has no `delivery` of its own.
   `story-tracker` takes its `Spec: <phase> approved by the owner.` note as `spec` and writes the
   key. To set it ahead, run `second-brain task set <ID> delivery=spec`.
+- Each step under `### Check as a user would` names its tool: a skill such as a browser-testing
+  skill, a command, an API call or a query. The plugin ships no browser.
+- `reviewer` has the Skill tool and runs each step with its tool. A step it cannot run is BLOCKED
+  and names the tool, and a browser step's screenshots go in a temp folder it names.
+- A step written before, with no tool, runs through Bash when Bash can do what it says. One that
+  needs a browser is BLOCKED and asks for its tool.
+- `reviewer` removes only an untracked path its first `git status --porcelain` did not list, and
+  never runs `git checkout`, `restore`, `reset`, `clean` or `stash`.
+- The doctor's `validation` check also warns about the earlier template's user-check line.
 
 ## 0.5.0 - 2026-11-08
 

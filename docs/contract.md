@@ -260,6 +260,8 @@ tags:
   `## <repo>` section. Nothing in the vault points to it.
 - A section is written from `validation-repo.md.tmpl` and keeps its four level-3 headings:
   `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
+- Each step under `### Check as a user would` is one line that starts with the tool that runs it:
+  a skill by its name, a command, an API call or a query.
 - A section is written when something is under its heading. One with nothing is `empty`.
 
 ## 4. A task
@@ -611,7 +613,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
 | project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
-| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
+| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
 | project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A requirement is a `## ` heading whose first word is `R` and a number. Criteria and `- Serves:` lines are read as `## 4. A task` says; the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
@@ -828,6 +830,22 @@ text.
 - `spec-lead` launches `reviewer` on the untouched branch first. Then it builds every task, one
   `implementer` run per task, then reviews them in order, one `reviewer` run per task.
 - `implementer` runs no check: `reviewer` runs them all.
+- `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
+  skill through the Skill tool, anything else through Bash.
+- A line that names no tool runs through Bash when Bash can do what it says. One that needs a
+  browser and names no tool is BLOCKED: the verdict names the step and asks for its tool.
+- A step whose tool `reviewer` cannot run, such as a skill that is not installed, is BLOCKED, and
+  the verdict names the tool.
+- Plugin agents cannot set `mcpServers`, so a browser comes from a skill or a command, never from
+  an MCP server.
+- The plugin ships no browser. A repo's `validation.md` names the one it uses.
+- A browser step saves its screenshots in a temp folder outside the repo, and `reviewer` names
+  the folder in its findings.
+- `reviewer` keeps the `git status --porcelain` output of its first step. After the user steps it
+  removes only an untracked (`??`) path that output did not list, and names it.
+- A tracked file a user step changed is a finding, never deleted.
+- `reviewer` never runs `git checkout`, `restore`, `reset`, `clean` or `stash`. Any other change
+  to the tree is a finding.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
   issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
@@ -846,7 +864,7 @@ text.
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
 | `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
+| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff and runs each user step with its tool; edits no file |
 | `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to

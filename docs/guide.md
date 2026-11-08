@@ -129,6 +129,9 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
+  in `docs/contract.md` says.
+- The plugin ships no browser. Name the browser skill or command your repo uses.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
 

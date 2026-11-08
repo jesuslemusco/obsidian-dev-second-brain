@@ -2307,7 +2307,8 @@ is "validation new: the section holds the template's four parts, word for word" 
 ### Checks
 - <Each command that must pass, such as the tests, linter and build, and what it proves.>
 ### Check as a user would
-- <The steps that use the change as a user does, and what to look for.>
+- <One line per step that uses the change as a user does: its tool, then what to look for.>
+- <A tool is a skill by name, such as a browser-testing skill, a command, an API call or a query.>
 ### A pass
 - <What a pass needs: every check above passes, the user steps work, nothing else broke.>"
 echo "- npm test" >>"$vault/$S/claude/validation.md"
@@ -2519,7 +2520,7 @@ line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.
 for a in implementer reviewer docs-keeper scrum-master spec-checker; do
   if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
 done
-line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
+line_is "reviewer: edits no file, and has the Skill tool" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep, Skill"
 SC="$here/agents/spec-checker.md"
 line_is "spec-checker: reads, and has no tool that writes" "$SC" "tools: Read, Glob, Grep"
 line_is "spec-checker: runs on opus" "$SC" "model: opus"
@@ -2583,6 +2584,22 @@ line_is "guide: lists spec-checker" "$here/docs/guide.md" \
   '| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |'
 file_has "changelog: names spec-checker" "$here/CHANGELOG.md" \
   'the new `spec-checker` agent reads the spec'
+file_has "validation template: each user step names its tool" "$here/templates/validation-repo.md.tmpl" \
+  "- <One line per step that uses the change as a user does: its tool, then what to look for.>"
+file_has "validation template: a tool is a skill, a command, an API call or a query" "$here/templates/validation-repo.md.tmpl" \
+  "a skill by name, such as a browser-testing skill, a command, an API call or a query."
+file_has "reviewer: runs each user step with the tool its line names" "$here/agents/reviewer.md" "that runs it. Run the step with that tool."
+file_has "reviewer: a skill runs through the Skill tool" "$here/agents/reviewer.md" "- A skill: call it with the Skill tool"
+file_has "reviewer: a step whose tool it cannot run is BLOCKED and names the tool" "$here/agents/reviewer.md" "found, is BLOCKED. Name the tool."
+file_has "reviewer: screenshots go in a temp folder outside the repo" "$here/agents/reviewer.md" "make one temp folder outside the repo with \`mktemp -d\`"
+file_has "reviewer: names the screenshots folder" "$here/agents/reviewer.md" "Name the temp folder that holds the"
+file_has "reviewer: keeps step 0's status output" "$here/agents/reviewer.md" "Keep the \`status --porcelain\` output: the user steps are checked against it."
+file_has "reviewer: removes only an untracked path step 0 did not list" "$here/agents/reviewer.md" "Remove only an untracked (\`??\`) path that step 0's output did not list, and name it."
+file_has "reviewer: a tracked file a step changed is a finding, never deleted" "$here/agents/reviewer.md" "A tracked file a step changed is a finding. Never delete it."
+file_has "reviewer: never resets the owner's work" "$here/agents/reviewer.md" "Never run \`git checkout\`, \`restore\`, \`reset\`, \`clean\` or \`stash\`."
+file_has "reviewer: a line with no tool runs with Bash only when Bash can do it" "$here/agents/reviewer.md" "run it with Bash when Bash can do what it says."
+file_has "reviewer: a browser line with no tool is BLOCKED" "$here/agents/reviewer.md" "A line that needs a browser and names no tool is BLOCKED. Name the step and ask for its tool."
+file_has "vault-setup: drafts each user step's tool from the repo" "$here/skills/vault-setup/validation.md" "Draft the tool from the repo"
 file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
 file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
 file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"

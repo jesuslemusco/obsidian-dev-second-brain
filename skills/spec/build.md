@@ -146,18 +146,23 @@ A resumed build finds each task as an earlier session left it. Go on from its st
      `git -C "<path>" rev-parse --short <full hash>` prints, then `### Review it`.
    - No hash, or one `spec status` lists already: `### The fix loop` when the task's `fails` is 1
      or more, else `### Build it`.
-3. Build or review `blocked`: its `Owner:` line is the owner's ruling on it, the status note
+3. Build or review `blocked`: its ruling is the owner's ruling on it, the status note
    `Build: the owner ruled on <task>: <the ruling, as written>.`, when that note is newer than the
    newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.
    - Such a ruling: a review `blocked` goes on at `### Review it`. A build `blocked` goes on at
      `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
 4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.
+   - Its newest `Build: stopped at <task>: <why>.` note has no newer owner's ruling: the build
+     stopped there, and the owner has not answered. Ask the owner first, as
+     `## 7. When the build stops` says.
    - A `fix` in `spec status` that is not `-`: its fix was built before the session ended.
-     `### Review it`, with the ruling as its `Owner:` line when there is one.
-   - `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.
+     `### Review it`, with its ruling lines, as `### Rulings in each prompt` says.
+   - `fails` 5 or less: `### The fix loop`, with its ruling lines, as `### Rulings in each prompt`
+     says.
    - `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for
-     `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
+     `fails` 4, with its ruling lines, as `### Rulings in each prompt` says. None: ask the owner
+     first.
 5. Build `built`, review `-` or `in-review`: `### Review it`.
 
 ### Build it
@@ -186,8 +191,8 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 2. Launch a fresh `reviewer` in task mode on the task. Its packet gives it the task's diff, or on
    a re-review the fix's commits and the findings they answer.
    - Its reply has a line `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
-   - No such line: ask it once more with SendMessage. Still none: take it as BLOCKED, as item 5
-     says.
+   - No such line: ask it once more with SendMessage. Still none: launch one fresh `reviewer` in
+     its place, with the same prompt. Still none: take it as BLOCKED, as item 5 says.
 3. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
    - With `spec_home: repo`, commit the tick:
      `git -C "<path>" commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md`.
@@ -207,8 +212,8 @@ It picks the round. Never count the rounds yourself.
 1. `fails` 6 or more, right after a FAIL: the cap is reached. First the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop, as
    `## 7. When the build stops` says. The review stays `failed`.
-   - A ruling the owner gives at that stop sends one more round, as for `fails` 4, with the
-     ruling as its `Owner:` line.
+   - A ruling the owner gives at that stop sends one more round, as for `fails` 4, with its
+     ruling lines, as `### Rulings in each prompt` says.
 2. Otherwise, `second-brain spec status <ID> <task> building`, then the round:
    - `fails` 1 to 3: the same `implementer`. Send the fix message to
      `<ID>-<task>-implementer`, or to `<ID>-bundle-<n>-implementer` for a task of bundle `<n>`,
@@ -219,7 +224,8 @@ It picks the round. Never count the rounds yourself.
      the build's prompt.
    - `fails` 5: send the fix message to `<ID>-<task>-implementer-2`, or launch a fresh one as for
      `fails` 4 when it cannot be reached.
-   - `fails` 6 or more, on a ruling: as for `fails` 4, with the ruling as its `Owner:` line.
+   - `fails` 6 or more, on a ruling: as for `fails` 4, with its ruling lines, as
+     `### Rulings in each prompt` says.
 3. Take its reply as items 3 to 5 of `### Build it` say. Its review then reads only the fix.
 
 ### A bundle
@@ -254,7 +260,9 @@ not `passed`, in order:
    1. `second-brain spec status <ID> <task> in-review` for each of them, in order.
    2. Launch one fresh `reviewer` in task mode on them, with the bundle's prompt.
    3. Its reply holds one line per task, `<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`. A task with
-      no such line: ask it once more with SendMessage. Still none: its verdict is BLOCKED.
+      no such line: ask it once more with SendMessage. Still none: launch one fresh `reviewer` on
+      the tasks with none, with the prompt item 2 gives them. A task still with none: its verdict
+      is BLOCKED.
    4. Set each task's result as items 3 to 5 of `### Review it` say. Set every PASS and FAIL
       first, then a BLOCKED, which stops the build.
    5. Show the owner `second-brain spec status <ID>`, as item 6 of `### Review it` says.
@@ -281,12 +289,14 @@ A resumed build with every task passed comes straight here.
    - Then `second-brain spec status <ID> <task> failed` for each such task, and go back to
      `## 5. Each task in turn`. It comes back here once every task has passed again.
 2. Launch `reviewer` in user mode on the finished branch.
+   - Before the launch, note each task's issue count: the length of its `issues` in
+     `second-brain spec status <ID> --json`.
    - BLOCKED: stop, as `## 7. When the build stops` says.
    - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the
      last task in order, with a ruling, and with the fix you propose:
      `second-brain spec issue <ID> <task> "<the finding>" --fix "<the fix you propose>"`.
-   - Then `second-brain spec status <ID> <task> failed` for each task with a new issue in
-     `spec status <ID>`, and go back to `## 5. Each task in turn`, as item 1 does.
+   - Then `second-brain spec status <ID> <task> failed` for each task whose issue count grew since
+     the launch, and go back to `## 5. Each task in turn`, as item 1 does.
 3. Launch `reviewer` in branch mode: one review of the whole branch ends the build. BLOCKED or
    FAIL: as item 2 says.
 4. `second-brain task set <ID> status=in-review next="Owner reviews the built story"`.
@@ -311,16 +321,21 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
 3. Ask the owner with AskUserQuestion what to do.
    - A ruling on the task:
      `second-brain task note <ID> "Build: the owner ruled on <task>: <the ruling, as written>."`.
-     Then go on from the step that stopped, with the ruling as the `Owner:` line of the next
-     prompt for that task.
+     Then go on from the step that stopped, with its ruling lines in the next prompt for that
+     task, as `### Rulings in each prompt` says.
    - A ruling to fix a task, such as one that passed, or one the user check or the branch review
-     logged issues on: the same note, then `second-brain spec status <ID> <task> failed`, and back
-     to `## 5. Each task in turn`, with the ruling as its `Owner:` line.
+     logged issues on: the same note. Then, unless the task has a new issue that the ruling
+     answers, log what it asks:
+     `second-brain spec issue <ID> <task> "The owner ruled: <the ruling, as written>" --fix "<the fix it asks>"`.
+     Then `second-brain spec status <ID> <task> failed`, and back to `## 5. Each task in turn`,
+     with its ruling lines, as `### Rulings in each prompt` says.
    - The owner reverses a ruling of yours: their ruling on its task, as above. It wins over yours.
-     A task that passed already takes it as a ruling to fix the task.
+     A task that passed already takes it as a ruling to fix the task, as the bullet above says.
    - The spec needs a change, such as in the phase a ruling touched: write
      `Spec: <phase> reopened.` as a status note, then go back to Step 2 of `SKILL.md` for that
      phase.
+     - The reopen retires every ruling before it, as `### The rulings of this build` says. Write
+       into the changed phase each one the owner keeps.
      - The owner approves the phases after it again too. Only then does the build go on.
    - The owner stops here: `build.json` keeps where the build stands, and a new session goes on
      from it.
@@ -334,7 +349,7 @@ waits for the owner, as `## 7. When the build stops` says:
 2. A security-sensitive action, such as one that needs a secret, a credential or a permission.
 3. An outside effect, such as a push, a merge or a publish.
 4. A spec too broken to follow: going on would change, add or drop a requirement, a design
-   decision or a task.
+   decision, a task or a check.
 5. A task blocked, or past its last fix round. A `BLOCKED` from the user check or the branch
    review is a block too.
 6. A failed baseline.
@@ -352,8 +367,8 @@ opposite fixes. Rule on it before the next launch or message.
 
 1. Decide by the approved spec first, then the story, then the code on the branch. Pick what keeps
    to the spec and is easiest to undo.
-   - A ruling never adds a requirement or a task. One that would is a spec too broken to follow:
-     a stop.
+   - A ruling never changes, adds or drops a requirement, a design decision, a task or a check.
+     One that would is a spec too broken to follow: a stop.
 2. Write it:
    `second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`.
    - `<task>` is the task the question touches. A question on several tasks gets one note per
@@ -370,8 +385,11 @@ opposite fixes. Rule on it before the next launch or message.
   `Build: started on <branch> at <short hash>.` note: each of your `Ruling: <task>:` notes and
   each `Build: the owner ruled on <task>:` note. A note below it is from an earlier build of the
   story.
-- A new session finds them there: `second-brain outline <path>`, then a ranged read of
-  `## Status notes`. Status notes are newest first: take them in reverse, oldest first.
+- They are newer too than the newest `Spec: <phase> reopened.` note. The changed phase holds what
+  the owner kept of the rulings before it.
+- A new session finds them there: `second-brain outline <note>`, with `<note>` the `path:` that
+  `second-brain task head <ID>` prints, then a ranged read of `## Status notes`. Status notes are
+  newest first: take them in reverse, oldest first.
 
 ### Rulings in each prompt
 

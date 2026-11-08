@@ -2786,7 +2786,7 @@ file_has "spec build: a lone task with no commit line is looked for by its commi
 file_has "spec build: a resumed failed task with a built fix goes to review" "$BM" \
   '- A `fix` in `spec status` that is not `-`: its fix was built before the session ended.'
 is "spec build: a built fix is reviewed before any new fix round" \
-  "$(($(lineno "$BM" '- A `fix` in `spec status` that is not `-`: its fix was built') < $(lineno "$BM" '- `fails` 5 or less: `### The fix loop`, with the ruling')))" "1"
+  "$(($(lineno "$BM" '- A `fix` in `spec status` that is not `-`: its fix was built') < $(lineno "$BM" '- `fails` 5 or less: `### The fix loop`, with its ruling lines')))" "1"
 file_has "spec build: a fix round's reply is taken as for a build" "$BM" '3. Take its reply as items 3 to 5 of `### Build it` say.'
 file_has "contract: a lone task with no commit line is looked for by its commit" "$here/docs/contract.md" \
   '- A task whose reply names no commit, and that did not stop, is looked for by its commit in the'
@@ -3254,7 +3254,7 @@ is "spec build: the cap is checked before a round sets building" \
 file_has "spec build: every resumed failed task looks for a ruling" "$BM" \
   '4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.'
 file_has "spec build: below the cap it resumes in the fix loop, with the ruling" "$BM" \
-  '- `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.'
+  '- `fails` 5 or less: `### The fix loop`, with its ruling lines, as `### Rulings in each prompt`'
 file_has "spec build: a task stopped at the cap waits for a newer ruling on resume" "$BM" \
   '- `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for'
 file_has "spec build: the cap stops as the stop section says" "$BM" \
@@ -3264,7 +3264,7 @@ file_has "spec build: and that section writes no second stop note" "$BM" \
 file_has "spec build: a cut-off fix goes back to the fix loop" "$BM" \
   '- No hash, or one `spec status` lists already: `### The fix loop` when the task'"'"'s `fails` is 1'
 file_has "spec build: a blocked task gets the ruling" "$BM" \
-  '3. Build or review `blocked`: its `Owner:` line is the owner'"'"'s ruling on it, the status note'
+  '3. Build or review `blocked`: its ruling is the owner'"'"'s ruling on it, the status note'
 file_has "spec build: a cut-off build takes only a commit build.json lacks" "$BM" \
   '- The full hash starts with no listed hash: that run committed. Run'
 file_has "spec build: a ruling counts only when newer than the stop" "$BM" \
@@ -4119,8 +4119,11 @@ line_is "spec build: records each ruling as a status note" "$BM" \
   '   `second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`.'
 file_has "spec build: a ruling decides by the spec first" "$BM" \
   '1. Decide by the approved spec first, then the story, then the code on the branch. Pick what keeps'
-file_has "spec build: a ruling never adds a requirement" "$BM" \
-  '- A ruling never adds a requirement or a task. One that would is a spec too broken to follow:'
+line_is "spec build: a ruling never changes, adds or drops a requirement or a check" "$BM" \
+  '   - A ruling never changes, adds or drops a requirement, a design decision, a task or a check.'
+file_has "contract: so says the contract" "$CT" \
+  '- A ruling never changes, adds or drops a requirement, a design decision, a task or a check. It'
+line_is "spec build: a spec too broken to follow names a check too" "$BM" '   decision, a task or a check.'
 file_has "spec build: one ruling note per task it touches" "$BM" \
   'A question on several tasks gets one note per'
 file_has "spec build: a ruling never lifts a stop" "$BM" '- A ruling of yours never lifts a stop.'
@@ -4130,7 +4133,13 @@ file_has "spec build: and goes on from the task's state, a bundle's task too" "$
   '`### Where the task stands` says, or item 1 of `### A bundle` for a task of a bundle. Its'
 file_has "spec build: a review with no verdict twice is BLOCKED" "$BM" \
   'Still none: take it as BLOCKED, as item 5'
-file_has "spec build: so is a bundle task with no verdict twice" "$BM" 'Still none: its verdict is BLOCKED.'
+file_has "spec build: a review with no verdict gets one fresh reviewer first" "$BM" \
+  'Still none: launch one fresh `reviewer` in'
+is "spec build: and only then is BLOCKED" \
+  "$(($(lineno "$BM" 'Still none: launch one fresh `reviewer` in') < $(lineno "$BM" 'its place, with the same prompt. Still none: take it as BLOCKED, as item 5 says.')))" "1"
+file_has "spec build: a bundle task with no verdict gets one fresh reviewer first" "$BM" \
+  'no such line: ask it once more with SendMessage. Still none: launch one fresh `reviewer` on'
+file_has "spec build: and only then is BLOCKED" "$BM" 'the tasks with none, with the prompt item 2 gives them. A task still with none: its verdict'
 file_lacks "spec build: no stop that the list does not name" "$BM" 'Still none: stop.'
 file_has "spec build: a failing check no task holds goes to the last task, with a ruling" "$BM" \
   '- No task you can tell: the last task in order, with a ruling, as `### A ruling` says.'
@@ -4138,7 +4147,34 @@ file_lacks "spec build: a failing check no longer stops the build" "$BM" 'No tas
 file_has "spec build: a user check FAIL takes the fix loop" "$BM" \
   '   - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the'
 file_has "spec build: each task with a new issue is set failed" "$BM" \
-  '   - Then `second-brain spec status <ID> <task> failed` for each task with a new issue in'
+  '   - Then `second-brain spec status <ID> <task> failed` for each task whose issue count grew since'
+file_has "spec build: each task's issue count is noted before the user and branch reviews" "$BM" \
+  '   - Before the launch, note each task'"'"'s issue count: the length of its `issues` in'
+is "spec build: the count is noted before the review's result is taken" \
+  "$(($(lineno "$BM" 'note each task'"'"'s issue count') < $(lineno "$BM" '   - FAIL: it logged each finding it could tie to a task.')))" "1"
+file_lacks "spec build: no new issue told by its day" "$BM" 'with a new issue in'
+file_has "spec build: a new session reads the rulings from the story's note" "$BM" \
+  '- A new session finds them there: `second-brain outline <note>`, with `<note>` the `path:` that'
+file_lacks "spec build: never outlines the repo path" "$BM" 'second-brain outline <path>'
+file_has "spec build: an unanswered stop on a failed task asks the owner first" "$BM" \
+  "   - Its newest \`Build: stopped at <task>: <why>.\` note has no newer owner's ruling: the build"
+is "spec build: before its fix is reviewed or fixed" \
+  "$(($(lineno "$BM" 'note has no newer owner'"'"'s ruling: the build') < $(lineno "$BM" '- A `fix` in `spec status` that is not `-`: its fix was built')))" "1"
+file_has "contract: an unanswered stop on a resumed failed task asks first" "$CT" \
+  "- A resumed \`failed\` task whose newest stop note has no newer owner's ruling stopped the build"
+file_has "spec build: a ruling to fix a task logs what it asks" "$BM" \
+  '`second-brain spec issue <ID> <task> "The owner ruled: <the ruling, as written>" --fix "<the fix it asks>"`.'
+is "spec build: before it sets the task failed" \
+  "$(($(lineno "$BM" '"The owner ruled: <the ruling, as written>"') < $(lineno "$BM" '     Then `second-brain spec status <ID> <task> failed`, and back to')))" "1"
+file_has "spec build: a reversed ruling on a passed task is fixed as such" "$BM" \
+  'A task that passed already takes it as a ruling to fix the task, as the bullet above says.'
+file_has "spec build: a reopen bounds the rulings" "$BM" \
+  '- They are newer too than the newest `Spec: <phase> reopened.` note. The changed phase holds what'
+file_has "spec build: a reopen retires the rulings before it" "$BM" '     - The reopen retires every ruling before it'
+file_has "contract: a reopen bounds the rulings" "$CT" \
+  '- They are newer too than the build'"'"'s newest `Spec: <phase> reopened.` note. A reopen retires the'
+file_lacks "spec build: no prompt takes the ruling as its one Owner line" "$BM" 'as its `Owner:` line'
+file_lacks "spec build: nor as the one Owner line of the next prompt" "$BM" 'as the `Owner:` line'
 file_has "spec build: the branch review FAIL too" "$BM" '   FAIL: as item 2 says.'
 file_lacks "spec build: a FAIL of the user check no longer stops the build" "$BM" 'FAIL or BLOCKED: stop'
 line_is "spec build: has the rulings of this build" "$BM" '### The rulings of this build'

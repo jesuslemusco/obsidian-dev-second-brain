@@ -2712,6 +2712,51 @@ file_has "spec skill: cuts a missing branch as the branch check says" "$here/ski
 line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
   "- \`base_branch\` is the branch a new story's branch is cut from, as"
 
+# ---------------------------------------------------------------- a passed spec build is finished
+FN="$here/skills/spec/finish.md"
+exists "spec finish: the step has its own file" "$FN"
+file_has "spec skill: reads finish.md only when the build finished" "$SK" \
+  'Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.'
+file_has "spec finish: read only when every task passed" "$FN" \
+  'Read this file only when `spec-lead` finished with every task passed.'
+file_has "spec finish: asks the owner with AskUserQuestion" "$FN" \
+  '- Ask with AskUserQuestion, with three options:'
+file_has "spec finish: offers a merge into the target" "$FN" '  - Merge `<branch>` into `<target>`.'
+file_has "spec finish: offers a pull request into the target" "$FN" \
+  '  - Open a pull request from `<branch>` into `<target>`.'
+file_has "spec finish: offers to keep the branch" "$FN" '  - Keep `<branch>` as it is.'
+file_has "spec finish: the target is the release branch" "$FN" \
+  '- The target is the release branch, `release/<version>`, as `## Releases` in `docs/guide.md`'
+line_is "spec finish: docs/guide.md has the Releases heading" "$GD" "## Releases"
+file_has "spec finish: with no release branch the target is base_branch" "$FN" \
+  '- No release branch: the target is `base_branch`'
+file_has "spec finish: does only what the owner picks" "$FN" '- Do only what the owner picks.'
+file_has "spec finish: names the push and the pull request before they run" "$FN" \
+  '1. Before either runs, name both: the push of `<branch>` to `origin`, and the pull request into'
+file_has "spec finish: a merge pushes nothing" "$FN" 'The merge is local. It pushes nothing.'
+file_has "spec finish: a merge records the branch" "$FN" \
+  'second-brain task set <ID> branch=<target>'
+file_has "spec finish: a merge records a status note" "$FN" \
+  '"Finish: merged <branch> into <target> at <short hash>."'
+file_has "spec finish: a pull request records the branch" "$FN" \
+  'second-brain task set <ID> branch=<branch>'
+file_has "spec finish: a pull request records a status note" "$FN" \
+  '"Finish: opened a pull request into <target>: <url>."'
+file_has "spec finish: the description follows the pull request format" "$FN" \
+  '`templates/pull-request.md.tmpl`'
+exists "spec finish: the pull request template exists" "$here/templates/pull-request.md.tmpl"
+file_has "spec finish: deleting the branch needs discard typed" "$FN" \
+  '- Delete the branch only when the owner types `discard`. A pick or a yes is not enough.'
+file_has "spec finish: never forces a push" "$FN" '- Never force a push or rewrite history.'
+file_has "guide: points to the finishing step" "$GD" 'as `skills/spec/finish.md` says.'
+file_has "guide: the branch is deleted only on discard" "$GD" \
+  '- It deletes the branch only when you type `discard`.'
+file_has "changelog: names the finishing step" "$here/CHANGELOG.md" '`skills/spec/finish.md`'
+file_has "contract: the finishing step runs only on the owner's pick" "$here/docs/contract.md" \
+  "- A merge or a pull request runs only on the owner's pick. Each push or pull request is named"
+file_has "contract: deleting the branch needs discard typed" "$here/docs/contract.md" \
+  "- The story's branch is deleted only when the owner types \`discard\`."
+
 # ---------------------------------------------------------------- result
 if [ -f "$tmp/undefined" ]; then
   while IFS= read -r cmd; do fail "undefined command: $cmd"; done <"$tmp/undefined"

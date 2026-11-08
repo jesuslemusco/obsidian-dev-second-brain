@@ -93,6 +93,7 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
   Step 2 for that phase.
   - The owner approves the phases after it again too. Only then does the build go on.
 - It finished: show the task list, one commit per task, and the final validation result.
+  - Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.
   - The story is `in-review`: story-tracker takes it from there.
 
 ## Rules

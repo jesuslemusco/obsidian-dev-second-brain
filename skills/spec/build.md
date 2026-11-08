@@ -149,20 +149,21 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 3. Build or review `blocked`: its ruling is the owner's ruling on it, the status note
    `Build: the owner ruled on <task>: <the ruling, as written>.`, when that note is newer than the
    newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.
-   - Such a ruling: a review `blocked` goes on at `### Review it`. A build `blocked` goes on at
-     `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
-   - No such ruling: ask the owner first, as `## 7. When the build stops` says.
+   - A `Spec: <phase> reopened.` note newer than that stop note answers the stop too: the owner
+     changed the spec, and the phases were approved again.
+   - Such a ruling or reopen: a review `blocked` goes on at `### Review it`. A build `blocked` goes
+     on at `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
+   - No such ruling or reopen: ask the owner first, as `## 7. When the build stops` says.
 4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.
-   - Its newest `Build: stopped at <task>: <why>.` note has no newer owner's ruling: the build
-     stopped there, and the owner has not answered. Ask the owner first, as
-     `## 7. When the build stops` says.
+   - Its newest `Build: stopped at <task>: <why>.` note has no newer owner's ruling and no newer
+     reopen note: the build stopped there, and the owner has not answered. Ask the owner first,
+     as `## 7. When the build stops` says.
    - A `fix` in `spec status` that is not `-`: its fix was built before the session ended.
      `### Review it`, with its ruling lines, as `### Rulings in each prompt` says.
    - `fails` 5 or less: `### The fix loop`, with its ruling lines, as `### Rulings in each prompt`
      says.
-   - `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for
-     `fails` 4, with its ruling lines, as `### Rulings in each prompt` says. None: ask the owner
-     first.
+   - `fails` 6 or more, the build stopped at the cap: the answer sends one more round, as for
+     `fails` 4, with its ruling lines, as `### Rulings in each prompt` says.
 5. Build `built`, review `-` or `in-review`: `### Review it`.
 
 ### Build it
@@ -324,8 +325,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
      Then go on from the step that stopped, with its ruling lines in the next prompt for that
      task, as `### Rulings in each prompt` says.
    - A ruling to fix a task, such as one that passed, or one the user check or the branch review
-     logged issues on: the same note. Then, unless the task has a new issue that the ruling
-     answers, log what it asks:
+     logged issues on: the same note. Then log what it asks:
      `second-brain spec issue <ID> <task> "The owner ruled: <the ruling, as written>" --fix "<the fix it asks>"`.
      Then `second-brain spec status <ID> <task> failed`, and back to `## 5. Each task in turn`,
      with its ruling lines, as `### Rulings in each prompt` says.

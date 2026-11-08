@@ -144,6 +144,7 @@
   each touched. You can reopen that phase, or reverse a ruling with your own. A task that passed
   then takes your ruling as an issue to fix.
 - A resumed failed task whose stop you have not answered asks you first, whatever its fix round.
+  A `Spec: <phase> reopened` note newer than the stop answers it, for a blocked task too.
 - A FAIL of the user check or the branch review no longer stops the build. Each task it logged a
   finding on takes the fix loop, as a failing build-wide check does.
 - A failing build-wide check, or a user or branch finding, that no task covers goes to the last

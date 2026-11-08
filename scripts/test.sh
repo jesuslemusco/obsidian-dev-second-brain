@@ -3256,7 +3256,7 @@ file_has "spec build: every resumed failed task looks for a ruling" "$BM" \
 file_has "spec build: below the cap it resumes in the fix loop, with the ruling" "$BM" \
   '- `fails` 5 or less: `### The fix loop`, with its ruling lines, as `### Rulings in each prompt`'
 file_has "spec build: a task stopped at the cap waits for a newer ruling on resume" "$BM" \
-  '- `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for'
+  '- `fails` 6 or more, the build stopped at the cap: the answer sends one more round, as for'
 file_has "spec build: the cap stops as the stop section says" "$BM" \
   '`second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop, as'
 file_has "spec build: and that section writes no second stop note" "$BM" \
@@ -4157,9 +4157,19 @@ file_has "spec build: a new session reads the rulings from the story's note" "$B
   '- A new session finds them there: `second-brain outline <note>`, with `<note>` the `path:` that'
 file_lacks "spec build: never outlines the repo path" "$BM" 'second-brain outline <path>'
 file_has "spec build: an unanswered stop on a failed task asks the owner first" "$BM" \
-  "   - Its newest \`Build: stopped at <task>: <why>.\` note has no newer owner's ruling: the build"
+  "   - Its newest \`Build: stopped at <task>: <why>.\` note has no newer owner's ruling and no newer"
 is "spec build: before its fix is reviewed or fixed" \
-  "$(($(lineno "$BM" 'note has no newer owner'"'"'s ruling: the build') < $(lineno "$BM" '- A `fix` in `spec status` that is not `-`: its fix was built')))" "1"
+  "$(($(lineno "$BM" 'note has no newer owner'"'"'s ruling and no newer') < $(lineno "$BM" '- A `fix` in `spec status` that is not `-`: its fix was built')))" "1"
+file_has "spec build: a reopen newer than the stop answers a blocked task's stop" "$BM" \
+  '   - A `Spec: <phase> reopened.` note newer than that stop note answers the stop too: the owner'
+file_has "spec build: and a failed task's" "$BM" 'reopen note: the build stopped there, and the owner has not answered.'
+file_has "contract: a reopen newer than the stop answers it" "$CT" \
+  '- A `Spec: <phase> reopened.` note newer than a task'"'"'s stop note answers that stop too, for a'
+file_lacks "spec build: the cap asks the owner once, in the first bullet" "$BM" 'None: ask the owner'
+file_lacks "spec build: a fix ruling is always logged" "$BM" 'unless the task has a new issue'
+file_has "spec skill: outlines the story's note, from task head" "$SK" \
+  'Read the story'"'"'s status notes: `second-brain outline <note>`, with `<note>` the `path:` that'
+file_lacks "spec skill: never an undefined path" "$SK" 'second-brain outline <path>'
 file_has "contract: an unanswered stop on a resumed failed task asks first" "$CT" \
   "- A resumed \`failed\` task whose newest stop note has no newer owner's ruling stopped the build"
 file_has "spec build: a ruling to fix a task logs what it asks" "$BM" \

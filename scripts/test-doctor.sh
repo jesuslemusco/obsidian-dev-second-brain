@@ -1716,6 +1716,21 @@ chk "validation: a section that still holds a retired placeholder of an earlier 
 edit "$vault/$P/claude/validation.md" '/^- <The steps that use the change as a user does, /d'
 doc Example
 chk "validation: ok again once the retired line is gone" validation Example "ok | 0 | -"
+# The lines the template held before each check said when it runs are still flagged.
+for old in '- <Each command that must pass, such as the tests, linter and build, and what it proves.>' \
+  '- <One line per step that uses the change as a user does: its tool, then what to look for.>'; do
+  if grep -qF -- "$old" "$here/templates/validation-repo.md.tmpl"; then
+    fail "validation: the template no longer holds the retired line: $old"
+  else
+    pass "validation: the template no longer holds the retired line: ${old:0:40}"
+  fi
+  printf '%s\n' "$old" >>"$vault/$P/claude/validation.md"
+  doc Example
+  chk "validation: a section that still holds the retired line ${old:0:40}" validation Example "warn | 1 | example-api:placeholders"
+  edit "$vault/$P/claude/validation.md" '$d'
+  doc Example
+  chk "validation: ok again without ${old:0:40}" validation Example "ok | 0 | -"
+done
 sb scaffold subproject Example infra --repos example-infra
 edit "$vault/$P/claude/subprojects/infra.md" 's/^validation_home: ""$/validation_home: repo/; s/^delivery: ""$/delivery: later/'
 doc Example

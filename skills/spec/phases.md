@@ -38,6 +38,7 @@ Write every phase for the build `build.md` runs.
 - No requirement or task asks `implementer` to run a check: `reviewer` runs every check.
 - A check that needs the whole branch, such as every suite passing,
   belongs to the final validation, not to one task's review.
+- A task's `- Check:` runs in that task's review, before the next task is built: keep it quick.
 
 ## requirements
 

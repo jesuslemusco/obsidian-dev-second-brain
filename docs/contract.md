@@ -936,16 +936,18 @@ text.
 - A task stopped past the fix loop's cap gets one more round in the same way: only with a ruling
   newer than its stop note.
 - A resumed `failed` task below the cap looks for that ruling too, and goes on in the fix loop with
-  it as its `Owner:` line when there is one.
+  its ruling lines.
+- A resumed `failed` task whose newest stop note has no newer owner's ruling stopped the build
+  there. The owner is asked first, whatever its `fails`.
 - A block writes its `Build: stopped at <task>` note before it sets `blocked`.
 - **The stop list.** Once the build has started, the skill stops and asks the owner with
   AskUserQuestion only for: a destructive action, a security-sensitive one, an outside effect
   such as a push, a merge or a publish, a spec too broken to follow, a task blocked or past its
   last fix round, and a failed baseline. `skills/spec/build.md` holds the list.
-- A `BLOCKED` from the user check or the branch review is a block too, and so is a review that
-  gives no verdict twice.
+- A `BLOCKED` from the user check or the branch review is a block too. So is a review that gives
+  no verdict when asked again, and then from one fresh `reviewer` in its place.
 - A spec is too broken to follow when going on would change, add or drop a requirement, a design
-  decision or a task.
+  decision, a task or a check.
 - The phases, and the steps before the build's `Build: started` or `Build: resumed` note, ask as
   they say: the owner has just run the skill. Each question of `skills/spec/finish.md` is an
   outside effect or a destructive action.
@@ -955,8 +957,8 @@ text.
   the next launch.
 - `<task>` is the task the question touches. A question on several tasks gets one note per task.
   One that touches no task names `build`, and goes in no prompt.
-- A ruling never adds a requirement or a task. It never lifts a stop: only the owner's ruling
-  does.
+- A ruling never changes, adds or drops a requirement, a design decision, a task or a check. It
+  never lifts a stop: only the owner's ruling does.
 - An `implementer` reply `BLOCKED:` on a question a ruling settles, such as a requirement it reads
   two ways, is no stop. The skill rules on it and goes on from the task's state. The same
   question again is a stop.
@@ -966,6 +968,8 @@ text.
   `Build: started on <branch> at <short hash>.` note: the skill's `Ruling:` notes and the owner's
   `Build: the owner ruled on <task>:` notes. A note below it is from an earlier build of the
   story. A new session reads them from `## Status notes`.
+- They are newer too than the build's newest `Spec: <phase> reopened.` note. A reopen retires the
+  rulings before it: the changed phase holds what the owner kept of them.
 - Every ruling of the build on a task goes, as written and oldest first, into each later
   `implementer` prompt and fix message for that task, and each later `reviewer` prompt on it.
 - The owner's is the line `Owner: <the ruling, as written>.`, the skill's
@@ -978,8 +982,9 @@ text.
 - When the build finishes or stops, the skill lists every ruling of the build, as written, oldest
   first, each with the phase it touched.
 - The owner can then reopen that phase, or reverse a ruling with one of their own on its task. A
-  task that passed takes the owner's ruling as a fix. At the finish, the owner says so in the
-  free-text answer of its question.
+  task that passed takes the owner's ruling as a fix: the skill logs it with `spec issue`, then
+  sets the task `failed`. At the finish, the owner says so in the free-text answer of its
+  question.
 - Each story-level update is a status note in the README: each phase approval, the build
   started, stopped and why, and finished, and each ruling, the owner's and the skill's. A task's
   progress is in `build.json` alone.

@@ -9,7 +9,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: `~/.claude/second-brain-vault` is missing, or does not lead to a folder that holds `.obsidian/`.
 - Why: every helper command finds the vault through it, so each exits 2 and no skill runs.
-- Fix: `/obsidian-dev-second-brain:vault-setup init`, or by hand `second-brain pointer set "<vault folder>"`.
+- Fix: `/odsb:vault-setup init`, or by hand `second-brain pointer set "<vault folder>"`.
 
 ### index
 
@@ -71,11 +71,17 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Why: the whole file loads on every run of the skill, with the parts for modes not in use.
 - Fix: move the detail of one mode into a file beside `SKILL.md`, and have the skill read it only in that mode.
 
+### old-namespace
+
+- Means: a line still names a plugin skill or agent by its old name, `obsidian-dev-second-brain:<name>`: in a note of the vault, its own skills and agents included (`<vault path>:<line>`), or in `~/.claude/CLAUDE.md` (`~/.claude/CLAUDE.md:<line>`); or a string in a `settings.json` or `settings.local.json` holds `obsidian-dev-second-brain:`: in `~/.claude` (`~/.claude/<file>:<string>`), in `.claude/` at the vault root (`.claude/<file>:<string>`), or in `.claude/` of a repo a profile lists (`<repo>/.claude/<file>:<string>`). History is skipped as `agents/docs-keeper.md` `## Workflow 6 - A renamed command` step 5 lists it. A cut name, such as `obsidian-dev-second-brain:s`, is not read.
+- Why: since 0.5.0 the plugin's skills run as `/odsb:<skill>` and its agents as `odsb:<agent>`, so an old name leads nowhere, and a permission rule with it allows or denies nothing.
+- Fix: vault lines: after a yes, launch the `docs-keeper` agent on its `Workflow 6 - A renamed command`, from `obsidian-dev-second-brain:` to `odsb:`. A `~/.claude/CLAUDE.md` line: after a yes, write `odsb:` in place of the old name. A settings string: show it to the user to change in that file; never edit a settings file. Over five offenders: use the Grep tool for `obsidian-dev-second-brain:` on `~/.claude/CLAUDE.md`, `~/.claude/settings.json` and `~/.claude/settings.local.json`, and on the same two settings files in `.claude/` of each repo `second-brain repo <project>` lists; Read the two in `.claude/` at the vault root. The doctor names the next vault lines once the first are fixed.
+
 ### profile
 
 - Means: the project's `claude/profile.md` is missing, lacks a frontmatter key or one of its seven sections, or has a `tasks_root`, `topics_root` or `sprints_root` with a `..` part or a backslash (`<key>:leaves-project`). A leading slash is no fault: every command drops it.
 - Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there. A root that leaves the project sends reads and writes outside it, so the doctor checks under that root's default and opens nothing through the value.
-- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl`. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
+- Fix: no file: `/odsb:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl`. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
 
 ### board
 
@@ -153,7 +159,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: a repository in the profile's `repos` has no row in the Code to doc map of its `## Docs` section.
 - Why: docs-keeper reads that table for the docs to update after a change in that repository, so its docs get missed.
-- Fix: add its rows under `### Code to doc map` in the profile, as `| <repo> | <change> | <docs> |`, or run `/obsidian-dev-second-brain:vault-setup repo <project>`.
+- Fix: add its rows under `### Code to doc map` in the profile, as `| <repo> | <change> | <docs> |`, or run `/odsb:vault-setup repo <project>`.
 
 ### repos
 
@@ -195,7 +201,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: two sprints are in progress, one is in progress past its end date, or a task's `sprint` names a sprint with no note.
 - Why: the `Current sprint` view filters on one sprint id, so the tasks of any other sprint show on no sprint list.
-- Fix: close the extra or overdue sprint with `/obsidian-dev-second-brain:sprint close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/obsidian-dev-second-brain:sprint open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
+- Fix: close the extra or overdue sprint with `/odsb:sprint close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/odsb:sprint open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
 
 ### unresolved-links
 

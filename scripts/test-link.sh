@@ -666,7 +666,7 @@ hook="$(printf '%s\n' "$hooks" | sed -n 1p)"
 is "hook: no args list, which would bypass the shell" "$(grep -c '"args"' "$here/hooks/hooks.json")" "0"
 run env CLAUDE_PLUGIN_ROOT="$here" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$hook"
 rc_is "hook: exits 0 with no vault" 0
-out_is "hook: says that no vault is set up" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+out_is "hook: says that no vault is set up" "second-brain: no vault is set up - run /odsb:vault-setup init"
 run env CLAUDE_PLUGIN_ROOT="$here" bash -c "$hook"
 rc_is "hook: exits 0 with a vault" 0
 out_is "hook: says nothing with a vault" ""
@@ -675,7 +675,7 @@ out_is "hook: says nothing when the pointer leads to a vault" ""
 if [ "$WIN" -eq 1 ]; then
   run env CLAUDE_PLUGIN_ROOT="$(cygpath -w "$here")" SECOND_BRAIN_VAULT="$tmp/nowhere" bash -c "$hook"
   rc_is "hook: on Windows it runs from a plugin root written with backslashes" 0
-  out_is "hook: on Windows it reports from there too" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+  out_is "hook: on Windows it reports from there too" "second-brain: no vault is set up - run /odsb:vault-setup init"
 fi
 
 # ---------------------------------------------------------------- the PreToolUse hook

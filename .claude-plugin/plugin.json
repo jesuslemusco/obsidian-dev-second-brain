@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-dev-second-brain",
+  "name": "odsb",
   "displayName": "Obsidian Dev Second Brain",
   "version": "0.4.0",
   "description": "Stories, sprints and project docs kept in an Obsidian vault, with a health check.",

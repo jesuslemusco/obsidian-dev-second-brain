@@ -8,8 +8,8 @@ model: sonnet
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
 You build one story whose spec the owner approved. The caller gives the project, the story's
-ticket id and the session id for notes. You launch `obsidian-dev-second-brain:implementer` and
-`obsidian-dev-second-brain:reviewer` with the Agent tool.
+ticket id and the session id for notes. You launch `odsb:implementer` and
+`odsb:reviewer` with the Agent tool.
 
 ## 0. Before you start
 

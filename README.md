@@ -18,8 +18,8 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
   its tasks. Then `spec-lead` builds and reviews each task, as `agents/spec-lead.md` says.
 - **Validation.** Each repo's steps to run and check it are in a `validation.md`, in the vault or
   in the repo, as `### Validation` in `docs/contract.md` says.
-  `/obsidian-dev-second-brain:vault-setup validation <project>` drafts them for you to confirm.
-- **Several repos.** `/obsidian-dev-second-brain:vault-setup subproject <project>` splits a
+  `/odsb:vault-setup validation <project>` drafts them for you to confirm.
+- **Several repos.** `/odsb:vault-setup subproject <project>` splits a
   project's repos into subprojects, each with its own branches, docs folder and rules, under one
   ticket key and one board.
 
@@ -57,12 +57,12 @@ In Claude Code:
 Then set it up:
 
 1. Open the folder you want as your vault in Obsidian.
-2. Run `/obsidian-dev-second-brain:vault-setup init` and give it that folder.
-3. Run `/obsidian-dev-second-brain:vault-setup project <name>` to add a project.
+2. Run `/odsb:vault-setup init` and give it that folder.
+3. Run `/odsb:vault-setup project <name>` to add a project.
 4. Ask Claude to start tracking a ticket.
 
 To check the setup at any time, ask Claude to check your vault, or run
-`/obsidian-dev-second-brain:vault-doctor`.
+`/odsb:vault-doctor`.
 
 ## Update
 
@@ -75,8 +75,8 @@ To get a new release:
    Update now.
 3. Restart Claude Code. `/reload-plugins` loads the new skills and agents into an open session,
    but only a restart is sure to load the new session-start hook and `second-brain` command.
-4. Bring the vault up to the new version: run `/obsidian-dev-second-brain:vault-doctor check`,
-   then `/obsidian-dev-second-brain:vault-doctor fix`. What each check finds is in
+4. Bring the vault up to the new version: run `/odsb:vault-doctor check`,
+   then `/odsb:vault-doctor fix`. What each check finds is in
    `skills/vault-doctor/checks.md`, and what `fix` changes without asking is under
    `## fix` in `skills/vault-doctor/SKILL.md`.
 
@@ -111,7 +111,7 @@ Keep skills and agents of your own in the vault: in `claude/` at its root for ev
 
 - Add one by the steps under `## Adding a skill or agent` in `templates/vault-claude-hub.md.tmpl`,
   the template of your vault's `claude/README.md`.
-- After you add, rename or remove one, run `/obsidian-dev-second-brain:vault-setup link`. What it
+- After you add, rename or remove one, run `/odsb:vault-setup link`. What it
   links into `~/.claude`, and what it leaves alone, is under
   `## link` in `skills/vault-setup/SKILL.md`.
 

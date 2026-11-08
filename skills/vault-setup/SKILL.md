@@ -168,7 +168,7 @@ its fix.
 - `index` fails after init when `CLAUDE.md` was there before and has no `## Projects` table. Say
   so: the first `second-brain scaffold project` adds the table and its row.
 - For the detail of a check, offer the vault-doctor skill. On a yes, call it with the Skill tool
-  as `obsidian-dev-second-brain:vault-doctor`.
+  as `odsb:vault-doctor`.
 
 ## Rules
 

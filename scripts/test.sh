@@ -163,6 +163,9 @@ fi
 sb version
 rc_is "version: exit 0" 0
 is "version: matches plugin.json" "$OUT" "$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$here/.claude-plugin/plugin.json" | head -1)"
+is "plugin: the namespace is odsb, and the marketplace entry keeps the install name" \
+  "$(sed -n 's/^  "name": "\([^"]*\)".*/\1/p' "$here/.claude-plugin/plugin.json")/$(sed -n 's/^      "name": "\([^"]*\)".*/\1/p' "$here/.claude-plugin/marketplace.json")" \
+  "odsb/obsidian-dev-second-brain"
 sb no-such-command
 rc_is "unknown command: exit 5" 5
 err_has "unknown command: prints usage" "usage: second-brain"
@@ -2049,6 +2052,7 @@ file_has "docs-keeper: Workflow 5 diffs a branch not merged yet" "$DK" 'diff ori
 file_has "docs-keeper: Workflow 5 stops when the change is not found" "$DK" 'report that the change was not found and stop'
 file_has "docs-keeper: Workflow 5 reads the head with the project" "$DK" '`second-brain task head <ID> --project <project>`'
 file_has "docs-keeper: Workflow 5 adds a status note" "$DK" 'Add a status note to the ticket naming what was updated'
+line_is "docs-keeper: Workflow 6 is there, under the name the doctor's old-namespace fix gives" "$DK" "## Workflow 6 - A renamed command"
 ST="$here/skills/story-tracker/SKILL.md"
 file_has "story-tracker: a story in production starts docs-keeper" "$ST" 'start the `docs-keeper` agent'
 file_has "story-tracker: it hands over the ticket id and the README path" "$ST" 'with the project, the ticket id and the README path'

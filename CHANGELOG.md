@@ -52,6 +52,8 @@ A project can build its stories from a spec, and every project says how its code
 - A call to an undefined command fails the `scripts/test*.sh` suites, and the result names it.
 - `story-tracker` and the `spec` skill cut a new story's branch from `base_branch`. This repo's
   feature branches start from `main`, as `## Releases` in `docs/guide.md` says.
+- `story-tracker`'s description says to use it for any question or change on a vault ticket, even
+  one the helper could answer, and the index names where a ticket stands, a standup and an update.
 
 ## 0.3.0 - 2026-10-22
 

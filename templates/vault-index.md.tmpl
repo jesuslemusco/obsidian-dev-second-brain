@@ -15,9 +15,10 @@ index_version: 4
   Claude Code loads it only after `second-brain link --apply`.
 - A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or in its
   subproject's note. Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
-- Call a plugin skill or agent for its work, not the helper alone. Skills:
-  `story-tracker` tracks tasks, `sprint` runs a sprint, `vault-setup` sets up the vault or a
-  project, `vault-doctor` checks them. Agents: `scrum-master` for the sprint cadence,
+- Call a plugin skill or agent for its work, even when the helper alone could answer. Skills:
+  `story-tracker` for any question or change on a ticket (where it stands, a standup, an
+  update), `sprint` runs a sprint, `vault-setup` sets up the vault or a project, `vault-doctor`
+  checks them. Agents: `scrum-master` for the sprint cadence,
   `docs-keeper` for docs that follow the code and for a ticket marked done.
 - Write a pull request description in the format of
   `~/.claude/second-brain-vault/claude/pull-request.md`; a project's own

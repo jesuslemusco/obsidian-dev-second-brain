@@ -100,6 +100,23 @@
   is reported as skipped and left to the review. The build goes on.
 - A task's `- Check:` now runs before its commit and again in its review. Write it as the
   narrowest command that runs the task's test, not every suite.
+- A new build skips the baseline when the story's branch starts on the base branch, which is
+  tested already. The test is `git merge-base --is-ancestor`, against `origin/<base>` when the
+  repo has it, else `<base>`. The base is the subproject's `base_branch`, or the profile's.
+- A skipped baseline writes the status note
+  `Build: baseline skipped: the branch starts at <short hash> on <base>.` A branch cut from a
+  release branch, or with commits the base lacks, still gets the baseline. The final validation
+  always runs.
+- In the tasks phase the `spec` skill may mark small, alike tasks with `- Bundle: <n>`, for you
+  to approve with the task list.
+- A bundle's tasks go to one `implementer` run, one commit per task, each built test-first with
+  its own checks. Then one `reviewer` judges each task against its own requirements and gives one
+  verdict per task, before the next task or bundle starts. Nothing builds in parallel.
+- A task of a bundle that fails its review takes the fix loop alone, with its own cap. A bundle
+  cut off part way resumes from `build.json`.
+- `second-brain spec tasks` prints each task's bundle in a fourth column, `-` for none, and
+  `--json` adds the key `bundle`. A bundle that is not a whole number, or whose tasks are not next
+  to each other, exits 1.
 
 ## 0.6.0 - 2026-11-08
 

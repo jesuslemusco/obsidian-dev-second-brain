@@ -14,7 +14,7 @@ Start with the [README](../README.md). Every helper command and note format is i
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. |
 | `spec` | skill | Writes a story's spec with you, one approved phase at a time, then builds and reviews each task in your session. |
-| `implementer` | agent | Builds one task test-first from the context packet it fetches, runs its checks and commits it. |
+| `implementer` | agent | Builds one task, or each task of a bundle in turn, test-first from the packet it fetches, runs its checks and commits it. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
 | `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
 | `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
@@ -120,6 +120,14 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - Each task is reviewed right after it is built, before the next one starts, so no task builds on
   an unreviewed one. The review reads the task's diff, against its requirements first, then for
   code quality.
+- Before the first task, the baseline runs the repo's checks on the branch as it is, so a break
+  already there is not taken for a task's. It is skipped when the branch starts on the base
+  branch, which is tested already, and when a build resumes, as `## 4. The baseline` in
+  `skills/spec/build.md` says.
+- Small, alike tasks may form a bundle, which you approve with the task list. A bundle's tasks go
+  to one `implementer` run, one commit per task, then one review, before the next task starts, as
+  `### A bundle` in `skills/spec/build.md` says.
+- `second-brain spec tasks EX-2` prints each task's bundle in its last column.
 - `implementer` builds each task test-first. It writes a test that fails for the task's
   requirement, then makes it pass. A task with nothing to test, such as a doc change, says why.
 - Who runs which check: `implementer` runs the task's `Check` and the repo's `each task` checks

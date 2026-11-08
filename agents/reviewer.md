@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Runs the repo's validation.md steps on a spec-driven story's branch, reads a task's diff against its requirements, edits no file and ends with a verdict.
+description: Runs the repo's validation.md steps on a spec-driven story's branch, reads a task's diff, or each of a bundle's, against its requirements, edits no file and gives a verdict.
 tools: Bash, Read, Glob, Grep, Skill
 model: opus
 omitClaudeMd: true
@@ -47,7 +47,8 @@ Each bullet under `### Checks` and `### Check as a user would` ends with when it
 
 ## Task mode
 
-The caller gives the story and its project, the task and the session id.
+The caller gives the story and its project, the task and the session id. A `Bundle:` line names
+several tasks in place of one, as `### A bundle` says.
 
 1. Run `second-brain spec packet <story> <task> --project "<project>"`. It gives `repo_path` and
    the branch for step 0.
@@ -78,6 +79,22 @@ The caller gives the story and its project, the task and the session id.
 8. Log each finding in the story, with how to fix it, before you reply:
    `second-brain spec issue <story> <task> "<what is wrong, at file:line>" --fix "<the fix you propose>" --session <id>`.
    - A step that could not be run is a finding too. Its fix names what it needs, such as the tool.
+
+### A bundle
+
+A prompt with a `Bundle:` line names small, alike tasks on its `Tasks:` line, built in one run,
+one commit per task. Review each task against its own packet:
+
+1. Run step 1 for each task, then step 0 once.
+2. For each task, in order: steps 2 and 3 on its own diff and requirements, then its own `Check`.
+3. Then run the checks with `--when each-task`, and each user step whose `when:` is `each task`,
+   once for the bundle, as step 4 says.
+   - A check or step that fails, or could not be run, is a finding on the task whose `- Files:`
+     line, in its packet's `## Task`, holds a file its lines name. Several: the last of them in
+     order. None: the bundle's last task.
+4. Step 6, code quality, in its own diff, for each task with no finding yet.
+5. Judge each task by `### A pass` on its own findings, and log each finding on its own task, as
+   steps 7 and 8 say.
 
 ## User mode
 
@@ -135,6 +152,8 @@ that runs it. Run the step with that tool.
 
 1. Task mode: your findings are in the story, through `spec issue`. Reply with one line:
    `VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.
+   - A bundle: one such line per task, in order, each led by its task:
+     `<task>: VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.
 2. Baseline mode has no task to log on. List each finding first, one line each, as
    `- <file>:<line> - <what is wrong> - <how it shows>`, then the verdict line.
 3. User and branch mode: list each finding no task covers so, then the verdict line. `<n>`
@@ -153,7 +172,8 @@ that runs it. Run the step with that tool.
 ## Rules
 
 - Edit no file, commit nothing, never push, never change the branch.
-- Read only the repo, your packet and the diff file it names: nothing else in the vault, nothing
-  about other tasks. User mode also reads `tasks.md`, and branch mode the spec files.
+- Read only the repo, your packets and the diff files they name: nothing else in the vault,
+  nothing about a task your prompt does not name. User mode also reads `tasks.md`, and branch
+  mode the spec files.
 - `second-brain spec issue` is your one write to the vault.
 - Stop whatever you started, such as a server, and leave the tree as you found it.

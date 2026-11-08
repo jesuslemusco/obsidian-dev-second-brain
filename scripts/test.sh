@@ -2425,10 +2425,10 @@ printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements:
   '- [x] T2 - The error' '  - Requirements: R2, R9' '  - Design: Approach' '- [ ] T3 - Nothing named' '  - Requirements: <R1, R2>' '- [ ] T4 - No design' '  - Requirements: r2' '  - Design: none' >"$SD/tasks.md"
 sb spec tasks SP-1
 rc_is "spec tasks: exit 0" 0
-out_is "spec tasks: one row per item, in order" "T1${TAB}todo${TAB}The login form
-T2${TAB}done${TAB}The error
-T3${TAB}todo${TAB}Nothing named
-T4${TAB}todo${TAB}No design"
+out_is "spec tasks: one row per item, in order, with no bundle as -" "T1${TAB}todo${TAB}The login form${TAB}-
+T2${TAB}done${TAB}The error${TAB}-
+T3${TAB}todo${TAB}Nothing named${TAB}-
+T4${TAB}todo${TAB}No design${TAB}-"
 sb spec packet SP-1 t1
 rc_is "spec packet: exit 0, the task matched without letter case" 0
 is "spec packet: the header lines first" "$(printf '%s\n' "$OUT" | head -7)" "story: SP-1
@@ -2489,7 +2489,7 @@ rc_is "spec tick: a ticked task exits 6" 6
 sb spec tick SP-1 T9
 rc_is "spec tick: an unknown task exits 1" 1
 sb spec tasks SP-1
-out_has "spec tasks: the ticked task is done" "T1${TAB}done${TAB}The login form"
+out_has "spec tasks: the ticked task is done" "T1${TAB}done${TAB}The login form${TAB}-"
 mv "$CRT" "$tmp/tasks.md.away"
 sb spec tasks SP-1
 rc_is "spec tasks: no tasks.md exits 1" 1
@@ -2685,10 +2685,10 @@ file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Imple
 printf '%s\n' '# SP-1 - Tasks' '' 'An example:' '' '```' '- [ ] T1 - Example' '```' '' '- [ ] T1 - The real one' '  - Requirements: R1' '  - Design: None' \
   '  - Check: run it' '    ```sh' '#!/bin/sh' '    ```' '  - Files: a.sh' '- [ ] T2: Colon form' '  - Requirements: R1,' '- [ ] T5 - Twice' '  - Requirements: R1' '- [ ] T5 - Twice again' '  - Requirements: R1' >"$CRT"
 sb spec tasks SP-1
-out_is "spec tasks: fenced code is not read, and T2: is a task" "T1${TAB}todo${TAB}The real one
-T2${TAB}todo${TAB}Colon form
-T5${TAB}todo${TAB}Twice
-T5${TAB}todo${TAB}Twice again"
+out_is "spec tasks: fenced code is not read, and T2: is a task" "T1${TAB}todo${TAB}The real one${TAB}-
+T2${TAB}todo${TAB}Colon form${TAB}-
+T5${TAB}todo${TAB}Twice${TAB}-
+T5${TAB}todo${TAB}Twice again${TAB}-"
 sb spec packet SP-1 T1
 rc_is "spec packet: Design: None names no section, in any letter case" 0
 out_has "spec packet: a fence inside the item keeps the lines after it" "  - Files: a.sh"
@@ -2703,6 +2703,53 @@ rc_is "spec tick: two items with one id exit 1" 1
 sb spec tick SP-1 T1
 line_is "spec tick: the fenced example is left alone" "$CRT" "- [ ] T1 - Example"
 line_is "spec tick: the real item is ticked" "$CRT" "- [x] T1 - The real one"
+
+# ---------------------------------------------------------------- spec tasks: bundles
+printf '%s\n' '# SP-1 - Tasks' '' 'Tasks with the same `- Bundle: <n>` line are one bundle.' '' '```' '- [ ] T1 - Example' '  - Bundle: 7' '```' '' \
+  '- [ ] T1 - Alone' '  - Requirements: R1' \
+  '- [ ] T2 - First of two' '  - Requirements: R1' '  - Bundle: 1' \
+  '- [x] T3 - Second of two' '  - Requirements: R1' '  - bundle: 01' '  - Bundle: 9' \
+  '- [ ] T4 - None named' '  - Requirements: R1' '  - Bundle: None' \
+  '- [ ] T5 - The template' '  - Requirements: R1' '  - Bundle: <n>' \
+  '- [ ] T6 - Another bundle' '  - Requirements: R1' '  - Bundle: 2' \
+  '- [ ] T7 - Its second' '  - Requirements: R1' '  - Bundle: 2' \
+  '- [ ] T8 - Last' '  - Requirements: R1' '' 'Notes:' '  - Bundle: 5' >"$CRT"
+sb spec tasks SP-1
+rc_is "spec tasks: a bundled list exits 0" 0
+out_is "spec tasks: each task's bundle last, from its own first Bundle line, as a number" "T1${TAB}todo${TAB}Alone${TAB}-
+T2${TAB}todo${TAB}First of two${TAB}1
+T3${TAB}done${TAB}Second of two${TAB}1
+T4${TAB}todo${TAB}None named${TAB}-
+T5${TAB}todo${TAB}The template${TAB}-
+T6${TAB}todo${TAB}Another bundle${TAB}2
+T7${TAB}todo${TAB}Its second${TAB}2
+T8${TAB}todo${TAB}Last${TAB}-"
+text="$OUT"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$CRT" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$CRT"
+sb spec tasks SP-1
+is "spec tasks: CRLF line endings read the same" "$OUT" "$text"
+sb spec tasks SP-1 --json
+json_ok "spec tasks --json: a bundled list parses as JSON"
+out_has "spec tasks --json: the bundle is a string" '{"id": "T2", "state": "todo", "title": "First of two", "bundle": "1"}'
+sb spec packet SP-1 T2
+rc_is "spec packet: a bundled task builds its packet" 0
+out_has "spec packet: and shows its Bundle line as written" "  - Bundle: 1"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' '  - Bundle: 1' \
+  '- [ ] T2 - Two' '  - Requirements: R1' '  - Bundle: two' '- [ ] T3 - Three' '  - Requirements: R1' '  - Bundle: x' >"$CRT"
+sb spec tasks SP-1
+rc_is "spec tasks: a bundle that is no whole number exits 1" 1
+out_is "spec tasks: and prints no row" ""
+err_has "spec tasks: and names the first such task" "T2 has the bundle two in $S/tasks/SP-1/spec/tasks.md: a bundle is a whole number"
+sb spec tasks SP-1 --json
+rc_is "spec tasks --json: a bad bundle exits 1 too" 1
+out_is "spec tasks --json: and prints nothing" ""
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' '  - Bundle: 1' \
+  '- [ ] T2 - Two' '  - Requirements: R1' '- [ ] T3 - Three' '  - Requirements: R1' '  - Bundle: 1' >"$CRT"
+sb spec tasks SP-1
+rc_is "spec tasks: a bundle split by another task exits 1" 1
+out_is "spec tasks: and prints no row either" ""
+err_has "spec tasks: and names the task out of place" \
+  "T3 is in bundle 1, but the task before it is not: put a bundle's tasks next to each other in $S/tasks/SP-1/spec/tasks.md"
 printf '\n## R1 - Again\n' >>"$SD/requirements.md"
 printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' >"$CRT"
 sb spec packet SP-1 T1
@@ -3318,15 +3365,15 @@ sb spec tasks SP-9 --json
 rc_is "spec tasks --json: exit 0" 0
 json_ok "spec tasks --json: parses as JSON"
 out_is "spec tasks --json: one object per row, quotes and backslashes escaped" '[
-  {"id": "T1", "state": "todo", "title": "Say \"hi\" \\ there"},
-  {"id": "T2", "state": "done", "title": "Two - parts"},
-  {"id": "T3", "state": "todo", "title": "-"}
+  {"id": "T1", "state": "todo", "title": "Say \"hi\" \\ there", "bundle": "-"},
+  {"id": "T2", "state": "done", "title": "Two - parts", "bundle": "-"},
+  {"id": "T3", "state": "todo", "title": "-", "bundle": "-"}
 ]'
 sb spec tasks SP-9
 text="$OUT"
 sb spec tasks SP-9 --json
 json_is "spec tasks --json: the same fields as the text" \
-  'for r in d: print("\t".join([r["id"], r["state"], r["title"]]))' "$text"
+  'for r in d: print("\t".join([r["id"], r["state"], r["title"], r["bundle"]]))' "$text"
 sb spec status SP-9 --json
 rc_is "spec status --json: a story with no build exits 0" 0
 out_is "spec status --json: and prints an empty array" "[]"
@@ -3375,7 +3422,7 @@ printf '%s\n' "- [ ] T4 - $(printf 'Caf\303\251 \001') a${CR}b" >>"$vault/$S/tas
 sb spec tasks SP-9 --json
 json_ok "spec tasks --json: a title with UTF-8, a control character and a CR parses as JSON"
 out_has "spec tasks --json: UTF-8 bytes are kept, \\u0001 and \\r are escaped" \
-  "$(printf '{"id": "T4", "state": "todo", "title": "Caf\303\251 \\u0001 a\\rb"}')"
+  "$(printf '{"id": "T4", "state": "todo", "title": "Caf\303\251 \\u0001 a\\rb", "bundle": "-"}')"
 json_is "spec tasks --json: and the title reads back as written" \
   'print(d[-1]["title"] == "Caf\u00e9 \x01 a\rb")' "True"
 sb spec SP-9 --json
@@ -3878,6 +3925,107 @@ file_has "spec phases: a task's check is its narrowest command" "$here/skills/sp
   'narrowest command that runs the task'"'"'s test, such as one test file, not every suite.'
 file_has "changelog: names the test-first build" "$here/CHANGELOG.md" '- `implementer` builds each task test-first.'
 file_has "changelog: names the packet's Checks part" "$here/CHANGELOG.md" '- The packet'"'"'s new `## Checks` part names those checks'
+
+# ---------------------------------------------------------------- the baseline skip and bundles
+PH="$here/skills/spec/phases.md"
+file_has "spec build: a resumed build skips the baseline, whatever the start" "$BM" '1. Skip it when the build resumes, whatever the start.'
+file_has "spec build: the base branch is the subproject's" "$BM" \
+  '2. The base branch is the `base_branch` that `second-brain subproject <project> <subproject>`'
+file_has "spec build: or the profile's" "$BM" '`second-brain profile <project> --keys` prints.'
+file_has "spec build: origin/<base> when the repo has it" "$BM" \
+  '`git -C "<path>" rev-parse --verify --quiet "refs/remotes/origin/<base_branch>"` prints a'
+file_has "spec build: else the base branch itself" "$BM" 'hash, else `<base_branch>`.'
+line_is "spec build: the start is tested with git's own test" "$BM" \
+  '3. Run `git -C "<path>" merge-base --is-ancestor <start> <base>`.'
+file_has "spec build: a start on the base skips the baseline, with its note" "$BM" \
+  '`second-brain task note <ID> "Build: baseline skipped: the branch starts at <start> on <base>."`,'
+file_has "spec build: any other start runs it" "$BM" '- Any other exit, such as on a branch cut from `release/<version>` or with commits the base'
+is "spec build: the start is tested before the baseline launch" \
+  "$(($(lineno "$BM" 'merge-base --is-ancestor <start> <base>') < $(lineno "$BM" '4. Launch `reviewer` in baseline mode on the branch as it is.')))" "1"
+line_is "spec build: the start is noted before a spec is committed" "$BM" '   - Then note `<short hash>`: it is `<start>`.'
+is "spec build: and that note comes before the spec commit" \
+  "$(($(lineno "$BM" 'Then note `<short hash>`: it is `<start>`.') < $(lineno "$BM" 'commit -m "<ID>: spec"')))" "1"
+file_has "spec build: the final validation runs either way" "$BM" 'The build-wide checks in `## 6. When every task passed` run either way.'
+line_is "spec build: has ### A bundle" "$BM" '### A bundle'
+is "spec build: the bundle steps come after the fix loop, before the build-wide run" \
+  "$(($(linex "$BM" '### The fix loop') < $(linex "$BM" '### A bundle') && $(linex "$BM" '### A bundle') < $(linex "$BM" '## 6. When every task passed')))" "1"
+file_has "spec build: a bundle comes from the last column of spec tasks" "$BM" \
+  'A task whose `spec tasks` row names a bundle, in its last column, goes with the other tasks of'
+file_has "spec build: one task or bundle at a time, never in parallel" "$BM" 'One task or bundle at a time, never in parallel.'
+file_has "spec build: a bundle's tasks go to one fresh implementer run" "$BM" \
+  '2. Launch one fresh `implementer` on them, with the bundle'"'"'s prompt and name.'
+line_is "spec build: one commit line per task" "$BM" \
+  '  - Last, one commit line per task, in order: `Commit <task> as "<ID> <task>: <title>".`'
+for l in '  - `Bundle: <n>.`' '  - `Tasks: <task>, <task>.`: the tasks of the bundle it builds, in order.' \
+  '  - For each of those tasks with a ruling: `Owner on <task>: <the ruling, as written>.`'; do
+  line_is "spec build: the bundle prompt line ${l#  - }" "$BM" "$l"
+done
+file_has "spec build: names the bundle's implementer" "$BM" '`name: "<ID>-bundle-<n>-implementer"`'
+file_has "spec build: each task of a bundle is set building first" "$BM" \
+  '1. `second-brain spec status <ID> <task> building` for each of them, in order.'
+file_has "spec build: each committed task is set built" "$BM" '`second-brain spec status <ID> <task> built --commit <hash>`, with the hash its `Commit:`'
+file_has "spec build: the tasks after a stop go back to todo" "$BM" \
+  'first `second-brain spec status <ID> <task> todo` for each task'
+file_has "spec build: and the stop is a block, as for a task alone" "$BM" 'Then it stops the build, as item 3 of `### Build it` says.'
+file_has "spec build: then one fresh reviewer reads the bundle" "$BM" \
+  '2. Launch one fresh `reviewer` in task mode on them, with the bundle'"'"'s prompt.'
+file_has "spec build: each task of a bundle is set in-review first" "$BM" \
+  '1. `second-brain spec status <ID> <task> in-review` for each of them, in order.'
+file_has "spec build: one verdict line per task" "$BM" '`<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`'
+file_has "spec build: a failed task of a bundle takes the fix loop alone" "$BM" \
+  '4. Fix each task left whose review is not `passed`, one at a time, in order.'
+file_has "spec build: a fix is always on one task" "$BM" '- A fix is always on one task, with the prompt and message above, even for a task of a bundle.'
+file_has "spec build: fix rounds 1 to 3 reach the bundle's implementer" "$BM" \
+  'or to `<ID>-bundle-<n>-implementer` for a task of bundle `<n>`,'
+file_has "spec build: a resumed bundle finds each cut-off commit first" "$BM" \
+  '1. Where they stand: a build `building` looks for its commit, and sets `built` when it finds one,'
+file_has "spec build: the next task or bundle waits for the bundle" "$BM" '5. Every task of the bundle has passed: go on to the next task or bundle.'
+file_has "spec build: a split bundle stops the build" "$BM" 'None, or exit 1 as for a split bundle: say so'
+file_has "spec phases: names the Bundle line" "$PH" \
+  '- Small, alike tasks may form a bundle: each adds one line, `- Bundle: <n>`, the same whole number'
+file_has "spec phases: a bundle's tasks stand together and use none of each other" "$PH" \
+  "- A bundle's tasks stand next to each other in the list, and none uses another task of its"
+file_has "spec phases: each keeps its own check and commit" "$PH" '- Each task of a bundle keeps its own requirements, `- Check:` and commit.'
+file_has "spec phases: the owner approves the bundles with the tasks" "$PH" \
+  '- Show the bundles with the task list. The owner approves them with the tasks.'
+file_has "spec phases: spec tasks must succeed and name each bundle" "$PH" \
+  '- Run `second-brain spec tasks <ID>`. It must succeed, and its last column names each task'"'"'s'
+file_has "spec tasks template: says how a bundle builds" "$here/templates/spec-tasks.md.tmpl" \
+  'Tasks next to each other with the same `- Bundle: <n>` line are one bundle: built in one'
+file_has "implementer: builds a bundle one task at a time" "$IM" \
+  'per task. Build them one at a time, in that order, each as a task alone:'
+file_has "implementer: fetches each packet as it starts the task" "$IM" '1. Fetch its packet only when you start it, and check where you are, as `## 0. Get your packet`'
+file_has "implementer: each task test-first, with its checks and its own commit" "$IM" \
+  '2. Build it test-first, run its packet'"'"'s `## Checks` and commit it with its own commit line, as'
+file_has "implementer: one report per task" "$IM" 'Each opens with a line `Task: <task>`, then the lines'
+file_has "implementer: a task it cannot commit stops the bundle" "$IM" '- A task you cannot commit stops the bundle.'
+file_has "reviewer: reviews each task of a bundle against its own packet" "$RV" 'one commit per task. Review each task against its own packet:'
+file_has "reviewer: runs the each-task checks once for a bundle" "$RV" '   once for the bundle, as step 4 says.'
+file_has "reviewer: logs each finding on its own task" "$RV" 'and log each finding on its own task, as'
+file_has "reviewer: one verdict line per task of a bundle" "$RV" '`<task>: VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.'
+for a in implementer reviewer; do
+  d="$(sed -n 's/^description: //p' "$here/agents/$a.md")"
+  is "$a: the description names a bundle, under 200 characters" "$(case "$d" in *bundle*) [ "${#d}" -lt 200 ] && echo ok ;; esac)" "ok"
+done
+file_has "contract: a task item may name its bundle" "$CT" '- A task item may add `- Bundle: <n>`, a whole number. The tasks with the same number are one'
+file_has "contract: spec tasks prints the bundle" "$CT" 'title (`-` when none), bundle (`-` when none).'
+file_has "contract: spec tasks --json has the bundle key" "$CT" '`--json` prints the rows with the keys `id`, `state`, `title` and `bundle`'
+file_has "contract: the baseline is skipped on a start on the base branch" "$CT" \
+  '- The branch starts on the base branch when `git merge-base --is-ancestor HEAD <base>` exits 0.'
+file_has "contract: names the skip note" "$CT" '`Build: baseline skipped: the branch starts at <short hash> on <base>.`'
+file_has "contract: a resumed build skips it, and the final validation always runs" "$CT" \
+  '- A resumed build skips the baseline, whatever the start. The final validation always runs.'
+file_has "contract: a bundle goes to one implementer run" "$CT" "- A bundle's tasks go to one fresh \`implementer\` run. It builds them in order, one commit per"
+file_has "contract: then one reviewer gives a verdict per task" "$CT" \
+  'requirements, logs each finding on its task, and gives one verdict per task.'
+file_has "contract: the cap counts per task" "$CT" 'Its own `fails` picks each round, so the cap counts per task.'
+file_has "contract: never in parallel" "$CT" '- One task or bundle at a time, never in parallel.'
+file_has "guide: says when the baseline is skipped" "$GD" 'It is skipped when the branch starts on the base'
+file_has "guide: says how a bundle builds" "$GD" '- Small, alike tasks may form a bundle, which you approve with the task list.'
+file_has "guide: spec tasks names each bundle" "$GD" '- `second-brain spec tasks EX-2` prints each task'"'"'s bundle in its last column.'
+file_has "changelog: the baseline skip" "$here/CHANGELOG.md" '- A new build skips the baseline when the story'"'"'s branch starts on the base branch'
+file_has "changelog: bundles" "$here/CHANGELOG.md" '- A bundle'"'"'s tasks go to one `implementer` run, one commit per'
+file_has "changelog: spec tasks names the bundle" "$here/CHANGELOG.md" '- `second-brain spec tasks` prints each task'"'"'s bundle in a fourth column'
 
 # ---------------------------------------------------------------- result
 if [ -f "$tmp/undefined" ]; then

@@ -947,8 +947,8 @@ text.
   AskUserQuestion only for: a destructive action, a security-sensitive one, an outside effect
   such as a push, a merge or a publish, a spec too broken to follow, a task blocked or past its
   last fix round, and a failed baseline. `skills/spec/build.md` holds the list.
-- A `BLOCKED` from the user check or the branch review is a block too. So is a review that gives
-  no verdict when asked again, and then from one fresh `reviewer` in its place.
+- A `BLOCKED` from the user check or the branch review is a block too. So is a review that still
+  gives no verdict from one fresh `reviewer` in its place.
 - A spec is too broken to follow when going on would change, add or drop a requirement, a design
   decision, a task or a check.
 - The phases, and the steps before the build's `Build: started` or `Build: resumed` note, ask as
@@ -1062,9 +1062,14 @@ text.
   `task` key.
 - With browser steps, the block adds `"screenshots": "<folder>"`.
 - The skill reads each verdict from the block, in place of a `VERDICT:` line. A PASS needs every
-  `met` true and `issues` 0, and in a task's review one check or more. A FAIL needs `issues` 1 or
-  more.
+  `met` true and `issues` 0, and in task and branch mode one check or more. A FAIL needs `issues`
+  1 or more.
+- Before each review but the baseline, the skill notes the issue count of each task it reviews in
+  `build.json`. A PASS after which a count grew is no verdict, and so is a task's FAIL in task
+  mode after which its count did not.
 - No block, or one that breaks these rules, is no verdict: never a PASS.
+- The skill asks the same reviewer once more only when the block is missing or does not parse.
+  Any other block with no verdict goes to one fresh `reviewer` at once.
 - In baseline mode there is no task to log on: `reviewer` puts its findings in the reply.
 - In user and branch mode, `reviewer` logs a finding on the task whose `- Files:` line holds its
   file, and puts the rest in the reply.

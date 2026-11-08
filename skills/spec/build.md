@@ -106,20 +106,27 @@ to you as its result.
 `reviewer`'s reply ends with a JSON block, as `## Verdict` in `agents/reviewer.md` says. Take its
 verdict from that block alone, never from the words before it.
 
-1. The block is the reply's last fenced block tagged `json`. It is good when:
-   - It is one JSON object with `verdict`, `issues` and `checks`. A bundle's has `tasks` in their
-     place: one entry per task of its `Tasks:` line, each with `task` and those three.
+1. Before each launch but the baseline's, note the issue count of each task it reviews: the
+   length of its `issues` in `second-brain spec status <ID> --json`. The user check and the branch
+   review review every task.
+2. The block is the reply's last fenced block tagged `json`. It parses when it is one JSON object
+   with `verdict`, `issues` and `checks`. A bundle's has `tasks` in their place: a list of entries,
+   each with `task` and those three.
+3. A block that parses is good when:
    - `verdict` is `PASS`, `FAIL` or `BLOCKED`, and `issues` is a whole number.
    - `checks` is a list. Each entry has a `check` text and a `met` of `true` or `false`.
-   - A `PASS` has every `met` `true` and `issues` 0. In task mode it has one check or more.
-   - A `FAIL` has `issues` 1 or more.
-2. No block, or one that is not good, is no verdict, and never a PASS. In a bundle, so is a task
-   with no entry, or with one that is not good.
-3. No verdict: ask the reviewer once more with SendMessage,
-   `Your reply has no good verdict block: <the rule of item 1 it breaks>. Reply with the block alone.`
-   - Still none: launch one fresh `reviewer` in its place, with the same prompt. In a bundle,
-     launch it on the tasks with none, with the bundle's prompt for those tasks.
-   - Still none: take it as BLOCKED.
+   - A `PASS` has every `met` `true` and `issues` 0, and no count of item 1 grew. In task and
+     branch mode it has one check or more.
+   - A `FAIL` has `issues` 1 or more. In task mode, its task's count grew.
+   - In a bundle, each task of its `Tasks:` line is judged on its own entry. A task with no entry
+     has no good block.
+4. No good block is no verdict, and never a PASS.
+5. No block, or one that does not parse: ask the reviewer once more with SendMessage,
+   `Your reply has no JSON verdict block that parses. Reply with the block alone.`
+6. A block that parses and is not good, or no good block after item 5: launch one fresh
+   `reviewer` in its place, with the same prompt. In a bundle, launch it on the tasks with no good
+   block, with the bundle's prompt for those tasks.
+7. Still no good block from it: take it as BLOCKED.
 
 ## 4. The baseline
 
@@ -309,9 +316,8 @@ A resumed build with every task passed comes straight here.
    - Then `second-brain spec status <ID> <task> failed` for each such task, and go back to
      `## 5. Each task in turn`. It comes back here once every task has passed again.
 2. Launch `reviewer` in user mode on the finished branch.
-   - Before the launch, note each task's issue count: the length of its `issues` in
-     `second-brain spec status <ID> --json`.
-   - Read its verdict as `### Reading a verdict` says.
+   - Read its verdict as `### Reading a verdict` says. Item 1 there notes each task's issue count
+     before the launch.
    - BLOCKED: stop, as `## 7. When the build stops` says.
    - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the
      last task in order, with a ruling, and with the fix you propose:

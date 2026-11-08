@@ -158,9 +158,10 @@
 - `reviewer` ends its reply with a JSON block, `{"verdict": ..., "issues": <n>, "checks": [...]}`,
   in place of the `VERDICT:` line. A bundle's block holds one entry per task. The `spec` skill
   reads each verdict from it, as `### Reading a verdict` in `skills/spec/build.md` says.
-- No block, or one that breaks its rules, such as a PASS with a check not met, is no verdict and
-  never a PASS. The skill asks once more, then launches a fresh `reviewer`, then takes it as
-  BLOCKED.
+- No block, or one that breaks its rules, is no verdict and never a PASS. So is a PASS with a
+  check not met or an issue logged in its review, and a task's FAIL that logged none. The skill
+  asks once more only when the block is missing or does not parse. Otherwise it launches one
+  fresh `reviewer`, then takes it as BLOCKED.
 - `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its
   evidence. Its grading is tuned on the reviews of an earlier build: a check on every item of a
   kind is met only when each item meets it, a defect it sees is a finding even when no check

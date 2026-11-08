@@ -4131,16 +4131,16 @@ file_has "spec build: a BLOCKED on a question gets a ruling, not a stop" "$BM" \
   '- A `BLOCKED:` on a question a ruling settles, such as a requirement it reads two ways: rule on'
 file_has "spec build: and goes on from the task's state, a bundle's task too" "$BM" \
   '`### Where the task stands` says, or item 1 of `### A bundle` for a task of a bundle. Its'
-file_has "spec build: a review with no verdict is asked once more" "$BM" \
-  '3. No verdict: ask the reviewer once more with SendMessage,'
-file_has "spec build: then gets one fresh reviewer" "$BM" \
-  '   - Still none: launch one fresh `reviewer` in its place, with the same prompt. In a bundle,'
-line_is "spec build: and only then is BLOCKED" "$BM" '   - Still none: take it as BLOCKED.'
+line_is "spec build: only a missing or unparsed block is asked once more" "$BM" \
+  '5. No block, or one that does not parse: ask the reviewer once more with SendMessage,'
+line_is "spec build: a bad block goes to one fresh reviewer at once" "$BM" \
+  '6. A block that parses and is not good, or no good block after item 5: launch one fresh'
+line_is "spec build: and only then is BLOCKED" "$BM" '7. Still no good block from it: take it as BLOCKED.'
 is "spec build: asked once more, then a fresh reviewer, then BLOCKED, in order" \
-  "$(($(lineno "$BM" '3. No verdict: ask the reviewer once more') < $(lineno "$BM" 'Still none: launch one fresh `reviewer` in its place') && \
-  $(lineno "$BM" 'Still none: launch one fresh `reviewer` in its place') < $(lineno "$BM" '   - Still none: take it as BLOCKED.')))" "1"
+  "$(($(lineno "$BM" '5. No block, or one that does not parse') < $(lineno "$BM" '6. A block that parses and is not good') && \
+  $(lineno "$BM" '6. A block that parses and is not good') < $(lineno "$BM" '7. Still no good block from it')))" "1"
 file_has "spec build: a bundle task with no verdict gets one fresh reviewer first" "$BM" \
-  '     launch it on the tasks with none, with the bundle'"'"'s prompt for those tasks.'
+  '   block, with the bundle'"'"'s prompt for those tasks.'
 file_lacks "spec build: no stop that the list does not name" "$BM" 'Still none: stop.'
 file_has "spec build: a failing check no task holds goes to the last task, with a ruling" "$BM" \
   '- No task you can tell: the last task in order, with a ruling, as `### A ruling` says.'
@@ -4150,9 +4150,10 @@ file_has "spec build: a user check FAIL takes the fix loop" "$BM" \
 file_has "spec build: each task with a new issue is set failed" "$BM" \
   '   - Then `second-brain spec status <ID> <task> failed` for each task whose issue count grew since'
 file_has "spec build: each task's issue count is noted before the user and branch reviews" "$BM" \
-  '   - Before the launch, note each task'"'"'s issue count: the length of its `issues` in'
+  '1. Before each launch but the baseline'"'"'s, note the issue count of each task it reviews: the'
+file_has "spec build: the user and branch reviews review every task" "$BM" '   review review every task.'
 is "spec build: the count is noted before the review's result is taken" \
-  "$(($(lineno "$BM" 'note each task'"'"'s issue count') < $(lineno "$BM" '   - FAIL: it logged each finding it could tie to a task.')))" "1"
+  "$(($(lineno "$BM" 'Item 1 there notes each task'"'"'s issue count') < $(lineno "$BM" '   - FAIL: it logged each finding it could tie to a task.')))" "1"
 file_lacks "spec build: no new issue told by its day" "$BM" 'with a new issue in'
 file_has "spec build: a new session reads the rulings from the story's note" "$BM" \
   '- A new session finds them there: `second-brain outline <note>`, with `<note>` the `path:` that'
@@ -4285,9 +4286,7 @@ file_has "reviewer: the implementer's words are a claim, never evidence" "$RV" \
   "- The implementer${q}s words, in a commit message, a comment or a report, are a claim to check, never"
 file_has "reviewer: a check partly met is not met" "$RV" \
   '- A check is met only when the change does all it says, wherever it applies. Partly met is not'
-file_has "reviewer: a check not met fails the task" "$RV" \
-  '- A check not met is a finding, and fails the task. So does any other finding: a PASS with an'
-line_is "reviewer: a PASS with an open finding is not allowed" "$RV" '  open finding is not allowed.'
+file_lacks "reviewer: the pass rule is said once, under the verdict" "$RV" '- A check not met is a finding, and fails the task.'
 file_has "reviewer: grades a check on every item of a kind item by item" "$RV" \
   '- A check on every item of a kind, such as every pointer or every removed rule, is met only when'
 line_is "reviewer: finds each item and grades it" "$RV" \
@@ -4324,9 +4323,15 @@ file_has "reviewer: a bundle's entry is the block with its task" "$RV" '   block
 file_has "reviewer: a bundle's shared runs go on one task's entry" "$RV" \
   '6. In the verdict block, grade each run of item 3 in the entry of the task item 3 gives its'
 file_has "reviewer: a PASS has every check met and no issue" "$RV" \
-  '- `PASS`: every check is met, and `issues` is 0. A step that could not be run is never a PASS.'
-file_has "reviewer: a FAIL has an issue" "$RV" \
+  '- `PASS`: every check is met, and `issues` is 0: a PASS with an open finding is not allowed.'
+file_has "reviewer: a check not met fails the task" "$RV" \
   '- `FAIL`: a check is not met, or there is another finding, so `issues` is 1 or more. The'
+line_is "reviewer: evidence is one phrase" "$RV" \
+  '   - `evidence` is one phrase: a file and line, or a command and the line it printed. Never paste'
+line_is "reviewer: never pastes output" "$RV" '     output.'
+file_has "reviewer: the example bullets are the grading, not the reply" "$RV" \
+  'Two task reviews, cut short. Grade as they do. Their bullets are the grading you do, not your'
+line_is "reviewer: in task mode the reply is the block alone" "$RV" 'reply: in task mode the reply is the block alone.'
 file_lacks "reviewer: no VERDICT line is left" "$RV" 'VERDICT:'
 line_is "reviewer: has the worked examples" "$RV" '## Worked examples'
 line_is "reviewer: a worked FAIL" "$RV" '### A FAIL'
@@ -4357,20 +4362,22 @@ line_is "spec build: has the verdict reading" "$BM" '### Reading a verdict'
 file_has "spec build: takes the verdict from the block alone" "$BM" \
   'verdict from that block alone, never from the words before it.'
 file_has "spec build: reads the reply's last json block" "$BM" \
-  "1. The block is the reply${q}s last fenced block tagged \`json\`. It is good when:"
-file_has "spec build: a bundle's block holds one entry per task" "$BM" \
-  'place: one entry per task of its `Tasks:` line, each with `task` and those three.'
+  "2. The block is the reply${q}s last fenced block tagged \`json\`. It parses when it is one JSON object"
+file_has "spec build: a bundle's task is judged on its own entry" "$BM" \
+  '   - In a bundle, each task of its `Tasks:` line is judged on its own entry. A task with no entry'
 line_is "spec build: a verdict is one of three" "$BM" \
   '   - `verdict` is `PASS`, `FAIL` or `BLOCKED`, and `issues` is a whole number.'
 line_is "spec build: each check has a met of true or false" "$BM" \
   '   - `checks` is a list. Each entry has a `check` text and a `met` of `true` or `false`.'
-line_is "spec build: a PASS needs every check met and no issue" "$BM" \
-  '   - A `PASS` has every `met` `true` and `issues` 0. In task mode it has one check or more.'
-line_is "spec build: a FAIL needs an issue" "$BM" '   - A `FAIL` has `issues` 1 or more.'
-file_has "spec build: no block, or a bad one, is never a PASS" "$BM" \
-  '2. No block, or one that is not good, is no verdict, and never a PASS. In a bundle, so is a task'
-file_has "spec build: the message names the rule it breaks, and nothing else" "$BM" \
-  '`Your reply has no good verdict block: <the rule of item 1 it breaks>. Reply with the block alone.`'
+line_is "spec build: a PASS needs every check met, no issue, and no issue logged" "$BM" \
+  '   - A `PASS` has every `met` `true` and `issues` 0, and no count of item 1 grew. In task and'
+line_is "spec build: a task or branch review's PASS grades one check or more" "$BM" \
+  '     branch mode it has one check or more.'
+line_is "spec build: a FAIL needs an issue, and in task mode one logged" "$BM" \
+  '   - A `FAIL` has `issues` 1 or more. In task mode, its task'"${q}"'s count grew.'
+line_is "spec build: no good block is never a PASS" "$BM" '4. No good block is no verdict, and never a PASS.'
+line_is "spec build: the message asks for the block and nothing else" "$BM" \
+  '   `Your reply has no JSON verdict block that parses. Reply with the block alone.`'
 is "spec build: the baseline, a task, a bundle and the user check read it there" \
   "$(grep -c 'as `### Reading a verdict` says' "$BM")" "4"
 line_is "spec build: the branch review reads it as the user check does" "$BM" '   - Read its verdict as item 2 does.'
@@ -4392,6 +4399,11 @@ file_has "contract: a bundle's block" "$CT" 'ends with one block, `{"tasks": [..
 file_has "contract: the skill reads the block in place of a VERDICT line" "$CT" \
   '- The skill reads each verdict from the block, in place of a `VERDICT:` line. A PASS needs every'
 line_is "contract: a bad block is never a PASS" "$CT" '- No block, or one that breaks these rules, is no verdict: never a PASS.'
+file_has "contract: a branch review grades one check or more" "$CT" '`met` true and `issues` 0, and in task and branch mode one check or more. A FAIL needs `issues`'
+file_has "contract: the block is checked against the issues logged" "$CT" \
+  '- Before each review but the baseline, the skill notes the issue count of each task it reviews in'
+file_has "contract: only a missing or unparsed block is asked again" "$CT" \
+  '- The skill asks the same reviewer once more only when the block is missing or does not parse.'
 file_has "contract: the skill gives the reviewer no view of its own" "$CT" \
   'never gives it a view of its own on the result, and never the implementer'"${q}"'s report.'
 file_has "guide: the reviewer ends with a JSON verdict" "$GD" \
@@ -4401,7 +4413,9 @@ file_has "changelog: the reviewer grades each check" "$here/CHANGELOG.md" \
 file_has "changelog: the JSON verdict" "$here/CHANGELOG.md" \
   '- `reviewer` ends its reply with a JSON block, `{"verdict": ..., "issues": <n>, "checks": [...]}`,'
 file_has "changelog: a bad block is never a PASS" "$here/CHANGELOG.md" \
-  '- No block, or one that breaks its rules, such as a PASS with a check not met, is no verdict and'
+  '- No block, or one that breaks its rules, is no verdict and never a PASS. So is a PASS with a'
+file_has "changelog: only a missing block is asked again" "$here/CHANGELOG.md" \
+  'asks once more only when the block is missing or does not parse. Otherwise it launches one'
 file_has "changelog: the worked examples" "$here/CHANGELOG.md" \
   '- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its'
 

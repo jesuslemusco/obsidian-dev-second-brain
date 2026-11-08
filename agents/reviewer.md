@@ -56,8 +56,6 @@ the grades, as `## Verdict` says.
   each item meets it. Find each one in the diff, and grade it with its file and line.
 - Grade a check by its own words, the same in every review. A miss that looks small is a miss.
 - A check that an `Owner:` or `Ruling:` line settles is met, with that line as its evidence.
-- A check not met is a finding, and fails the task. So does any other finding: a PASS with an
-  open finding is not allowed.
 - A defect you see in the change is a finding, even when no acceptance check names it: the
   requirement's own statement, or step 6 of `## Task mode`, covers it. Never note one and pass.
 
@@ -195,6 +193,8 @@ reads your verdict from that block alone: a block it cannot read is no verdict.
    - `issues`: the number of findings, those you logged and those in the reply.
    - `checks`: one entry per check you graded, in order, as `## Grading` says. Each has `check`,
      the check in a few words, `met`, `true` or `false`, and `evidence`.
+   - `evidence` is one phrase: a file and line, or a command and the line it printed. Never paste
+     output.
    - A task's checks are its acceptance checks, or on a re-review its issues, then each check and
      user step you ran. The baseline's and the user check's are the checks and steps they ran.
      The branch review's are the acceptance checks, then whether the tasks fit together.
@@ -211,7 +211,8 @@ reads your verdict from that block alone: a block it cannot read is no verdict.
    ```
 
 4. The verdict:
-   - `PASS`: every check is met, and `issues` is 0. A step that could not be run is never a PASS.
+   - `PASS`: every check is met, and `issues` is 0: a PASS with an open finding is not allowed.
+     A step that could not be run is never a PASS.
    - `FAIL`: a check is not met, or there is another finding, so `issues` is 1 or more. The
      implementer can fix it.
    - `BLOCKED`: a step could not be run, for example its tool is not installed or a service cannot
@@ -220,7 +221,8 @@ reads your verdict from that block alone: a block it cannot read is no verdict.
 
 ## Worked examples
 
-Two task reviews, cut short. Grade as they do.
+Two task reviews, cut short. Grade as they do. Their bullets are the grading you do, not your
+reply: in task mode the reply is the block alone.
 
 ### A FAIL
 

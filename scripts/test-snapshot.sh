@@ -47,6 +47,13 @@ fail() {
     shift
   done
 }
+# A command the suite calls but never defines fails the suite. Bash runs this hook in a subshell,
+# so it writes the name to a file, and the result counts each name as a failure.
+command_not_found_handle() {
+  printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"
+  printf '%s: line %s: %s: command not found\n' "$0" "${BASH_LINENO[0]}" "$1" >&2
+  return 127
+}
 # run <command...>: capture stdout, stderr and the exit code.
 run() {
   OUT="$("$@" 2>"$tmp/stderr")"
@@ -285,5 +292,8 @@ out_is "compare after doctor --fix: only the archived task's alias moved; no lin
 is "doctor --fix: the link to the task follows it" "$(grep -c -F "[[$P/tasks/archive/2026/EX-5/README|EX-5]]" "$vault/$P/docs/notes.md")" "1"
 
 # ---------------------------------------------------------------- result
+if [ -f "$tmp/undefined" ]; then
+  while IFS= read -r cmd; do fail "undefined command: $cmd"; done <"$tmp/undefined"
+fi
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

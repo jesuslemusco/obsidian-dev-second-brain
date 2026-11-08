@@ -40,6 +40,13 @@ fail() {
     shift
   done
 }
+# A command the suite calls but never defines fails the suite. Bash runs this hook in a subshell,
+# so it writes the name to a file, and the result counts each name as a failure.
+command_not_found_handle() {
+  printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"
+  printf '%s: line %s: %s: command not found\n' "$0" "${BASH_LINENO[0]}" "$1" >&2
+  return 127
+}
 # run <command...>: capture stdout, stderr and the exit code.
 run() {
   OUT="$("$@" 2>"$tmp/stderr")"
@@ -808,5 +815,8 @@ is "sb_link_scan: the same rows as link --check" "$(sb_link_scan)" "$OUT"
 is "sb_link_scan: four cells in every row" "$(sb_link_scan | awk -F' [|] ' 'NF != 4' | grep -c '' || true)" "0"
 
 # ---------------------------------------------------------------- result
+if [ -f "$tmp/undefined" ]; then
+  while IFS= read -r cmd; do fail "undefined command: $cmd"; done <"$tmp/undefined"
+fi
 printf '\n%d passed, %d failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

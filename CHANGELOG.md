@@ -5,10 +5,11 @@
 - The `spec` skill runs the build in your session. It launches `implementer` and `reviewer`
   itself with the Agent tool, one at a time, and takes each report from the agent's result, so
   no report is relayed by hand.
-- The `spec-lead` agent is gone. Its build and review order moved into the skill as it was.
+- The `spec-lead` agent is gone. The skill took over its build.
 - The skill's build part is in the new `skills/spec/build.md`, read only when a build starts.
   `skills/spec/SKILL.md` stays a short router.
-- Each launch names its model by role: `opus` for `implementer` and for `reviewer`.
+- Each launch names its model by role and round: `opus` for `implementer` and `reviewer`, and
+  `fable` for the last two fix rounds and for the review of the whole branch.
 - A spec story's build progress is in `build.json` in its task folder in the vault, whatever its
   `spec_home`, never in its README. Per task it holds a build state, a review state, the commits,
   each issue with its proposed fix, and the time each state was set.
@@ -17,8 +18,8 @@
 - `second-brain spec status <ID> <task> <state>` sets the field its state belongs to, and adds no
   status note. `spec issue` adds the issue to `build.json`.
 - `second-brain spec status <ID>` prints one line per task:
-  `T1 - build: built - review: failed - commits <hashes> - <title>`, its issues under it.
-  `--json` has the keys `id`, `build`, `review`, `commits`, `title` and `issues`.
+  `T1 - build: built - review: failed - fails 1 - commits <hashes> - <title>`, its issues under
+  it. `--json` has the keys `id`, `build`, `review`, `fails`, `commits`, `title` and `issues`.
 - Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
   The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
   README.
@@ -47,6 +48,37 @@
 - A line break in an issue prints as a blank in `spec status` and the packet, so each issue stays
   one line.
 - `SECOND_BRAIN_NOW` sets the time `build.json` records, for tests.
+- Each task is reviewed right after it is built, before the next one starts. A fresh `reviewer`
+  reads only its diff, against its requirements first, then for code quality, and runs only its
+  `each task` checks.
+- A failed task goes back to the same `implementer` with its findings, which the skill reaches
+  again with SendMessage by the name it launched it with. A fresh one takes over when it cannot.
+- The fix loop has five rounds: three on the same `implementer`, then two on a fresh one on the
+  stronger model. A sixth failed review stops the build.
+- The rounds are a task's `fails`, its failed reviews in `build.json`, so the cap holds across
+  sessions. A task stopped at the cap waits for a ruling newer than its stop, as a blocked one
+  does.
+- A re-review reads only the fix's commits and the findings it answers. The packet's new `fails`
+  line says which it is: its `diff` and `## Issues` then hold only those.
+- `build.json` records the commit of each state set with `--commit`, and the review round of each
+  issue.
+- When every task has passed, the skill runs `second-brain validation run <project> <repo>
+  --when each-build` once, with no agent. A failing check is logged on the task whose files it
+  covers and takes the fix loop.
+- Then `reviewer` runs the user steps on the finished branch, in the new user mode. One review of
+  the whole branch, in the new branch mode, ends the build.
+- Each check and user step in `validation.md` ends with `when: each task`, `when: each build` or
+  `when: release`. None means `each build`. A `release` check runs only when you ask.
+- The new `second-brain validation run <project> <repo> [--when each-task|each-build|release]
+  [--timeout <seconds>] [--json]` runs the matching checks from the repo's root, one at a time,
+  each stopped after 1800 seconds by default. It prints one row per check and exits 0 only when
+  all pass.
+- The validation template asks for each check's command in backticks and for when it runs.
+  `/odsb:vault-setup validation` drafts both. The doctor still flags the template's earlier
+  lines.
+- Upgrading: in a `validation.md` with no `when:`, every check runs once, at the end of each
+  build, and none in a task's review. Add `when: each task` to a quick check to run it in each
+  review, and `when: release` to a costly one.
 
 ## 0.6.0 - 2026-11-08
 

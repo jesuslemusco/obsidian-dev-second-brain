@@ -32,8 +32,8 @@ id and, last, the commit line. The context packet you fetch is all you build fro
   does not name.
 - Add or change the tests the task's `Check` and the design's testing call for.
 - Run no check, test, linter or build: the reviewer runs them all.
-- On a retry, the packet's `## Issues` lists what the reviewer logged. Fix each issue, with its
-  proposed fix or a better one.
+- On a fix, the packet's `fails:` is above 0 and its `## Issues` lists the findings of the last
+  review. Fix each issue, with its proposed fix or a better one.
 - An `Owner:` line in your prompt is the owner's ruling on the task: follow it.
 
 ## 2. Commit
@@ -47,10 +47,19 @@ id and, last, the commit line. The context packet you fetch is all you build fro
 
 - Reply in two lines: `Commit: <short hash>`, then one line on what you built.
 - That line also names anything the task asks that you could not do, and why.
-- On a retry, that line says how you fixed the issues.
+- On a fix, that line says how you fixed the issues.
 - Never say the change works: that is the reviewer's to say.
-- You stop without a commit: reply with one line, `BLOCKED: <why>`. A retry cannot fix that: the
+- You stop without a commit: reply with one line, `BLOCKED: <why>`. A fix cannot help that: the
   build stops and the owner is asked.
+
+## A fix message
+
+The `spec` skill may send you a message that starts with `Fix:` after your task fails its review.
+
+- Run `second-brain spec packet <ID> <task> --project "<project>"` again, and check where you are
+  as step 2 of `## 0. Get your packet` says.
+- Fix each issue under `## Issues`, as `## 1. Build` says, then commit with the message's last
+  line and reply as `## 3. Report` says.
 
 ## Rules
 

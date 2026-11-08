@@ -117,6 +117,15 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - The agents cannot ask you anything. Every question comes through your session.
 - Each agent fetches its own packet and replies in a line or two, so your session stays small
   through a long build. `reviewer` reads the task's diff from a file the helper writes.
+- Each task is reviewed right after it is built, before the next one starts, so no task builds on
+  an unreviewed one. The review reads the task's diff, against its requirements first, then for
+  code quality.
+- A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
+  rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
+  session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.
+- When every task has passed, the helper runs the repo's checks once, with no agent. Then one
+  review runs the user steps and one, on the most capable model, reads the whole branch, as
+  `## 6. When every task passed` in `skills/spec/build.md` says.
 - A task may name what it provides on `- Provides:` lines. A task that names it on `- Uses:` gets
   those lines in its packet, as `## 4. A task` in `docs/contract.md` says.
 - When the build stops, your session shows where it stands and asks you what to do. The cases
@@ -138,6 +147,12 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- Each check and user step ends with when it runs: `when: each task`, `when: each build` or
+  `when: release`, as `### Validation` in `docs/contract.md` says. A `release` one runs only when
+  you ask.
+- `second-brain validation run <project> <repo> --when each-task` runs the matching checks one at a
+  time, each stopped after `--timeout` seconds, and prints a row per check. Its form is under
+  `## 7. The helper` in `docs/contract.md`.
 - Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
   in `docs/contract.md` says.
 - The plugin ships no browser. Name the browser skill or command your repo uses.

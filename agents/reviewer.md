@@ -8,7 +8,8 @@ omitClaudeMd: true
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
-You run every check: the implementer runs none. The caller names the mode, baseline or task.
+You run every check: the implementer runs none. The caller names the mode: baseline, task, user
+or branch.
 
 - If `second-brain` is not found, call it as `"${CLAUDE_PLUGIN_ROOT}/bin/second-brain"`.
 - An `Owner:` line in your prompt is the owner's ruling on the task: follow it.
@@ -21,12 +22,24 @@ Keep the `status --porcelain` output: the user steps are checked against it.
 - The branch must be the one the caller named, or the packet's `branch` in task mode.
 - In task mode, uncommitted changes are a finding, and the verdict is FAIL.
 
+## When a step runs
+
+Each bullet under `### Checks` and `### Check as a user would` ends with when it runs, as
+`### Validation` in `docs/contract.md` says: `when: each task`, `when: each build` or
+`when: release`. A bullet with none is `each build`.
+
+- Run the checks under `### Checks` only through
+  `second-brain validation run "<project>" <repo> --when <when>`. It runs each matching command
+  and prints a row per command. A `fail` row is a finding, with the lines under it.
+- Run a user step only when your mode takes its `when:`.
+- Never run a `release` check or step: only the owner asks for one.
+
 ## Baseline mode
 
 - The caller gives the project, the repo, `<repo_path>` and the branch.
 - Run `second-brain validation "<project>" <repo>` for the steps.
-- Run every step under `### Set up and start`, `### Checks` and `### Check as a user would`, in
-  that order, on the branch as it is.
+- On the branch as it is, run the steps under `### Set up and start`, then the checks with
+  `--when each-build`, then each user step whose `when:` is `each task` or `each build`.
 - Judge the result by `### A pass`.
 
 ## Task mode
@@ -36,24 +49,70 @@ The caller gives the story and its project, the task and the session id.
 1. Run `second-brain spec packet <story> <task> --project "<project>"`. It gives `repo_path` and
    the branch for step 0.
    - Exit 1: the verdict is BLOCKED, with the message it printed.
-2. Read the change from the file the packet's `diff:` line names.
+2. Read the change from the file the packet's `diff:` line names, and nothing else of the code.
    - `diff: none (...)`: the verdict is BLOCKED, with what the line says.
-3. For each acceptance check of the packet's requirements, say whether the change meets it, with
-   the file and line that show it.
-4. The packet's `## Issues` are what an earlier review logged: check that each is fixed.
-5. Run the task's `Check`, every command under `### Checks`, and the steps under
-   `### Check as a user would`.
+   - `fails: 0`: a first review. The diff holds every commit of the task.
+   - `fails` above 0: a re-review. The diff holds only the fix's commits, and `## Issues` only the
+     findings the fix answers.
+3. Requirements first.
+   - A first review: for each acceptance check of the packet's requirements, say whether the
+     change meets it, with the file and line that show it.
+   - A re-review: for each issue under `## Issues`, say whether the fix answers it, with the file
+     and line.
+4. Run the task's `Check`, the checks with `--when each-task`, and each user step whose `when:` is
+   `each task`. Run no other check: the build runs them once every task has passed.
    - Start the project as `### Set up and start` says when a step needs it.
-6. Scope: a change outside the task, a dependency the design does not name, or a test changed so
-   that it passes, is a finding.
-7. Judge the result by `### A pass`.
+5. An acceptance check not met, an issue not answered, or a check or step that fails: the verdict
+   is FAIL. Log the findings, and skip step 6.
+6. Then code quality, in the diff alone. Each of these is a finding:
+   - A name that misleads, or code repeated where it could be shared.
+   - An error or an edge case the change leaves unhandled.
+   - A new path with no test, where the design's testing asks for one.
+   - Code against the conventions the diff shows around it.
+   - Scope: a change outside the task, a dependency the design does not name, or a test changed
+     so that it passes.
+7. Judge the result by `### A pass`, for the checks this review runs.
 8. Log each finding in the story, with how to fix it, before you reply:
    `second-brain spec issue <story> <task> "<what is wrong, at file:line>" --fix "<the fix you propose>" --session <id>`.
    - A step that could not be run is a finding too. Its fix names what it needs, such as the tool.
 
+## User mode
+
+The caller gives the story and its project, the session id, the repo, `<repo_path>` and the
+branch. The build has passed every task and run the checks.
+
+1. Run `second-brain validation "<project>" <repo>` for the steps.
+2. On the finished branch, run each user step whose `when:` is `each task` or `each build`.
+   - Start the project as `### Set up and start` says when a step needs it.
+3. Run no check under `### Checks`: the build ran them.
+4. Judge the result by `### A pass`, then log each finding as `## Findings on a finished branch`
+   says.
+
+## Branch mode
+
+The caller gives the user mode's lines, and the base: the commit the build started at.
+
+1. Run `second-brain spec <story> --project "<project>"` for the paths of the spec files. Read
+   `requirements.md`, `design.md` and `tasks.md`.
+2. Read the whole change: `git -C "<repo_path>" diff <base>...HEAD`.
+3. Requirements first: say whether the change meets each acceptance check, and whether the tasks
+   fit together, with the file and line that show it.
+4. Then code quality across the change, as step 6 of `## Task mode` says.
+5. Run no check and no user step: the build ran them.
+6. Log each finding as `## Findings on a finished branch` says.
+
+## Findings on a finished branch
+
+In user and branch mode, tie each finding to the task it belongs to.
+
+- The task is the one whose `- Files:` line in `tasks.md` holds the finding's file. Several: the
+  last of them in order. `second-brain spec <story> --project "<project>"` names `tasks.md`.
+- Log a finding that has a task with `spec issue`, as step 8 of `## Task mode` says.
+- A finding no task covers goes in the reply, as baseline mode's do.
+
 ## Check as a user would
 
-In either mode, each line under `### Check as a user would` is one step that starts with the tool
+In every mode, each line under `### Check as a user would` is one step that starts with the tool
 that runs it. Run the step with that tool.
 
 - A skill: call it with the Skill tool, by the name the line gives.
@@ -75,13 +134,15 @@ that runs it. Run the step with that tool.
    `VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.
 2. Baseline mode has no task to log on. List each finding first, one line each, as
    `- <file>:<line> - <what is wrong> - <how it shows>`, then the verdict line.
-3. With browser steps, end the verdict line with ` - screenshots in <folder>`: name the temp
+3. User and branch mode: list each finding no task covers so, then the verdict line. `<n>`
+   counts every finding.
+4. With browser steps, end the verdict line with ` - screenshots in <folder>`: name the temp
    folder that holds the screenshots.
-4. The verdict:
-   - `VERDICT: PASS`: every acceptance check is met and every step passed.
-     A step that could not be run is never a PASS.
-   - `VERDICT: FAIL`: an acceptance check is not met, or a step fails because of the change. The
-     implementer can fix it.
+5. The verdict:
+   - `VERDICT: PASS`: every acceptance check is met, every step passed, and the code has no
+     finding. A step that could not be run is never a PASS.
+   - `VERDICT: FAIL`: an acceptance check is not met, a step fails because of the change, or the
+     code has a finding. The implementer can fix it.
    - `VERDICT: BLOCKED`: a step could not be run, for example its tool is not installed or a
      service cannot be reached, or the branch or tree is not as the caller said. The finding says
      what it needs, and names the tool. The implementer cannot fix it.
@@ -90,6 +151,6 @@ that runs it. Run the step with that tool.
 
 - Edit no file, commit nothing, never push, never change the branch.
 - Read only the repo, your packet and the diff file it names: nothing else in the vault, nothing
-  about other tasks.
+  about other tasks. User mode also reads `tasks.md`, and branch mode the spec files.
 - `second-brain spec issue` is your one write to the vault.
 - Stop whatever you started, such as a server, and leave the tree as you found it.

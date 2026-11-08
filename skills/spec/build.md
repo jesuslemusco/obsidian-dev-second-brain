@@ -44,9 +44,15 @@ to you as its result.
 
 - Launch one agent at a time with the Agent tool, and wait for its result. Its result is its
   report: never relay a report by hand, and never read an agent's transcript.
-- Name each launch's model by role:
-  - `odsb:implementer`: `model: "opus"`. It builds a task from its packet alone.
-  - `odsb:reviewer`, in either mode: `model: "opus"`. It judges the change and runs every check.
+- Name each launch's model by its role and round:
+  - `odsb:implementer`: `model: "opus"`. It builds a task from its packet alone, and takes fix
+    rounds 1 to 3.
+  - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.
+  - `odsb:reviewer` in task, baseline or user mode: `model: "opus"`.
+  - `odsb:reviewer` in branch mode: `model: "fable"`, the most capable model.
+- Name each `implementer` launch, so that a fix can reach it again with SendMessage:
+  - The build and fix rounds 1 to 3: `name: "<ID>-<task>-implementer"`.
+  - From fix round 4 on: `name: "<ID>-<task>-implementer-2"`.
 - An agent fetches its own packet. Never run `spec packet` here, and never put a packet, a diff or
   the spec in a prompt.
 - `implementer`'s prompt, one line each:
@@ -55,10 +61,19 @@ to you as its result.
   - `Session: <session id>.`
   - The owner's ruling on this task, when there is one: `Owner: <the ruling, as written>.`
   - Last, the commit line: `Commit it as "<ID> <task>: <title>".`
+- The fix message, sent with SendMessage to an `implementer` by its name, one line each:
+  - `Fix: the review of <task> failed. Fetch your packet again: its ## Issues lists the findings.`
+  - `Session: <session id>.`
+  - The `Owner:` line, when there is one.
+  - Last, the commit line.
 - `reviewer`'s prompt in task mode: `Mode: task.`, then the story, task and session lines, and the
   `Owner:` line when there is one.
 - `reviewer`'s prompt in baseline mode: `Mode: baseline.`, `Project: <project>.`,
   `Repo: <repo> at <path>.` and `Branch: <branch>.`
+- `reviewer`'s prompt in user mode: `Mode: user.`, the story and session lines,
+  `Repo: <repo> at <path>.` and `Branch: <branch>.`
+- `reviewer`'s prompt in branch mode: the same lines with `Mode: branch.`, then `Base: <hash>.`:
+  the hash of the newest `Build: started on <branch> at <short hash>.` note.
 
 ## 4. The baseline
 
@@ -67,62 +82,115 @@ to you as its result.
 - `VERDICT: FAIL` or `VERDICT: BLOCKED`: stop, as `## 7. When the build stops` says.
 - `VERDICT: PASS`: `second-brain task note <ID> "Build: the baseline passed at <short hash>."`.
 
-## 5. Build every task
+## 5. Each task in turn
 
-For each task whose build is `todo`, `building` or `blocked`, in the order `spec tasks` lists
-them:
+Take each task whose review is not `passed`, in the order `spec tasks` lists them. Build it, then
+review it right after, before the next task starts. A task that fails holds up the tasks after it
+until it passes or the build stops.
 
-1. A `building` task was cut off in an earlier session. Look for a commit it made, by its full
+### Where the task stands
+
+A resumed build finds each task as an earlier session left it. Go on from its state:
+
+1. Build `todo`: `### Build it`.
+2. Build `building`: it was cut off in an earlier session. Look for a commit it made, by its full
    hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.
    - A hash `spec status` lists under the task is that commit when the full hash starts with it.
    - The full hash starts with no listed hash: that run committed. Run
      `second-brain spec status <ID> <task> built --commit <hash>`, with the hash
-     `git -C "<path>" rev-parse --short <full hash>` prints, then go to the next task.
-   - No hash, or one `spec status` lists already: build the task again, from item 3.
-2. A `blocked` task: its `Owner:` line is the owner's ruling on it, the status note
+     `git -C "<path>" rev-parse --short <full hash>` prints, then `### Review it`.
+   - No hash, or one `spec status` lists already: `### The fix loop` when the task's `fails` is 1
+     or more, else `### Build it`.
+3. Build or review `blocked`: its `Owner:` line is the owner's ruling on it, the status note
    `Build: the owner ruled on <task>: <the ruling, as written>.`, when that note is newer than the
    newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.
+   - Such a ruling: a review `blocked` goes on at `### Review it`. A build `blocked` goes on at
+     `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
-3. `second-brain spec status <ID> <task> building`.
-4. Launch `implementer` on the task.
-5. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,
+4. Review `failed`, with `fails` 5 or less: `### The fix loop`.
+   - With `fails` 6 or more the build stopped at the cap. A ruling found as item 3 says sends one
+     more round, as for `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
+5. Build `built`, review `-` or `in-review`: `### Review it`.
+
+### Build it
+
+1. `second-brain spec status <ID> <task> building`.
+2. Launch `implementer` on the task, named for the build.
+3. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
-6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
-   its reply names.
+4. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
+   its reply names. Then `### Review it`.
 
-## 6. Review every task
+### Review it
 
-Then, for each task whose review is not `passed`, in the same order:
-
-1. A task whose review is `blocked`: its `Owner:` line is the owner's ruling on it, found as
-   item 2 of `## 5. Build every task` says.
-   - No such ruling: ask the owner first, as `## 7. When the build stops` says.
-2. `second-brain spec status <ID> <task> in-review`.
-3. Launch `reviewer` in task mode on the task.
+1. `second-brain spec status <ID> <task> in-review`.
+2. Launch a fresh `reviewer` in task mode on the task. Its packet gives it the task's diff, or on
+   a re-review the fix's commits and the findings they answer.
    - Its reply has a line `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
    - No such line: ask it once more with SendMessage. Still none: stop.
+3. Show the owner `second-brain spec status <ID>`.
 4. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
    - With `spec_home: repo`, commit the tick:
      `git -C "<path>" commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md`.
-   - Then `second-brain spec status <ID> <task> passed`.
+   - Then `second-brain spec status <ID> <task> passed`, and go on to the next task.
 5. BLOCKED: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
-6. FAIL: `second-brain spec status <ID> <task> failed`.
-   - Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`
-     on it again. Its packet now holds the issues the reviewer logged.
-   - Take its reply as items 5 and 6 of `## 5. Build every task` say, then review it again from
-     item 2.
-   - At most two retries for a task. Still FAIL: stop.
-7. Show the owner `second-brain spec status <ID>`.
+6. FAIL: `second-brain spec status <ID> <task> failed`, then `### The fix loop`.
 
-A task that fails holds up the review of the tasks after it until it passes or the build stops.
+### The fix loop
+
+The task's `fails` in `spec status <ID>` is its failed reviews in `build.json`, from every session.
+It picks the round. Never count the rounds yourself.
+
+1. `fails` 6 or more, right after a FAIL: the cap is reached. First the stop note,
+   `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop. The review stays
+   `failed`.
+   - A ruling the owner gives at that stop sends one more round, as for `fails` 4, with the
+     ruling as its `Owner:` line.
+2. Otherwise, `second-brain spec status <ID> <task> building`, then the round:
+   - `fails` 1 to 3: the same `implementer`. Send the fix message to
+     `<ID>-<task>-implementer`, and wait for its reply.
+   - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh
+     `implementer` in its place, with the build's prompt, name and model.
+   - `fails` 4: launch a fresh `implementer` on the stronger model, named from round 4 on, with
+     the build's prompt.
+   - `fails` 5: send the fix message to `<ID>-<task>-implementer-2`, or launch a fresh one as for
+     `fails` 4 when it cannot be reached.
+   - `fails` 6 or more, on a ruling: as for `fails` 4, with the ruling as its `Owner:` line.
+3. Take its reply as items 3 and 4 of `### Build it` say. Its review then reads only the fix.
+
+## 6. When every task passed
+
+A resumed build with every task passed comes straight here.
+
+1. Run the build-wide checks once, with no agent:
+   `second-brain validation run "<project>" <repo> --when each-build`.
+   - Every row passes or is skipped: go on to item 2.
+   - A `fail` row: find the task whose files it covers, the one whose `- Files:` line in
+     `tasks.md` holds the code its lines name or test. Several: the last of them in order.
+   - No task you can tell: stop, as `## 7. When the build stops` says.
+   - Log each failing row on its task:
+     `second-brain spec issue <ID> <task> "<command> fails in the build-wide run, exit <code>: <its lines>" --fix "<the fix you propose>"`.
+   - Then `second-brain spec status <ID> <task> failed` for each such task, and go back to
+     `## 5. Each task in turn`. It comes back here once every task has passed again.
+2. Launch `reviewer` in user mode on the finished branch. FAIL or BLOCKED: stop, as
+   `## 7. When the build stops` says.
+3. Launch `reviewer` in branch mode: one review of the whole branch ends the build. FAIL or
+   BLOCKED: stop, as `## 7. When the build stops` says.
+4. `second-brain task set <ID> status=in-review next="Owner reviews the built story"`.
+5. `second-brain task note <ID> "Build: finished; every task passed review, the branch is at <short hash>."`.
+6. Show the owner `second-brain spec status <ID>` and the final validation result.
+7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
+   takes it from there.
 
 ## 7. When the build stops
 
 1. Show the owner `second-brain spec status <ID>`, the task that stopped the build, and why: the
    agent's reply, and the issues `spec status` lists under the task.
+   - A stop in `## 6. When every task passed` names its step in place of the task: the
+     build-wide checks, the user check or the branch review.
 2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block wrote it
    already. A block writes it before it sets `blocked`, so a new session never takes an older
    ruling for this stop.
@@ -131,23 +199,14 @@ A task that fails holds up the review of the tasks after it until it passes or t
      `second-brain task note <ID> "Build: the owner ruled on <task>: <the ruling, as written>."`.
      Then go on from the step that stopped, with the ruling as the `Owner:` line of the next
      prompt for that task.
+   - A ruling to fix a task the user check or the branch review logged issues on: the same note,
+     then `second-brain spec status <ID> <task> failed`, and back to `## 5. Each task in turn`,
+     with the ruling as its `Owner:` line.
    - The spec needs a change: write `Spec: <phase> reopened.` as a status note, then go back to
      Step 2 of `SKILL.md` for that phase.
      - The owner approves the phases after it again too. Only then does the build go on.
    - The owner stops here: `build.json` keeps where the build stands, and a new session goes on
      from it.
-
-## 8. When every task passed
-
-A resumed build with every task passed comes straight here.
-
-1. Launch `reviewer` in baseline mode once more, on the finished branch. FAIL or BLOCKED: stop, as
-   `## 7. When the build stops` says.
-2. `second-brain task set <ID> status=in-review next="Owner reviews the built story"`.
-3. `second-brain task note <ID> "Build: finished; every task passed review, the branch is at <short hash>."`.
-4. Show the owner `second-brain spec status <ID>` and the final validation result.
-5. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
-   takes it from there.
 
 ## Rules
 
@@ -158,5 +217,7 @@ A resumed build with every task passed comes straight here.
 - The packet is the implementer's whole context. Never give it the other tasks or this
   conversation.
 - Never skip, merge or reorder tasks.
-- One agent at a time: wait for each agent's result before the next step.
+- One agent at a time: wait for each agent's result or reply before the next step.
+- Run a `release` check only when the owner asks:
+  `second-brain validation run "<project>" <repo> --when release`.
 - Write no code, and commit nothing but the spec files and the ticks of a `spec_home: repo` spec.

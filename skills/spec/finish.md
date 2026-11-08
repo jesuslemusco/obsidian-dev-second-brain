@@ -10,11 +10,16 @@ Read this file only when `spec-lead` finished with every task passed.
 
 - The target is the open release branch, `release/<version>`.
 - List the release branches, highest first:
-  `git -C "<path>" branch -a --list 'release/*' '*/release/*' --sort=-v:refname`.
-  - Read each name without its `+`, `*` or `remotes/<remote>/` prefix.
-- A release branch has shipped when its `v<version>` tag exists: `git -C "<path>" tag --list 'v*'`.
-- The target is the highest release branch that has not shipped.
-- Every release branch has shipped: ask the owner to name the target, or a version to cut.
+  ```sh
+  git -C "<path>" for-each-ref --format='%(refname:lstrip=-2)' \
+    'refs/heads/release/*' 'refs/remotes/*/release/*' | sort -rVu
+  ```
+- The highest `v<version>` tag is the last release that shipped. It is the first line of
+  `git -C "<path>" tag --list 'v*' --sort=-v:refname`.
+- Only a release branch higher than that tag is open.
+- With no `v<version>` tag, every release branch is open.
+- The target is the highest open release branch.
+- No release branch is open: ask the owner to name the target, or a version to cut.
   - Cut it from `base_branch`: `git -C "<path>" branch release/<version> <base_branch>`.
 - No release branch at all: the target is `base_branch`.
 - `base_branch` comes from `second-brain profile <project> --keys`.

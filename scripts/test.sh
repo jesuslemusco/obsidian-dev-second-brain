@@ -2735,14 +2735,23 @@ file_has "spec finish: any other answer keeps the branch" "$FN" \
 line_is "spec finish: has the Keep heading it points to" "$FN" '## 5. Keep'
 file_has "spec finish: the target is the open release branch" "$FN" \
   '- The target is the open release branch, `release/<version>`.'
-file_has "spec finish: lists the release branches highest first" "$FN" \
-  "branch -a --list 'release/*' '*/release/*' --sort=-v:refname"
-file_has "spec finish: reads each name without its prefix" "$FN" \
-  '- Read each name without its `+`, `*` or `remotes/<remote>/` prefix.'
-file_has "spec finish: a tagged release branch has shipped" "$FN" \
-  '- A release branch has shipped when its `v<version>` tag exists'
-file_has "spec finish: every release shipped asks the owner" "$FN" \
-  '- Every release branch has shipped: ask the owner to name the target, or a version to cut.'
+line_is "spec finish: lists the release branch names" "$FN" \
+  "  git -C \"<path>\" for-each-ref --format='%(refname:lstrip=-2)' \\"
+line_is "spec finish: local and remote, highest first, once each" "$FN" \
+  "    'refs/heads/release/*' 'refs/remotes/*/release/*' | sort -rVu"
+file_lacks "spec finish: no sort by the full ref name" "$FN" 'branch -a --list'
+file_has "spec finish: the highest tag is the last release shipped" "$FN" \
+  '- The highest `v<version>` tag is the last release that shipped.'
+file_has "spec finish: the tags are listed highest first" "$FN" \
+  "git -C \"<path>\" tag --list 'v*' --sort=-v:refname"
+file_has "spec finish: only a release above that tag is open" "$FN" \
+  '- Only a release branch higher than that tag is open.'
+file_has "spec finish: with no tag every release is open" "$FN" \
+  '- With no `v<version>` tag, every release branch is open.'
+file_has "spec finish: the target is the highest open one" "$FN" \
+  '- The target is the highest open release branch.'
+file_has "spec finish: no open release asks the owner" "$FN" \
+  '- No release branch is open: ask the owner to name the target, or a version to cut.'
 file_has "spec finish: base_branch only with no release branch" "$FN" \
   '- No release branch at all: the target is `base_branch`.'
 file_lacks "spec finish: no repo path the project's repo lacks" "$FN" '`docs/guide.md`'

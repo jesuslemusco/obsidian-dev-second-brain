@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- The test workflow runs the doctor tests in a job of their own on each runner, in parallel with
+  the leak check and the other suites. On Windows they took 17 of the run's 40 minutes.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

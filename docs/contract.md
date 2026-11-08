@@ -1064,9 +1064,13 @@ text.
 - The skill reads each verdict from the block, in place of a `VERDICT:` line. A PASS needs every
   `met` true and `issues` 0, and in task and branch mode one check or more. A FAIL needs `issues`
   1 or more.
-- Before each review but the baseline, the skill notes the issue count of each task it reviews in
-  `build.json`. A PASS after which a count grew is no verdict, and so is a task's FAIL in task
-  mode after which its count did not.
+- Before a review's first launch, but the baseline's, the skill notes the issue count of each
+  task it reviews, from `spec status --json`. The fresh `reviewer` is judged against the same
+  counts.
+- A PASS is no verdict when its task's count grew, or in user and branch mode any task's. So is a
+  FAIL in task mode when its task's count did not grow.
+- A user or branch FAIL is no verdict when no count grew once the skill has logged the findings
+  of its reply.
 - No block, or one that breaks these rules, is no verdict: never a PASS.
 - The skill asks the same reviewer once more only when the block is missing or does not parse.
   Any other block with no verdict goes to one fresh `reviewer` at once.

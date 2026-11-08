@@ -54,6 +54,7 @@ A project can build its stories from a spec, and every project says how its code
   feature branches start from `main`, as `## Releases` in `docs/guide.md` says.
 - `story-tracker`'s description says to use it for any question or change on a vault ticket, even
   one the helper could answer, and the index names where a ticket stands, a standup and an update.
+- The test workflow gives each runner 60 minutes, up from 30: the Windows run now takes longer.
 
 ## 0.3.0 - 2026-10-22
 

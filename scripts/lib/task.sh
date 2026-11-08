@@ -225,6 +225,13 @@ sb_task_set() {
           '' | *[!a-z0-9-]*) sb_die 5 "a type is lowercase letters, digits and hyphens, and cannot be removed: $value" ;;
         esac
         ;;
+      delivery)
+        value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+        case "$value" in
+          '' | direct | spec) pairs[$i]="delivery=$value" ;;
+          *) sb_die 5 "delivery must be direct or spec, or empty to remove it: $value" ;;
+        esac
+        ;;
     esac
     i=$((i + 1))
   done

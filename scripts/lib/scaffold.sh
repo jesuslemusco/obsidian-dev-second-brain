@@ -14,6 +14,29 @@ sb_scaffold_file() {
   esac
 }
 
+# Write claude/validation.md when the profile keeps it in the vault and it is missing, with a section
+# for each repo of the project whose home is the vault. Print the path when created.
+sb_scaffold_validation() {
+  local SB_P_PATH="$1" SB_P_DIR="$SB_ROOT/$1" SB_P_PROFILE="$SB_ROOT/$1/claude/profile.md"
+  local name="$2" rel file r home rest text
+  rel="$1/claude/validation.md"
+  file="$SB_ROOT/$rel"
+  [ "$(sb_spec_value validation_home "$SB_P_PROFILE")" = "vault" ] || return 0
+  if [ -e "$file" ]; then
+    printf 'exists: %s\n' "$rel" >&2
+    return 0
+  fi
+  sb_fill validation.md.tmpl "$file" "PROJECT=$name" "PROJECT_PATH=$1" || sb_die 1 "cannot write $rel"
+  while IFS=$'\t' read -r r home rest; do
+    [ -n "$r" ] && [ "$home" = "vault" ] || continue
+    text="$(sb_fill_text validation-repo.md.tmpl "REPO=$r")" || exit 2
+    sb_body_append "$file" "$text" || sb_die 1 "cannot write $rel"
+  done <<EOF
+$(sb_val_rows)
+EOF
+  printf '%s\n' "$rel"
+}
+
 # Print a root flag's value cleaned up, or exit 5; "." is allowed only where the second argument says so.
 sb_scaffold_root() {
   local flag="$1" dot="$2" r="$3" nl=$'\n'
@@ -146,7 +169,7 @@ sb_board_drop_sprint() {
 # Create a project tree on the standard layout and list it in the index.
 sb_scaffold_project() {
   local name="" path="" keys="" use="" rows hit troot topics sroot depth cur intro k keylist
-  local f_tasks="" f_topics="" f_sprints="" profile had_profile=0 line_tasks line_topics="" line_sprints="" q hit2
+  local f_tasks="" f_topics="" f_sprints="" profile had_profile=0 line_validation line_tasks line_topics="" line_sprints="" q hit2
   local no_sprints=0 sprints=1 views base hub_new=0
   local nl=$'\n' cr=$'\r' tab=$'\t'
   local usage="usage: second-brain scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]"
@@ -253,7 +276,13 @@ sb_scaffold_project() {
   [ "$sprints" -eq 0 ] || line_sprints="$(sb_scaffold_hub_line "$path" "$name" "$sroot" "Sprints Hub" "one note per sprint")"
   sb_scaffold_file project-readme.md.tmpl "$path/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
     "TASKS_HUB_LINE=$line_tasks" "TOPICS_HUB_LINE=$line_topics" "SPRINTS_HUB_LINE=$line_sprints"
-  sb_scaffold_file project-claude-hub.md.tmpl "$path/claude/README.md" "PROJECT=$name" "PROJECT_PATH=$path"
+  line_validation=""
+  if [ "$(sb_spec_value validation_home "$profile")" = "vault" ]; then
+    line_validation="- Validation: [[$path/claude/validation|$name Validation]] - how to run and check
+  each repo. Agents read a repo's section before they build or review a change."
+  fi
+  sb_scaffold_file project-claude-hub.md.tmpl "$path/claude/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
+    "VALIDATION_LINE=$line_validation"
   sb_scaffold_file profile.md.tmpl "$path/claude/profile.md" "PROJECT=$name" "PROJECT_PATH=$path" "TICKET_KEYS=$keys" \
     "TASKS_ROOT=$troot" "TOPICS_ROOT=$topics" "SPRINTS_ROOT=$sroot"
   if [ "$had_profile" -eq 0 ]; then
@@ -272,6 +301,7 @@ sb_scaffold_project() {
     done
     [ "$sprints" -eq 1 ] || sb_fm_set_raw "$profile" uses_sprints false
   fi
+  sb_scaffold_validation "$path" "$name"
   views='`Current sprint`, `By topic`,
 `By subproject`, `Needs a status` and `All`'
   [ "$sprints" -eq 1 ] || views='`By topic`, `By subproject`, `Needs a status` and `All`'

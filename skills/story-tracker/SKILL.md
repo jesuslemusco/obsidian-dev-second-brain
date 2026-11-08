@@ -1,14 +1,13 @@
 ---
 name: story-tracker
-description: Write ticket text (summary, description, acceptance criteria) and track each ticket as one README in the Obsidian vault - draft, start, update, where a ticket stands, a standup of what is active.
+description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
 
 # Story tracker
 
-A story is one task folder's `README.md` in the vault, named by its ticket id. This file is the
-workflow. Everything that differs between projects comes from the project's profile.
+A story is a task's `README.md` in the vault.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
@@ -18,19 +17,21 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
 
 Run these yourself, before anything else. Chain them in one Bash call where that helps.
 
-1. `second-brain context`. Command not found: the plugin is not enabled; say so and stop.
-   `vault: none`: say no vault is set up, offer `/obsidian-dev-second-brain:vault-setup`, and
-   stop. Never guess paths.
+1. `second-brain context`.
+   - Command not found: the plugin is not enabled. Say so and stop.
+   - `vault: none`: say no vault is set up, offer `/obsidian-dev-second-brain:vault-setup`, stop.
 2. Resolve the project, first match wins: the name the user gave
    (`second-brain project --name <N>`), the ticket id (`--key EX-123`), else the `project:` line.
-   `none`, exit 1 or exit 4: show `second-brain projects` and ask.
-3. `second-brain profile <project> --keys` prints the settings the steps below name. Exit 1: the
-   profile is missing; say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, and stop.
-   The subproject (the `subproject:` line, the task's `subproject` key, or the user's word): its
-   settings win, from `second-brain subproject <project> <name>`. A new story names it as step 3
-   of `create.md` says. `task_layout` is `flat` or `archive`; a profile with no such line is `flat`.
-4. `second-brain profile <project> stories`: what this project does differently. Exit 1 here only
-   means there is no Stories section; carry on. Read other sections only when a step names them.
+   - `none`, exit 1 or exit 4: show `second-brain projects` and ask.
+3. `second-brain profile <project> --keys` prints the settings the steps below name.
+   - Exit 1: no profile. Say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, stop.
+   - A subproject's settings win, from `second-brain subproject <project> <name>`. The subproject
+     is the `subproject:` line, the task's `subproject` key, or the one the user names.
+   - A new story names its subproject as `## 3. Create the story` in `create.md` says.
+   - `task_layout` is `flat` or `archive`. A profile with no such line is `flat`.
+4. `second-brain profile <project> stories` prints what this project does differently.
+   - Exit 1 here only means there is no Stories section. Carry on.
+   - Read other sections only when a step names them.
 
 ## Modes
 
@@ -38,132 +39,152 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 |---|---|---|
 | draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, reply with the text. Write no file until the id arrives, then go to start |
 | start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
-| update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then "Edit an existing story" |
+| update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
-| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. Read-only, no branch check |
+| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
 | environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
 
-Ticket text, in draft mode or when the user asks for text to paste into the tracker: fill
-`${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, from the story when there is one, and
-reply with plain text in the tracker's markup. Never write it freehand. One screen, about 40
-lines, at most 4 findings and 4 acceptance criteria, the same Description and criteria as the
-README, when there is one, and no other sections.
+Ticket text, in draft mode or when the user asks for text to paste into the tracker:
+
+- Fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.
+- A story exists: fill it from the story, with the README's Description and acceptance criteria.
+- Reply with plain text in the tracker's markup.
+- Keep it to one screen, about 40 lines.
+- Add no section the template lacks.
 
 ## Find the story
 
 - `second-brain find <ID> --project <P>` prints the story's path, relative to the `vault:` path.
-  Exit 1 means not tracked: expected in start mode, otherwise say so and offer to start it.
-- The path's folder is not the id you asked for: the id is an alias, usually a later environment's
-  ticket in an environment set. That file is the story, and every command that takes an id
-  accepts the alias. Never create a folder for an alias, or a second README for a tracked id.
+- Exit 1: the ticket is not tracked. That is expected in start mode. Otherwise say so and offer to
+  start it.
+- The path's folder is not the id you asked for: the id is an alias. That file is the story, and
+  every command that takes an id accepts the alias.
+- Never create a folder for an alias, or a second README for a tracked id.
 - The path is outside the profile's `tasks_root`: the story predates the layout. Say so and offer
   to move it with `second-brain move`.
 - The path is `<tasks_root>/archive/<YYYY>/<ID>/README.md`: the story is archived. Read and edit
-  it as any other. Take a story's path from `find` or `task head`; never build it from the id.
-- Read cheapest first: `second-brain task head <ID>` (it shows the path, and `envs` for a set),
-  then `second-brain outline <path>` and a ranged read of one section. A whole README last.
+  it as any other.
+- Take a story's path from `find` or `task head`; never build it from the id.
+- Read cheapest first: `second-brain task head <ID>`, then `second-brain outline <path>` and a
+  ranged read of one section. A whole README last.
 
 ## Branch check (start, update, recall)
 
-A story is only as correct as the code it was read from. Know the exact ref, branch plus HEAD
-commit, before you reason about, recall or review a ticket.
+Know the exact ref, the branch and its HEAD commit, before you reason about, recall or review a
+ticket.
 
-- Repository: `second-brain repo <project>` lists name, path and state, the default first. For the
-  one the ticket touches use `second-brain repo <project> <name>`, which prints its path. Exit 1,
-  or a state other than `ok`: say which case it is (not listed, no location recorded, folder
-  missing) and ask the user where it is. Never guess a path. What each repository holds is in
-  `second-brain profile <project> repos`.
-- Run git as `git -C "<repo path>"`. Get the current branch and its HEAD commit, and list every
-  local or remote branch whose name carries the ticket id (`branch -a --list '*<ID>*'`).
-  `base_branch` and `branch_pattern` give the base and the naming: the subproject's when there is one.
-- No id given: derive it from the branch with `branch_pattern`. Still unknown: ask, never invent.
-- The branch does not match the ticket: you are looking at the wrong code. Read the right ref
-  without switching (`git -C "<repo path>" show <branch>:<file>`), or tell the user.
-- Environment set: one branch, named for the first environment's id (the folder name), serves
-  every ticket in the set. Being on it while asked about a later environment's ticket is correct,
-  not a mismatch; a mismatch is a branch carrying no id from `aliases`. Never "correct" its name
-  or cut a branch for a later id: the code is promoted, not rewritten.
-- Several branches match one ticket: they often differ materially (a rework, a PR head). Ask which
-  is canonical. Never guess.
-- Record the ref: `second-brain task set <ID> branch=<branch>`, and in the `**Branch:**` line the
-  branch, its HEAD and the date, plus one line per other branch with that id and how it differs.
-  No branch yet: `none yet`, and name the branch the repo was on, so a later session knows the
-  code read was not this ticket's. A changed canonical branch also gets a status note.
+- `second-brain repo <project>` lists the repos, the default first. For the one the ticket
+  touches, `second-brain repo <project> <name>` prints its path.
+- Exit 1, or a state other than `ok`: say which case it is (not listed, no location recorded,
+  folder missing) and ask the user where the repo is.
+- `second-brain profile <project> repos` says what each repo holds.
+- Run git as `git -C "<repo path>"`.
+- Get the current branch and its HEAD commit.
+- List every local or remote branch whose name carries the ticket id:
+  `git -C "<repo path>" branch -a --list '*<ID>*'`.
+- `base_branch` and `branch_pattern` give the base branch and the branch naming.
+- A new story's branch is cut from the base branch.
+  - A story that needs another story's code not yet in the base branch is cut from that story's
+    branch.
+- No id given: derive it from the branch with `branch_pattern`. Still unknown: ask.
+- The branch does not match the ticket: read the right ref without switching, with
+  `git -C "<repo path>" show <branch>:<file>`, or tell the user.
+- Environment set: one branch, named for the first environment's id, serves every ticket in the
+  set.
+  - Being on it for a later environment's ticket is no mismatch. A mismatch is a branch that
+    carries no id from `aliases`.
+  - Never rename it, or cut a branch for a later id.
+- Several branches match one ticket: ask which is canonical.
+- Record the ref:
+  - `second-brain task set <ID> branch=<branch>`.
+  - In the `**Branch:**` line: the branch, its HEAD and the date, plus one line per other branch
+    with that id and how it differs.
+  - No branch yet: record `none yet`, and name the branch the repo was on.
+  - A changed canonical branch also gets a status note.
+
+## Spec-driven stories
+
+- Before work starts on a story, in start mode or on a move to `in-progress`, run
+  `second-brain spec <ID>`.
+- Read its `delivery` line even when it exits 1 on a repo it cannot reach.
+- `delivery: spec`: say the story is built from a spec and offer
+  `/obsidian-dev-second-brain:spec <ID>`.
+- Do not plan or write its code here.
 
 ## Edit an existing story
 
-- The README is a human-facing document. Preserve its narrative; change only what moved.
+- Keep the README's narrative. Change only what moved.
 - Set scalar keys (`status`, `title`, `next`, `branch`, `epic`) through the helper, never by hand:
-  `second-brain task set <ID> status=in-review next="<one phrase, the next action>"`. Status is
-  `planned`, `in-progress`, `in-review`, `done` or `abandoned`; any other value exits 5. Setting it
-  also sets the `status/` tag. Keep `title` and `next` current: the overview reads them.
-- Log what happened: `second-brain task note <ID> "<text>" --session <session id>`. It prepends a
-  dated line under `## Status notes`.
-- Tick the acceptance criteria that are now met, and refresh the `**Branch:**` line.
-- Never edit project docs here: docs follow production. Work that will change docs: list each
-  planned edit as a `- [ ]` line (the doc path and what will change) under `## Docs to update`,
-  created just before `## Status notes` when absent. Those edits wait for production.
-- The story reaches production (its last environment set to `done`, or the story set to `done`
-  in a project with no environments): start the `docs-keeper` agent
-  (`obsidian-dev-second-brain:docs-keeper`) with the project, the ticket id and the README path,
-  and ask it for Workflow 5, a ticket marked done. Start it with or without a `## Docs to update`
-  section. Do not make the doc edits yourself. When the session cannot start an agent, say so and
-  name `docs-keeper` as the one to run now.
+  `second-brain task set <ID> status=in-review next="<one phrase, the next action>"`.
+  - An unknown status exits 5.
+- Keep `title` and `next` current.
+- Log what happened: `second-brain task note <ID> "<text>" --session <session id>`.
+- Tick the acceptance criteria that are now met.
+- Refresh the `**Branch:**` line.
+- Never edit project docs from this skill: `docs-keeper` makes the edits once the story reaches
+  production.
+- Work that will change docs: list each planned edit under `## Docs to update` as a `- [ ]` line,
+  with the doc path and what will change.
+  - Create that section just before `## Status notes` when it is absent.
+- The story reaches production: start the `docs-keeper` agent
+  (`obsidian-dev-second-brain:docs-keeper`) with the project, the ticket id and the README path.
+  Ask it for Workflow 5, a ticket marked done.
+  - Production means its last environment is set to `done`, or the story is set to `done` in a
+    project with no environments.
+  - Start it with or without a `## Docs to update` section.
+  - When the session cannot start an agent, say so and name `docs-keeper` as the one to run now.
 - The story is set to `done` or `abandoned` and the profile says `task_layout: archive`: after
-  the docs-keeper hand-off, ask once whether to archive it now. On a yes, run
-  `second-brain task archive <ID>`. It moves the folder to `<tasks_root>/archive/<YYYY>/<ID>/`
-  and rewrites the links to it; report the path it prints. On a no, or in a `flat` project, move
-  nothing: the doctor names a done task `archive_after_days` days after its last status note or
-  its sprint's end, and `doctor --fix` archives it then. Never archive a story without that yes.
-- An archived story set back to `planned`, `in-progress` or `in-review` is an open task in the
-  archive, which the doctor warns about. Ask whether to move it back; on a yes, run
-  `second-brain move "<its folder>" "<project path>/<tasks_root>/<ID>"`, with `--dry-run` first,
-  then `second-brain task set <ID> archived=`.
-- Topic tags stay true: `second-brain task tag <ID> add <tag>` when the story reaches another
-  topic whose folder exists, `remove <tag>` when it moves off one.
-- Dependencies stay true: `second-brain task dep <ID> add <other ID>` when the story waits on
-  another task, `remove <other ID>` when it no longer does. Never a `**Depends on:**` body line.
+  the docs-keeper hand-off, ask once whether to archive it now.
+  - On a yes, run `second-brain task archive <ID>` and report the path it prints.
+  - Never archive a story without that yes.
+- An archived story is set back to `planned`, `in-progress` or `in-review`: ask whether to move it
+  back.
+  - On a yes, run `second-brain move "<its folder>" "<project path>/<tasks_root>/<ID>"`, then
+    `second-brain task set <ID> archived=`.
+- The story reaches another topic: `second-brain task tag <ID> add <tag>`.
+- The story moves off a topic: `second-brain task tag <ID> remove <tag>`.
+- The story waits on another task: `second-brain task dep <ID> add <other ID>`.
+- The story no longer waits on it: `second-brain task dep <ID> remove <other ID>`.
+- Never write a `**Depends on:**` body line.
 - A README with no task frontmatter: never rewrite its body. Run
-  `second-brain task alias <ID> add <ID>` (the folder id becomes the first alias),
+  `second-brain task alias <ID> add <ID>`,
   `second-brain task set <ID> type=task title="..." next="..."` and
-  `second-brain task note <ID> "<text>"`. Set `status` only after asking.
+  `second-brain task note <ID> "<text>"`.
 
 ## Log discoveries
 
-New evidence that changes or sharpens the ticket (a root cause, a ticket-versus-code mismatch, a
-corrected assumption, a validation result): ask the user whether to log it. Never log unasked.
+New evidence that changes or sharpens the ticket, such as a root cause, a ticket-versus-code
+mismatch, a corrected assumption or a validation result: ask the user whether to log it, and log
+it only on a yes.
 
 - Put it on top of `## Discovery log`: ``**YYYY-MM-DD (session `<session id>`) - <conclusion>**``,
-  then the evidence (file and line at a named ref, the query, the doc).
-- Record the conclusion, not the play-by-play. One entry per session and finding.
-- If it contradicts the Summary, Description or Acceptance criteria, update those too. The log is
-  the changelog; the body stays current.
+  then the evidence: the file and line at a named ref, the query, the doc.
+- Record the conclusion, not the play-by-play.
+- One entry per session and finding.
+- It contradicts the Summary, Description or Acceptance criteria: update those too.
 - A general, reusable fact goes in its own vault note, linked from the entry.
 
 ## Links
 
-- A bare alias link such as `[[EX-123]]` does not resolve, because every story is named
-  `README.md`. Write the path form, `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`, with
-  the pipe as `\|` inside a table cell. For an archived story, the path is the one `find` prints.
-- After writing links, run `second-brain unresolved <project>`. None of your links may be listed.
-- Move or rename a note only with `second-brain move` / `second-brain rename`, so the links to
-  it are rewritten. Add `--dry-run` first to see what would change. Never fall back to `mv`,
-  and never rename a task folder.
+- Link a story by its path: `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`.
+  - An archived story's path is the one `find` prints.
+  - In a table cell, write the pipe as `\|`.
+- Run `second-brain move` or `second-brain rename` with `--dry-run` first.
+- Never rename a task folder.
 
 ## Story rules
 
-- Frontmatter is the source of truth. Never infer a status from prose. In helper output `-` means
-  empty; show a missing field as `-` too. A missing or non-standard status is "Needs a status":
-  report it, set it only after asking.
-- The code is the source of truth. Verify every file, line and behaviour claim against the actual
-  ref before recording it, and say which ref.
-- Ask with AskUserQuestion, never invent: acceptance criteria, topics, the canonical branch, an id.
-- The folder name is the story's id and first alias. No ticket yet: a kebab-case slug is the id.
-  Once the ticket exists run `second-brain task alias <slug> add <ID>`; every command then accepts
-  the ticket id, and the folder keeps the slug.
-- Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log. Depth
-  lives in the README sections, not in the ticket text.
-- Notes are session-tagged, absolute-dated, newest first. Never "yesterday" or "last week".
+- Never infer a status from prose: read the frontmatter.
+- In helper output `-` means empty. Show a missing field as `-` too.
+- A missing or non-standard status is "Needs a status": report it, and set it only after asking.
+- The code is the source of truth: verify every file, line and behaviour claim against the ref
+  before you record it, and name the ref.
+- Ask with AskUserQuestion, never invent or guess: a path, acceptance criteria, topics, the
+  canonical branch, an id.
+- The ticket arrives for a story whose folder is a slug: run
+  `second-brain task alias <slug> add <ID>`.
+- Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log.
+- Write absolute dates in notes. Never "yesterday" or "last week".
 - Say "ticket" and "tracker". The tracker's name is the profile's `tracker`.
 - Leave `sprint` and `carried_from` to the sprint skill unless the user asks.
-- Vault only. Never copy story state into Claude's memory or into the code repo.
+- Keep story state in the vault only: never in Claude's memory or the code repo.

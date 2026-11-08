@@ -1,10 +1,8 @@
 ---
-index_version: 3
+index_version: 4
 ---
 
 # Vault index for Claude
-
-This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every session.
 
 ## In every session
 
@@ -12,14 +10,15 @@ This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every ses
   say otherwise.
 - Create a new personal skill or agent in this vault, not straight in `~/.claude/skills` or
   `~/.claude/agents`, unless the user names another place. The vault is
-  `~/.claude/second-brain-vault/`: `claude/` there for any project, `<Path>/claude/` for one below.
-  Then run `second-brain link --apply`, or Claude Code never loads it (steps: `claude/README.md`).
-- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or its subproject's
-  note; only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
-- Call a plugin skill for its work, rather than the helper alone. Plugin skills:
-  `story-tracker` writes ticket text and tracks tasks (where a ticket stands, a standup, an update),
-  `sprint` runs a sprint, `vault-setup` sets up the vault or a project, `vault-doctor` checks them.
-  Plugin agents: `scrum-master` for the sprint cadence,
+  `~/.claude/second-brain-vault/`.
+- Add it by the steps under `## Adding a skill or agent` in the vault's `claude/README.md`.
+  Claude Code loads it only after `second-brain link --apply`.
+- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or in its
+  subproject's note. Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
+- Call a plugin skill or agent for its work, even when the helper alone could answer. Skills:
+  `story-tracker` for any question or change on a ticket (where it stands, a standup, an
+  update), `sprint` runs a sprint, `vault-setup` sets up the vault or a project, `vault-doctor`
+  checks them. Agents: `scrum-master` for the sprint cadence,
   `docs-keeper` for docs that follow the code and for a ticket marked done.
 - Write a pull request description in the format of
   `~/.claude/second-brain-vault/claude/pull-request.md`; a project's own
@@ -27,11 +26,8 @@ This file is imported by `~/.claude/CLAUDE.md`, so it is in context in every ses
 
 ## Working on a project or on notes
 
-A request that touches no project below and no note here needs nothing from the rest of this file.
-
-- When a request belongs to a project below, read `<Path>/README.md`, then
-  `<Path>/claude/README.md` (its rules, skills, agents) and
-  the `claude/subprojects/<name>.md` that `second-brain context` names, before anything else.
+- When a request belongs to a project below, read `<Path>/README.md`, then `<Path>/claude/README.md`
+  and the `claude/subprojects/<name>.md` that `second-brain context` names, before anything else.
 - Before reading or writing notes, run `second-brain conventions` and follow it. The full note is
   `~/.claude/second-brain-vault/obsidian-conventions.md`.
 
@@ -41,11 +37,12 @@ A request that touches no project below and no note here needs nothing from the 
   `second-brain find`, `search` (also for related notes before a decision), `task head`, then
   `outline` and a ranged read, and a whole note last.
 - A task note is always `<project>/tasks/<TICKET-ID>/README.md`, under `tasks/archive/<YYYY>/`
-  once archived. Never file it inside the topic it is about; tie it to the topic with a tag that
-  is the folder path, lowercased, and to its subproject with the `subproject` property.
+  once archived.
+- Never file a task note inside the topic it is about. Tie it to the topic with a tag that is the
+  folder path, lowercased, and to its subproject with the `subproject` property.
 - A bare `[[Alias]]` does not resolve. Links carry a path:
   `[[<vault path or unique file name>|<alias>]]`.
-- Move and rename notes with the helper (`second-brain move`, `second-brain rename`), never `mv`.
+- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.
 - Frontmatter is the truth. Read a status from the `status` property, never from prose.
 - Ticket text is never written freehand. Use `story-tracker`: it opens with `*As a* <persona>,` /
   `*I need to* ...,` / `*so that* ...` and holds at most 4 acceptance criteria.

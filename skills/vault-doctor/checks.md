@@ -1,99 +1,98 @@
 # Doctor checks
 
-One entry per check, named as `second-brain doctor` prints it, in the order of its table: eleven for
-the vault, then twenty for each project, and `subprojects` and `task-subproject` as well for a
-project that has a subproject. Every entry is a heading, a blank line and three lines,
-`Means`, `Why` and `Fix`, each on one line however long. Read an entry only when its check is not
-`ok`, and run a fix only after the user agrees to it.
+One entry per check, named and ordered as `second-brain doctor` prints its rows. Each entry is its
+heading, a blank line, then the `Means`, `Why` and `Fix` lines, one line each, however long. When
+to read an entry and when to run its fix: `## check (default)` and `## fix` in
+`skills/vault-doctor/SKILL.md`.
 
 ### pointer
 
 - Means: `~/.claude/second-brain-vault` is missing, or does not lead to a folder that holds `.obsidian/`.
-- Why: every helper command finds the vault through it, so each one exits 2 and no skill can run.
+- Why: every helper command finds the vault through it, so each exits 2 and no skill runs.
 - Fix: `/obsidian-dev-second-brain:vault-setup init`, or by hand `second-brain pointer set "<vault folder>"`.
 
 ### index
 
-- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`), which a path that is `.` or holds a `..` part or a backslash never is, and such a row gets no project rows; a name, a key or a path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
-- Why: that table is the only list of projects, so a project resolves by name, by ticket key or by working directory only when one row matches and its folder is there. The text above the table is in every session, so an old one may name commands the helper no longer has, or lack a rule every session needs, such as the one for finding and reading notes.
-- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project` adds it, with the first project's row. A row: ask, then correct its path, change the name or the key another row has, or remove the row of a project that is gone. Older: ask first; then replace the text above `## Projects` with the text of `templates/vault-index.md.tmpl`, keep the lines the user added and the table, and set `index_version` to the template's.
+- Means: `CLAUDE.md` at the vault root is missing or has no `## Projects` table; a row's path is not a folder in the vault (`<Project>:no-folder`), as a path that is `.` or holds a `..` part or a backslash never is, and that row's project gets no rows; a name, key or path is on two rows (`<value>:twice`); or the file is older than the plugin's template (warn, `CLAUDE.md:<its version or none>`).
+- Why: a project resolves by name, key or working directory only when one row matches and its folder is there. The text above the table loads in every session, so an old one may name commands the helper lacks or miss a rule every session needs.
+- Fix: no file: `second-brain scaffold vault`. No table: `second-brain scaffold project <name> --path <path>` adds it, with the first project's row. A row: ask, then correct its path, change the name or key another row has, or remove the row of a project that is gone. Older: ask first, then replace the text above `## Projects` with that of `templates/vault-index.md.tmpl`, keep the user's added lines and the table, and set `index_version` to the template's.
 
 ### conventions
 
-- Means: `obsidian-conventions.md` is missing from the vault root (fail), or it is older than the plugin's template (warn): its `conventions_version` is lower, so it may name commands the helper no longer has.
-- Why: every skill and agent points to it for the rules on notes, tags and links, so they would write without them.
-- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older: ask first, because the user may have edited the note; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with the template by hand.
+- Means: `obsidian-conventions.md` at the vault root is missing (fail), or its `conventions_version` is lower than the plugin's template (warn).
+- Why: every skill and agent follows it for notes, tags and links, and an old one may name commands the helper no longer has.
+- Fix: missing: `second-brain scaffold vault`, which overwrites nothing. Older: ask first, as the user may have edited it; on a yes, delete it and run `second-brain scaffold vault`, otherwise bring it in line with `templates/obsidian-conventions.md.tmpl` by hand.
 
 ### pull-request
 
-- Means: `claude/pull-request.md`, the note that holds the pull request description format, is missing from the vault (warn), or it is older than the plugin's template (warn, `claude/pull-request.md:<its version or none>`): its `pull_request_version` is lower or missing.
-- Why: the index tells every session to write a pull request description in that format, so without the note each one takes a shape of its own, and with an old note it takes the old one.
-- Fix: missing: `second-brain scaffold vault` creates the note and overwrites nothing. Older and never edited, as the row's fix says: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first; then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the rules the user added, and set `pull_request_version` to the template's.
+- Means: the vault's `claude/pull-request.md`, the pull request description format, is missing (warn), or its `pull_request_version` is lower than the plugin's template or missing (warn, `claude/pull-request.md:<its version or none>`).
+- Why: the index has every session write pull request descriptions in that format, so with no note each takes its own shape, and with an old one the old format.
+- Fix: missing: `second-brain scaffold vault`, which overwrites nothing. Older and, as the row's fix says, never edited: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first, then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the user's added rules, and set `pull_request_version` to the template's.
 
 ### import
 
 - Means: `~/.claude/CLAUDE.md` holds no `@` import of the vault's `CLAUDE.md`.
-- Why: the index is then not in context, so a session does not know the projects until a skill is run by name.
-- Fix: after a yes from the user, add the line `@~/.claude/second-brain-vault/CLAUDE.md` to `~/.claude/CLAUDE.md`.
+- Why: the index is then not in context, so a session knows no project until a skill is run by name.
+- Fix: after a yes, add the line `@~/.claude/second-brain-vault/CLAUDE.md` to `~/.claude/CLAUDE.md`.
 
 ### global-rules
 
-- Means: a line of `~/.claude/CLAUDE.md` names a project of the index, by its name as a whole word or by its path (`<project>:<line number>`), or is an `@` import that names one (`<project>:@<line number>`). The import of the index and the rows of a `## Projects` table are not read, and neither are the files `CLAUDE.md` imports.
-- Why: that file is loaded in every session, so a rule about one project loads in all the others, and the project's own rules never get it.
-- Fix: after a yes from the user, move the line under `## Rules` in the project's `claude/README.md`, or in its subproject's note `claude/subprojects/<name>.md` when the rule is about one subproject. An import: remove the line, because the index already tells Claude to read the project's rules. A line that holds for every project stays: say so and leave it.
+- Means: a line of `~/.claude/CLAUDE.md` names an index project by its name as a whole word or by its path (`<project>:<line number>`), or is an `@` import that names one (`<project>:@<line number>`). Not read: the index's import, the rows of a `## Projects` table, and the files `CLAUDE.md` imports.
+- Why: that file loads in every session, so a rule for one project loads in all the others, and the project's own rules lack it.
+- Fix: after a yes, move the line under `## Rules` in the project's `claude/README.md`, or in `claude/subprojects/<name>.md` for a rule about one subproject. An import: remove the line, as the index already has Claude read the project's rules. A line true for every project stays: say so.
 
 ### links
 
 - Means: a vault skill or agent is `missing`, `wrong-target`, `dangling`, `name-mismatch` or `duplicate` in `second-brain link --check`.
-- Why: Claude Code registers only what is linked into `~/.claude/skills` and `~/.claude/agents`, so that piece cannot be invoked by name.
-- Fix: `second-brain link --apply`. It leaves `name-mismatch` and `duplicate` (rename one first), and `wrong-target` with target `-`, a real file or folder holding the name: the user decides.
+- Why: Claude Code registers only what is linked into `~/.claude/skills` and `~/.claude/agents`, so that one cannot be invoked by name.
+- Fix: `second-brain link --apply`. It leaves `name-mismatch` and `duplicate`: rename one first. It leaves `wrong-target` with target `-`, a real file or folder holding the name: the user decides.
 
 ### double-registration
 
 - Means: a link in `~/.claude/skills` or `~/.claude/agents` points inside the plugin, which registers its own pieces.
-- Why: the same skill or agent is registered twice, so it is listed twice and its description is loaded twice.
+- Why: that skill or agent is then listed twice and its description loaded twice.
 - Fix: remove that link, not its target: `unlink ~/.claude/skills/<name>` or `unlink ~/.claude/agents/<name>.md`.
 
 ### always-loaded-size
 
 - Means: the vault's `CLAUDE.md` is over 60 lines, or `~/.claude/CLAUDE.md` is over 40.
-- Why: both files are loaded into every session, so each extra line is paid for in every conversation.
+- Why: both load in every session, so each extra line costs context in every conversation.
 - Fix: move detail into the project's `README.md` or `claude/README.md`. The index keeps one row per project.
 
 ### descriptions
 
 - Means: a skill or agent in the vault has no `description` (`<name>:none`), or one over 200 characters (`<name>:<length>`).
-- Why: Claude Code decides from the description when to use a skill or an agent, so one without is never picked. Every registered description is loaded into every session, so a long one costs context each time.
+- Why: Claude Code picks a skill or agent by its description, so one with none is never picked. Every description loads in every session, so a long one costs context each time.
 - Fix: write the `description` in its frontmatter as one sentence: what it does and when to use it. A long one: cut it to that.
 
 ### skill-size
 
 - Means: a `SKILL.md` in the vault is over 150 lines.
-- Why: the whole file is loaded on every run of the skill, including the parts for modes that are not in use.
+- Why: the whole file loads on every run of the skill, with the parts for modes not in use.
 - Fix: move the detail of one mode into a file beside `SKILL.md`, and have the skill read it only in that mode.
 
 ### profile
 
-- Means: the project's `claude/profile.md` is missing, lacks a frontmatter key or one of its seven sections, or has a root that leaves the project (`<key>:leaves-project`): `tasks_root`, `topics_root` or `sprints_root` with a `..` part or a backslash. A slash in front is no fault: every command drops it.
-- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there. A root that leaves the project sends them to read and write outside it; the doctor checks under that root's default and opens nothing through the value.
-- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl` under the plugin root. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
+- Means: the project's `claude/profile.md` is missing, lacks a frontmatter key or one of its seven sections, or has a `tasks_root`, `topics_root` or `sprints_root` with a `..` part or a backslash (`<key>:leaves-project`). A leading slash is no fault: every command drops it.
+- Why: skills read the project's folders, cadence and repos from it, so they stop or look in a default folder that is not there. A root that leaves the project sends reads and writes outside it, so the doctor checks under that root's default and opens nothing through the value.
+- Fix: no file: `/obsidian-dev-second-brain:vault-setup adopt <path>`. A key or section: add it, shaped as `templates/profile.md.tmpl`. A root: ask where the folder is, then write it as a path inside the project with forward slashes, such as `tasks`.
 
 ### board
 
-- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is in a form the helper does not read (`tasks.base:filter`), or the board has no such view (`tasks.base:no-view`); or the project has a subproject and the board has no `By subproject` view (`tasks.base:no-subproject-view`), which a board made before that view was added lacks; or the project has `task_layout: archive` and the board's own `filters` block does not take the archive folder (`tasks.base:no-archive-filter`), which a board made before the archive layout lacks.
-- Why: Obsidian shows the task board from that file, so with no file the tasks hub that embeds it shows no table. `second-brain board` still answers: it reads the task READMEs and goes by the sprint in progress, so with another id in the view Obsidian shows another sprint than the helper reports. Without `By subproject`, Obsidian has no view that shows the tasks of one subproject together. Without the archive filter, Obsidian shows no archived task, though `second-brain board` lists them.
-- Fix: no file: `second-brain scaffold project <name> --path <path>` again; it writes the board and overwrites nothing. Another id, or `filter`: after a yes, write the filter line of the view in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites that form alone. Never add a second view by that name. No view: after a yes, add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter. `no-subproject-view`: after a yes, copy the `By subproject` view and the `note.subproject` property from `templates/tasks.base.tmpl` into `tasks.base`. `no-archive-filter`: after a yes, replace the `filters` block at the top of `tasks.base` with the one in `templates/tasks.base.tmpl`, with `{{TASKS_PATH}}` the tasks root's vault path, `{{TASK_DEPTH}}` the number in the board's old `file.folder.split("/").length` line, and `{{ARCHIVE_DEPTH}}` that number plus 2.
+- Means: `tasks.base` is missing from the tasks root (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), has a filter in a form the helper does not read (`tasks.base:filter`), or is not there (`tasks.base:no-view`); or the project has a subproject and the board has no `By subproject` view (`tasks.base:no-subproject-view`); or the project has `task_layout: archive` and the board's own `filters` block does not take the archive folder (`tasks.base:no-archive-filter`).
+- Why: Obsidian draws the board from that file, so with none the tasks hub shows no table. With another id, Obsidian shows another sprint than `second-brain board`, which reads the task READMEs. Without `By subproject`, no view groups one subproject's tasks. Without the archive filter, Obsidian shows no archived task, though `second-brain board` lists them.
+- Fix: no file: `second-brain scaffold project <name> --path <path>` again, which writes the board and overwrites nothing. Every other fix here comes after a yes. Another id, or `filter`: write the view's filter line in `tasks.base` as `sprint == "<id>"`, in that order and with double quotes, with the sprint in progress that the row's fix names; `sprint open` rewrites only that form. Never add a second view by that name. No view: add the `Current sprint` view and the `sprint` and `carried_from` columns from `templates/tasks.base.tmpl`, with that id in the filter. `no-subproject-view`: copy the `By subproject` view and the `note.subproject` property from `templates/tasks.base.tmpl` into `tasks.base`. `no-archive-filter`: replace the `filters` block at the top of `tasks.base` with the one in `templates/tasks.base.tmpl`, with `{{TASKS_PATH}}` the tasks root's vault path, `{{TASK_DEPTH}}` the number in the board's old `file.folder.split("/").length` line, and `{{ARCHIVE_DEPTH}}` that number plus 2.
 
 ### hubs
 
 - Means: a hub of the project is missing or empty: `README.md`, `claude/README.md`, or the `README.md` of the tasks root, of the topics root unless it is `.`, or of the sprints root when the project uses sprints.
-- Why: the index tells Claude to read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others. `second-brain scaffold project` creates all of them.
-- Fix: `second-brain scaffold project <name> --path <path>` again, with the name and the path of the index row. It writes each missing hub from its template and overwrites nothing, so it keeps an empty file: ask, then delete that one first. A hub that comes back is a new one, without the lines the old one had gained, such as the sprint links of the sprints hub.
+- Why: the index has Claude read the first two before anything else, and the up-links of the tasks, the topics and the sprint notes lead to the others.
+- Fix: `second-brain scaffold project <name> --path <path>` again, with the index row's name and path. It writes each missing hub from its template and overwrites nothing, so an empty hub stays: ask, then delete it first. A hub written again lacks the lines the old one had gained, such as the sprint links of the sprints hub.
 
 ### placeholders
 
-- Means: a line of the project's `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` still holds text in angle brackets from the template it was written from, such as `<A rule Claude must follow in this project, one per bullet.>` (`<path under the project>:<line>`). Only the template's own placeholders count, so the owner's angle brackets never do; frontmatter, fenced code and task READMEs are not read.
-- Why: every session reads the hub and `claude/README.md` before it works on the project, so a rule never written gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
+- Means: a line of the project's `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` still holds a placeholder of its template, such as `<A rule Claude must follow in this project, one per bullet.>` (`<path under the project>:<line>`). The owner's own angle brackets never count. Not read: frontmatter, fenced code and task READMEs.
+- Why: every session reads the hub and `claude/README.md` before it works on the project, so an unwritten rule gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
 - Fix: ask the user, then write the rule or the fact the line asks for in its place, or delete the line when there is none. Never invent one. Keep the headings: the `profile` check needs the seven sections.
 
 ### task-frontmatter
@@ -111,7 +110,7 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 ### status-tag
 
 - Means: a task's `status/` tag disagrees with `status`. `status/done` goes with `done` and `abandoned`, `status/active` with the rest.
-- Why: the tag pane and tag searches go by the tag, so they show a finished task as active, or an active one as finished.
+- Why: the tag pane and tag searches then show a finished task as active, or an active one as finished.
 - Fix: `second-brain doctor --fix`. It makes the tag follow `status` and changes nothing else in the task.
 
 ### yaml-traps
@@ -128,21 +127,21 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 
 ### no-readme
 
-- Means: a task folder holds no `README.md`: a folder directly under the tasks root other than `archive`, or one directly under a year of the archive, `archive/<YYYY>/`.
+- Means: a task folder holds no `README.md`: a folder directly under the tasks root other than `archive`, or one directly under `archive/<YYYY>/`.
 - Why: the board lists only that README, so the folder's work is on no board and no command finds it by id.
 - Fix: a task: `second-brain task new <ID> --project <project> --title "<title>"` writes the README into the folder. Not a task: tell the user.
 
 ### task-location
 
-- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md` or `<tasks root>/archive/<YYYY>/<ID>/README.md`: it is filed under a topic, loose in the tasks root, deeper inside a task folder, or in the archive with no year folder. Each offender is the note's path under the project.
-- Why: the board and the task commands read only the README directly inside a folder of the tasks root, so this task is on no board and no task command finds it by id.
-- Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first; it rewrites the links to the note. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
+- Means: a note under the project has `type: task` in its frontmatter and is not `<tasks root>/<ID>/README.md` or `<tasks root>/archive/<YYYY>/<ID>/README.md`. Each offender is the note's path under the project.
+- Why: the board and the task commands read only those paths, so this task is on no board and no task command finds it by id.
+- Fix: `second-brain move "<its vault path>" "<project path>/<tasks root>/<ID>/README.md"`, with `--dry-run` first. Then tie it to its topic: `second-brain task tag <ID> add <tag>`. Exit 6: that task has a README already, so ask which note is the task. Not a task: ask, then change its `type`.
 
 ### task-layout
 
-- Means: the tasks do not follow the profile's `task_layout`. With `flat`, the default, an `archive` folder sits under the tasks root (`archive:flat`). With `archive`, an open task is inside the archive (`<ID>:open`), a done or abandoned task is still outside it `archive_after_days` days or more after its newest status note or its sprint's end, 14 days when the key is absent (`<ID>:to-archive`; a task with neither a status note nor a sprint is never named, as nothing dates it), or `archive_after_days` is not a whole number (`archive_after_days:not-a-number`).
-- Why: the archive keeps the live tasks folder short, so a done task left out of it makes the folder grow again, and an open task inside it is lost among the finished ones.
-- Fix: `to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>` and prints a `fixed:` line per task; it never moves an open task. A done task that nothing dates is archived by hand with `second-brain task archive <ID>`, after the user says so. A task whose folder in the archive is there already stays where it is, with the reason on stderr: show that folder to the user; after a yes, move it away with `second-brain move`, or delete it when it is empty, then run `--fix` again. `open`: ask whether the task is done; if not, `second-brain move "<its folder>" "<project path>/<tasks root>/<ID>"`. `flat`: ask whether the project should archive; on a yes set `task_layout: archive` in the profile, otherwise move each task in the archive back the same way. `not-a-number`: write the number of days.
+- Means: the tasks do not follow the profile's `task_layout`. With `flat`, the default, an `archive` folder sits under the tasks root (`archive:flat`). With `archive`: an open task is inside the archive (`<ID>:open`); a done or abandoned task is still outside it `archive_after_days` days or more, 14 when the key is absent, after its newest status note or its sprint's end (`<ID>:to-archive`; a task with neither a status note nor a sprint is never named, as nothing dates it); or `archive_after_days` is not a whole number (`archive_after_days:not-a-number`).
+- Why: the archive keeps the live tasks folder short, and an open task inside it is lost among the finished ones.
+- Fix: `to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>`; it never moves an open task. A done task that nothing dates: `second-brain task archive <ID>`, after the user says so. A task whose folder in the archive exists already stays where it is, with the reason on stderr: show that folder to the user; after a yes, move it away with `second-brain move`, or delete it when it is empty, then run `--fix` again. `open`: ask whether the task is done; if not, `second-brain move "<its folder>" "<project path>/<tasks root>/<ID>"`. `flat`: ask whether the project should archive; on a yes set `task_layout: archive` in the profile, otherwise move each task in the archive back the same way. `not-a-number`: write the number of days.
 
 ### topic-tags
 
@@ -153,37 +152,55 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 ### code-doc-map
 
 - Means: a repository in the profile's `repos` has no row in the Code to doc map of its `## Docs` section.
-- Why: the docs-keeper agent uses that table to know which docs to update after a change in that repository, so its docs get missed.
+- Why: docs-keeper reads that table for the docs to update after a change in that repository, so its docs get missed.
 - Fix: add its rows under `### Code to doc map` in the profile, as `| <repo> | <change> | <docs> |`, or run `/obsidian-dev-second-brain:vault-setup repo <project>`.
 
 ### repos
 
-- Means: a repository of the project, listed in the profile or in a subproject note, has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
-- Why: skills run git in that folder for branch checks and doc audits, so they would check no code, or stop to ask where it is.
+- Means: a repository of the project, in the profile or a subproject note, has a recorded location, from `repos_root` or `repo_paths`, whose folder is missing.
+- Why: skills run git in that folder for branch checks and doc audits, so they check no code, or stop to ask where it is.
 - Fix: correct `repos_root` or the `repo_paths` entry in the profile, then confirm with `second-brain repo <project>`.
 
 ### subprojects
 
 - Means: a note in `claude/subprojects/` is off: its `type` is not `subproject` (`<name>:type`), it lists no repos (`<name>:no-repos`), it has no docs folder `<topics root>/<name>/` (`<name>:no-docs`), a repo of it has no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo's folder is missing (`<name>/<repo>:missing`) or no location is recorded for it (`<name>/<repo>:no-location`), or two subprojects list one repo (`<repo>:twice`). Only a project with a subproject gets this row.
 - Why: a working directory resolves to a subproject through its repos, the branch check reads its settings from the note, and docs-keeper finds its docs through the map row and the docs folder. A repo in two subprojects resolves to neither.
-- Fix: a type or repos: edit the note's frontmatter, `type: subproject` and `repos: [<repo>]`. No docs: `second-brain scaffold subproject <project> <name>` writes the docs hub and overwrites nothing. A map row: add `| <repo> | <change> | <topics root>/<name>/... |` under `### Code to doc map` in the profile, after asking which docs follow it. A location: `repos_root` in the profile, or `"<repo>=<path>"` in the note's `repo_paths`. Twice: ask which subproject keeps the repo, then remove it from the other note.
+- Fix: a type or repos: edit the note's frontmatter, `type: subproject` and `repos: [<repo>]`. No docs: `second-brain scaffold subproject <project> <name>` writes the docs hub and overwrites nothing. A map row: ask which docs follow the repo, then add `| <repo> | <change> | <topics root>/<name>/... |` under `### Code to doc map` in the profile. A location: `repos_root` in the profile, or `"<repo>=<path>"` in the note's `repo_paths`. Twice: ask which subproject keeps the repo, then remove it from the other note.
 
 ### task-subproject
 
-- Means: a task's `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`): the note was renamed or removed, or the value was written by hand. Only a project with a subproject gets this row.
-- Why: the board's `By subproject` view and `second-brain board <project> --subproject <name>` file the task under a name that leads nowhere, and the skills read a subproject's branches and docs from its note, so for this task they find none.
+- Means: a task's `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`). Only a project with a subproject gets this row.
+- Why: the `By subproject` view and `second-brain board <project> --subproject <name>` file the task under a name that leads nowhere, and the skills find no branches or docs for it, as they read them from the note.
 - Fix: ask which subproject the task belongs to, then `second-brain task set <ID> subproject=<name>`, which checks the name. A task in no subproject: `second-brain task set <ID> subproject=`.
+
+### delivery
+
+- Means: a `delivery` that is not `direct` or `spec`, or a `spec_home` or `validation_home` that is not `vault` or `repo`, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task (`<ID>:delivery`).
+- Why: a value that is not allowed means the default, so a story meant to be built from a spec is built straight from its README, or its spec and checks are looked for in the wrong place.
+- Fix: ask which value was meant and write it. A task's `delivery`: `second-brain task set <ID> delivery=<direct or spec>`, or `delivery=` to take the subproject's or the profile's. A key in the profile or a subproject note: edit it there.
+
+### validation
+
+- Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text (`<repo>:placeholders`). A repo whose `validation.md` is in the repo and whose location is not recorded: `<repo>:no-location`. A project with no repo and no `claude/validation.md`: `claude/validation.md:missing`.
+- Why: the agents that build and review a change run the steps in its repo's section, so with none a change is called done on the builder's word.
+- Fix: `no-location`: record where the repo is, in `repos_root` or `repo_paths`. Otherwise run `second-brain validation new <project> <repo>`, which writes the file or adds the section and never changes one that is there. Then ask how the repo is set up and started, which checks must pass, how a change is checked as a user would and what a pass is. Look first in the repo's README, scripts and CI config; write only what the user confirms. Never invent a step.
+
+### spec-trace
+
+- Means: an open story whose `delivery`, its own or inherited, is `spec` has a criterion, a `- [ ]`, `- [x]` or `- [X]` line under its README's `## Acceptance criteria`, that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`, the n-th criterion); or a `## R<n>` requirement has no `- Serves:` line, names no criterion, or names an item that is not an `AC<n>` the story has (`<ID>:R<n>`). Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder.
+- Why: the `- Serves:` lines show the owner that the spec covers the story. A criterion no requirement serves is never built or reviewed; a requirement that serves none is work the story did not ask for.
+- Fix: add the criterion's `AC<n>` to the `- Serves:` line of the requirement that meets it, or write a requirement for it, and give every requirement a `- Serves:` line that names only criteria the story has. Ask the owner which requirement meets a criterion; `--fix` changes nothing here.
 
 ### sprints
 
 - Means: two sprints are in progress, one is in progress past its end date, or a task's `sprint` names a sprint with no note.
 - Why: the `Current sprint` view filters on one sprint id, so the tasks of any other sprint show on no sprint list.
-- Fix: close the extra or overdue sprint through the sprint skill. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it through the sprint skill, never re-point them. With `uses_sprints: false` in the profile the one finding is a sprint note still in progress: set the key to `true`, close the sprint through the sprint skill, then set it to `false` again.
+- Fix: close the extra or overdue sprint with `/obsidian-dev-second-brain:sprint close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/obsidian-dev-second-brain:sprint open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
 
 ### unresolved-links
 
 - Means: a note under the project holds a link that resolves to no file. Each offender is the note's path under the project and the line.
-- Why: a bare alias link such as `[[EX-123]]` does not resolve, so the note is not reachable from it.
+- Why: the link reaches no note; a bare alias link such as `[[EX-123]]` never resolves.
 - Fix: `second-brain unresolved <project>` lists each link. Write it as a path link: `[[<project path>/tasks/EX-123/README|EX-123]]`.
 
 ### bare-links
@@ -200,6 +217,6 @@ project that has a subproject. Every entry is a heading, a blank line and three 
 
 ### depends-on
 
-- Means: a task's `depends_on` holds a link to no note, or to a path outside the vault (`<ID>:missing`), or tasks of the project wait on each other in a ring (`<ID>:cycle`, once for each task in it, and for a task that waits on itself). A link matches a task without letter case. `awk:error` (fail): the check could not run.
-- Why: the board shows such a dependency as `missing`, and in a ring no task can start first, so the work it records is blocked for good.
+- Means: a task's `depends_on` links to no note, or to a path outside the vault (`<ID>:missing`), or the project's tasks wait on each other in a ring (`<ID>:cycle`, once for each task in it, and for a task that waits on itself). A link matches a task without letter case. `awk:error` (fail): the check could not run.
+- Why: the board shows such a dependency as `missing`, and in a ring no task can start first.
 - Fix: ask which task it waits on, then `second-brain task dep <ID> remove <ID>` and `second-brain task dep <ID> add <ID>`. A link the helper cannot match: edit the line in the note. A ring: ask which dependency is wrong and remove it.

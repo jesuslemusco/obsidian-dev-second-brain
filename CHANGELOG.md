@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.4.0 - unreleased
+
+A project can build its stories from a spec, and every project says how its code is run and checked.
+
+- Three new profile keys, also in a subproject's note: `delivery` (`direct` or `spec`),
+  `spec_home` (`vault` or `repo`) and `validation_home` (`vault` or `repo`). A task may set its own
+  `delivery` with `second-brain task set <ID> delivery=spec`. The most specific value wins: the
+  task's, its subproject's, then the profile's.
+- `second-brain spec <ID>` prints the delivery and the spec folder that hold for a story, and the
+  paths of its `requirements.md`, `design.md` and `tasks.md`: in `spec/` in the task's folder, or in
+  `spec/<ID>/` in the story's repo. `second-brain spec new <ID>` writes them from three new
+  templates and never overwrites.
+- Every project has a `validation.md`: how to set up and start each repo, the checks that must
+  pass, how to check a change as a user would, and what a pass is. It is `claude/validation.md` in
+  the vault, one section per repo, or a file at each repo's root. `scaffold project` writes the
+  vault note. `second-brain validation <project> [repo]` lists the files or prints one repo's
+  steps, and `second-brain validation new <project> <repo>` adds a missing file or section.
+- Three new doctor checks. `delivery` warns about a value that is not allowed. `validation` warns
+  about a repo with no `validation.md`, no section in it, or a section that still holds the
+  template's text. `spec-trace` warns about an open spec story with a criterion no requirement
+  serves, or a requirement that serves none.
+- Each requirement of a spec names the story's criteria it serves on a `- Serves: AC1, AC3` line,
+  which the requirements template writes.
+- `second-brain spec link <ID>` links a spec story's Approach, Changes and Verification to its
+  `design.md` and `tasks.md`; the `spec` skill runs it when the owner approves the task list.
+- `vault-setup` asks for the three keys, and a new `validation` mode drafts each repo's steps from
+  its README, scripts and CI config for the user to confirm.
+- The project's Claude hub links to `claude/validation.md`, and `subproject <project> <name>`
+  shows the three keys.
+- A new `spec` skill builds a story from its spec. It writes the requirements, the design and the
+  tasks with the owner in the chat, and the owner approves each one. Then the new
+  `spec-lead` agent builds the tasks: `implementer` gets each task's context packet
+  alone, and `reviewer` runs the repo's validation steps and reads the diff. Only a passing review
+  ticks a task, and a task that fails three times stops the build for the owner.
+- `second-brain spec tasks <ID>` lists a story's tasks, `spec tick <ID> <task>` ticks one, and
+  `spec packet <ID> <task>` prints a task's context packet: the task, its requirements, the design
+  sections it names and the repo's validation steps.
+- `story-tracker` offers the `spec` skill when work starts on a story whose `delivery` is `spec`.
+- The build runs in two passes: `implementer` builds every task, running no check, then
+  `reviewer` runs every check task by task. `spec-lead` keeps track in the story's `## Build`
+  section, written by `second-brain spec status`, and `reviewer` logs each issue with a proposed
+  fix through `second-brain spec issue`, which `spec-lead` hands back to `implementer`.
+- The conventions note is at version 5: it names the `spec` and `subproject` note types and a
+  task's `delivery`. The doctor's `conventions` check warns about an older note.
+- The skills, agents, templates and docs are trimmed to short plain English. Each changed template
+  goes up one version: `index_version` to 4, `conventions_version` to 6 and `pull_request_version`
+  to 3. Run the doctor's `check` and `fix`, then update by hand each note it names.
+- `scripts/test-doctor.sh` defines `exists`, so its two `task-layout --fix` checks on the archive
+  run again; they were skipped before.
+- A call to an undefined command fails the `scripts/test*.sh` suites, and the result names it.
+- `story-tracker` and the `spec` skill cut a new story's branch from `base_branch`. This repo's
+  feature branches start from `main`, as `## Releases` in `docs/guide.md` says.
+- `story-tracker`'s description says to use it for any question or change on a vault ticket, even
+  one the helper could answer, and the index names where a ticket stands, a standup and an update.
+- The test workflow gives each runner 60 minutes, up from 30: the Windows run now takes longer.
+
 ## 0.3.0 - 2026-10-22
 
 Tasks can be archived and seen by subproject, every session starts knowing its project and ticket,

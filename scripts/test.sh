@@ -43,6 +43,13 @@ fail() {
     shift
   done
 }
+# On bash 4 and later, an undefined command fails the suite. Bash runs this hook in a subshell,
+# so it writes the name to a file, and the result counts each name as a failure.
+command_not_found_handle() {
+  printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"
+  printf '%s: line %s: %s: command not found\n' "$0" "${BASH_LINENO[0]}" "$1" >&2
+  return 127
+}
 # run <command...>: capture stdout, stderr and the exit code.
 run() {
   OUT="$("$@" 2>"$tmp/stderr")"
@@ -135,6 +142,22 @@ for f in "$here/bin/second-brain" "$here"/scripts/lib/*.sh "$here"/scripts/*.sh;
 done
 is "awk: every program that loads the shared functions runs in the C locale" \
   "$(grep -n '"$(sb_awk_lib)"' "$here"/scripts/lib/*.sh | grep -v 'LC_ALL=C' || true)" ""
+
+# ---------------------------------------------------------------- undefined commands
+# Each suite's head and result block, with a call to a command it never defines in between.
+# Bash 3.2, on macOS, never calls command_not_found_handle; the same lines run on Linux.
+if [ "${BASH_VERSINFO[0]}" -ge 4 ]; then
+  for f in "$here"/scripts/test*.sh; do
+    probe="$(
+      awk '/^# -----/ { exit } { print }' "$f"
+      printf '%s\n' 'no_such_check "a check"'
+      sed -n '/^# -* result$/,$p' "$f"
+    )"
+    run env TMPDIR="$tmp" "$BASH" -c "$probe" "$f"
+    rc_is "undefined command: ${f#"$here"/} exits 1" 1
+    out_has "undefined command: ${f#"$here"/} names it as a failure" "FAIL  undefined command: no_such_check at line "
+  done
+fi
 
 # ---------------------------------------------------------------- dispatcher
 sb version
@@ -267,18 +290,17 @@ is "pull request format: the goal is one or two lines, not a bullet" \
   "$(awk '/^## \*\*Goal\*\*$/ { on = 1; next } /^## / { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
   "<why this pull request exists, in one or two lines>"
 is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
-  "- Write the description from the branch, never from memory of the work. The source branch holds
-  the work; the target is the branch it merges into, usually \`main\`.
-- Read \`git log <target>..<source>\` for the commits and \`git diff <target>...<source>\` for the
-  changes. Name both branches: the checkout may be on another one. Take the target as the remote
-  has it, as in \`origin/main\`, after a \`git fetch\`. Describe what they show and nothing else.
-- Use the five headings below, in this order, and no others. Every heading is bold.
-- Under \`Goal\`, say in one or two lines why the pull request exists.
-- Under each other heading, write a few bullets in short plain English, one line each. Every
-  bullet starts with a bold label, the part it is about: \`- **doctor:** warns on an old index\`.
-- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+  "- Write the description only from \`git log <target>..<source>\` and
+  \`git diff <target>...<source>\`, never from memory of the work.
+- \`<source>\` is the branch that holds the work. \`<target>\` is the branch it merges into, as the
+  remote has it after a \`git fetch\`: usually \`origin/main\`.
+- Name both branches in the commands: the checkout may be on another one.
+- Use the five bold headings below, in this order, and no others.
+- Under each heading after \`Goal\`, write a few bullets in short plain English, one line each.
+- Start each bullet with the part it is about, in bold: \`- **doctor:** warns on an old index\`.
+- Name the file, the command or the setting; leave out what the diff shows line by line.
 - Under a heading with nothing to say, write \`- **None.**\`"
-line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 2"
+line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 3"
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
@@ -289,10 +311,30 @@ line_is "index: the pull request rule opens its bullet" "$vault/CLAUDE.md" \
   "- Write a pull request description in the format of"
 file_has "vault Claude hub: names the pull request format note" "$vault/claude/README.md" \
   '`pull-request.md` here is the format of every pull request'
+line_is "vault Claude hub: what it holds" "$vault/claude/README.md" \
+  'Your own skills and agents that serve every project live here:'
+line_is "vault Claude hub: a project's skill or agent goes in its claude folder" "$vault/claude/README.md" \
+  '1. Create the file here, or in `<project>/claude/` for one that serves a single project.'
+line_is "vault Claude hub: name equals the folder or file name" "$vault/claude/README.md" \
+  '2. Give its frontmatter at least `name`, the same as the skill folder or agent file name, and a'
+line_is "vault Claude hub: the description is one sentence" "$vault/claude/README.md" \
+  '   one-sentence `description`.'
+line_is "vault Claude hub: a project-specific name has the project prefix" "$vault/claude/README.md" \
+  '3. Names share one namespace. Prefix a project-specific name with the project: `example-deploy`.'
+line_is "vault Claude hub: link --apply registers it" "$vault/claude/README.md" \
+  '4. Run `second-brain link --apply` to link it into `~/.claude/skills/` or `~/.claude/agents/`.'
+line_is "vault Claude hub: the vault file is the only copy" "$vault/claude/README.md" \
+  '   The file in the vault stays the only copy.'
+line_is "vault Claude hub: each one is listed with its use when line" "$vault/claude/README.md" \
+  '5. List it below, or in the project'"'"'s `claude/README.md`, with its "use when" line.'
+line_is "vault Claude hub: a rename, move or delete fixes the link" "$vault/claude/README.md" \
+  '6. On a rename, move or delete, fix or remove the link in the same change.'
+line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/README.md" \
+  '   `second-brain link --check` lists dangling links.'
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 3"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 4"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -302,7 +344,8 @@ every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.m
 is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | tr '\n' ' ' | grep -c -E 'The vault is +`~/\.claude/second-brain-vault/`')" "1"
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
-file_has "index: story-tracker is named as the skill that writes ticket text" "$vault/CLAUDE.md" "\`story-tracker\` writes ticket text and tracks tasks"
+file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
+is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
   "$(($(lineno "$vault/CLAUDE.md" '## Rules for notes that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"
@@ -310,7 +353,19 @@ file_has "index: a rule about one project goes under the project's Rules" "$vaul
 is "index: the rule placement holds in every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 4"
+file_has "index: a new skill is added by the steps of the vault Claude hub" "$vault/CLAUDE.md" \
+  '- Add it by the steps under `## Adding a skill or agent` in the vault'"'"'s `claude/README.md`.'
+line_is "vault Claude hub: holds the heading the index points to" "$vault/claude/README.md" '## Adding a skill or agent'
+line_is "index: Claude Code loads a new skill only after link --apply" "$vault/CLAUDE.md" \
+  '  Claude Code loads it only after `second-brain link --apply`.'
+file_has "index: only a rule for every project goes in the link directory's CLAUDE.md" "$vault/CLAUDE.md" \
+  'Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.'
+line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.md" \
+  '- Call a plugin skill or agent for its work, even when the helper alone could answer. Skills:'
+file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
+line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
+  '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 6"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -323,8 +378,8 @@ for c in "<project>/tasks/<TICKET-ID>/README.md" "topic tag" "unique **alias**" 
   out_has "conventions: the short version covers: $c" "$c"
 done
 sb conventions "note metadata"
-out_has "conventions: a named section, any case" "YAML traps"
-out_lacks "conventions: stops at the next section" "A **topic** is a folder"
+out_has "conventions: a named section, any case" "Every substantive note carries frontmatter."
+out_lacks "conventions: stops at the next section" "In a tag, spaces and underscores"
 sb conventions Helper commands
 out_has "conventions: a section name of several words" 'second-brain backlinks "<vault path>"'
 sb conventions "in the obsidian app"
@@ -362,6 +417,7 @@ rc_is "scaffold project: exit 0" 0
 out_is "scaffold project: lists what it created" "$P/README.md
 $P/claude/README.md
 $P/claude/profile.md
+$P/claude/validation.md
 $P/tasks/README.md
 $P/tasks/tasks.base
 $P/docs/README.md
@@ -383,6 +439,32 @@ file_has "tasks hub: names the By subproject view" "$vault/$P/tasks/README.md" '
 line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tasks.base#Active]]"
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
+line_is "tasks hub: names its folder" "$vault/$P/tasks/README.md" 'The hub of `tasks/`.'
+line_is "project hub: the Claude hub line" "$vault/$P/README.md" "- [[$P/claude/README|Example Claude Hub]] - rules, profile, skills and agents"
+line_is "project hub: the placeholder paragraph" "$vault/$P/README.md" "<One paragraph: what the project is, who it is for, and where its code lives.>"
+line_is "Claude hub: what Claude reads first" "$vault/$P/claude/README.md" "What Claude reads before it works on Example: the rules below, then the profile."
+line_is "Claude hub: the profile line" "$vault/$P/claude/README.md" "- Profile: [[$P/claude/profile|Example Profile]] - ticket keys, folders, sprint"
+line_is "Claude hub: the profile line ends at the doc map" "$vault/$P/claude/README.md" "  cadence, repos and the doc map."
+line_is "Claude hub: the rule placeholder" "$vault/$P/claude/README.md" "- <A rule Claude must follow in this project, one per bullet.>"
+line_is "Claude hub: the live systems placeholder" "$vault/$P/claude/README.md" "- <Live systems: what is read-only unless you ask for a write. Detail goes in the profile.>"
+line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/claude/README.md" 'Project skills live in `claude/skills/<name>/SKILL.md`. Prefix each name with the project.'
+line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
+PF="$vault/$P/claude/profile.md"
+line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
+line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or'
+line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
+line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
+line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
+line_is "profile: what spec delivery builds a story from" "$PF" '- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design'
+line_is "profile: a spec is approved before code, and a subproject or story may set its own" "$PF" '  and tasks, approved before any code. A subproject or a story may set its own.'
+line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
+line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
+line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
+line_is "profile: what repos_root holds" "$PF" '- `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.'
+line_is "profile: turning sprints off" "$PF" '- Set `uses_sprints: false` above to turn sprints off; the cadence lines then do not apply.'
+line_is "profile: docs follow production" "$PF" 'Docs follow production: a doc is updated only after its change is confirmed deployed to production,'
+line_is "profile: the branch production runs" "$PF" 'which runs `production_branch` above, or `base_branch` when that is empty. Say here how a'
+line_is "profile: every repository has a row in the code to doc map" "$PF" 'Every repository in `repos` has at least one row, added in the same change as the repository.'
 printf 'kept\n' >>"$vault/$P/README.md"
 cp "$vault/$P/claude/profile.md" "$tmp/profile.before"
 sb scaffold project Example --path "$P" --keys EX,EXOPS
@@ -511,6 +593,12 @@ file_lacks "task new: never writes jira_id" "$T1" "jira_id"
 file_lacks "task new: no sprint key in the backlog" "$T1" "sprint:"
 is "task new: body sections in order" "$(grep '^## ' "$T1" | tr '\n' '|')" \
   "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+line_is "task new: the branch line names the canonical branch" "$T1" '**Branch:** `none yet` - <the branch; the canonical one when several carry the ticket id>'
+line_is "task new: the description's context line" "$T1" "<Context: what is broken or missing, who asked, where in the system it lives.>"
+line_is "task new: findings only from evidence, else the section goes" "$T1" "<Only when evidence exists: conclusion first, then the evidence. Otherwise delete the section.>"
+line_is "task new: a criterion someone else can check" "$T1" "- [ ] <a condition someone else can check>"
+line_is "task new: the ticket's top 4 criteria only" "$T1" "- [ ] <the top 4 only, as in the ticket>"
+line_is "task new: what the code confirmed" "$T1" "<What the code confirmed: files, functions, behaviour, any mismatch with the ticket.>"
 cp "$T1" "$tmp/t1.before"
 sb task new EX-1 --project Example --title Again
 rc_is "task new: existing folder gives exit 6" 6
@@ -546,6 +634,7 @@ file_lacks "task new --envs: later environments wait for their tickets" "$T7" " 
 is "task new --envs: additions sit before the description" "$(($(lineno "$T7" '## Description') > $(lineno "$T7" '## Environments')))" "1"
 file_has "task new --envs: the per-environment heading form" "$T7" '`### <ENV> - <ID> (<status>)`'
 file_has "task new --envs: the first environment's heading, with its status" "$T7" '`### DEV - EX-7 (planned)`'
+line_is "task new --envs: a later ticket is added as an alias" "$T7" "- Add a later environment's ticket to \`envs:\` and run \`second-brain task alias EX-7 add <ID>\`."
 for t in EX-4 EX-5 EX-6; do sb task new "$t" --project Example --title "Task $t"; done
 
 # ---------------------------------------------------------------- task set
@@ -1045,6 +1134,7 @@ line_is "sprint note: end" "$S1" "end: 2026-10-14"
 line_is "sprint note: in progress" "$S1" "status: in-progress"
 line_is "sprint note: goal quoted" "$S1" 'goal: "Ship: invoices"'
 line_is "sprint note: up-link" "$S1" "> Up: [[$P/sprints/README|Example Sprints Hub]]"
+line_is "sprint note: its dates and the board view of its tasks" "$S1" "2026-10-01 to 2026-10-14. Its tasks are the board's \`Current sprint\` view."
 is "sprint note: body sections" "$(grep '^## ' "$S1" | tr '\n' '|')" "## Goal|## Notes|## Close|"
 line_is "sprint open: hub gets one link line" "$vault/$P/sprints/README.md" "- [[$P/sprints/2026-10-14|Example Sprint 2026-10-14]] - 2026-10-01 to 2026-10-14"
 line_is "sprint open: board literal rewritten" "$vault/$P/tasks/tasks.base" '        - sprint == "2026-10-14"'
@@ -1271,6 +1361,7 @@ rc_is "scaffold roots: exit 0" 0
 out_is "scaffold roots: hubs and board only under the given roots" "$R/README.md
 $R/claude/README.md
 $R/claude/profile.md
+$R/claude/validation.md
 $R/plan/tasks/README.md
 $R/plan/tasks/tasks.base
 $R/knowledge/README.md
@@ -1309,6 +1400,7 @@ sb scaffold project Dot --path "$D" --topics-root .
 out_is "scaffold topics root dot: no topics hub" "$D/README.md
 $D/claude/README.md
 $D/claude/profile.md
+$D/claude/validation.md
 $D/tasks/README.md
 $D/tasks/tasks.base
 $D/sprints/README.md"
@@ -1510,6 +1602,7 @@ rc_is "no sprints: scaffold exit 0" 0
 out_is "no sprints: no sprints hub is created" "$N/README.md
 $N/claude/README.md
 $N/claude/profile.md
+$N/claude/validation.md
 $N/tasks/README.md
 $N/tasks/tasks.base
 $N/docs/README.md"
@@ -1614,7 +1707,15 @@ $M/docs/infra/README.md"
 line_is "scaffold subproject: the note's type" "$vault/$M/claude/subprojects/infra.md" "type: subproject"
 line_is "scaffold subproject: the note's repos" "$vault/$M/claude/subprojects/infra.md" "repos: [multi-infra]"
 line_is "scaffold subproject: the note has a Rules section" "$vault/$M/claude/subprojects/infra.md" "## Rules"
+line_is "scaffold subproject: the note says how to read its settings" "$vault/$M/claude/subprojects/infra.md" 'Read these settings with `second-brain subproject "Multi" "infra"`, which fills in'
+line_is "scaffold subproject: the first repo is the default for branch checks" "$vault/$M/claude/subprojects/infra.md" '- `repos`: the subproject'"'"'s repositories, the first the default for branch checks.'
+line_is "scaffold subproject: an empty key takes the profile's value" "$vault/$M/claude/subprojects/infra.md" '- `base_branch` to `validation_home` are the profile'"'"'s keys. One left empty takes the value in'
+line_is "scaffold subproject: the note links the profile" "$vault/$M/claude/subprojects/infra.md" "  [[$M/claude/profile|Multi Profile]]."
+line_is "scaffold subproject: the note links its docs" "$vault/$M/claude/subprojects/infra.md" "- Its docs live in [[$M/docs/infra/README|Multi infra Docs]]."
+line_is "scaffold subproject: the Rules placeholder" "$vault/$M/claude/subprojects/infra.md" "- <A rule Claude must follow in this subproject, one per bullet.>"
 line_is "scaffold subproject: the docs hub links up to the topics hub" "$vault/$M/docs/infra/README.md" "> Up: [[$M/docs/README|Multi Docs Hub]]"
+line_is "scaffold subproject: the docs hub points to the note" "$vault/$M/docs/infra/README.md" "The subproject's repositories, branches and rules are in [[$M/claude/subprojects/infra|Multi infra Subproject]]."
+line_is "scaffold subproject: the docs hub says each folder is a topic" "$vault/$M/docs/infra/README.md" "Each folder under this one is a topic, tagged with its path below the topics root."
 line_is "scaffold subproject: the topics hub links down to it" "$vault/$M/docs/README.md" "- [[$M/docs/infra/README|Multi infra Docs]] - the docs of the infra subproject"
 sb scaffold subproject Multi infra
 rc_is "scaffold subproject: again, exit 0" 0
@@ -1647,6 +1748,9 @@ base_branch: develop
 production_branch: release
 branch_pattern: feature/<ID>-<slug>
 environments: dev, prod
+delivery: direct
+spec_home: vault
+validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 SF="$vault/$M/claude/subprojects/infra.md"
 edit "$SF" 's|^base_branch: ""$|base_branch: main|; s|^branch_pattern: ""$|branch_pattern: "infra/<ID>"|; s|^environments: \[\]$|environments:\
@@ -1661,6 +1765,9 @@ base_branch: main
 production_branch: release
 branch_pattern: infra/<ID>
 environments: staging, live
+delivery: direct
+spec_home: vault
+validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 
 sb repo Multi
@@ -1933,9 +2040,9 @@ case "$desc" in *"a ticket is marked done"*) pass "docs-keeper: the description 
   *) fail "docs-keeper: the description names a ticket marked done" "in: $desc" ;; esac
 line_is "docs-keeper: Workflow 5 is there" "$DK" "## Workflow 5 - Ticket marked done"
 file_has "docs-keeper: Workflow 5 runs step 7 on the docs to update" "$DK" 'run step 7 of Workflow 1 on them'
-file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'The "Code to doc map" names the docs to check.'
-file_has "docs-keeper: Workflow 5 sends a gap to the debt file" "$DK" "A gap found but not fixed goes to the profile's debt file"
-file_has "docs-keeper: Workflow 5 gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
+file_has "docs-keeper: Workflow 5 falls back to the code to doc map" "$DK" 'Then run Workflow 1 steps 3-5, as confirmed.'
+file_has "docs-keeper: a gap not fixed goes to the debt file, as Boundaries says" "$DK" "A gap found but not fixed goes to the profile's debt file"
+file_has "docs-keeper: Boundaries gives the debt line a shape" "$DK" '`<YYYY-MM-DD> <ID>: <doc path> - <the gap>`'
 file_has "docs-keeper: Workflow 5 stops when every line is ticked" "$DK" 'With every line already ticked: go to step 6. Do not check the map again.'
 file_has "docs-keeper: Workflow 5 diffs the merge commit" "$DK" 'diff <merge>^1 <merge>'
 file_has "docs-keeper: Workflow 5 diffs a branch not merged yet" "$DK" 'diff origin/<production_branch>...<branch>'
@@ -1976,7 +2083,8 @@ is "sprint close: the archive question comes after the achievements and before t
 file_has "sprint: its rules allow task archive after a yes at close" "$here/skills/sprint/SKILL.md" 'a yes at close, `second-brain task archive`'
 file_has "vault-setup: the profile interview asks for task_layout" "$here/skills/vault-setup/SKILL.md" '| `task_layout` |'
 file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKILL.md" '| `archive_after_days` | with `archive` only'
-file_has "vault-setup adopt: asks for task_layout and moves nothing" "$here/skills/vault-setup/adopt.md" 'And `task_layout`. Adopting still moves nothing'
+file_has "vault-setup adopt: asks for task_layout through the project interview" "$here/skills/vault-setup/adopt.md" 'Fill the frontmatter keys as steps 3 to 6 of `## project <name>` in `SKILL.md` say.'
+file_has "vault-setup adopt: moves nothing under task_layout archive" "$here/skills/vault-setup/adopt.md" 'With `task_layout: archive`, the done tasks already there stay where they are.'
 file_has "vault-setup adopt: names the task-layout check" "$here/skills/vault-setup/adopt.md" '`flat` project: `task-layout`.'
 line_is "vault-setup subproject: a section on its tasks" "$here/skills/vault-setup/subproject.md" "## 3. Its tasks"
 file_has "vault-setup subproject: a task names its subproject" "$here/skills/vault-setup/subproject.md" 'frontmatter, `subproject: <name>`, spelled as the note is named'
@@ -1993,11 +2101,616 @@ file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conve
 VD="$here/skills/vault-doctor/SKILL.md"
 file_has "vault-doctor fix: --fix repairs three checks" "$VD" 'repairs three checks only'
 file_lacks "vault-doctor fix: no longer says two" "$VD" 'repairs two checks only'
-file_has "vault-doctor fix: names the archive repair" "$VD" '`to-archive` is archived through `second-brain task archive`'
-file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'then run `second-brain snapshot` before it.'
-file_has "vault-doctor fix: compare proves the archive" "$VD" 'For the archive it is the'
-file_has "vault-doctor rules: snapshot first when --fix archives" "$VD" 'When it will archive tasks it moves folders and rewrites links: snapshot first, compare after.'
+file_has "vault-doctor fix: names the checks --fix repairs" "$VD" '`status-tag`, `pull-request` and'
+file_has "vault-doctor checks: names the archive repair" "$here/skills/vault-doctor/checks.md" '`to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>`'
+file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'Then run `second-brain snapshot` before it.'
+file_has "vault-doctor fix: compare proves the archive" "$VD" 'After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.'
+file_has "vault-doctor fix: an archive by --fix is a bulk change" "$VD" 'offenders makes the `--fix` run a bulk change: it moves'
+
+# ---------------------------------------------------------------- spec-driven delivery
+sb help
+out_has "help: lists spec" "spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)"
+out_has "help: lists spec tick and packet" "spec tick <ID> <task> | spec packet <ID> <task>"
+out_has "help: lists validation" "validation <project> [repo] | validation new <project> <repo>"
+S="work/specs"
+SPF="$vault/$S/claude/profile.md"
+mkdir -p "$tmp/scode/spec-app" "$tmp/scode/spec-infra"
+sb scaffold project Specs --path "$S" --keys SP
+out_has "validation: scaffold project writes claude/validation.md" "$S/claude/validation.md"
+line_is "validation: the note is typed" "$vault/$S/claude/validation.md" "type: validation"
+line_is "validation: the note links up to the Claude hub" "$vault/$S/claude/validation.md" "> Up: [[$S/claude/README|Specs Claude Hub]]"
+file_has "validation: the note holds one section per repo" "$vault/$S/claude/validation.md" 'code, in one `## <repo>` section per repo.'
+line_is "validation: the note names the command agents read it with" "$vault/$S/claude/validation.md" 'section with `second-brain validation "Specs" <repo>` before they build or review a change.'
+line_is "validation: the note names validation new" "$vault/$S/claude/validation.md" '`second-brain validation new "Specs" <repo>` adds a missing section.'
+file_has "validation: the Claude hub links to it" "$vault/$S/claude/README.md" "[[$S/claude/validation|Specs Validation]]"
+for k in "delivery: direct" "spec_home: vault" "validation_home: vault"; do
+  line_is "profile template: $k" "$SPF" "$k"
+done
+sb validation Specs
+rc_is "validation: a project with no repo exits 0" 0
+out_is "validation: and prints no row" ""
+edit "$SPF" "s|^repos: \\[\\]\$|repos: [spec-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|"
+sb task new SP-1 --project Specs --title "First spec"
+sb spec SP-1
+rc_is "spec: exit 0" 0
+out_is "spec: the vault home by default, in the task's folder" "id: SP-1
+delivery: direct
+spec_home: vault
+repo: spec-app
+dir: $S/tasks/SP-1/spec
+requirements: $S/tasks/SP-1/spec/requirements.md
+design: $S/tasks/SP-1/spec/design.md
+tasks: $S/tasks/SP-1/spec/tasks.md"
+sb spec new SP-1
+rc_is "spec new: exit 0" 0
+out_is "spec new: names the three files it wrote" "$S/tasks/SP-1/spec/requirements.md
+$S/tasks/SP-1/spec/design.md
+$S/tasks/SP-1/spec/tasks.md"
+SPR="$vault/$S/tasks/SP-1/spec/requirements.md"
+line_is "spec new: a vault spec file has its alias" "$SPR" '  - "SP-1 Requirements"'
+line_is "spec new: and the spec type" "$SPR" "type: spec"
+line_is "spec new: and links up to the task" "$SPR" "> Up: [[$S/tasks/SP-1/README|SP-1]]"
+file_has "spec new: the task's title is filled in" "$SPR" "What First spec must do."
+line_is "spec new: requirements open at R1" "$SPR" "## R1 - <short name>"
+SERVES="- Serves: <AC1, AC3: the story's criteria it meets>"
+is "spec new: the Serves line is the first under R1" "$(section_of "$SPR" "R1 - <short name>" | head -1)" "$SERVES"
+line_is "spec new: the requirement is in the WHEN form" "$SPR" "<WHEN a trigger, THE part of the system SHALL respond so.>"
+line_is "spec new: the tasks file has the task line" "$vault/$S/tasks/SP-1/spec/tasks.md" "- [ ] T1 - <What the task builds.>"
+line_is "spec new: and its requirements line" "$vault/$S/tasks/SP-1/spec/tasks.md" "  - Requirements: <R1, R2>"
+SPD="$vault/$S/tasks/SP-1/spec/design.md"
+line_is "spec new: the design keeps the headings a task names" "$SPD" "How First spec is built. Keep each heading short, and never rename or remove one a task names."
+for h in "## Context" "## Approach" "## Components" "## Errors and edge cases" "## Testing"; do
+  line_is "spec new: the design has $h" "$SPD" "$h"
+done
+line_is "spec new: the design asks for each part's job" "$SPD" "<Each part added or changed, and its job.>"
+echo "kept" >>"$SPR"
+sb spec new SP-1
+rc_is "spec new again: exit 0" 0
+out_is "spec new again: writes nothing" ""
+err_has "spec new again: names what exists" "exists: $S/tasks/SP-1/spec/requirements.md"
+line_is "spec new again: never overwrites" "$SPR" "kept"
+sb unresolved Specs
+out_is "spec: the vault spec files' links resolve" ""
+sb find SP-1 --project Specs
+out_is "spec: the task is still one task" "$S/tasks/SP-1/README.md"
+sb task set SP-1 delivery=maybe
+rc_is "delivery: task set refuses another value" 5
+sb task set SP-1 delivery=spec
+rc_is "delivery: task set writes spec" 0
+sb spec SP-1
+out_has "delivery: the task's own value wins" "delivery: spec"
+edit "$SPF" 's/^delivery: direct$/delivery: SPEC/'
+sb task set SP-1 delivery=
+sb spec SP-1
+out_has "delivery: removed, the profile's holds, in any letter case" "delivery: spec"
+edit "$SPF" 's/^delivery: SPEC$/delivery: maybe/'
+sb spec SP-1
+out_has "delivery: a value that is not allowed means direct" "delivery: direct"
+edit "$SPF" 's/^delivery: maybe$/delivery: direct/; s/^spec_home: vault$/spec_home: repo/'
+sb spec SP-1
+out_has "spec_home repo: the folder is spec/<ID> in the repo" "dir: $oT/scode/spec-app/spec/SP-1"
+out_has "spec_home repo: the tasks file is in it" "tasks: $oT/scode/spec-app/spec/SP-1/tasks.md"
+sb spec new SP-1
+out_has "spec_home repo: spec new writes in the repo" "$oT/scode/spec-app/spec/SP-1/requirements.md"
+is "spec_home repo: a repo spec file has no frontmatter" "$(head -1 "$tmp/scode/spec-app/spec/SP-1/requirements.md")" "# SP-1 - Requirements"
+is "spec_home repo: the Serves line is the first under R1" "$(section_of "$tmp/scode/spec-app/spec/SP-1/requirements.md" "R1 - <short name>" | head -1)" "$SERVES"
+file_lacks "spec_home repo: and no up link" "$tmp/scode/spec-app/spec/SP-1/requirements.md" "> Up:"
+edit "$SPF" "s|^repos_root: \"$tmp/scode\"\$|repos_root: \"$tmp/nowhere\"|"
+sb spec SP-1
+rc_is "spec_home repo: a missing repo folder exits 1" 1
+err_has "spec_home repo: and says so" "the folder of spec-app is missing"
+edit "$SPF" "s|^repos_root: \"$tmp/nowhere\"\$|repos_root: \"\"|"
+sb spec SP-1
+rc_is "spec_home repo: no recorded location exits 1" 1
+err_has "spec_home repo: and says so" "no location is recorded for spec-app"
+edit "$SPF" 's|^repos: \[spec-app\]$|repos: []|'
+sb spec SP-1
+rc_is "spec_home repo: no repo exits 1" 1
+err_has "spec_home repo: and says so" "Specs lists no repo for the spec"
+edit "$SPF" "s|^repos: \\[\\]\$|repos: [spec-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|"
+sb scaffold subproject Specs infra --repos spec-infra
+SPS="$vault/$S/claude/subprojects/infra.md"
+edit "$SPS" 's/^spec_home: ""$/spec_home: vault/; s/^delivery: ""$/delivery: spec/'
+sb task set SP-1 subproject=infra
+sb spec SP-1
+out_has "subproject: its spec_home wins over the profile's" "spec_home: vault"
+out_has "subproject: its delivery wins over the profile's" "delivery: spec"
+out_has "subproject: the story's repo is the subproject's first" "repo: spec-infra"
+sb subproject Specs infra
+out_has "subproject: shows the delivery that holds" "delivery: spec"
+out_has "subproject: and the validation home, the profile's" "validation_home: vault"
+sb spec
+rc_is "spec: no id exits 5" 5
+sb spec SP-1 SP-2
+rc_is "spec: two ids exit 5" 5
+sb spec SP-404 --project Specs
+rc_is "spec: an unknown task exits 1" 1
+
+# ---------------------------------------------------------------- validation.md
+sb validation Specs
+out_is "validation: one row per repo, the vault home, no section yet" "spec-app${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section
+spec-infra${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section"
+sb validation Specs spec-app
+rc_is "validation: a repo with no section exits 1" 1
+err_has "validation: and names validation new" "has no ## spec-app section: run second-brain validation new"
+sb validation new Specs spec-app
+rc_is "validation new: exit 0" 0
+out_is "validation new: names the file" "$S/claude/validation.md"
+line_is "validation new: adds the repo's section" "$vault/$S/claude/validation.md" "## spec-app"
+line_is "validation new: with the check as a user would" "$vault/$S/claude/validation.md" "### Check as a user would"
+is "validation new: the section holds the template's four parts, word for word" "$(section_of "$vault/$S/claude/validation.md" spec-app)" \
+  "### Set up and start
+- <The commands that install, build and start it from a fresh clone, in order.>
+### Checks
+- <Each command that must pass, such as the tests, linter and build, and what it proves.>
+### Check as a user would
+- <The steps that use the change as a user does, and what to look for.>
+### A pass
+- <What a pass needs: every check above passes, the user steps work, nothing else broke.>"
+echo "- npm test" >>"$vault/$S/claude/validation.md"
+sb validation new Specs SPEC-APP
+rc_is "validation new again: exit 0" 0
+out_is "validation new again: writes nothing" ""
+err_has "validation new again: names what exists" "exists: $S/claude/validation.md"
+sb validation Specs Spec-App
+rc_is "validation: the repo is matched without letter case" 0
+is "validation: the path comes first" "$(printf '%s\n' "$OUT" | head -1)" "path: $S/claude/validation.md"
+out_has "validation: then the repo's steps" "### Set up and start"
+out_has "validation: to the end of its section" "- npm test"
+sb validation Specs nope
+rc_is "validation: a repo that is not the project's exits 1" 1
+sb validation Specs spec-app extra
+rc_is "validation: too many arguments exit 5" 5
+sb validation new Specs
+rc_is "validation new: no repo exits 5" 5
+edit "$SPS" 's/^validation_home: ""$/validation_home: repo/'
+sb validation Specs
+out_has "validation: a subproject's home wins for its repos" "spec-infra${TAB}repo${TAB}$oT/scode/spec-infra/validation.md${TAB}missing"
+out_has "validation: the profile's holds for the others" "spec-app${TAB}vault${TAB}$S/claude/validation.md${TAB}ok"
+sb validation new Specs spec-infra
+out_is "validation new: a repo home writes at the repo's root" "$oT/scode/spec-infra/validation.md"
+is "validation new: a repo file opens with its title" "$(head -1 "$tmp/scode/spec-infra/validation.md")" "# spec-infra validation"
+line_is "validation new: then the repo's section" "$tmp/scode/spec-infra/validation.md" "## spec-infra"
+file_lacks "validation new: a repo file has no frontmatter" "$tmp/scode/spec-infra/validation.md" "type: validation"
+sb validation Specs
+out_has "validation: the repo file is ok" "spec-infra${TAB}repo${TAB}$oT/scode/spec-infra/validation.md${TAB}ok"
+rm -rf "$tmp/scode/spec-infra"
+sb validation Specs spec-infra
+rc_is "validation: a repo home whose folder is missing exits 1" 1
+err_has "validation: and says so" "the folder of spec-infra is missing"
+sb scaffold project Specs --path "$S" --keys SP
+err_has "validation: a second scaffold leaves the note alone" "exists: $S/claude/validation.md"
+VS="$here/skills/vault-setup/SKILL.md"
+file_has "vault-setup: lists the validation mode" "$VS" '| validation <project> | link]'
+file_has "vault-setup: asks for delivery" "$VS" '| `delivery` | whether stories are built from an approved spec'
+file_has "vault-setup: asks for spec_home" "$VS" '| `spec_home` | with `spec`:'
+file_has "vault-setup: asks for validation_home" "$VS" '| `validation_home` | whether `validation.md`'
+file_has "vault-setup: project mode ends with the validation steps" "$VS" "10. Write each repo's validation steps as"
+file_has "vault-setup validation: never invents a step" "$here/skills/vault-setup/validation.md" "Never invent a step."
+file_has "vault-setup validation: writes only what the user confirms" "$here/skills/vault-setup/validation.md" "Write only what they confirm"
+file_has "vault-setup repo: a new repo gets its validation steps" "$here/skills/vault-setup/repo.md" "Write the repository's validation steps"
+
+# ---------------------------------------------------------------- spec and validation edge cases
+sb validation Specs nope
+rc_is "validation: an unknown repo exits 1" 1
+out_is "validation: and prints nothing" ""
+sb validation new Specs nope
+rc_is "validation new: an unknown repo exits 1" 1
+out_is "validation new: and writes nothing" ""
+sb validation Specs --x
+rc_is "validation: a flag as the second argument exits 5" 5
+sb validation new Specs -h
+rc_is "validation new: a flag exits 5" 5
+sb task set SP-1 delivery=Spec
+rc_is "delivery: task set takes any letter case" 0
+line_is "delivery: and writes it in lower case" "$vault/$S/tasks/SP-1/README.md" "delivery: spec"
+sb task set SP-1 delivery=
+# The vault note in CRLF: a new section keeps the line endings, after one blank line.
+VN="$vault/$S/claude/validation.md"
+edit "$SPF" 's|^repos: \[spec-app\]$|repos: [spec-app, spec-web]|'
+mkdir -p "$tmp/scode/spec-web"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$VN" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$VN"
+sb validation new Specs spec-web
+rc_is "validation new: a CRLF note takes a new section" 0
+is "validation new: every line keeps its CRLF" "$(grep -vc "$CR\$" "$VN" || true)" "0"
+is "validation new: one blank line before the new section" \
+  "$(awk '{ sub(/\r$/, "") } $0 == "## spec-web" { print prev } { prev = $0 }' "$VN")" ""
+is "validation new: and not two" \
+  "$(awk '{ sub(/\r$/, "") } $0 == "## spec-web" { print p2 } { p2 = prev; prev = $0 }' "$VN" | grep -c . || true)" "1"
+# A section with nothing under its heading is empty, not written.
+edit "$SPF" 's|^repos: \[spec-app, spec-web\]$|repos: [spec-app, spec-web, spec-gone]|'
+printf '\r\n## spec-gone\r\n' >>"$VN"
+sb validation Specs
+out_has "validation: a section with nothing under it is empty" "spec-gone${TAB}vault${TAB}$S/claude/validation.md${TAB}empty"
+sb validation new Specs spec-gone
+err_has "validation new: an empty section is left alone" "exists: $S/claude/validation.md"
+edit "$SPF" 's|^repos: \[spec-app, spec-web, spec-gone\]$|repos: [spec-app]|'
+# The story's repo: with no repo in the profile, the project's first repo, a subproject's.
+P3="work/subonly"
+mkdir -p "$tmp/socode/so-api"
+sb scaffold project SubOnly --path "$P3" --keys SO
+edit "$vault/$P3/claude/profile.md" "s|^repos_root: \"\"\$|repos_root: \"$tmp/socode\"|; s|^spec_home: vault\$|spec_home: repo|"
+sb scaffold subproject SubOnly api --repos so-api
+sb task new SO-1 --project SubOnly --title "No subproject"
+sb spec SO-1
+rc_is "spec: a project whose only repo is a subproject's exits 0" 0
+out_has "spec: and the story's repo is that repo" "repo: so-api"
+# A repo home in the profile: no hub link, and no vault note.
+P4="work/repohome"
+mkdir -p "$vault/$P4/claude"
+printf -- '---\ntype: profile\nvalidation_home: repo\n---\n' >"$vault/$P4/claude/profile.md"
+sb scaffold project RepoHome --path "$P4" --keys RH
+out_lacks "validation: a repo home writes no vault note" "$P4/claude/validation.md"
+file_lacks "validation: and the Claude hub does not link to one" "$vault/$P4/claude/README.md" "claude/validation|"
+sb unresolved RepoHome
+out_is "validation: so the hub's links resolve" ""
+
+# ---------------------------------------------------------------- spec tasks, tick and packet
+SD="$vault/$S/tasks/SP-1/spec"
+edit "$SPF" 's/^spec_home: repo$/spec_home: vault/'
+sb task set SP-1 subproject= branch=feature/SP-1-first
+printf '%s\n' '# SP-1 - Requirements' '' '## R1 - Login form' '' 'WHEN a user opens the page, THE app SHALL show a form.' '' \
+  '- [ ] The form has two fields.' '' '## R2 - Bad password' '' 'IF the password is wrong, THEN the app SHALL say so.' '' '## R3 - Unused' '' 'Left out.' >"$SD/requirements.md"
+printf '%s\n' '# SP-1 - Design' '' '## Approach' '' 'A new route.' '' '## Components' '' 'The form.' '' '## Testing' '' 'A browser check.' >"$SD/design.md"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' '  - Check: open the page' '' \
+  '- [x] T2 - The error' '  - Requirements: R2, R9' '  - Design: Approach' '- [ ] T3 - Nothing named' '  - Requirements: <R1, R2>' '- [ ] T4 - No design' '  - Requirements: r2' '  - Design: none' >"$SD/tasks.md"
+sb spec tasks SP-1
+rc_is "spec tasks: exit 0" 0
+out_is "spec tasks: one row per item, in order" "T1${TAB}todo${TAB}The login form
+T2${TAB}done${TAB}The error
+T3${TAB}todo${TAB}Nothing named
+T4${TAB}todo${TAB}No design"
+sb spec packet SP-1 t1
+rc_is "spec packet: exit 0, the task matched without letter case" 0
+is "spec packet: the header lines first" "$(printf '%s\n' "$OUT" | head -7)" "story: SP-1
+task: T1
+title: The login form
+repo: spec-app
+repo_path: $oT/scode/spec-app
+branch: feature/SP-1-first
+validation: $S/claude/validation.md"
+out_has "spec packet: the item as written" "  - Files: src/login.ts"
+out_has "spec packet: the requirement it names, with its checks" "### R1 - Login form
+
+WHEN a user opens the page, THE app SHALL show a form.
+
+- [ ] The form has two fields."
+out_lacks "spec packet: no requirement it does not name" "R2 - Bad password"
+out_has "spec packet: each design heading it names, without letter case" "### Approach
+
+A new route.
+
+### Components
+
+The form."
+out_lacks "spec packet: no design heading it does not name" "### Testing"
+out_has "spec packet: the repo's validation steps" "## Validation
+
+### Set up and start"
+out_lacks "spec packet: no other task" "T2 - The error"
+sb spec packet SP-1 T2
+rc_is "spec packet: a requirement with no section exits 1" 1
+err_has "spec packet: and names it" "T2 names R9, which $S/tasks/SP-1/spec/requirements.md has no section for"
+sb spec packet SP-1 T3
+rc_is "spec packet: a task that names no requirement exits 1" 1
+sb spec packet SP-1 T4
+rc_is "spec packet: a task with no design exits 0" 0
+out_lacks "spec packet: and has no design part" "## Design"
+out_has "spec packet: a requirement id is matched without letter case" "### R2 - Bad password"
+sb spec packet SP-1 T9
+rc_is "spec packet: an unknown task exits 1" 1
+sb spec packet SP-1
+rc_is "spec packet: no task exits 5" 5
+CRT="$SD/tasks.md"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$CRT" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$CRT"
+sb spec tick SP-1 T1
+rc_is "spec tick: exit 0" 0
+out_is "spec tick: names the task" "ticked: T1"
+line_is "spec tick: the box is ticked" "$CRT" "- [x] T1 - The login form$CR"
+is "spec tick: every line keeps its CRLF" "$(grep -vc "$CR\$" "$CRT" || true)" "0"
+sb spec tick SP-1 T1
+rc_is "spec tick: a ticked task exits 6" 6
+sb spec tick SP-1 T9
+rc_is "spec tick: an unknown task exits 1" 1
+sb spec tasks SP-1
+out_has "spec tasks: the ticked task is done" "T1${TAB}done${TAB}The login form"
+mv "$CRT" "$tmp/tasks.md.away"
+sb spec tasks SP-1
+rc_is "spec tasks: no tasks.md exits 1" 1
+err_has "spec tasks: and names spec new" "run second-brain spec new SP-1"
+mv "$tmp/tasks.md.away" "$CRT"
+
+# ---------------------------------------------------------------- the spec skill and its agents
+SK="$here/skills/spec/SKILL.md"
+sk_desc="$(sed -n 's/^description: //p' "$SK")"
+is "spec skill: the description is under 200 characters" "$((${#sk_desc} < 200))" "1"
+case "$sk_desc" in *"spec-driven"*) pass "spec skill: the description names spec-driven" ;; *) fail "spec skill: the description names spec-driven" "in: $sk_desc" ;; esac
+file_has "spec skill: carries the conventions pointer" "$SK" 'Conventions: before writing notes, run `second-brain conventions`'
+file_has "spec skill: its first tool call is the context" "$SK" 'Your first tool call is `second-brain context`'
+for ph in requirements design tasks; do
+  file_has "spec skill: the $ph approval note" "$SK" "Spec: $ph approved by the owner."
+done
+file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
+file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
+file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" "Resume \`spec-lead\` with SendMessage and the owner's answer as written."
+for a in spec-lead implementer reviewer; do
+  AF="$here/agents/$a.md"
+  line_is "$a: named as its file" "$AF" "name: $a"
+  ad="$(sed -n 's/^description: //p' "$AF")"
+  is "$a: the description is under 200 characters" "$((${#ad} < 200))" "1"
+  file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
+done
+line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
+for a in implementer reviewer docs-keeper scrum-master; do
+  if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
+done
+line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
+file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
+file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
+file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"
+file_has "spec-lead: two retries at most" "$here/agents/spec-lead.md" "retries for a task. Still FAIL"
+file_has "reviewer: a step not run is never a pass" "$here/agents/reviewer.md" "A step that could not be run is never a PASS."
+file_has "implementer: never the vault or tasks.md" "$here/agents/implementer.md" 'Never the vault, the spec files or `tasks.md`'
+file_has "spec phases: every task's packet must build" "$here/skills/spec/phases.md" 'Run `second-brain spec packet <ID> T<n>` for every task.'
+file_has "spec skill: writes each phase in this session" "$here/skills/spec/SKILL.md" "write the phase yourself, in this session"
+file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKILL.md" "Read only what this session does not have yet"
+file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
+file_has "spec phases: never the whole repo" "$here/skills/spec/phases.md" "and what they call. Not the whole"
+if [ -e "$here/agents/spec-writer.md" ]; then fail "spec-writer: the agent is gone"; else pass "spec-writer: the agent is gone"; fi
+file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
+file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
+file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
+
+# ---------------------------------------------------------------- spec tasks: review edge cases
+printf '%s\n' '# SP-1 - Tasks' '' 'An example:' '' '```' '- [ ] T1 - Example' '```' '' '- [ ] T1 - The real one' '  - Requirements: R1' '  - Design: None' \
+  '  - Check: run it' '    ```sh' '#!/bin/sh' '    ```' '  - Files: a.sh' '- [ ] T2: Colon form' '  - Requirements: R1,' '- [ ] T5 - Twice' '  - Requirements: R1' '- [ ] T5 - Twice again' '  - Requirements: R1' >"$CRT"
+sb spec tasks SP-1
+out_is "spec tasks: fenced code is not read, and T2: is a task" "T1${TAB}todo${TAB}The real one
+T2${TAB}todo${TAB}Colon form
+T5${TAB}todo${TAB}Twice
+T5${TAB}todo${TAB}Twice again"
+sb spec packet SP-1 T1
+rc_is "spec packet: Design: None names no section, in any letter case" 0
+out_has "spec packet: a fence inside the item keeps the lines after it" "  - Files: a.sh"
+sb spec packet SP-1 T2
+rc_is "spec packet: a field that ends in a comma exits 1" 1
+err_has "spec packet: and says to write it on one line" "write each field of a task on one line"
+sb spec packet SP-1 T5
+rc_is "spec packet: two items with one id exit 1" 1
+err_has "spec packet: and say so" "have the id T5"
+sb spec tick SP-1 T5
+rc_is "spec tick: two items with one id exit 1" 1
+sb spec tick SP-1 T1
+line_is "spec tick: the fenced example is left alone" "$CRT" "- [ ] T1 - Example"
+line_is "spec tick: the real item is ticked" "$CRT" "- [x] T1 - The real one"
+printf '\n## R1 - Again\n' >>"$SD/requirements.md"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' >"$CRT"
+sb spec packet SP-1 T1
+rc_is "spec packet: a requirement with two sections exits 1" 1
+err_has "spec packet: and names it" "has two sections for R1"
+edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
+edit "$SPF" "s|^repos_root: \"$tmp/scode\"\$|repos_root: \"\"|"
+sb spec SP-1
+rc_is "spec: a repo spec with no recorded location still exits 1" 1
+out_has "spec: but prints the delivery first" "delivery: direct"
+out_has "spec: and the folder as -" "dir: -"
+edit "$SPF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|; s/^spec_home: repo$/spec_home: vault/"
+for a in implementer reviewer; do
+  line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
+done
+file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
+file_has "spec-lead: a BLOCKED review stops at once" "$here/agents/spec-lead.md" '4. BLOCKED: `second-brain spec status <ID> <task> blocked`, stop at once and report.'
+file_has "spec-lead: commits the tick of a repo spec" "$here/agents/spec-lead.md" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
+file_has "spec-lead: a new lead goes on from the Build section" "$here/agents/spec-lead.md" 'Where the build stands is the `## Build` section.'
+file_has "reviewer: a BLOCKED verdict" "$here/agents/reviewer.md" '`VERDICT: BLOCKED`: a step could not be run'
+file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'Read nothing outside `repo_path`'
+file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
+file_has "spec skill: commits a repo spec before the build" "$here/skills/spec/SKILL.md" 'commit -m "<ID>: spec"'
+
+# ---------------------------------------------------------------- spec link
+sb help
+out_has "help: lists spec link" "spec packet <ID> <task> | spec link <ID>"
+for n in 2 3 4 5; do sb task new "SP-$n" --project Specs --title "Linked $n"; done
+for n in 2 3 5; do sb task set "SP-$n" delivery=spec; sb spec new "SP-$n"; done
+L2="$vault/$S/tasks/SP-2/README.md"
+sb spec link SP-2
+rc_is "spec link: exit 0" 0
+out_is "spec link: names each section it changed" "linked: Approach / Key decisions
+linked: Changes
+linked: Verification"
+is "spec link: the design link opens Approach, the template text gone" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$L2")" "
+See [[$S/tasks/SP-2/spec/design|SP-2 Design]]."
+is "spec link: the tasks link replaces None yet. in Changes" \
+  "$(awk '/^## Changes/ { on = 1; next } on && /^## / { exit } on' "$L2")" "
+See [[$S/tasks/SP-2/spec/tasks|SP-2 Tasks]]."
+line_is "spec link: and opens Verification" "$L2" "See [[$S/tasks/SP-2/spec/tasks|SP-2 Tasks]]."
+sb unresolved Specs
+out_is "spec link: its links resolve" ""
+cp "$L2" "$tmp/sp2.before"
+sb spec link SP-2
+out_is "spec link again: no change" "no change"
+if cmp -s "$L2" "$tmp/sp2.before"; then pass "spec link again: the README is byte-identical"; else fail "spec link again: the README is byte-identical"; fi
+L3="$vault/$S/tasks/SP-3/README.md"
+awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$L3" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$L3"
+sb spec link SP-3
+rc_is "spec link: a CRLF README takes the links" 0
+is "spec link: every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+L4="$vault/$S/tasks/SP-4/README.md"
+cp "$L4" "$tmp/sp4.before"
+sb spec link SP-4
+out_is "spec link: a direct story is not built from a spec" "no change: SP-4 is not built from a spec (delivery: direct)"
+if cmp -s "$L4" "$tmp/sp4.before"; then pass "spec link: a direct story's README is byte-identical"; else fail "spec link: a direct story's README is byte-identical"; fi
+L5="$vault/$S/tasks/SP-5/README.md"
+awk '{ print } /^## Approach \/ Key decisions$/ { getline; print; getline; print "- Keep this decision."; next }' "$L5" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$L5"
+sb spec link SP-5
+is "spec link: other text stays under the link" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$L5" | head -4)" "
+See [[$S/tasks/SP-5/spec/design|SP-5 Design]].
+
+- Keep this decision."
+rm "$vault/$S/tasks/SP-5/spec/design.md"
+sb spec link SP-5
+rc_is "spec link: a missing design.md exits 1" 1
+edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
+sb task new SP-6 --project Specs --title "Repo link"
+sb task set SP-6 delivery=spec
+sb spec new SP-6
+sb spec link SP-6
+line_is "spec link: a repo spec names the file and the repo" "$vault/$S/tasks/SP-6/README.md" 'See `spec/SP-6/design.md` in the `spec-app` repo.'
+edit "$SPF" 's/^spec_home: repo$/spec_home: vault/'
+file_has "spec skill: runs spec link after the tasks approval" "$here/skills/spec/SKILL.md" 'After the tasks note, run `second-brain spec link <ID>`'
+file_has "spec phases: each requirement opens with its Serves line" "$here/skills/spec/phases.md" 'Each section opens with `- Serves: AC1, AC3`'
+file_has "spec phases: every criterion is served" "$here/skills/spec/phases.md" 'Every criterion of the story is named on a `- Serves:` line'
+file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md" 'its `spec-trace` row must name'
+
+# ---------------------------------------------------------------- spec status and spec issue
+sb help
+out_has "help: lists spec status and spec issue" 'spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"'
+sb spec status SP-2
+rc_is "spec status: a story with no build exits 0" 0
+out_is "spec status: and prints nothing" ""
+sb spec status SP-2 t1 built --commit abc1234 --session s-1
+rc_is "spec status: exit 0" 0
+out_is "spec status: names the task and its state" "T1: built"
+line_is "spec status: the row, with its commit" "$L2" '- T1 - built - commits `abc1234` - <What the task builds.>'
+is "spec status: the section sits before the status notes" \
+  "$(($(lineno "$L2" '## Build') < $(lineno "$L2" '## Status notes')))" "1"
+file_has "spec status: adds a status note" "$L2" 'Build: T1 built at abc1234.**'
+sb spec status SP-2 T1 failed --commit def5678
+sb spec status SP-2 T1 in-review --commit abc1234
+line_is "spec status: a second commit is added once" "$L2" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>'
+sb spec issue SP-2 T1 "The form has one field." --fix "Add the password field."
+rc_is "spec issue: exit 0" 0
+out_is "spec issue: names the task" "T1: issue"
+line_is "spec issue: the issue sits under the row, with its fix" "$L2" '  - Issue 2026-10-08: The form has one field. Fix: Add the password field.'
+file_has "spec issue: adds a status note" "$L2" 'Build: T1 issue: The form has one field. Fix: Add the password field.**'
+is "spec status: one Build section, however often it is written" "$(grep -c '^## Build$' "$L2")" "1"
+printf '%s\n' '' '- [ ] T2 - The second task' '  - Requirements: R1' >>"$vault/$S/tasks/SP-2/spec/tasks.md"
+sb spec status SP-2 T2 built --commit 0a1b2c3
+sb spec status SP-2
+out_is "spec status: prints the section, in the order of tasks.md, issues kept" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>
+  - Issue 2026-10-08: The form has one field. Fix: Add the password field.
+- T2 - built - commits `0a1b2c3` - The second task'
+sb spec status SP-2 T1 done
+rc_is "spec status: another state exits 5" 5
+sb spec status SP-2 T1 built --commit xyz
+rc_is "spec status: a commit that is not hex exits 5" 5
+sb spec status SP-2 T9 built
+rc_is "spec status: a task tasks.md lacks exits 1" 1
+sb spec status SP-2 T1
+rc_is "spec status: a task with no state exits 5" 5
+sb spec issue SP-2 T1 "No fix given."
+rc_is "spec issue: no --fix exits 5" 5
+sb spec tick SP-2 T1 --commit abc
+rc_is "spec tick: --commit is not its flag, exit 5" 5
+sb spec status SP-3 T1 todo
+rc_is "spec status: a CRLF README takes the section" 0
+is "spec status: every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+SL="$here/agents/spec-lead.md"
+file_has "spec-lead: builds every task first" "$SL" "## 2. Build every task"
+file_has "spec-lead: then reviews every task" "$SL" "## 3. Review every task"
+file_has "spec-lead: a failed task holds up the later reviews" "$SL" "A task that fails holds up the review of the tasks after it"
+file_has "spec-lead: records each step in the Build section" "$SL" 'second-brain spec status <ID> <task> built --commit <short hash>'
+file_has "spec-lead: gives the logged issues back to the implementer" "$SL" "the task's issues and proposed fixes as \`spec status\` prints them"
+file_has "spec-lead: keeps track of the build" "$SL" "You keep track of the build."
+file_has "implementer: runs no check" "$here/agents/implementer.md" "Run no check, test, linter or build: the reviewer runs them all"
+file_has "reviewer: logs each issue with a proposed fix" "$here/agents/reviewer.md" 'second-brain spec issue <story> <task>'
+file_has "reviewer: runs every check" "$here/agents/reviewer.md" "You run every check: the implementer runs none."
+file_has "spec skill: shows the Build section when spec-lead stops" "$here/skills/spec/SKILL.md" 'show the owner the `## Build` section: `second-brain spec status <ID>`'
+
+file_has "spec tasks template: every task is built first, then reviewed" "$here/templates/spec-tasks.md.tmpl" "All tasks are built, then reviewed, in order."
+file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
+file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
+
+# ---------------------------------------------------------------- README: each rule it points to has a home
+RM="$here/README.md"
+line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
+for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Validation' \
+  'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
+  line_is "README: $pf has the heading $ph" "$here/$pf" "$ph"
+done
+for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
+  file_has "README: points to $pf" "$RM" "\`$pf\`"
+  exists "README: $pf exists" "$here/$pf"
+done
+file_has "README: the hand-off to docs-keeper is in story-tracker" "$here/skills/story-tracker/SKILL.md" \
+  'The story reaches production: start the `docs-keeper` agent'
+file_has "README: vault-setup link leaves a foreign entry alone" "$here/skills/vault-setup/SKILL.md" \
+  'It is normal and never touched'
+file_has "README: --fix changes three checks without asking" "$here/skills/vault-doctor/SKILL.md" \
+  '`second-brain doctor --fix` repairs three checks only'
+
+# ---------------------------------------------------------------- guide: each rule it points to has a home
+GD="$here/docs/guide.md"
+line_is "guide: keeps the What to say heading that its links name" "$GD" "## What to say"
+for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The index' \
+  'docs/contract.md|## 3. The project' 'docs/contract.md|### Profile frontmatter' \
+  'docs/contract.md|### Subprojects' 'docs/contract.md|### Validation' 'docs/contract.md|## 4. A task' \
+  'docs/contract.md|### Links between notes' 'docs/contract.md|### link, doctor, snapshot' \
+  'docs/contract.md|## 9. Skills and agents' 'templates/obsidian-conventions.md.tmpl|## The short version' \
+  'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
+  'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
+  'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
+  line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"
+done
+for pf in skills/sprint/close.md skills/spec/SKILL.md agents/spec-lead.md .github/workflows/test.yml \
+  .github/workflows/e2e.yml scripts/e2e-claude.sh .claude-plugin/plugin.json CHANGELOG.md; do
+  file_has "guide: points to $pf" "$GD" "\`$pf\`"
+  exists "guide: $pf exists" "$here/$pf"
+done
+for s in test test-link test-graph test-doctor test-snapshot leak-check; do
+  line_is "guide: Development lists scripts/$s.sh" "$GD" "bash scripts/$s.sh"
+done
+line_is "guide: Development lists the plugin validation" "$GD" "claude plugin validate . --strict"
+file_has "guide: version changes only at the end of a release" "$GD" \
+  'Neither a feature branch nor the release branch changes `version`.'
+file_has "guide: a failing e2e request is fixed in the description" "$GD" \
+  "fixed in the skill's \`description\`, in the user's words"
+file_has "guide: a task is never filed in its topic" "$here/templates/obsidian-conventions.md.tmpl" \
+  'Never file a task inside the topic it is'
+file_has "guide: vault-setup runs only by name" "$here/docs/contract.md" \
+  '`vault-setup` is the one: it writes the pointer and the links'
+file_has "guide: adopt writes the roots into the profile" "$here/skills/vault-setup/adopt.md" \
+  'It writes the roots into the new profile'
+file_has "guide: vault-setup asks whether the project runs sprints" "$here/skills/vault-setup/SKILL.md" \
+  '- No sprints: add `--no-sprints`'
+file_has "guide: vault-setup asks for the task layout" "$here/skills/vault-setup/SKILL.md" \
+  '| `task_layout` | whether a done or abandoned task moves once'
+file_has "guide: the status overview flags a story waiting on a task not done" "$here/skills/story-tracker/status.md" \
+  'story waits on each task in its `depends_on` cell that is not `done`'
+file_has "guide: no build starts without the repo's steps" "$here/skills/spec/SKILL.md" \
+  '`second-brain validation <project> <repo>` must print the repo'"'"'s steps'
+
+# ---------------------------------------------------------------- a new story's branch is cut from the base branch
+line_is "guide: a release branch is cut from main" "$GD" \
+  '- A release starts with a `release/<version>` branch cut from `main`, such as `release/0.3.0`.'
+line_is "guide: a feature branch is cut from main and merges into the release" "$GD" \
+  '- A feature branch is cut from `main` and merges into the release branch.'
+line_is "guide: a story that needs another story's code is cut from its branch" "$GD" \
+  "- A story that needs another story's code not yet in \`main\` is cut from that story's branch. It"
+line_is "guide: that story merges after the one it needs" "$GD" '  merges into the release branch after that story.'
+line_is "guide: the release goes to main in one pull request" "$GD" \
+  '- One pull request takes the release branch into `main`.'
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: a new story's branch is cut from the base branch" "$ST" \
+  "- A new story's branch is cut from the base branch."
+line_is "story-tracker: a story that needs another story's code is cut from its branch" "$ST" \
+  "  - A story that needs another story's code not yet in the base branch is cut from that story's"
+file_has "spec skill: cuts a missing branch as the branch check says" "$here/skills/spec/SKILL.md" \
+  'No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.'
+line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
+  "- \`base_branch\` is the branch a new story's branch is cut from, as"
 
 # ---------------------------------------------------------------- result
+if [ -f "$tmp/undefined" ]; then
+  while IFS= read -r cmd; do fail "undefined command: $cmd"; done <"$tmp/undefined"
+fi
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

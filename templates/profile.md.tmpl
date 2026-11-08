@@ -21,6 +21,9 @@ environments: []
 repos: []
 repos_root: ""
 repo_paths: []
+delivery: direct
+spec_home: vault
+validation_home: vault
 achievements_skill: ""
 tags:
   - type/profile
@@ -30,19 +33,22 @@ tags:
 
 # {{PROJECT}} profile
 
-The one settings note for {{PROJECT}}. Skills and agents read the frontmatter through the helper and
-one section at a time. Keep it to facts about the project; the workflow lives in the skills.
+The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in the skills.
 
 ## Stories
 
 - Persona: the role a story's description opens with (`*As a* <persona>,`). Set it in `persona:` above.
 - Tracker: <where tickets live, where epics usually sit, any ticket markup to keep>.
 - Extra frontmatter a task README needs here, and how to pick topic tags for a new ticket: <or "none">.
-- Task layout: `task_layout:` above is `flat | archive`. `flat`, the default, keeps every task in its
-  folder under the tasks root. `archive` moves a done or abandoned task once, with
-  `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under the tasks root.
-  `archive_after_days:` is how long a done task stays in the live folder before the doctor names it,
-  counted from its newest status note or its sprint's end; `doctor --fix` then archives it.
+- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or
+  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under
+  the tasks root.
+- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest
+  status note or its sprint's end, before the doctor names it and `doctor --fix` archives it.
+- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design
+  and tasks, approved before any code. A subproject or a story may set its own.
+- `spec_home:` puts the spec in the task's folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).
+- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo's root (`repo`).
 
 ## Topics
 
@@ -56,10 +62,10 @@ one section at a time. Keep it to facts about the project; the workflow lives in
 ## Repos
 
 - `<repo folder name>` - <what it holds>.
-- List every folder name in `repos:` above, so a working directory resolves to this project. The
-  first name is the default repository for branch checks.
-- `repos_root:` is the folder those repositories usually sit in on this machine, absolute or
-  starting with `~`. `repo_paths:` lists the ones stored elsewhere, one `name=path` string each.
+- List every repository's folder name in `repos:` above.
+- The first name is the default repository for branch checks.
+- `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.
+- `repo_paths:` lists the ones stored elsewhere, one `name=path` string each.
 - Repositories with their own branches or docs form a subproject: one note in
   `claude/subprojects/`, whose empty keys take the values above (`vault-setup subproject`).
 
@@ -70,16 +76,16 @@ one section at a time. Keep it to facts about the project; the workflow lives in
 
 ## Sprints
 
-- Set `uses_sprints: false` in the frontmatter to turn sprints off; the cadence lines then do not apply.
+- Set `uses_sprints: false` above to turn sprints off; the cadence lines then do not apply.
 - Cadence: <the day a sprint ends, and anything that shifts it>. The numbers are in the frontmatter.
 - Extra fields a sprint note carries here: <or "none">.
 - When a story is done, hand it to: <the skill named in `achievements_skill:`, or "nothing">.
 
 ## Docs
 
-Docs follow production: a doc is updated only after the change is confirmed deployed to production.
-`production_branch` in the frontmatter names the branch production runs (empty means `base_branch`).
-Say here how a deployment is confirmed in this project.
+Docs follow production: a doc is updated only after its change is confirmed deployed to production,
+which runs `production_branch` above, or `base_branch` when that is empty. Say here how a
+deployment is confirmed in this project.
 
 ### Repo doc surfaces
 
@@ -91,8 +97,7 @@ Say here how a deployment is confirmed in this project.
 
 ### Code to doc map
 
-Every repository in `repos` has at least one row. When a repository is added to the project, add its
-rows here in the same change.
+Every repository in `repos` has at least one row, added in the same change as the repository.
 
 | Repo | Change in the code | Docs to update |
 |---|---|---|

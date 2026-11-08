@@ -10,27 +10,27 @@ tags:
 
 # Vault Claude hub
 
-What Claude uses from this vault and is tied to no single project: your own global skills and
-agents. A skill or agent that only makes sense for one project lives in that project's `claude/`
-folder instead, and its hub lists it. `pull-request.md` here is the format of every pull request
-description Claude writes; edit it to change the format.
+Your own skills and agents that serve every project live here:
 
 ```
 claude/skills/<name>/SKILL.md    a skill, with its supporting files beside it
 claude/agents/<name>.md          an agent
 ```
 
+`pull-request.md` here is the format of every pull request description Claude writes. Edit it to
+change the format.
+
 ## Adding a skill or agent
 
-1. Create the file here, or in `<project>/claude/` for a project one. The skill folder name, or the
-   agent file name, equals `name` in its frontmatter.
-2. Frontmatter carries at least `name` and `description`. Keep the description to one sentence.
+1. Create the file here, or in `<project>/claude/` for one that serves a single project.
+2. Give its frontmatter at least `name`, the same as the skill folder or agent file name, and a
+   one-sentence `description`.
 3. Names share one namespace. Prefix a project-specific name with the project: `example-deploy`.
-4. Register it with `second-brain link --apply`. That links it into `~/.claude/skills/` or
-   `~/.claude/agents/`. The file in the vault stays the only copy.
+4. Run `second-brain link --apply` to link it into `~/.claude/skills/` or `~/.claude/agents/`.
+   The file in the vault stays the only copy.
 5. List it below, or in the project's `claude/README.md`, with its "use when" line.
-6. On rename, move or delete, fix or remove the link in the same change. `second-brain link --check`
-   lists links left dangling.
+6. On a rename, move or delete, fix or remove the link in the same change.
+   `second-brain link --check` lists dangling links.
 
 ## Skills
 

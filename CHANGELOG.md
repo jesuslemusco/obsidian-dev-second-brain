@@ -150,6 +150,21 @@
 - A failing build-wide check, or a user or branch finding, that no task covers goes to the last
   task, with a ruling. A review that still gives no verdict, asked again and then from a fresh
   `reviewer`, is taken as BLOCKED.
+- `reviewer` grades each acceptance check, and each check and user step it runs, as met or not,
+  with its evidence. A check not met fails the task, and so does any other finding: a PASS with
+  an open finding is not allowed.
+- `reviewer` takes the implementer's report, commit messages and comments as claims to check,
+  never as evidence. The `spec` skill gives it no view of its own on the result.
+- `reviewer` ends its reply with a JSON block, `{"verdict": ..., "issues": <n>, "checks": [...]}`,
+  in place of the `VERDICT:` line. A bundle's block holds one entry per task. The `spec` skill
+  reads each verdict from it, as `### Reading a verdict` in `skills/spec/build.md` says.
+- No block, or one that breaks its rules, such as a PASS with a check not met, is no verdict and
+  never a PASS. The skill asks once more, then launches a fresh `reviewer`, then takes it as
+  BLOCKED.
+- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its
+  evidence. Its grading is tuned on the reviews of an earlier build: a check on every item of a
+  kind is met only when each item meets it, a defect it sees is a finding even when no check
+  names it, and a check a ruling settles is met.
 
 ## 0.6.0 - 2026-11-08
 

@@ -256,6 +256,8 @@ tags:
   `## <repo>` section. Nothing in the vault points to it.
 - A section is written from `validation-repo.md.tmpl` and keeps its four level-3 headings:
   `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
+- Each step under `### Check as a user would` is one line that names the tool that runs it: a
+  skill by its name, a command, an API call or a query.
 - A section is written when something is under its heading. One with nothing is `empty`.
 
 ## 4. A task
@@ -810,6 +812,17 @@ text.
 - `spec-lead` launches `reviewer` on the untouched branch first. Then it builds every task, one
   `implementer` run per task, then reviews them in order, one `reviewer` run per task.
 - `implementer` runs no check: `reviewer` runs them all.
+- `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
+  skill through the Skill tool, anything else through Bash. A line that names no tool runs
+  through Bash.
+- A step whose tool `reviewer` cannot run, such as a skill that is not installed, is BLOCKED, and
+  the verdict names the tool.
+- Plugin agents cannot set `mcpServers`, so a browser comes from a skill or a command, never from
+  an MCP server.
+- The plugin ships no browser. A repo's `validation.md` names the one it uses.
+- A browser step saves its screenshots in a temp folder outside the repo, and `reviewer` names
+  the folder in its findings.
+- The user steps leave the repo's tree as `reviewer` found it.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
   issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
@@ -827,7 +840,7 @@ text.
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
 | `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
+| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff and runs each user step with its tool; edits no file |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production.

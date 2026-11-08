@@ -344,7 +344,7 @@ every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.m
 is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | tr '\n' ' ' | grep -c -E 'The vault is +`~/\.claude/second-brain-vault/`')" "1"
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
-file_has "index: story-tracker is named as the skill that tracks tasks" "$vault/CLAUDE.md" "\`story-tracker\` tracks tasks,"
+file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
 is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
@@ -361,7 +361,7 @@ line_is "index: Claude Code loads a new skill only after link --apply" "$vault/C
 file_has "index: only a rule for every project goes in the link directory's CLAUDE.md" "$vault/CLAUDE.md" \
   'Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.'
 line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.md" \
-  '- Call a plugin skill or agent for its work, not the helper alone. Skills:'
+  '- Call a plugin skill or agent for its work, even when the helper alone could answer. Skills:'
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'

@@ -69,19 +69,23 @@ to you as its result.
 
 ## 5. Build every task
 
-For each task whose build is `todo` or `building`, in the order `spec tasks` lists them:
+For each task whose build is `todo`, `building` or `blocked`, in the order `spec tasks` lists
+them:
 
-1. A `building` task was cut off in an earlier session. Look for its commit:
+1. A `building` task was cut off in an earlier session. Look for a commit it made:
    `git -C "<path>" log -1 --format=%h --grep="^<ID> <task>: "`.
-   - It prints a hash: `second-brain spec status <ID> <task> built --commit <hash>`, then go to
-     item 6.
-2. `second-brain spec status <ID> <task> building`.
-3. Launch `implementer` on the task.
-4. Its reply starts with `BLOCKED:`, or names no commit:
+   - A hash `spec status` does not list under the task yet: that run committed. Run
+     `second-brain spec status <ID> <task> built --commit <hash>`, then go to the next task.
+   - No hash, or one `spec status` lists already: build the task again, from item 3.
+2. A `blocked` task: its `Owner:` line is the owner's newest ruling on it, the status note
+   `Build: the owner ruled on <task>: <the ruling, as written>.`.
+   - No such note: ask the owner first, as `## 7. When the build stops` says.
+3. `second-brain spec status <ID> <task> building`.
+4. Launch `implementer` on the task.
+5. Its reply starts with `BLOCKED:`, or names no commit:
    `second-brain spec status <ID> <task> blocked`, and stop.
-5. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
+6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
    its reply names.
-6. Show the owner `second-brain spec status <ID>`.
 
 ## 6. Review every task
 
@@ -89,6 +93,8 @@ Then, for each task whose review is not `passed`, in the same order:
 
 1. `second-brain spec status <ID> <task> in-review`.
 2. Launch `reviewer` in task mode on the task.
+   - Its review was `blocked` before item 1: its `Owner:` line is the owner's newest ruling on
+     it, as item 2 of `## 5. Build every task` says.
    - Its reply has a line `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
    - No such line: ask it once more with SendMessage. Still none: stop.
 3. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
@@ -99,7 +105,7 @@ Then, for each task whose review is not `passed`, in the same order:
 5. FAIL: `second-brain spec status <ID> <task> failed`.
    - Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`
      on it again. Its packet now holds the issues the reviewer logged.
-   - Take its reply as items 4 and 5 of `## 5. Build every task` say, then review it again from
+   - Take its reply as items 5 and 6 of `## 5. Build every task` say, then review it again from
      item 1.
    - At most two retries for a task. Still FAIL: stop.
 6. Show the owner `second-brain spec status <ID>`.

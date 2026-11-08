@@ -2854,10 +2854,42 @@ cp "$B2" "$tmp/b2.good"
 printf '%s\n' '{"story": "SP-2", "tasks": [' >"$B2"
 sb spec status SP-2
 rc_is "spec status: a build.json that is not JSON exits 1" 1
-err_has "spec status: and names it" "$S/tasks/SP-2/build.json is not JSON"
+err_has "spec status: and names it" "$S/tasks/SP-2/build.json is not a JSON object with a tasks array"
 sb spec status SP-2 T1 built
 rc_is "spec status: a write on it exits 1 too" 1
 is "spec status: and leaves it as it was" "$(cat "$B2")" '{"story": "SP-2", "tasks": ['
+for bad in '' '   ' '{}' '[]' '{"tasks": {}}'; do
+  printf '%s\n' "$bad" >"$B2"
+  sb spec status SP-2
+  rc_is "spec status: a build.json that holds '$bad' exits 1, never a fresh build" 1
+  sb spec issue SP-2 T1 "Lost?" --fix "No."
+  rc_is "spec issue: and a write on '$bad' exits 1" 1
+done
+: >"$B2"
+sb spec status SP-2 --json
+rc_is "spec status --json: an empty build.json exits 1" 1
+out_is "spec status --json: and prints nothing" ""
+cp "$tmp/b2.good" "$B2"
+tr -d '\n' <"$tmp/b2.good" >"$B2"
+sb spec status SP-2
+text="$OUT"
+cp "$tmp/b2.good" "$B2"
+sb spec status SP-2
+is "spec status: a build.json on one line reads the same" "$text" "$OUT"
+sb spec status SP-2 T1 built
+is "spec status: a write leaves no temp file in the task folder" \
+  "$(cd "$vault/$S/tasks/SP-2" && ls -A | grep -v '^README.md$' | grep -v '^spec$' || true)" "build.json"
+sb spec issue SP-2 T1 "Line one.${NL}Line two." --fix "Fix it${CR}${NL}now."
+sb spec status SP-2
+out_has "spec status: a line break in an issue prints as a blank" \
+  "  - Issue 2026-10-08: Line one. Line two. Fix: Fix it now."
+is "spec status: and every issue stays one line" "$(printf '%s\n' "$OUT" | grep -c '^  - Issue ')" "2"
+is "spec status: and no line is left over" "$(printf '%s\n' "$OUT" | grep -vc '^T[0-9]* - build: \|^  - Issue ' || true)" "0"
+OUT="$(cat "$B2")"
+json_is "spec issue: build.json keeps the line break" 'print(d["tasks"][0]["issues"][-1]["issue"] == "Line one.\nLine two.")' "True"
+sb spec status SP-2 --json
+json_is "spec status --json: the issue line has no line break" 'print(d[0]["issues"][-1])' \
+  "Issue 2026-10-08: Line one. Line two. Fix: Fix it now."
 cp "$tmp/b2.good" "$B2"
 sb spec status SP-3 T1 todo
 rc_is "spec status: a CRLF README takes a write" 0
@@ -2976,15 +3008,17 @@ git -C "$APP" -c user.name=Test -c user.email=test@example.com commit -qm "SP-10
 h1="$(git -C "$APP" rev-parse --short HEAD)"
 sb spec status SP-10 T1 built --commit "$h1"
 sb spec issue SP-10 T1 "Logout is missing, at login.txt:1." --fix "Add logout."
+sb spec issue SP-10 T1 "Two${NL}lines." --fix "One${NL}line."
 sb spec packet SP-10 T1
 rc_is "spec packet: exit 0 with a commit" 0
 out_has "spec packet: names the task's commits" "commits: $h1"
 dline="$(printf '%s\n' "$OUT" | sed -n 's/^diff: //p')"
 is "spec packet: the diff is a temp file, outside the repo and the vault" "${dline%/*}" "$(shown "$tmp/tmpd")"
 file_has "spec packet: the diff file holds the commit's change" "$dline" "+one"
-out_has "spec packet: holds the task's logged issues" "## Issues
+out_has "spec packet: holds the task's logged issues, each on one line" "## Issues
 
-- Issue 2026-10-08: Logout is missing, at login.txt:1. Fix: Add logout."
+- Issue 2026-10-08: Logout is missing, at login.txt:1. Fix: Add logout.
+- Issue 2026-10-08: Two lines. Fix: One line."
 case "$OUT" in
   *"## Issues"*"## Validation"*) pass "spec packet: the issues come before the validation steps" ;;
   *) fail "spec packet: the issues come before the validation steps" "in: $OUT" ;;
@@ -3030,15 +3064,24 @@ for l in '  - `Story: <ID>, project <project>.`' '  - `Task: <task>.`' '  - `Ses
   '  - Last, the commit line: `Commit it as "<ID> <task>: <title>".`'; do
   line_is "spec build: the implementer's prompt line ${l#  - }" "$BM" "$l"
 done
-line_is "spec build: building before the implementer" "$BM" '2. `second-brain spec status <ID> <task> building`.'
+line_is "spec build: building before the implementer" "$BM" '3. `second-brain spec status <ID> <task> building`.'
+file_has "spec build: a blocked build is launched again" "$BM" 'For each task whose build is `todo`, `building` or `blocked`, in the order `spec tasks` lists'
+file_has "spec build: with the owner's ruling" "$BM" '2. A `blocked` task: its `Owner:` line is the owner'"'"'s newest ruling on it, the status note'
+file_has "spec build: a cut-off build takes only a commit build.json lacks" "$BM" \
+  '- A hash `spec status` does not list under the task yet: that run committed. Run'
+file_has "spec build: else it is built again" "$BM" '- No hash, or one `spec status` lists already: build the task again, from item 3.'
+file_has "spec build: a blocked review gets the ruling too" "$BM" '- Its review was `blocked` before item 1: its `Owner:` line is the owner'"'"'s newest ruling on'
 file_has "spec build: building before a retry too" "$BM" \
   'Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`'
 line_is "spec build: in-review before the reviewer" "$BM" '1. `second-brain spec status <ID> <task> in-review`.'
 file_has "spec build: sets the result the implementer reports" "$BM" \
-  '5. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash'
+  '6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash'
 file_has "spec build: sets a failed review" "$BM" '5. FAIL: `second-brain spec status <ID> <task> failed`.'
-is "spec build: shows the status after each task's build and review" \
-  "$(grep -c '^6\. Show the owner `second-brain spec status <ID>`\.$' "$BM")" "2"
+is "spec build: shows the status once per task, after its review" \
+  "$(grep -c '^[0-9]\. Show the owner `second-brain spec status <ID>`\.$' "$BM")" "1"
+is "spec build: and that is in the review section" \
+  "$(awk '/^## 6\. Review every task/ { on = 1 } /^## 7\./ { on = 0 } on && /^6\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
+  '6. Show the owner `second-brain spec status <ID>`.'
 file_has "spec build: shows the status when a session starts or resumes" "$BM" \
   '1. Show the owner `second-brain spec status <ID>` as it prints.'
 file_has "spec build: shows the status when the build stops" "$BM" \

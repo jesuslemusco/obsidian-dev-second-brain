@@ -22,8 +22,8 @@
 - Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
   The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
   README.
-- The skill shows you `spec status <ID>` after each task, when the build stops or finishes, and
-  when a session resumes a build. The build started, stopped and why, and finished, and each
+- The skill shows you `spec status <ID>` after each task's review, when the build stops or
+  finishes, and when a session resumes a build. The build started, stopped and why, and finished, and each
   ruling, stay in the README as status notes.
 - `implementer` and `reviewer` get the story, the task and the session id, and run
   `second-brain spec packet` themselves. The skill never prints a packet into your session.
@@ -35,6 +35,14 @@
 - `implementer` replies with its commit and one line. `reviewer` logs its findings with
   `spec issue` and replies with its verdict and the number of issues.
 - The tasks phase checks every task's packet without printing it.
+- A resumed build takes a cut-off task's commit only when `build.json` does not list it yet, and
+  launches a `blocked` task again with the owner's ruling.
+- A `build.json` that is blank, or not an object with a `tasks` array, makes `spec status`,
+  `spec issue` and `spec packet` exit 1. It never reads as a build that has not started.
+- `build.json` is written next to itself, then moved in place, so a write cut off leaves the old
+  file.
+- A line break in an issue prints as a blank in `spec status` and the packet, so each issue stays
+  one line.
 - `SECOND_BRAIN_NOW` sets the time `build.json` records, for tests.
 
 ## 0.6.0 - 2026-11-08

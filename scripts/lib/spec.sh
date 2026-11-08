@@ -536,60 +536,78 @@ sb_spec_json_rows() {
     END { print (rows ? "\n]" : "]") }'
 }
 
-# Print the awk functions that read JSON: jp_parse(s) fills J[path] with each scalar, JT[path] with
-# its type (o, a, s or l for a number, true, false or null) and JN[path] with an array's length.
-# A path is the keys and the array indexes, from 1, joined by SUBSEP. It returns 0 when s is not
-# one JSON value; empty text is none and returns 1.
+# Print the awk functions that read JSON. jp_add(line) adds one line of the text to JC[1..JL], one
+# byte each, and jp_parse() reads it: J[path] gets each scalar, JT[path] its type (o, a, s or l for
+# a number, true, false or null) and JN[path] an array's length. A path is the keys and the array
+# indexes, from 1, joined by SUBSEP. jp_parse returns 0 when the text is not one JSON value, blank
+# text included. Each byte is read once: a substr per byte of the whole text costs its length on
+# some awks.
 sb_json_awk() {
   printf '%s\n' '
-function jp_parse(s) {
-  JS = s; JI = 1; JL = length(s); JERR = 0
+function jp_add(s,   n, i, ch) {
+  if (JP_SPLIT == "") JP_SPLIT = (split("ab", ch, "") == 2 ? 1 : 0)
+  if (JP_SPLIT) { n = split(s, ch, ""); for (i = 1; i <= n; i++) JC[++JL] = ch[i] }
+  else { n = length(s); for (i = 1; i <= n; i++) JC[++JL] = substr(s, i, 1) }
+  JC[++JL] = "\n"
+}
+function jp_parse() {
+  JI = 1; JERR = 0
   jp_ws()
-  if (JI > JL) return 1
+  if (JI > JL) return 0
   if (!jp_val("")) return 0
   jp_ws()
   return JI > JL
 }
 function jp_ws(   c) {
-  while (JI <= JL) { c = substr(JS, JI, 1); if (c != " " && c != "\t" && c != "\n" && c != "\r") break; JI++ }
+  while (JI <= JL) { c = JC[JI]; if (c != " " && c != "\t" && c != "\n" && c != "\r") break; JI++ }
 }
 function jp_key(p, k) { return (p == "" ? k : p SUBSEP k) }
-function jp_val(p,   c) {
+function jp_take(n,   o, i) {
+  o = ""
+  for (i = 0; i < n && JI + i <= JL; i++) o = o JC[JI + i]
+  return o
+}
+function jp_val(p,   c, t) {
   jp_ws()
   if (JI > JL) return 0
-  c = substr(JS, JI, 1)
+  c = JC[JI]
   if (c == "{") return jp_obj(p)
   if (c == "[") return jp_arr(p)
   if (c == "\"") { JT[p] = "s"; J[p] = jp_str(); return !JERR }
-  if (match(substr(JS, JI, 40), /^(-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?|true|false|null)/)) {
-    JT[p] = "l"; J[p] = substr(JS, JI, RLENGTH); JI += RLENGTH; return 1
-  }
-  return 0
+  t = ""
+  while (JI <= JL && index("+-.0123456789Eabcdefilnrstu", JC[JI])) t = t JC[JI++]
+  if (t !~ /^(-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?|true|false|null)$/) return 0
+  JT[p] = "l"; J[p] = t
+  return 1
 }
 function jp_obj(p,   k, c) {
   JI++; JT[p] = "o"; jp_ws()
-  if (substr(JS, JI, 1) == "}") { JI++; return 1 }
+  if (JC[JI] == "}") { JI++; return 1 }
   while (1) {
     jp_ws()
-    if (substr(JS, JI, 1) != "\"") return 0
+    if (JI > JL || JC[JI] != "\"") return 0
     k = jp_str()
     if (JERR) return 0
     jp_ws()
-    if (substr(JS, JI, 1) != ":") return 0
+    if (JI > JL || JC[JI] != ":") return 0
     JI++
     if (!jp_val(jp_key(p, k))) return 0
-    jp_ws(); c = substr(JS, JI, 1); JI++
+    jp_ws()
+    if (JI > JL) return 0
+    c = JC[JI++]
     if (c == "}") return 1
     if (c != ",") return 0
   }
 }
 function jp_arr(p,   n, c) {
   JI++; JT[p] = "a"; JN[p] = 0; n = 0; jp_ws()
-  if (substr(JS, JI, 1) == "]") { JI++; return 1 }
+  if (JC[JI] == "]") { JI++; return 1 }
   while (1) {
     if (!jp_val(jp_key(p, ++n))) return 0
     JN[p] = n
-    jp_ws(); c = substr(JS, JI, 1); JI++
+    jp_ws()
+    if (JI > JL) return 0
+    c = JC[JI++]
     if (c == "]") return 1
     if (c != ",") return 0
   }
@@ -597,21 +615,22 @@ function jp_arr(p,   n, c) {
 function jp_str(   o, c, e, cp, lo) {
   JI++; o = ""
   while (JI <= JL) {
-    c = substr(JS, JI, 1)
+    c = JC[JI]
     if (c == "\"") { JI++; return o }
     if (c != "\\") { o = o c; JI++; continue }
-    e = substr(JS, JI + 1, 1); JI += 2
+    e = JC[JI + 1]; JI += 2
     if (e == "n") o = o "\n"
     else if (e == "t") o = o "\t"
     else if (e == "r") o = o "\r"
     else if (e == "b") o = o "\010"
     else if (e == "f") o = o "\014"
     else if (e == "u") {
-      cp = jp_hex(substr(JS, JI, 4)); JI += 4
+      cp = jp_hex(jp_take(4)); JI += 4
       if (cp < 0) { JERR = 1; return o }
-      if (cp >= 55296 && cp < 56320 && substr(JS, JI, 2) == "\\u") {
-        lo = jp_hex(substr(JS, JI + 2, 4))
-        if (lo >= 56320 && lo < 57344) { cp = 65536 + (cp - 55296) * 1024 + (lo - 56320); JI += 6 }
+      if (cp >= 55296 && cp < 56320 && JC[JI] == "\\" && JC[JI + 1] == "u") {
+        JI += 2; lo = jp_hex(jp_take(4))
+        if (lo >= 56320 && lo < 57344) { cp = 65536 + (cp - 55296) * 1024 + (lo - 56320); JI += 4 }
+        else JI -= 2
       }
       o = o jp_utf8(cp)
     }
@@ -667,7 +686,8 @@ function commits_text(r,   j, s) {
   for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") cm[r, j]
   return dash(s)
 }
-function issue_line(r, j) { return "Issue " substr(dash(ia[r, j]), 1, 10) ": " itx[r, j] " Fix: " ifx[r, j] }
+function fold(s) { gsub(/\r\n|\n|\r/, " ", s); return s }
+function issue_line(r, j) { return "Issue " substr(dash(ia[r, j]), 1, 10) ": " fold(itx[r, j]) " Fix: " fold(ifx[r, j]) }
 function md_line(s, islast) {
   if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > MD
   else print s > MD
@@ -689,7 +709,7 @@ function write_json(   r, j, s) {
   }
   printf "%s]\n}\n", (nt ? "\n  " : "") > JO
 }
-ENVIRON["SB_JF"] == "1" && FILENAME == ARGV[1] { JSRC = JSRC $0 "\n"; next }
+ENVIRON["SB_JF"] == "1" && FILENAME == ARGV[1] { jp_add($0); next }
 {
   nr++
   line[nr] = $0; t = $0; sub(/\r$/, "", t); if (nr == 1) sub(/^\357\273\277/, "", t); txt[nr] = t
@@ -730,9 +750,9 @@ END {
   # Then build.json, whose tasks win.
   hasjson = 0
   if (ENVIRON["SB_JF"] == "1") {
-    if (!jp_parse(JSRC)) exit 4
+    if (!jp_parse() || JT[""] != "o" || JT["tasks"] != "a") exit 4
     hasjson = 1
-    if (JT["tasks"] == "a") for (q = 1; q <= JN["tasks"]; q++) {
+    for (q = 1; q <= JN["tasks"]; q++) {
       p = "tasks" SUBSEP q
       id = J[p SUBSEP "id"]
       if (id == "") continue
@@ -771,7 +791,7 @@ END {
   if (mode == "text") {
     if (!hasdata) exit 0
     for (r = 1; r <= nt; r++) {
-      print tid[r] " - build: " tb[r] " - review: " tr[r] " - commits " commits_text(r) " - " dash(tti[r])
+      print tid[r] " - build: " tb[r] " - review: " tr[r] " - commits " commits_text(r) " - " fold(dash(tti[r]))
       for (j = 1; j <= nis[r]; j++) print "  - " issue_line(r, j)
     }
     exit 0
@@ -784,7 +804,7 @@ END {
       l = ""
       for (j = 1; j <= nis[r]; j++) l = l (j > 1 ? ", " : "") jstr(issue_line(r, j))
       printf "%s\n  {\"id\": %s, \"build\": %s, \"review\": %s, ", (r > 1 ? "," : ""), jstr(tid[r]), jstr(tb[r]), jstr(tr[r])
-      printf "\"commits\": [%s], \"title\": %s, \"issues\": [%s]}", s, jstr(dash(tti[r])), l
+      printf "\"commits\": [%s], \"title\": %s, \"issues\": [%s]}", s, jstr(fold(dash(tti[r]))), l
     }
     print ((hasdata && nt) ? "\n]" : "]")
     exit 0
@@ -840,8 +860,8 @@ sb_spec_build_show() {
 # Exit as a failed build program says: 4 is a build.json that is not JSON.
 sb_spec_build_fail() {
   case "$1" in
-    4) sb_die 1 "$(sb_rel "$SB_SP_BJ") is not JSON: fix or remove it" ;;
-    *) sb_die 1 "cannot read the build of $SB_T_ID" ;;
+    4) sb_die 1 "$(sb_rel "$SB_SP_BJ") is not a JSON object with a tasks array: fix or remove it" ;;
+    *) sb_die 1 "cannot read or write the build of $SB_T_ID" ;;
   esac
 }
 
@@ -852,8 +872,9 @@ sb_spec_build() {
   local sub="$1" task="$2" state="$3" commit="$4" issue="$5" fix="$6" session="$7" tmp tmpmd out rc=0 nofinal=0
   sb_spec_need_file tasks
   [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
-  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
-  tmpmd="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || { rm -f "$tmp"; sb_die 1 "cannot write a temp file"; }
+  # The new build.json is written next to it, then moved in place: a write cut off leaves the old one.
+  tmp="$SB_SP_BJ.$$.tmp"
+  tmpmd="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
   out="$(sb_spec_build_run SB_MODE=write SB_OP="$sub" SB_TASK="$task" SB_STATE="$state" SB_COMMIT="$commit" \
     SB_ISSUE="$issue" SB_FIX="$fix" SB_SESSION="$session" SB_NOW="$(sb_now)" SB_OUT="$tmp" SB_OUTMD="$tmpmd" \
     SB_NOFINAL="$nofinal")" || rc=$?
@@ -863,7 +884,7 @@ sb_spec_build() {
     sb_spec_build_fail "$rc"
   fi
   # build.json first: a README that cannot be written keeps its section, and build.json wins.
-  cat "$tmp" >"$SB_SP_BJ" || { rm -f "$tmp" "$tmpmd"; sb_die 1 "cannot write $(sb_rel "$SB_SP_BJ")"; }
+  mv -f "$tmp" "$SB_SP_BJ" || { rm -f "$tmp" "$tmpmd"; sb_die 1 "cannot write $(sb_rel "$SB_SP_BJ")"; }
   if [ "$out" = "moved" ]; then
     cat "$tmpmd" >"$SB_T_FILE" || { rm -f "$tmp" "$tmpmd"; sb_die 1 "cannot write $SB_T_REL"; }
     sb_note "moved ## Build of $SB_T_REL into $(sb_rel "$SB_SP_BJ")"

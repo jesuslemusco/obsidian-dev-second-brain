@@ -31,8 +31,9 @@ A gap is anything an agent given only these files would have to guess, ask or lo
 - In `design.md`: a requirement that no section says how to build.
 - In `tasks.md`: a task with no `- Check: <command or step> - expected: <what it prints or shows>`
   line, or with a vague one.
-- In `tasks.md`: a requirement or design heading a task names that the files lack, a requirement
-  no task meets, or a task that needs a later one.
+- In `tasks.md`: a requirement or design heading a task names that the files lack.
+- In `tasks.md`: a requirement no task meets.
+- In `tasks.md`: a task that needs a later one.
 
 Judge only whether it can be built from the files. Whether the design is good is not yours to say.
 

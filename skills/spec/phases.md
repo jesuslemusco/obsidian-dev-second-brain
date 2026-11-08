@@ -26,7 +26,8 @@ The owner answers in this chat, so make each answer easy.
 - Ask one question at a time: one question per AskUserQuestion call. Wait for its answer.
 - Show the draft in chunks of about 200 to 300 words: a few requirements, design sections or
   tasks.
-- End each chunk with the line `What's wrong or missing?`, then stop for the owner's answer.
+- End each chunk with the line `What's wrong or missing?` as plain text, not an AskUserQuestion
+  call. Then stop for the owner's answer.
 - Fix what the owner names before you show the next chunk.
 - Ask for the approval only after the last chunk.
 
@@ -80,7 +81,7 @@ Write every phase for the build `agents/spec-lead.md` runs.
 
 ## The spec check
 
-For design and tasks, once the owner has seen the last chunk:
+For design and tasks, once the owner has answered the last chunk and its fixes are written:
 
 1. Launch `odsb:spec-checker` with the Agent tool. Its prompt is the paths of the spec files
    written so far, one per line, and nothing else.

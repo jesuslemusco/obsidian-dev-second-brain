@@ -2454,6 +2454,11 @@ done
 line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
 SC="$here/agents/spec-checker.md"
 line_is "spec-checker: reads, and has no tool that writes" "$SC" "tools: Read, Glob, Grep"
+line_is "spec-checker: runs on opus" "$SC" "model: opus"
+for g in 'a requirement or design heading a task names that the files lack.' 'a requirement no task meets.' \
+  'a task that needs a later one.'; do
+  line_is "spec-checker: a tasks.md gap, $g" "$SC" "- In \`tasks.md\`: $g"
+done
 file_has "spec-checker: its prompt is the spec files' paths alone" "$SC" \
   'Your prompt is the paths of'
 file_has "spec-checker: reads nothing but those files" "$SC" \
@@ -2470,8 +2475,11 @@ file_has "spec phases: one question per AskUserQuestion call" "$PH" \
   '- Ask one question at a time: one question per AskUserQuestion call. Wait for its answer.'
 file_has "spec phases: the draft in chunks of 200 to 300 words" "$PH" \
   '- Show the draft in chunks of about 200 to 300 words'
-file_has "spec phases: each chunk asks what is wrong or missing" "$PH" \
-  "- End each chunk with the line \`What's wrong or missing?\`, then stop for the owner's answer."
+file_has "spec phases: each chunk asks what is wrong or missing, as plain text" "$PH" \
+  "- End each chunk with the line \`What's wrong or missing?\` as plain text, not an AskUserQuestion"
+line_is "spec phases: then stops for the owner's answer" "$PH" "  call. Then stop for the owner's answer."
+line_is "spec phases: the check runs once the last chunk's fixes are written" "$PH" \
+  'For design and tasks, once the owner has answered the last chunk and its fixes are written:'
 line_is "spec phases: approval only after the last chunk" "$PH" "- Ask for the approval only after the last chunk."
 file_has "spec phases: each task check names its expected result" "$PH" \
   '`- Check: <command or step> - expected: <what it prints or shows>`.'
@@ -2486,6 +2494,12 @@ line_is "spec phases: the tasks check reads all three files" "$PH" \
 file_has "spec phases: shows the owner the gaps" "$PH" '3. Show the owner the gaps, numbered, as it wrote them.'
 file_has "spec phases: closes each gap with the owner" "$PH" \
   '4. Close each gap with the owner, and write the answer in the phase file.'
+line_is "spec phases: a gap the owner rejects is left" "$PH" '   - The owner says a gap is not one: leave it.'
+line_is "spec phases: a gap in an approved phase reopens it" "$PH" \
+  '   - A gap in an approved phase: write `Spec: <phase> reopened.` as a status note, then go back to'
+line_is "spec phases: and goes back to that phase" "$PH" '     that phase.'
+line_is "spec skill: a change at approval is shown, then asked again" "$SK" \
+  '   - A change: make it, show the changed chunk, then ask again.'
 file_has "spec skill: asks as the chat rules say" "$SK" 'Ask as `## The chat` in `phases.md` says.'
 file_has "spec skill: shows the phase in chunks" "$SK" \
   '4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.'

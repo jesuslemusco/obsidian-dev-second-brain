@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- Each step under `### Check as a user would` names its tool: a skill such as a browser-testing
+  skill, a command, an API call or a query. The plugin ships no browser.
+- `reviewer` has the Skill tool and runs each step with its tool. A step it cannot run is BLOCKED
+  and names the tool, and a browser step's screenshots go in a temp folder it names.
+- A step written before, with no tool, runs through Bash as it did.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

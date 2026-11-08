@@ -119,6 +119,11 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- Each of those steps names the tool that runs it: a skill such as a browser-testing skill, a
+  command, an API call or a query. `reviewer` runs it with that tool.
+- The plugin ships no browser. Name the browser skill or command your repo uses.
+- A step whose tool `reviewer` cannot run comes back BLOCKED, with the tool named.
+- A browser step's screenshots go in a temp folder outside the repo, which `reviewer` names.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
 

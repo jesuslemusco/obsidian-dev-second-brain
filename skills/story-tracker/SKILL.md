@@ -107,15 +107,19 @@ ticket.
 Weigh how a story is built when work starts on it: in start mode once the story exists, or on a
 move to `in-progress`.
 
-- A story has its own `delivery` when its README's frontmatter sets the key. Read the frontmatter
-  with a ranged read.
+- A story has its own `delivery` when its README's frontmatter sets the key to `direct` or
+  `spec`. Read the frontmatter with a ranged read.
   - `second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the
     profile.
 - A story with its own `delivery` is never weighed again.
   - `spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.
   - `direct`: go on here.
-- The user says how to build it, such as "spec-driven": write it with
+- The owner says how to build it, such as "spec-driven": write it with
   `second-brain task set <ID> delivery=<value>`, then go on as for a story with its own `delivery`.
+- A story with a `Spec: <phase> approved by the owner.` status note is `spec`: its spec was
+  approved before stories were weighed. Read `## Status notes` with a ranged read.
+  - Write `second-brain task set <ID> delivery=spec`, then go on as for a story with its own
+    `delivery`.
 - Any other story: weigh it from its criteria and the code they touch.
   - Spec-driven: the story is big, unclear, or meant to run without the owner.
   - Signs: many files or repos, open questions in the criteria, a long unattended build.
@@ -126,7 +130,8 @@ move to `in-progress`.
   touches and how many criteria it has. Then say why a spec helps.
   - Ask the owner with AskUserQuestion: `spec` or `direct`.
   - Write the answer with `second-brain task set <ID> delivery=<answer>`.
-  - `spec`: offer `/odsb:spec <ID>`. `direct`: go on here.
+  - `spec`: offer `/odsb:spec <ID>`.
+  - `direct`: go on here.
 - A story built from a spec: do not plan or write its code here.
 
 ## Edit an existing story

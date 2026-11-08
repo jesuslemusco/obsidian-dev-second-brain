@@ -99,7 +99,7 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   built direct with no question. For one that needs a spec, Claude asks you. The signs are under
   `## Spec-driven stories` in `skills/story-tracker/SKILL.md`.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
-- A project's default, and where its specs live, are `delivery` and `spec_home` under
+- A project's `delivery` is a fallback, and `spec_home` says where its specs live. Both are under
   `### Profile frontmatter` in `docs/contract.md`.
 - `second-brain spec EX-2` prints the story's `delivery`, `spec_home` and the paths of its three
   spec files.

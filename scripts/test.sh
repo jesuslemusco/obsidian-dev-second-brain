@@ -2496,6 +2496,12 @@ file_has "story-tracker: the answer is written" "$ST" \
   'Write the answer with `second-brain task set <ID> delivery=<answer>`.'
 file_has "story-tracker: spec offers the spec skill, direct goes on" "$ST" \
   '`spec`: offer `/odsb:spec <ID>`. `direct`: go on here.'
+file_has "contract: an inherited delivery is what spec falls back to" "$here/docs/contract.md" \
+  '- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`'
+file_has "contract: story-tracker weighs a story with no delivery of its own" "$here/docs/contract.md" \
+  '- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and writes'
+file_has "contract: points to the weighing in story-tracker" "$here/docs/contract.md" \
+  'the story'"'"'s own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.'
 st_desc="$(sed -n 's/^description: //p' "$ST")"
 case "$st_desc" in
   *spec*) fail "story-tracker: the description leaves spec requests to the spec skill" "in: $st_desc" ;;

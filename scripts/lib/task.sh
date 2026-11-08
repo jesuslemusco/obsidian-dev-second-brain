@@ -88,9 +88,10 @@ EOF
   SB_T_ID="$(basename "$(dirname "$SB_T_FILE")")"
 }
 
-# Print the short head of a task: properties, summary line and newest status note.
+# Print the short head of a task: properties, summary line and newest status note. With --json,
+# one JSON object with the same keys; topics and envs are arrays.
 sb_task_head() {
-  local id="" project=""
+  local id="" project="" json=0 usage="usage: second-brain task head <ID> [--project P] [--json]"
   while [ $# -gt 0 ]; do
     case "$1" in
       --project)
@@ -98,24 +99,37 @@ sb_task_head() {
         project="$2"
         shift 2
         ;;
-      -*) sb_die 5 "usage: second-brain task head <ID> [--project P]" ;;
+      --json)
+        json=1
+        shift
+        ;;
+      -*) sb_die 5 "$usage" ;;
       *)
-        [ -z "$id" ] || sb_die 5 "usage: second-brain task head <ID> [--project P]"
+        [ -z "$id" ] || sb_die 5 "$usage"
         id="$1"
         shift
         ;;
     esac
   done
-  [ -n "$id" ] || sb_die 5 "usage: second-brain task head <ID> [--project P]"
+  [ -n "$id" ] || sb_die 5 "$usage"
   sb_need_task "$id" "$project"
-  LC_ALL=C SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" awk "$(sb_awk_lib)"'
+  LC_ALL=C SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" SB_JSON="$json" awk "$(sb_awk_lib)"'
     function addtag(v) {
       sub(/^#/, "", v)
       if (v == "" || substr(v, 1, 5) == "type/" || substr(v, 1, 7) == "status/") return
-      topics = (topics == "" ? v : topics ", " v)
+      topics = (topics == "" ? v : topics ", " v); tp[++ntp] = v
     }
-    function show(k, v) { print k ": " (v == "" ? "-" : v) }
-    BEGIN { id = ENVIRON["SB_ID"]; state = 0 }
+    function show(k, v) {
+      if (v == "") v = "-"
+      if (json) printf "%s\n  %s: %s", (nk++ ? "," : "{"), jstr(k), jstr(v)
+      else print k ": " v
+    }
+    function showlist(k, v, n, a,   i, l) {
+      if (!json) { show(k, v); return }
+      l = ""; for (i = 1; i <= n; i++) l = l (i > 1 ? ", " : "") jstr(a[i])
+      printf "%s\n  %s: [%s]", (nk++ ? "," : "{"), jstr(k), l
+    }
+    BEGIN { id = ENVIRON["SB_ID"]; state = 0; json = (ENVIRON["SB_JSON"] == "1") }
     {
       line = $0; sub(/\r$/, "", line)
       if (NR == 1) {
@@ -143,7 +157,11 @@ sb_task_head() {
         if (key == "tags" && line ~ /^[ \t]*-([ \t]|$)/) { v = line; sub(/^[ \t]*-[ \t]*/, "", v); addtag(unq(v)); next }
         if (key == "envs" && line ~ /^[ \t]+[^ \t#]/) {
           e = trim(line); i = index(e, ":")
-          if (i > 1) envs = (envs == "" ? "" : envs ",") substr(e, 1, i - 1) ":" mapfield(substr(e, i + 1), "id") ":" mapfield(substr(e, i + 1), "status")
+          if (i > 1) {
+            item = substr(e, 1, i - 1) ":" mapfield(substr(e, i + 1), "id") ":"
+            item = item mapfield(substr(e, i + 1), "status")
+            envs = (envs == "" ? item : envs "," item); en[++nen] = item
+          }
         }
         next
       }
@@ -162,13 +180,14 @@ sb_task_head() {
         if (substr(title, 1, length(p)) == p) title = substr(title, length(p) + 1)
       }
       if (summary ~ /^<.*>$/) summary = ""
-      print "id: " id
-      print "path: " ENVIRON["SB_REL"]
+      show("id", id); show("path", ENVIRON["SB_REL"])
       show("title", title); show("status", status); show("next", nxt)
       show("sprint", sprint); show("branch", branch); show("epic", epic)
       if (subp != "") show("subproject", subp)
-      show("topics", topics)
-      show("envs", envs); show("summary", cut(summary, 300)); show("last_note", cut(note, 300))
+      showlist("topics", topics, ntp, tp)
+      showlist("envs", envs, nen, en)
+      show("summary", cut(summary, 300)); show("last_note", cut(note, 300))
+      if (json) print "\n}"
     }
   ' "$SB_T_FILE"
 }

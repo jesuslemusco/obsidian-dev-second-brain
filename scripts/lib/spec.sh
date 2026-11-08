@@ -449,6 +449,25 @@ EOF
   rm -f "$tmp"
 }
 
+# Print the awk function build_row(t), which reads a "## Build" row into B_ID, B_ST, B_CM (the
+# commits as written, "-" when none) and B_TI. It reads left to right: a title may hold " - ", and
+# a row with no commit may read "commits -" or "commits " before the title.
+sb_spec_row_awk() {
+  printf '%s\n' '
+function build_row(t,   r, p) {
+  r = substr(t, 3); p = index(r, " - "); B_ID = substr(r, 1, p - 1); r = substr(r, p + 3)
+  p = index(r, " - "); B_ST = (p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
+  B_CM = "-"
+  if (sub(/^ - commits/, "", r)) {
+    if (r ~ /^ +`/) {
+      p = index(r, " - "); B_CM = trim(p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
+    } else if (r ~ /^ -( |$)/) r = substr(r, 3)
+  }
+  if (!sub(/^ +- /, "", r)) r = ""
+  B_TI = r
+}'
+}
+
 # Rewrite the "## Build" section of the task README in SB_T_FILE: one row per task of tasks.md,
 # "- T<n> - <state> - commits <list or -> - <title>", each with its issues under it as
 # "  - Issue <date>: <issue> Fix: <fix>". Rows come from tasks.md in order, a ticked task starting as
@@ -462,7 +481,7 @@ sb_spec_build_write() {
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
   SB_OUT="$tmp" SB_ROWS="$(sb_spec_task_rows "$SB_SP_FILE")" SB_TASK="$task" SB_STATE="$state" \
     SB_COMMIT="$commit" SB_ISSUE="$issue" SB_FIX="$fix" SB_DATE="$(sb_today)" SB_NOFINAL="$nofinal" \
-    LC_ALL=C awk "$(sb_awk_lib)"'
+    LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
     function out_line(s, islast) {
       if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > o
       else print s > o
@@ -499,10 +518,8 @@ sb_spec_build_write() {
       if (at) for (i = at + 1; i <= last; i++) {
         t = txt[i]
         if (t ~ /^- T[0-9]+ - /) {
-          m = split(t, f, " - ")
-          ti = ""; for (j = 4; j <= m; j++) ti = ti (j > 4 ? " - " : "") f[j]
-          cm = f[3]; sub(/^commits[ \t]*/, "", cm)
-          ex_id[++ne] = substr(f[1], 3); ex_st[ne] = f[2]; ex_cm[ne] = cm; ex_ti[ne] = ti; ex_ni[ne] = 0; cur = ne
+          build_row(t)
+          ex_id[++ne] = B_ID; ex_st[ne] = B_ST; ex_cm[ne] = B_CM; ex_ti[ne] = B_TI; ex_ni[ne] = 0; cur = ne
           continue
         }
         if (cur && t ~ /^[ \t]+- /) { ex_is[cur, ++ex_ni[cur]] = trim(substr(t, index(t, "-") + 2)) }
@@ -563,6 +580,49 @@ sb_spec_build_write() {
   rm -f "$tmp"
 }
 
+# Read TSV rows on stdin; print them as a JSON array of objects, one key per column, in order.
+# Usage: sb_spec_json_rows <key>...
+sb_spec_json_rows() {
+  LC_ALL=C SB_KEYS="$*" awk -F'\t' "$(sb_awk_lib)"'
+    BEGIN { nk = split(ENVIRON["SB_KEYS"], k, " "); printf "[" }
+    $0 == "" { next }
+    {
+      printf "%s\n  {", (rows++ ? "," : "")
+      for (i = 1; i <= nk; i++) printf "%s%s: %s", (i > 1 ? ", " : ""), jstr(k[i]), jstr($i)
+      printf "}"
+    }
+    END { print (rows ? "\n]" : "]") }'
+}
+
+# Read the body of a "## Build" section on stdin; print its task rows as a JSON array of objects:
+# id, state, commits (the hashes, without backticks), title and issues (each line under the row).
+sb_spec_build_json() {
+  LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
+    function emit(   j, l) {
+      if (!have) return
+      l = ""; for (j = 1; j <= ni; j++) l = l (j > 1 ? ", " : "") jstr(iss[j])
+      printf "%s\n  {\"id\": %s, \"state\": %s, ", (rows++ ? "," : ""), jstr(id), jstr(st)
+      printf "\"commits\": [%s], ", cm
+      printf "\"title\": %s, \"issues\": [%s]}", jstr(ti == "" ? "-" : ti), l
+      have = 0; ni = 0
+    }
+    BEGIN { printf "[" }
+    { sub(/\r$/, "") }
+    /^- T[0-9]+ - / {
+      emit()
+      build_row($0); id = B_ID; st = B_ST; ti = B_TI; cm = ""
+      n = (B_CM == "-" ? 0 : split(B_CM, h, ","))
+      for (j = 1; j <= n; j++) {
+        v = h[j]; gsub(/`/, "", v); v = trim(v)
+        if (v != "") cm = cm (cm == "" ? "" : ", ") jstr(v)
+      }
+      have = 1
+      next
+    }
+    have && /^[ \t]+- / { iss[++ni] = trim(substr($0, index($0, "-") + 2)) }
+    END { emit(); print (rows ? "\n]" : "]") }'
+}
+
 # second-brain spec status <ID> [<task> <state> [--commit H]] and spec issue <ID> <task> "<issue>"
 # --fix "<fix>": the build log of a spec story, in its README. Each change adds a status note.
 sb_spec_build() {
@@ -593,7 +653,8 @@ sb_spec_build() {
 # second-brain spec [new | tasks | tick | packet | link | status | issue] <ID> ..., each with [--project P].
 cmd_spec() {
   local sub="" id="" task="" project="" rc third="" commit="" fix="" session="${CLAUDE_SESSION_ID:-}" hasfix=0
-  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID> | spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> \"<issue>\" --fix \"<fix>\", each with [--project P] (status and issue also take --session S)"
+  local json=0
+  local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> [--json] | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID> | spec status <ID> [--json | <task> <state> [--commit H]] | spec issue <ID> <task> \"<issue>\" --fix \"<fix>\", each with [--project P] (status and issue also take --session S)"
   case "${1:-}" in
     new | tasks | tick | packet | link | status | issue)
       sub="$1"
@@ -612,6 +673,10 @@ cmd_spec() {
         [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
         case "$1" in --commit) commit="$2" ;; --fix) fix="$2"; hasfix=1 ;; *) session="$2" ;; esac
         shift 2
+        ;;
+      --json)
+        case "$sub" in tasks | status) json=1 ;; *) sb_die 5 "$usage" ;; esac
+        shift
         ;;
       -*) sb_die 5 "$usage" ;;
       *)
@@ -632,6 +697,7 @@ cmd_spec() {
   case "$sub" in tick | packet | issue) [ -n "$task" ] || sb_die 5 "$usage" ;; esac
   if [ "$sub" = "status" ] && [ -n "$task" ] && [ -z "$third" ]; then sb_die 5 "$usage"; fi
   if [ "$sub" = "status" ] && [ -z "$task" ] && [ -n "$commit" ]; then sb_die 5 "$usage"; fi
+  if [ "$json" -eq 1 ] && [ -n "$task" ]; then sb_die 5 "$usage"; fi
   if [ "$sub" = "issue" ] && { [ -z "$third" ] || [ "$hasfix" -eq 0 ] || [ -z "$fix" ]; }; then sb_die 5 "$usage"; fi
   sb_need_task "$id" "$project"
   sb_need_profile
@@ -647,7 +713,11 @@ cmd_spec() {
       ;;
     tasks)
       sb_spec_need_file tasks
-      sb_spec_task_rows "$SB_SP_FILE"
+      if [ "$json" -eq 1 ]; then
+        sb_spec_task_rows "$SB_SP_FILE" | sb_spec_json_rows id state title
+      else
+        sb_spec_task_rows "$SB_SP_FILE"
+      fi
       return 0
       ;;
     tick)
@@ -672,6 +742,10 @@ cmd_spec() {
       return 0
       ;;
     status)
+      if [ "$json" -eq 1 ]; then
+        sb_section "$SB_T_FILE" "Build" 2>/dev/null | sb_spec_build_json
+        return 0
+      fi
       sb_spec_build status "$task" "$third" "$commit" "" "" "$session"
       return 0
       ;;
@@ -801,26 +875,34 @@ sb_val_write() {
   printf '%s\n' "$show"
 }
 
-# second-brain validation <project> [repo] | validation new <project> <repo>
+# second-brain validation <project> [repo] [--json] | validation new <project> <repo>
 cmd_validation() {
-  local new=0 a project="" repo="" row name home file show state rstate n=0
-  local usage="usage: second-brain validation <project> [repo] | validation new <project> <repo>"
+  local new=0 a project="" repo="" row name home file show state rstate n=0 json=0
+  local usage="usage: second-brain validation <project> [repo] [--json]"
+  usage="$usage | validation new <project> <repo>"
   if [ "${1:-}" = "new" ]; then
     new=1
     shift
   fi
   for a in "$@"; do
-    case "$a" in -*) sb_die 5 "$usage" ;; esac
+    case "$a" in
+      --json) [ "$new" -eq 0 ] || sb_die 5 "$usage"; json=1; continue ;;
+      -*) sb_die 5 "$usage" ;;
+    esac
     n=$((n + 1))
+    if [ "$n" -eq 1 ]; then project="$a"; else repo="$a"; fi
   done
   if [ "$new" -eq 1 ]; then [ "$n" -eq 2 ] || sb_die 5 "$usage"; fi
   [ "$n" -ge 1 ] && [ "$n" -le 2 ] || sb_die 5 "$usage"
-  project="$1"
-  repo="${2:-}"
   sb_need_project "$project"
   sb_need_profile
   if [ -z "$repo" ]; then
-    sb_val_rows | awk -F'\t' '{ print $1 "\t" $2 "\t" $4 "\t" $5 }'
+    if [ "$json" -eq 1 ]; then
+      sb_val_rows | awk -F'\t' '{ print $1 "\t" $2 "\t" $4 "\t" $5 }' |
+        sb_spec_json_rows name home path state
+    else
+      sb_val_rows | awk -F'\t' '{ print $1 "\t" $2 "\t" $4 "\t" $5 }'
+    fi
     return 0
   fi
   row="$(sb_spec_repo_row "$repo")" || sb_die 1 "$repo is not in repos of $SB_P_NAME ($SB_P_PATH/claude/profile.md)"
@@ -843,6 +925,14 @@ EOF
     missing) sb_die 1 "no validation.md for $name: run second-brain validation new \"$SB_P_NAME\" $name" ;;
     no-section) sb_die 1 "$show has no ## $name section: run second-brain validation new \"$SB_P_NAME\" $name" ;;
   esac
+  if [ "$json" -eq 1 ]; then
+    SB_PATH="$show" SB_BODY="$(sb_section "$file" "$name")" LC_ALL=C awk "$(sb_awk_lib)"'
+      BEGIN {
+        printf "{\n  \"path\": %s,\n", jstr(ENVIRON["SB_PATH"])
+        printf "  \"body\": %s\n}\n", jstr(ENVIRON["SB_BODY"])
+      }'
+    return 0
+  fi
   printf 'path: %s\n' "$show"
   sb_section "$file" "$name" || true
 }

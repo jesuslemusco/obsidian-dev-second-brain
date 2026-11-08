@@ -4135,10 +4135,10 @@ line_is "spec build: only a missing or unparsed block is asked once more" "$BM" 
   '5. No block, or one that does not parse: ask the reviewer once more with SendMessage,'
 line_is "spec build: a bad block goes to one fresh reviewer at once" "$BM" \
   '6. A block that parses and is not good, or no good block after item 5: launch one fresh'
-line_is "spec build: and only then is BLOCKED" "$BM" '7. Still no good block from it: take it as BLOCKED.'
+line_is "spec build: and only then is BLOCKED" "$BM" '7. No good block from the fresh `reviewer` either: take it as BLOCKED.'
 is "spec build: asked once more, then a fresh reviewer, then BLOCKED, in order" \
   "$(($(lineno "$BM" '5. No block, or one that does not parse') < $(lineno "$BM" '6. A block that parses and is not good') && \
-  $(lineno "$BM" '6. A block that parses and is not good') < $(lineno "$BM" '7. Still no good block from it')))" "1"
+  $(lineno "$BM" '6. A block that parses and is not good') < $(lineno "$BM" '7. No good block from the fresh')))" "1"
 file_has "spec build: a bundle task with no verdict gets one fresh reviewer first" "$BM" \
   '   block, with the bundle'"'"'s prompt for those tasks.'
 file_lacks "spec build: no stop that the list does not name" "$BM" 'Still none: stop.'
@@ -4148,10 +4148,17 @@ file_lacks "spec build: a failing check no longer stops the build" "$BM" 'No tas
 file_has "spec build: a user check FAIL takes the fix loop" "$BM" \
   '   - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the'
 file_has "spec build: each task with a new issue is set failed" "$BM" \
-  '   - Then `second-brain spec status <ID> <task> failed` for each task whose issue count grew since'
+  '   - Else `second-brain spec status <ID> <task> failed` for each task whose issue count grew since'
+file_has "spec build: a user or branch FAIL that adds no issue is no verdict" "$BM" \
+  '   - Now no task'"'"'s issue count is above the one item 1 of `### Reading a verdict` noted: the FAIL'
+line_is "spec build: and goes to the fresh reviewer, then BLOCKED" "$BM" '     is no verdict. Go on as items 6 and 7 there say.'
+is "spec build: the reply's findings are logged before the counts are checked" \
+  "$(($(lineno "$BM" 'Log each finding its reply lists on the') < $(lineno "$BM" '   - Now no task'"'"'s issue count is above')))" "1"
 file_has "spec build: each task's issue count is noted before the user and branch reviews" "$BM" \
-  '1. Before each launch but the baseline'"'"'s, note the issue count of each task it reviews: the'
-file_has "spec build: the user and branch reviews review every task" "$BM" '   review review every task.'
+  '1. Before a review'"'"'s first launch, but the baseline'"'"'s, note the issue count of each task it'
+line_is "spec build: the ask and the fresh reviewer are judged against those counts" "$BM" \
+  '   - Item 5'"'"'s ask and item 6'"'"'s fresh `reviewer` take no new count: they are judged against these.'
+file_has "spec build: the user and branch reviews review every task" "$BM" '   and the branch review review every task.'
 is "spec build: the count is noted before the review's result is taken" \
   "$(($(lineno "$BM" 'Item 1 there notes each task'"'"'s issue count') < $(lineno "$BM" '   - FAIL: it logged each finding it could tie to a task.')))" "1"
 file_lacks "spec build: no new issue told by its day" "$BM" 'with a new issue in'
@@ -4369,12 +4376,12 @@ line_is "spec build: a verdict is one of three" "$BM" \
   '   - `verdict` is `PASS`, `FAIL` or `BLOCKED`, and `issues` is a whole number.'
 line_is "spec build: each check has a met of true or false" "$BM" \
   '   - `checks` is a list. Each entry has a `check` text and a `met` of `true` or `false`.'
-line_is "spec build: a PASS needs every check met, no issue, and no issue logged" "$BM" \
-  '   - A `PASS` has every `met` `true` and `issues` 0, and no count of item 1 grew. In task and'
-line_is "spec build: a task or branch review's PASS grades one check or more" "$BM" \
-  '     branch mode it has one check or more.'
+line_is "spec build: a PASS needs every check met, no issue, and no issue logged on its task" "$BM" \
+  '   - A `PASS` has every `met` `true` and `issues` 0. Its task'"${q}"'s count did not grow; in user and'
+line_is "spec build: a user or branch PASS needs no issue logged on any task, and task and branch one check" "$BM" \
+  '     branch mode, no task'"${q}"'s count grew. In task and branch mode it has one check or more.'
 line_is "spec build: a FAIL needs an issue, and in task mode one logged" "$BM" \
-  '   - A `FAIL` has `issues` 1 or more. In task mode, its task'"${q}"'s count grew.'
+  '   - A `FAIL` has `issues` 1 or more. In task mode, its task'"${q}"'s count grew. In user and branch'
 line_is "spec build: no good block is never a PASS" "$BM" '4. No good block is no verdict, and never a PASS.'
 line_is "spec build: the message asks for the block and nothing else" "$BM" \
   '   `Your reply has no JSON verdict block that parses. Reply with the block alone.`'
@@ -4401,7 +4408,13 @@ file_has "contract: the skill reads the block in place of a VERDICT line" "$CT" 
 line_is "contract: a bad block is never a PASS" "$CT" '- No block, or one that breaks these rules, is no verdict: never a PASS.'
 file_has "contract: a branch review grades one check or more" "$CT" '`met` true and `issues` 0, and in task and branch mode one check or more. A FAIL needs `issues`'
 file_has "contract: the block is checked against the issues logged" "$CT" \
-  '- Before each review but the baseline, the skill notes the issue count of each task it reviews in'
+  '- Before a review'"${q}"'s first launch, but the baseline'"${q}"'s, the skill notes the issue count of each'
+file_has "contract: the counts come from spec status" "$CT" 'task it reviews, from `spec status --json`. The fresh `reviewer` is judged against the same'
+file_lacks "contract: the counts are not written to build.json" "$CT" 'issue count of each task it reviews in'
+file_has "contract: a PASS is judged on its own task's count" "$CT" \
+  '- A PASS is no verdict when its task'"${q}"'s count grew, or in user and branch mode any task'"${q}"'s. So is a'
+file_has "contract: a user or branch FAIL that adds no issue is no verdict" "$CT" \
+  '- A user or branch FAIL is no verdict when no count grew once the skill has logged the findings'
 file_has "contract: only a missing or unparsed block is asked again" "$CT" \
   '- The skill asks the same reviewer once more only when the block is missing or does not parse.'
 file_has "contract: the skill gives the reviewer no view of its own" "$CT" \

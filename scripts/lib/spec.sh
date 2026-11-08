@@ -754,6 +754,8 @@ EOF
 
 # Return 0 when a repo's section of a validation.md still holds a placeholder of
 # validation-repo.md.tmpl: text in angle brackets, as the doctor's placeholders check reads it.
+# A retired placeholder, one an earlier version of the template held, counts too: the list in
+# BEGIN is its one home.
 sb_val_placeholders() {
   sb_section "$1" "$2" 2>/dev/null | LC_ALL=C SB_T="$(sb_plugin_root)/templates/validation-repo.md.tmpl" awk '
     function spans(s,   i, j, n, c, code, start) {
@@ -772,6 +774,7 @@ sb_val_placeholders() {
       t = ENVIRON["SB_T"]
       while ((getline line < t) > 0) { m = spans(line); for (k = 1; k <= m; k++) ph[sp[k]] = 1 }
       close(t)
+      ph["<The steps that use the change as a user does, and what to look for.>"] = 1
     }
     { sub(/\r$/, ""); m = spans($0); for (k = 1; k <= m; k++) if (sp[k] in ph) { found = 1; exit } }
     END { exit(found ? 0 : 1) }'

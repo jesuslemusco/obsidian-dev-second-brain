@@ -2459,7 +2459,11 @@ file_has "reviewer: a skill runs through the Skill tool" "$here/agents/reviewer.
 file_has "reviewer: a step whose tool it cannot run is BLOCKED and names the tool" "$here/agents/reviewer.md" "found, is BLOCKED. Name the tool."
 file_has "reviewer: screenshots go in a temp folder outside the repo" "$here/agents/reviewer.md" "make one temp folder outside the repo with \`mktemp -d\`"
 file_has "reviewer: names the screenshots folder" "$here/agents/reviewer.md" "Name the temp folder that holds the"
-file_has "reviewer: the user steps leave the tree as found" "$here/agents/reviewer.md" "Undo what your steps changed, such as a report folder"
+file_has "reviewer: keeps step 0's status output" "$here/agents/reviewer.md" "Keep the \`status --porcelain\` output: the user steps are checked against it."
+file_has "reviewer: removes only a path step 0 did not list" "$here/agents/reviewer.md" "Remove only a path that step 0's output did not list, and name it."
+file_has "reviewer: never resets the owner's work" "$here/agents/reviewer.md" "Never run \`git checkout\`, \`restore\`, \`reset\`, \`clean\` or \`stash\`."
+file_has "reviewer: a line with no tool runs with Bash only when Bash can do it" "$here/agents/reviewer.md" "run it with Bash when Bash can do what it says."
+file_has "reviewer: a browser line with no tool is BLOCKED" "$here/agents/reviewer.md" "A line that needs a browser and names no tool is BLOCKED. Name the step and ask for its tool."
 file_has "vault-setup: drafts each user step's tool from the repo" "$here/skills/vault-setup/validation.md" "Draft the tool from the repo"
 file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
 file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'

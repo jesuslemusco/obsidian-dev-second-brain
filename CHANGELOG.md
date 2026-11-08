@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 - unreleased
+## 0.6.0 - 2026-11-08
 
 - The test workflow runs the doctor tests in a job of their own on each runner, in parallel with
   the leak check and the other suites. On Windows they took 17 of the run's 40 minutes.

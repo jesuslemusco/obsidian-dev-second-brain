@@ -2719,41 +2719,71 @@ file_has "spec skill: reads finish.md only when the build finished" "$SK" \
   'Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.'
 file_has "spec finish: read only when every task passed" "$FN" \
   'Read this file only when `spec-lead` finished with every task passed.'
+file_has "spec finish: the story's branch stays its own" "$FN" \
+  "- The story's \`branch\` stays \`<branch>\` whatever the owner picks: review fixes go on it."
+file_lacks "spec finish: never sets the story's branch" "$FN" 'task set <ID> branch='
 file_has "spec finish: asks the owner with AskUserQuestion" "$FN" \
   '- Ask with AskUserQuestion, with three options:'
 file_has "spec finish: offers a merge into the target" "$FN" '  - Merge `<branch>` into `<target>`.'
 file_has "spec finish: offers a pull request into the target" "$FN" \
   '  - Open a pull request from `<branch>` into `<target>`.'
 file_has "spec finish: offers to keep the branch" "$FN" '  - Keep `<branch>` as it is.'
-file_has "spec finish: the target is the release branch" "$FN" \
-  '- The target is the release branch, `release/<version>`, as `## Releases` in `docs/guide.md`'
-line_is "spec finish: docs/guide.md has the Releases heading" "$GD" "## Releases"
-file_has "spec finish: with no release branch the target is base_branch" "$FN" \
-  '- No release branch: the target is `base_branch`'
+file_has "spec finish: another target is asked again" "$FN" \
+  '- The owner names another target in the free-text answer: ask again, with the three options for'
+file_has "spec finish: any other answer keeps the branch" "$FN" \
+  '- Do only what the owner picks. Any other answer is `## 5. Keep`.'
+line_is "spec finish: has the Keep heading it points to" "$FN" '## 5. Keep'
+file_has "spec finish: the target is the open release branch" "$FN" \
+  '- The target is the open release branch, `release/<version>`.'
+file_has "spec finish: lists the release branches highest first" "$FN" \
+  "branch -a --list 'release/*' '*/release/*' --sort=-v:refname"
+file_has "spec finish: reads each name without its prefix" "$FN" \
+  '- Read each name without its `+`, `*` or `remotes/<remote>/` prefix.'
+file_has "spec finish: a tagged release branch has shipped" "$FN" \
+  '- A release branch has shipped when its `v<version>` tag exists'
+file_has "spec finish: every release shipped asks the owner" "$FN" \
+  '- Every release branch has shipped: ask the owner to name the target, or a version to cut.'
+file_has "spec finish: base_branch only with no release branch" "$FN" \
+  '- No release branch at all: the target is `base_branch`.'
+file_lacks "spec finish: no repo path the project's repo lacks" "$FN" '`docs/guide.md`'
 file_has "spec finish: does only what the owner picks" "$FN" '- Do only what the owner picks.'
-file_has "spec finish: names the push and the pull request before they run" "$FN" \
-  '1. Before either runs, name both: the push of `<branch>` to `origin`, and the pull request into'
+file_has "spec finish: finds the worktree that holds the target" "$FN" \
+  'git -C "<path>" worktree list --porcelain'
+file_has "spec finish: merges in that worktree" "$FN" \
+  'git -C "<where>" merge --no-ff <branch> -m "Merge <branch> into <target>"'
 file_has "spec finish: a merge pushes nothing" "$FN" 'The merge is local. It pushes nothing.'
-file_has "spec finish: a merge records the branch" "$FN" \
-  'second-brain task set <ID> branch=<target>'
+file_has "spec finish: a merge sets next" "$FN" \
+  'second-brain task set <ID> next="Owner reviews the merge into <target>"'
 file_has "spec finish: a merge records a status note" "$FN" \
   '"Finish: merged <branch> into <target> at <short hash>."'
-file_has "spec finish: a pull request records the branch" "$FN" \
-  'second-brain task set <ID> branch=<branch>'
+file_has "spec finish: names the push and the pull request before they run" "$FN" \
+  '1. Before either runs, name both: the push of `<branch>` to `origin`, and the pull request into'
+file_has "spec finish: a pull request sets next" "$FN" \
+  'second-brain task set <ID> next="Owner reviews the pull request"'
 file_has "spec finish: a pull request records a status note" "$FN" \
   '"Finish: opened a pull request into <target>: <url>."'
 file_has "spec finish: the description follows the pull request format" "$FN" \
-  '`templates/pull-request.md.tmpl`'
-exists "spec finish: the pull request template exists" "$here/templates/pull-request.md.tmpl"
+  '4. Write the description in the pull request format the index points to.'
+file_lacks "spec finish: no template path the project's repo lacks" "$FN" 'pull-request.md.tmpl'
+file_has "spec finish: a failed pick writes a note" "$FN" \
+  '"Finish: <pick> into <target> failed: <reason>; <what ran>."'
+line_is "spec finish: has the failure heading it points to" "$FN" '## 7. A pick that fails'
 file_has "spec finish: deleting the branch needs discard typed" "$FN" \
   '- Delete the branch only when the owner types `discard`. A pick or a yes is not enough.'
+file_has "spec finish: discard detaches before it deletes" "$FN" \
+  '- `git -C "<path>" switch --detach`, then `git -C "<path>" branch -D <branch>`.'
+file_has "spec finish: discard sets next" "$FN" \
+  'second-brain task set <ID> next="<branch> was discarded; the owner decides what follows"'
+file_has "spec finish: discard keeps the hash in the note" "$FN" \
+  '"Finish: the owner typed discard; <branch> was at <short hash>."'
 file_has "spec finish: never forces a push" "$FN" '- Never force a push or rewrite history.'
 file_has "guide: points to the finishing step" "$GD" 'as `skills/spec/finish.md` says.'
-file_has "guide: the branch is deleted only on discard" "$GD" \
-  '- It deletes the branch only when you type `discard`.'
+file_lacks "guide: does not restate the finishing step" "$GD" 'only when you type `discard`'
 file_has "changelog: names the finishing step" "$here/CHANGELOG.md" '`skills/spec/finish.md`'
-file_has "contract: the finishing step runs only on the owner's pick" "$here/docs/contract.md" \
-  "- A merge or a pull request runs only on the owner's pick. Each push or pull request is named"
+line_is "contract: a merge or a pull request runs only on the pick" "$here/docs/contract.md" \
+  "- A merge or a pull request runs only on the owner's pick."
+line_is "contract: each push or pull request is named before it runs" "$here/docs/contract.md" \
+  '- Each push or pull request is named before it runs.'
 file_has "contract: deleting the branch needs discard typed" "$here/docs/contract.md" \
   "- The story's branch is deleted only when the owner types \`discard\`."
 

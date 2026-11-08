@@ -35,6 +35,11 @@ Read this file only when the build finished with every task passed, as `build.md
 - Say in the question that typing `discard` deletes the branch.
 - The owner names another target in the free-text answer: ask again, with the three options for
   that target.
+- Say too that the owner can reverse a ruling of the build, or reopen the phase one touched, in
+  the free-text answer, as `### The list of rulings` in `build.md` says.
+  - The owner does: first
+    `second-brain task set <ID> status=in-progress next="The spec skill builds the approved tasks"`.
+    Then take the answer as item 3 of `## 7. When the build stops` in `build.md` says.
 - Do only what the owner picks. Any other answer is `## 5. Keep`.
 
 ## 3. Merge

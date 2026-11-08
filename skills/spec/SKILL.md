@@ -28,8 +28,9 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
 
 ## Step 1 - Where the spec stands
 
-Read the story's status notes: `second-brain outline <path>`, then a ranged read of
-`## Status notes`. Each approval is a note in exactly these words:
+Read the story's status notes: `second-brain outline <note>`, with `<note>` the `path:` that
+`second-brain task head <ID>` prints, then a ranged read of `## Status notes`. Each approval is a
+note in exactly these words:
 
 - `Spec: requirements approved by the owner.`
 - `Spec: design approved by the owner.`

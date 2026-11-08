@@ -936,11 +936,61 @@ text.
 - A task stopped past the fix loop's cap gets one more round in the same way: only with a ruling
   newer than its stop note.
 - A resumed `failed` task below the cap looks for that ruling too, and goes on in the fix loop with
-  it as its `Owner:` line when there is one.
+  its ruling lines.
+- A resumed `failed` task whose newest stop note has no newer owner's ruling stopped the build
+  there. The owner is asked first, whatever its `fails`.
+- A `Spec: <phase> reopened.` note newer than a task's stop note answers that stop too, for a
+  `blocked` task and a `failed` one: the owner changed the spec, and the phases were approved
+  again.
 - A block writes its `Build: stopped at <task>` note before it sets `blocked`.
+- **The stop list.** Once the build has started, the skill stops and asks the owner with
+  AskUserQuestion only for: a destructive action, a security-sensitive one, an outside effect
+  such as a push, a merge or a publish, a spec too broken to follow, a task blocked or past its
+  last fix round, and a failed baseline. `skills/spec/build.md` holds the list.
+- A `BLOCKED` from the user check or the branch review is a block too. So is a review that gives
+  no verdict when asked again, and then from one fresh `reviewer` in its place.
+- A spec is too broken to follow when going on would change, add or drop a requirement, a design
+  decision, a task or a check.
+- The phases, and the steps before the build's `Build: started` or `Build: resumed` note, ask as
+  they say: the owner has just run the skill. Each question of `skills/spec/finish.md` is an
+  outside effect or a destructive action.
+- **Rulings.** Any other question, such as an ambiguous requirement or two agents that disagree,
+  the skill decides itself. It records each with
+  `second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`, before
+  the next launch.
+- `<task>` is the task the question touches. A question on several tasks gets one note per task.
+  One that touches no task names `build`, and goes in no prompt.
+- A ruling never changes, adds or drops a requirement, a design decision, a task or a check. It
+  never lifts a stop: only the owner's ruling does.
+- An `implementer` reply `BLOCKED:` on a question a ruling settles, such as a requirement it reads
+  two ways, is no stop. The skill rules on it and goes on from the task's state. The same
+  question again is a stop.
+- A failing build-wide check in files no task holds, and a user or branch finding no task covers,
+  go to the last task, with a ruling.
+- **The rulings of a build** are the status notes newer than its newest
+  `Build: started on <branch> at <short hash>.` note: the skill's `Ruling:` notes and the owner's
+  `Build: the owner ruled on <task>:` notes. A note below it is from an earlier build of the
+  story. A new session reads them from `## Status notes`.
+- They are newer too than the build's newest `Spec: <phase> reopened.` note. A reopen retires the
+  rulings before it: the changed phase holds what the owner kept of them.
+- Every ruling of the build on a task goes, as written and oldest first, into each later
+  `implementer` prompt and fix message for that task, and each later `reviewer` prompt on it.
+- The owner's is the line `Owner: <the ruling, as written>.`, the skill's
+  `Ruling: <the question> - <the decision and why>.`. A bundle's prompts name the task:
+  `Owner on <task>:` and `Ruling on <task>:`.
+- The user and branch reviews get every ruling of the build on a task, as `Owner on <task>:` and
+  `Ruling on <task>:` lines.
+- `implementer` and `reviewer` follow both. Where they differ, the `Owner:` line wins. What a
+  ruling decided is never a finding.
+- When the build finishes or stops, the skill lists every ruling of the build, as written, oldest
+  first, each with the phase it touched.
+- The owner can then reopen that phase, or reverse a ruling with one of their own on its task. A
+  task that passed takes the owner's ruling as a fix: the skill logs it with `spec issue`, then
+  sets the task `failed`. At the finish, the owner says so in the free-text answer of its
+  question.
 - Each story-level update is a status note in the README: each phase approval, the build
-  started, stopped and why, and finished, and each ruling of the owner. A task's progress is in
-  `build.json` alone.
+  started, stopped and why, and finished, and each ruling, the owner's and the skill's. A task's
+  progress is in `build.json` alone.
 - **Who runs which check.** `implementer` runs its task's checks before it commits. `reviewer`
   runs them again in the task's review. The skill runs the `each build` checks once, at the end.
 - `implementer` writes a test that fails for its task's requirement first, then makes it pass.
@@ -974,8 +1024,8 @@ text.
   `spec packet <ID> <task>` themselves. The skill never prints a packet into the owner's session.
 - For a bundle, they are given its number and its tasks in place of the task, and run
   `spec packet` once per task.
-- The packet, and the commit line, are all `implementer` is given. On a fix the packet holds the
-  findings of the last failed review.
+- The packet, the rulings on its task and the commit line are all `implementer` is given. On a
+  fix the packet holds the findings of the last failed review.
 - In a bundle, each task's packet and commit line are all it is given, and no other task's.
 - `reviewer` reads the task's diff from the file the packet's `diff:` line names.
 - A task's review reads only its diff, first against the task's requirements and acceptance
@@ -1004,7 +1054,8 @@ text.
   so the cap holds across sessions.
 - Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4
   and 5 go to a fresh one on the stronger model. A sixth failed review stops the build.
-- A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
+- A BLOCKED, or an implementer reply that starts `BLOCKED:` on what no ruling settles, stops the
+  build at once.
 - When every task has passed, the skill runs `validation run <project> <repo> --when each-build`
   once, with no agent.
 - The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and
@@ -1013,8 +1064,10 @@ text.
 - A failing check is logged with `spec issue` on the task whose files it covers. That task is set
   `failed` and takes the fix loop, and the run goes again once every task has passed.
 - Then one `reviewer` runs the user steps on the finished branch, in user mode. Then one
-  `reviewer` on the most capable model reviews the whole branch, in branch mode. A FAIL or a
-  BLOCKED from either stops the build.
+  `reviewer` on the most capable model reviews the whole branch, in branch mode. A BLOCKED from
+  either stops the build.
+- A FAIL from either sends each task it logged a finding on to the fix loop, as a failing check
+  does, and the run goes again once every task has passed.
 - The baseline runs the checks through `validation run --when each-build`, and every user step but
   the `release` ones.
 - A `release` check runs only when the owner asks.

@@ -23,8 +23,8 @@
   The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
   README.
 - The skill shows you `spec status <ID>` after each task's review, when the build stops or
-  finishes, and when a session resumes a build. The build started, stopped and why, and finished, and each
-  ruling, stay in the README as status notes.
+  finishes, and when a session resumes a build. The build started, stopped and why, and
+  finished, and each ruling, stay in the README as status notes.
 - `implementer` and `reviewer` get the story, the task and the session id, and run
   `second-brain spec packet` themselves. The skill never prints a packet into your session.
 - The packet has `commits` and `diff` lines. `diff` names a temp file the helper writes with each
@@ -35,8 +35,9 @@
 - `implementer` replies with its commit and one line. `reviewer` logs its findings with
   `spec issue` and replies with its verdict and the number of issues.
 - The tasks phase checks every task's packet without printing it.
-- A resumed build takes a cut-off task's commit only when `build.json` does not list it yet, and
-  launches a `blocked` task again with the owner's ruling.
+- A resumed build takes a cut-off task's commit only when `build.json` does not list it yet,
+  compared by full hash. It launches a `blocked` task again only with a ruling newer than the
+  stop, and asks the owner otherwise.
 - A `build.json` that is blank, or not an object with a `tasks` array, makes `spec status`,
   `spec issue` and `spec packet` exit 1. It never reads as a build that has not started.
 - `build.json` is written next to itself, then moved in place, so a write cut off leaves the old

@@ -660,7 +660,8 @@ function jp_utf8(cp) {
 # - task: print "commits: <hashes or ->" for the task SB_TASK, then its issue lines.
 # - write: apply SB_OP (status or issue) to SB_TASK, write the JSON to SB_OUT and, when the README
 #   had a "## Build" section, the README without it to SB_OUTMD, and print "moved".
-# Exits 3 when write names no task it knows, 4 when build.json is not JSON.
+# Exits 3 when write names no task it knows, 4 when build.json is not a JSON object with a tasks
+# array, blank text included.
 sb_spec_build_awk() {
   printf '%s\n' "$(sb_awk_lib)$(sb_spec_row_awk)$(sb_json_awk)" '
 function dash(s) { return (s == "" ? "-" : s) }
@@ -857,7 +858,8 @@ sb_spec_build_show() {
   [ "$rc" -eq 0 ] || sb_spec_build_fail "$rc"
 }
 
-# Exit as a failed build program says: 4 is a build.json that is not JSON.
+# Exit as a failed build program says: 4 is a build.json that is not a JSON object with a tasks
+# array.
 sb_spec_build_fail() {
   case "$1" in
     4) sb_die 1 "$(sb_rel "$SB_SP_BJ") is not a JSON object with a tasks array: fix or remove it" ;;
@@ -875,6 +877,8 @@ sb_spec_build() {
   # The new build.json is written next to it, then moved in place: a write cut off leaves the old one.
   tmp="$SB_SP_BJ.$$.tmp"
   tmpmd="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
+  # A kill before the move leaves no temp file in the vault.
+  trap 'rm -f "$tmp" "$tmpmd"; exit 1' INT TERM HUP
   out="$(sb_spec_build_run SB_MODE=write SB_OP="$sub" SB_TASK="$task" SB_STATE="$state" SB_COMMIT="$commit" \
     SB_ISSUE="$issue" SB_FIX="$fix" SB_SESSION="$session" SB_NOW="$(sb_now)" SB_OUT="$tmp" SB_OUTMD="$tmpmd" \
     SB_NOFINAL="$nofinal")" || rc=$?
@@ -890,6 +894,7 @@ sb_spec_build() {
     sb_note "moved ## Build of $SB_T_REL into $(sb_rel "$SB_SP_BJ")"
   fi
   rm -f "$tmp" "$tmpmd"
+  trap - INT TERM HUP
   task="$(printf '%s' "$task" | tr '[:lower:]' '[:upper:]')"
   printf '%s: %s\n' "$task" "${state:-issue}"
 }

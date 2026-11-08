@@ -2713,7 +2713,7 @@ for a in implementer reviewer spec-checker; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
 file_has "spec build: read only once all three approvals count" "$BM" 'Read this file only when all three approvals count'
-file_has "spec build: a BLOCKED review stops at once" "$BM" '4. BLOCKED: `second-brain spec status <ID> <task> blocked`, and stop.'
+file_has "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: `second-brain spec status <ID> <task> blocked`, and stop.'
 file_has "spec build: commits the tick of a repo spec" "$BM" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
 file_has "spec build: a session resumes the build from build.json" "$BM" \
   'It prints a line: the build resumes, from the states `build.json` in the story'"'"'s folder'
@@ -3066,22 +3066,32 @@ for l in '  - `Story: <ID>, project <project>.`' '  - `Task: <task>.`' '  - `Ses
 done
 line_is "spec build: building before the implementer" "$BM" '3. `second-brain spec status <ID> <task> building`.'
 file_has "spec build: a blocked build is launched again" "$BM" 'For each task whose build is `todo`, `building` or `blocked`, in the order `spec tasks` lists'
-file_has "spec build: with the owner's ruling" "$BM" '2. A `blocked` task: its `Owner:` line is the owner'"'"'s newest ruling on it, the status note'
+file_has "spec build: with the owner's ruling" "$BM" '2. A `blocked` task: its `Owner:` line is the owner'"'"'s ruling on it, the status note'
 file_has "spec build: a cut-off build takes only a commit build.json lacks" "$BM" \
-  '- A hash `spec status` does not list under the task yet: that run committed. Run'
+  '- The full hash starts with no listed hash: that run committed. Run'
 file_has "spec build: else it is built again" "$BM" '- No hash, or one `spec status` lists already: build the task again, from item 3.'
-file_has "spec build: a blocked review gets the ruling too" "$BM" '- Its review was `blocked` before item 1: its `Owner:` line is the owner'"'"'s newest ruling on'
+file_has "spec build: a blocked review gets the ruling too" "$BM" '1. A task whose review is `blocked`: its `Owner:` line is the owner'"'"'s ruling on it, found as'
 file_has "spec build: building before a retry too" "$BM" \
   'Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`'
-line_is "spec build: in-review before the reviewer" "$BM" '1. `second-brain spec status <ID> <task> in-review`.'
+line_is "spec build: in-review before the reviewer" "$BM" '2. `second-brain spec status <ID> <task> in-review`.'
+is "spec build: a blocked review's ruling is found before in-review is set" \
+  "$(($(lineno "$BM" '1. A task whose review is `blocked`: its `Owner:` line is the owner') < $(lineno "$BM" '2. `second-brain spec status <ID> <task> in-review`.')))" "1"
+file_has "spec build: a ruling counts only when newer than the stop" "$BM" \
+  'newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.'
+file_has "spec build: a cut-off build's commit is found by its full hash" "$BM" \
+  'hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.'
+file_has "spec build: and a listed hash matches by prefix" "$BM" \
+  '- A hash `spec status` lists under the task is that commit when the full hash starts with it.'
+file_has "contract: a blocked task waits for a ruling newer than its stop" "$here/docs/contract.md" \
+  '- A `blocked` task is launched again with the owner'"'"'s ruling on it, when that ruling is newer than'
 file_has "spec build: sets the result the implementer reports" "$BM" \
   '6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash'
-file_has "spec build: sets a failed review" "$BM" '5. FAIL: `second-brain spec status <ID> <task> failed`.'
+file_has "spec build: sets a failed review" "$BM" '6. FAIL: `second-brain spec status <ID> <task> failed`.'
 is "spec build: shows the status once per task, after its review" \
   "$(grep -c '^[0-9]\. Show the owner `second-brain spec status <ID>`\.$' "$BM")" "1"
 is "spec build: and that is in the review section" \
-  "$(awk '/^## 6\. Review every task/ { on = 1 } /^## 7\./ { on = 0 } on && /^6\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
-  '6. Show the owner `second-brain spec status <ID>`.'
+  "$(awk '/^## 6\. Review every task/ { on = 1 } /^## 7\./ { on = 0 } on && /^7\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
+  '7. Show the owner `second-brain spec status <ID>`.'
 file_has "spec build: shows the status when a session starts or resumes" "$BM" \
   '1. Show the owner `second-brain spec status <ID>` as it prints.'
 file_has "spec build: shows the status when the build stops" "$BM" \

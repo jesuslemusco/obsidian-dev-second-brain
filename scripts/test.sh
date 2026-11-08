@@ -2508,17 +2508,16 @@ for ph in requirements design tasks; do
 done
 file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
 file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
-file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" "Resume \`spec-lead\` with SendMessage and the owner's answer as written."
-for a in spec-lead implementer reviewer spec-checker; do
+for a in implementer reviewer spec-checker; do
   AF="$here/agents/$a.md"
   line_is "$a: named as its file" "$AF" "name: $a"
   ad="$(sed -n 's/^description: //p' "$AF")"
   is "$a: the description is under 200 characters" "$((${#ad} < 200))" "1"
   file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
 done
-line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
-for a in implementer reviewer docs-keeper scrum-master spec-checker; do
-  if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
+for AF in "$here"/agents/*.md; do
+  a="$(basename "$AF" .md)"
+  if grep -q '^tools:.*Agent' "$AF"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
 done
 line_is "reviewer: edits no file, and has the Skill tool" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep, Skill"
 SC="$here/agents/spec-checker.md"
@@ -2592,7 +2591,7 @@ file_has "reviewer: runs each user step with the tool its line names" "$here/age
 file_has "reviewer: a skill runs through the Skill tool" "$here/agents/reviewer.md" "- A skill: call it with the Skill tool"
 file_has "reviewer: a step whose tool it cannot run is BLOCKED and names the tool" "$here/agents/reviewer.md" "found, is BLOCKED. Name the tool."
 file_has "reviewer: screenshots go in a temp folder outside the repo" "$here/agents/reviewer.md" "make one temp folder outside the repo with \`mktemp -d\`"
-file_has "reviewer: names the screenshots folder" "$here/agents/reviewer.md" "Name the temp folder that holds the"
+file_has "reviewer: names the screenshots folder" "$here/agents/reviewer.md" 'end the verdict line with ` - screenshots in <folder>`'
 file_has "reviewer: keeps step 0's status output" "$here/agents/reviewer.md" "Keep the \`status --porcelain\` output: the user steps are checked against it."
 file_has "reviewer: removes only an untracked path step 0 did not list" "$here/agents/reviewer.md" "Remove only an untracked (\`??\`) path that step 0's output did not list, and name it."
 file_has "reviewer: a tracked file a step changed is a finding, never deleted" "$here/agents/reviewer.md" "A tracked file a step changed is a finding. Never delete it."
@@ -2600,13 +2599,18 @@ file_has "reviewer: never resets the owner's work" "$here/agents/reviewer.md" "N
 file_has "reviewer: a line with no tool runs with Bash only when Bash can do it" "$here/agents/reviewer.md" "run it with Bash when Bash can do what it says."
 file_has "reviewer: a browser line with no tool is BLOCKED" "$here/agents/reviewer.md" "A line that needs a browser and names no tool is BLOCKED. Name the step and ask for its tool."
 file_has "vault-setup: drafts each user step's tool from the repo" "$here/skills/vault-setup/validation.md" "Draft the tool from the repo"
-file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
-file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
-file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"
-file_has "spec-lead: two retries at most" "$here/agents/spec-lead.md" "retries for a task. Still FAIL"
+BM="$here/skills/spec/build.md"
+file_has "spec build: the packet is the implementer's whole context" "$BM" "The packet is the implementer's whole context."
+file_has "spec build: only a reviewer's pass ticks a task" "$BM" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
+line_is "spec build: the baseline comes first" "$BM" "## 4. The baseline"
+is "spec build: the baseline before the builds" "$(($(lineno "$BM" '## 4. The baseline') < $(lineno "$BM" '## 5. Build every task')))" "1"
+file_has "spec build: two retries at most" "$BM" "At most two retries for a task. Still FAIL: stop."
 file_has "reviewer: a step not run is never a pass" "$here/agents/reviewer.md" "A step that could not be run is never a PASS."
 file_has "implementer: never the vault or tasks.md" "$here/agents/implementer.md" 'Never the vault, the spec files or `tasks.md`'
-file_has "spec phases: every task's packet must build" "$here/skills/spec/phases.md" 'Run `second-brain spec packet <ID> T<n>` for every task.'
+file_has "spec phases: every task's packet must build, unprinted" "$here/skills/spec/phases.md" 'Run `second-brain spec packet <ID> T<n> >/dev/null` for every task.'
+file_has "spec phases: never prints a packet" "$here/skills/spec/phases.md" '- Never print a packet here: the agents fetch their own.'
+file_has "spec phases: a task names what it provides" "$here/skills/spec/phases.md" 'adds `- Provides: <signatures>` lines'
+file_has "spec phases: a task names the tasks it uses" "$here/skills/spec/phases.md" 'adds one line, `- Uses: T1, T2`. Its packet then holds those'
 file_has "spec skill: writes each phase in this session" "$here/skills/spec/SKILL.md" "write the phase yourself, in this session"
 file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKILL.md" "Read only what this session does not have yet"
 file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
@@ -2708,14 +2712,19 @@ edit "$SPF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|; s/^spec_home: re
 for a in implementer reviewer spec-checker; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
-file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
-file_has "spec-lead: a BLOCKED review stops at once" "$here/agents/spec-lead.md" '4. BLOCKED: `second-brain spec status <ID> <task> blocked`, stop at once and report.'
-file_has "spec-lead: commits the tick of a repo spec" "$here/agents/spec-lead.md" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
-file_has "spec-lead: a new lead goes on from the Build section" "$here/agents/spec-lead.md" 'Where the build stands is the `## Build` section.'
+file_has "spec build: read only once all three approvals count" "$BM" 'Read this file only when all three approvals count'
+line_is "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: first the stop note,'
+file_has "spec build: a BLOCKED build stops at once" "$BM" '5. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,'
+is "spec build: each block writes the stop note before it sets blocked" \
+  "$(awk '/stopped at <task>: <why>\."`, then$/ { n = NR } /^   `second-brain spec status <ID> <task> blocked`, and stop\.$/ && n == NR - 1 { k++ } END { print k + 0 }' "$BM")" "2"
+is "spec build: and nothing sets blocked any other way" "$(grep -c 'spec status <ID> <task> blocked`' "$BM")" "2"
+file_has "spec build: commits the tick of a repo spec" "$BM" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
+file_has "spec build: a session resumes the build from build.json" "$BM" \
+  'It prints a line: the build resumes, from the states `build.json` in the story'"'"'s folder'
 file_has "reviewer: a BLOCKED verdict" "$here/agents/reviewer.md" '`VERDICT: BLOCKED`: a step could not be run'
 file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'Read nothing outside `repo_path`'
 file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
-file_has "spec skill: commits a repo spec before the build" "$here/skills/spec/SKILL.md" 'commit -m "<ID>: spec"'
+file_has "spec build: commits a repo spec before the build" "$BM" 'commit -m "<ID>: spec"'
 
 # ---------------------------------------------------------------- spec link
 sb help
@@ -2777,33 +2786,64 @@ file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md
 # ---------------------------------------------------------------- spec status and spec issue
 sb help
 out_has "help: lists spec status and spec issue" 'spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"'
+B2="$vault/$S/tasks/SP-2/build.json"
+cp "$L2" "$tmp/sp2.readme"
 sb spec status SP-2
 rc_is "spec status: a story with no build exits 0" 0
 out_is "spec status: and prints nothing" ""
-sb spec status SP-2 t1 built --commit abc1234 --session s-1
+absent "spec status: reading writes no build.json" "$B2"
+SECOND_BRAIN_NOW="2026-10-08T09:30:00-05:00" sb spec status SP-2 t1 building --session s-1
 rc_is "spec status: exit 0" 0
-out_is "spec status: names the task and its state" "T1: built"
-line_is "spec status: the row, with its commit" "$L2" '- T1 - built - commits `abc1234` - <What the task builds.>'
-is "spec status: the section sits before the status notes" \
-  "$(($(lineno "$L2" '## Build') < $(lineno "$L2" '## Status notes')))" "1"
-file_has "spec status: adds a status note" "$L2" 'Build: T1 built at abc1234.**'
+out_is "spec status: names the task and its state" "T1: building"
+exists "spec status: build.json is in the task folder" "$B2"
+if cmp -s "$L2" "$tmp/sp2.readme"; then pass "spec status: the README is byte-identical, no note and no section"; else fail "spec status: the README is byte-identical, no note and no section"; fi
+OUT="$(cat "$B2")"
+json_ok "spec status: build.json parses as JSON"
+json_is "spec status: build.json names the story and the task" \
+  'print(d["story"], d["tasks"][0]["id"], d["tasks"][0]["title"])' "SP-2 T1 <What the task builds.>"
+json_is "spec status: the build state is set, the review not yet" \
+  't = d["tasks"][0]; print(t["build"], t["review"], t["commits"], t["issues"])' "building - [] []"
+json_is "spec status: the history holds the state, its time and session" \
+  'print(d["tasks"][0]["history"])' \
+  "[{'at': '2026-10-08T09:30:00-05:00', 'session': 's-1', 'field': 'build', 'state': 'building'}]"
+sb spec status SP-2 T1 built --commit abc1234
+sb spec status SP-2
+out_is "spec status: one line per task, its build and review" 'T1 - build: built - review: - - commits abc1234 - <What the task builds.>'
+sb spec status SP-2 T1 in-review
 sb spec status SP-2 T1 failed --commit def5678
-sb spec status SP-2 T1 in-review --commit abc1234
-line_is "spec status: a second commit is added once" "$L2" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>'
-sb spec issue SP-2 T1 "The form has one field." --fix "Add the password field."
+sb spec status SP-2 T1 built --commit abc1234
+sb spec status SP-2
+out_is "spec status: a review state goes in the review field, a second commit once" \
+  'T1 - build: built - review: failed - commits abc1234, def5678 - <What the task builds.>'
+sb spec issue SP-2 T1 "The form has one field." --fix "Add the password field." --session s-2
 rc_is "spec issue: exit 0" 0
 out_is "spec issue: names the task" "T1: issue"
-line_is "spec issue: the issue sits under the row, with its fix" "$L2" '  - Issue 2026-10-08: The form has one field. Fix: Add the password field.'
-file_has "spec issue: adds a status note" "$L2" 'Build: T1 issue: The form has one field. Fix: Add the password field.**'
-is "spec status: one Build section, however often it is written" "$(grep -c '^## Build$' "$L2")" "1"
-printf '%s\n' '' '- [ ] T2 - The second task' '  - Requirements: R1' >>"$vault/$S/tasks/SP-2/spec/tasks.md"
-sb spec status SP-2 T2 built --commit 0a1b2c3
 sb spec status SP-2
-out_is "spec status: prints the section, in the order of tasks.md, issues kept" '- T1 - in-review - commits `abc1234`, `def5678` - <What the task builds.>
-  - Issue 2026-10-08: The form has one field. Fix: Add the password field.
-- T2 - built - commits `0a1b2c3` - The second task'
+out_is "spec issue: the issue sits under its task, with its fix" \
+  'T1 - build: built - review: failed - commits abc1234, def5678 - <What the task builds.>
+  - Issue 2026-10-08: The form has one field. Fix: Add the password field.'
+OUT="$(cat "$B2")"
+json_is "spec issue: build.json holds the issue, its fix, time and session" 'print(d["tasks"][0]["issues"])' \
+  "[{'at': '2026-10-08T00:00:00+00:00', 'session': 's-2', 'issue': 'The form has one field.', 'fix': 'Add the password field.'}]"
+json_is "spec status: every state set is in the history, oldest first" \
+  'print(" ".join(h["field"] + ":" + h["state"] for h in d["tasks"][0]["history"]))' \
+  "build:building build:built review:in-review review:failed build:built"
+sb spec status SP-2 T1 in-review
+sb spec status SP-2 T1 blocked
+sb spec status SP-2
+out_has "spec status: blocked during a review is the review's" "T1 - build: built - review: blocked - "
+sb spec status SP-2 T1 building
+sb spec status SP-2 T1 blocked
+sb spec status SP-2
+out_has "spec status: blocked otherwise is the build's" "T1 - build: blocked - review: blocked - "
+if cmp -s "$L2" "$tmp/sp2.readme"; then pass "spec issue: the README is still byte-identical"; else fail "spec issue: the README is still byte-identical"; fi
+printf '%s\n' '' '- [x] T2 - The second task' '  - Requirements: R1' >>"$vault/$S/tasks/SP-2/spec/tasks.md"
+sb spec status SP-2
+out_has "spec status: a ticked task build.json lacks starts built and passed" \
+  'T2 - build: built - review: passed - commits - - The second task'
 sb spec status SP-2 T1 done
 rc_is "spec status: another state exits 5" 5
+err_has "spec status: and names both kinds of state" "a review state is one of: in-review, passed, failed, blocked"
 sb spec status SP-2 T1 built --commit xyz
 rc_is "spec status: a commit that is not hex exits 5" 5
 sb spec status SP-2 T9 built
@@ -2814,23 +2854,290 @@ sb spec issue SP-2 T1 "No fix given."
 rc_is "spec issue: no --fix exits 5" 5
 sb spec tick SP-2 T1 --commit abc
 rc_is "spec tick: --commit is not its flag, exit 5" 5
+cp "$B2" "$tmp/b2.good"
+printf '%s\n' '{"story": "SP-2", "tasks": [' >"$B2"
+sb spec status SP-2
+rc_is "spec status: a build.json that is not JSON exits 1" 1
+err_has "spec status: and names it" "$S/tasks/SP-2/build.json is not a JSON object with a tasks array"
+sb spec status SP-2 T1 built
+rc_is "spec status: a write on it exits 1 too" 1
+is "spec status: and leaves it as it was" "$(cat "$B2")" '{"story": "SP-2", "tasks": ['
+for bad in '' '   ' '{}' '[]' '{"tasks": {}}'; do
+  printf '%s\n' "$bad" >"$B2"
+  sb spec status SP-2
+  rc_is "spec status: a build.json that holds '$bad' exits 1, never a fresh build" 1
+  sb spec issue SP-2 T1 "Lost?" --fix "No."
+  rc_is "spec issue: and a write on '$bad' exits 1" 1
+done
+: >"$B2"
+sb spec status SP-2 --json
+rc_is "spec status --json: an empty build.json exits 1" 1
+out_is "spec status --json: and prints nothing" ""
+cp "$tmp/b2.good" "$B2"
+tr -d '\n' <"$tmp/b2.good" >"$B2"
+sb spec status SP-2
+text="$OUT"
+cp "$tmp/b2.good" "$B2"
+sb spec status SP-2
+is "spec status: a build.json on one line reads the same" "$text" "$OUT"
+sb spec status SP-2 T1 built
+is "spec status: a write leaves no temp file in the task folder" \
+  "$(cd "$vault/$S/tasks/SP-2" && ls -A | grep -v '^README.md$' | grep -v '^spec$' || true)" "build.json"
+sb spec issue SP-2 T1 "Line one.${NL}Line two." --fix "Fix it${CR}${NL}now."
+sb spec status SP-2
+out_has "spec status: a line break in an issue prints as a blank" \
+  "  - Issue 2026-10-08: Line one. Line two. Fix: Fix it now."
+is "spec status: and every issue stays one line" "$(printf '%s\n' "$OUT" | grep -c '^  - Issue ')" "2"
+is "spec status: and no line is left over" "$(printf '%s\n' "$OUT" | grep -vc '^T[0-9]* - build: \|^  - Issue ' || true)" "0"
+OUT="$(cat "$B2")"
+json_is "spec issue: build.json keeps the line break" 'print(d["tasks"][0]["issues"][-1]["issue"] == "Line one.\nLine two.")' "True"
+sb spec status SP-2 --json
+json_is "spec status --json: the issue line has no line break" 'print(d[0]["issues"][-1])' \
+  "Issue 2026-10-08: Line one. Line two. Fix: Fix it now."
+cp "$tmp/b2.good" "$B2"
 sb spec status SP-3 T1 todo
-rc_is "spec status: a CRLF README takes the section" 0
+rc_is "spec status: a CRLF README takes a write" 0
 is "spec status: every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
-SL="$here/agents/spec-lead.md"
-file_has "spec-lead: builds every task first" "$SL" "## 2. Build every task"
-file_has "spec-lead: then reviews every task" "$SL" "## 3. Review every task"
-file_has "spec-lead: a failed task holds up the later reviews" "$SL" "A task that fails holds up the review of the tasks after it"
-file_has "spec-lead: records each step in the Build section" "$SL" 'second-brain spec status <ID> <task> built --commit <short hash>'
-file_has "spec-lead: gives the logged issues back to the implementer" "$SL" "the task's issues and proposed fixes as \`spec status\` prints them"
-file_has "spec-lead: keeps track of the build" "$SL" "You keep track of the build."
-file_has "implementer: runs no check" "$here/agents/implementer.md" "Run no check, test, linter or build: the reviewer runs them all"
-file_has "reviewer: logs each issue with a proposed fix" "$here/agents/reviewer.md" 'second-brain spec issue <story> <task>'
-file_has "reviewer: runs every check" "$here/agents/reviewer.md" "You run every check: the implementer runs none."
-file_has "spec skill: shows the Build section when spec-lead stops" "$here/skills/spec/SKILL.md" 'show the owner the `## Build` section: `second-brain spec status <ID>`'
+# A README Build section, as versions before 0.7.0 wrote it: read as it is, moved on the next write.
+B5="$vault/$S/tasks/SP-5/build.json"
+L5T="$vault/$S/tasks/SP-5/spec/tasks.md"
+printf '%s\n' '# SP-5 - Tasks' '' '- [ ] T1 - First' '  - Requirements: R1' '- [x] T2 - Second' '  - Requirements: R1' \
+  '- [ ] T3 - Third' '  - Requirements: R1' '- [ ] T4 - Fourth' '  - Requirements: R1' '- [ ] T5 - Fifth' '  - Requirements: R1' >"$L5T"
+cp "$L5" "$tmp/sp5.without"
+awk '/^## Status notes$/ {
+    print "## Build"; print ""
+    print "- T1 - failed - commits `abc1234`, `def5678` - First"
+    print "  - Issue 2026-10-01: The form has one field. Fix: Add the password field."
+    print "- T2 - passed - commits `0a1b2c3` - Second"
+    print "- T3 - blocked - commits - - Third"
+    print "- T4 - blocked - commits `1111aaa` - Fourth"
+    print "- T9 - in-review - commits `2222bbb` - Gone - with a dash"
+    print ""
+  } { print }' "$tmp/sp5.without" >"$L5"
+cp "$L5" "$tmp/sp5.with"
+sb spec status SP-5
+out_is "spec status: an old Build section is read, each state in its field" \
+  'T1 - build: built - review: failed - commits abc1234, def5678 - First
+  - Issue 2026-10-01: The form has one field. Fix: Add the password field.
+T2 - build: built - review: passed - commits 0a1b2c3 - Second
+T3 - build: blocked - review: - - commits - - Third
+T4 - build: built - review: blocked - commits 1111aaa - Fourth
+T5 - build: todo - review: - - commits - - Fifth
+T9 - build: built - review: in-review - commits 2222bbb - Gone - with a dash'
+if cmp -s "$L5" "$tmp/sp5.with"; then pass "spec status: reading leaves the old section"; else fail "spec status: reading leaves the old section"; fi
+sb spec status SP-5 T5 building
+rc_is "spec status: a write on an old section exits 0" 0
+err_has "spec status: says it moved the section" "note: moved ## Build of $S/tasks/SP-5/README.md into $S/tasks/SP-5/build.json"
+if cmp -s "$L5" "$tmp/sp5.without"; then pass "spec status: the section is gone, the rest byte-identical"; else fail "spec status: the section is gone, the rest byte-identical" "$(diff "$tmp/sp5.without" "$L5")"; fi
+sb spec status SP-5
+out_has "spec status: the moved rows are in build.json" 'T1 - build: built - review: failed - commits abc1234, def5678 - First
+  - Issue 2026-10-01: The form has one field. Fix: Add the password field.'
+out_has "spec status: with the write applied" 'T5 - build: building - review: - - commits - - Fifth'
+out_has "spec status: a moved row whose task left tasks.md stays at the end" \
+  'T9 - build: built - review: in-review - commits 2222bbb - Gone - with a dash'
+OUT="$(cat "$B5")"
+json_is "spec status: a moved issue keeps its date, its fix split off" 'print(d["tasks"][0]["issues"])' \
+  "[{'at': '2026-10-01', 'session': '-', 'issue': 'The form has one field.', 'fix': 'Add the password field.'}]"
+json_is "spec status: a moved row has no history" 'print(d["tasks"][0]["history"])' "[]"
+printf '%s\n' '' '## Build' '' '- T1 - todo - commits - - First' >>"$L5"
+sb spec issue SP-5 T1 "Late." --fix "Fix it."
+sb spec status SP-5
+is "spec issue: build.json wins over a section written later" "$(printf '%s\n' "$OUT" | head -1)" \
+  "T1 - build: built - review: failed - commits abc1234, def5678 - First"
+if cmp -s "$L5" "$tmp/sp5.without"; then pass "spec issue: a section at the end goes with the blank lines before it"; else fail "spec issue: a section at the end goes with the blank lines before it" "$(diff "$tmp/sp5.without" "$L5")"; fi
+awk '/^## Status notes/ { printf "## Build\r\n\r\n- T1 - built - commits `abc1234` - One\r\n\r\n" } { print }' "$L3" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$L3"
+sb spec issue SP-3 T1 "CRLF." --fix "Keep it."
+file_lacks "spec issue: the section leaves a CRLF README" "$L3" "## Build"
+is "spec issue: and every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+# build.json sits in the vault even for a repo spec, so the repo's tree stays clean.
+edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
+printf '%s\n' '# SP-6 - Tasks' '' '- [ ] T1 - Repo task' '  - Requirements: R1' >"$tmp/scode/spec-app/spec/SP-6/tasks.md"
+sb spec status SP-6 T1 building
+rc_is "spec status: a repo spec takes a write" 0
+exists "spec status: its build.json is in the vault's task folder" "$vault/$S/tasks/SP-6/build.json"
+absent "spec status: and not in the repo" "$tmp/scode/spec-app/spec/SP-6/build.json"
+edit "$SPF" 's/^spec_home: repo$/spec_home: vault/'
 
+# ---------------------------------------------------------------- spec packet: uses, issues and the diff
+sb task new SP-10 --project Specs --title "Packet story"
+sb task set SP-10 delivery=spec branch=feature/SP-10
+sb spec new SP-10
+D10="$vault/$S/tasks/SP-10/spec"
+printf '%s\n' '# SP-10 - Requirements' '' '## R1 - One' '' 'WHEN a user signs in, THE app SHALL open a session.' >"$D10/requirements.md"
+printf '%s\n' '# SP-10 - Tasks' '' '- [ ] T1 - The API' '  - Requirements: R1' \
+  '  - Provides: `login(email, password) -> Session`' '  - Provides: `logout(session)`' \
+  '- [ ] T2 - The page' '  - Requirements: R1' '  - Uses: T1' \
+  '- [ ] T3 - A later one' '  - Requirements: R1' '  - Uses: T4' \
+  '- [ ] T4 - Uses one with none' '  - Requirements: R1' '  - Uses: T2' \
+  '- [ ] T5 - Unknown' '  - Requirements: R1' '  - Uses: T1, T9' \
+  '- [ ] T6 - None named' '  - Requirements: R1' '  - Uses: none' \
+  '- [ ] T7 - Comma' '  - Requirements: R1' '  - Uses: T1,' >"$D10/tasks.md"
+ODIR="${TMPDIR:-}"
+mkdir -p "$tmp/tmpd"
+export TMPDIR="$tmp/tmpd"
+sb spec packet SP-10 T1
+rc_is "spec packet: exit 0 before any build" 0
+out_has "spec packet: no commit yet, no diff" "commits: -
+diff: none (no commit)"
+out_lacks "spec packet: no Uses part when it names none" "## Uses"
+out_lacks "spec packet: no Issues part when it has none" "## Issues"
+sb spec packet SP-10 T2
+rc_is "spec packet: a task that uses an earlier one exits 0" 0
+out_has "spec packet: holds the Provides lines of the task it uses" "## Uses
+
+### T1 - The API
+
+- Provides: \`login(email, password) -> Session\`
+- Provides: \`logout(session)\`"
+sb spec packet SP-10 T3
+rc_is "spec packet: a task that uses a later one exits 1" 1
+err_has "spec packet: and says so" "T3 uses T4, which is not an earlier task"
+sb spec packet SP-10 T4
+rc_is "spec packet: a used task with no Provides line exits 1" 1
+err_has "spec packet: and names it" "T4 uses T2, which has no - Provides: line"
+sb spec packet SP-10 T5
+rc_is "spec packet: a used task tasks.md lacks exits 1" 1
+err_has "spec packet: and names it" "T5 uses T9, which $S/tasks/SP-10/spec/tasks.md has no item for"
+sb spec packet SP-10 T6
+rc_is "spec packet: Uses: none exits 0" 0
+out_lacks "spec packet: and has no Uses part" "## Uses"
+sb spec packet SP-10 T7
+rc_is "spec packet: a Uses line that ends in a comma exits 1" 1
+err_has "spec packet: and says to write it on one line" "write each field of a task on one line"
+APP="$tmp/scode/spec-app"
+git -C "$APP" -c init.defaultBranch=main init -q
+printf 'one\n' >"$APP/login.txt"
+git -C "$APP" add login.txt
+git -C "$APP" -c user.name=Test -c user.email=test@example.com commit -qm "SP-10 T1: The API"
+h1="$(git -C "$APP" rev-parse --short HEAD)"
+sb spec status SP-10 T1 built --commit "$h1"
+sb spec issue SP-10 T1 "Logout is missing, at login.txt:1." --fix "Add logout."
+sb spec issue SP-10 T1 "Two${NL}lines." --fix "One${NL}line."
+sb spec packet SP-10 T1
+rc_is "spec packet: exit 0 with a commit" 0
+out_has "spec packet: names the task's commits" "commits: $h1"
+dline="$(printf '%s\n' "$OUT" | sed -n 's/^diff: //p')"
+is "spec packet: the diff is a temp file, outside the repo and the vault" "${dline%/*}" "$(shown "$tmp/tmpd")"
+file_has "spec packet: the diff file holds the commit's change" "$dline" "+one"
+out_has "spec packet: holds the task's logged issues, each on one line" "## Issues
+
+- Issue 2026-10-08: Logout is missing, at login.txt:1. Fix: Add logout.
+- Issue 2026-10-08: Two lines. Fix: One line."
+case "$OUT" in
+  *"## Issues"*"## Validation"*) pass "spec packet: the issues come before the validation steps" ;;
+  *) fail "spec packet: the issues come before the validation steps" "in: $OUT" ;;
+esac
+printf 'two\n' >>"$APP/login.txt"
+git -C "$APP" -c user.name=Test -c user.email=test@example.com commit -qam "SP-10 T1: The API"
+h2="$(git -C "$APP" rev-parse --short HEAD)"
+sb spec status SP-10 T1 built --commit "$h2"
+sb spec packet SP-10 T1
+dline="$(printf '%s\n' "$OUT" | sed -n 's/^diff: //p')"
+out_has "spec packet: a retry's commits, in order" "commits: $h1, $h2"
+file_has "spec packet: the diff holds the first commit" "$dline" "+one"
+file_has "spec packet: and the second" "$dline" "+two"
+is "spec packet: the repo's tree stays clean" "$(git -C "$APP" status --porcelain | grep -v ' spec/' || true)" ""
+sb spec status SP-10 T2 built --commit abcdef0
+sb spec packet SP-10 T2
+rc_is "spec packet: a commit git cannot show still exits 0" 0
+out_has "spec packet: and has no diff" "diff: none (git show failed)"
+err_has "spec packet: and names the commit" "note: git show abcdef0 failed in spec-app"
+if [ -n "$ODIR" ]; then export TMPDIR="$ODIR"; else unset TMPDIR; fi
+
+# ---------------------------------------------------------------- the build runs in the owner's session
+lead="spec""-lead"
+absent "$lead: the agent is gone" "$here/agents/$lead.md"
+named="$(cd "$here" && find . -type f -not -path './.git' -not -path './.git/*' -not -path './.scratch/*' -not -path './tmp/*' \
+  -not -path './.omc/*' -not -path './.claude/*' -not -name CHANGELOG.md -exec grep -lF -- "$lead" {} + 2>/dev/null)"
+is "$lead: no file but CHANGELOG.md names it" "$named" ""
+file_has "changelog: says $lead is gone" "$here/CHANGELOG.md" "The \`$lead\` agent is gone."
+is "spec skill: SKILL.md stays a short router" "$(($(lines "$(cat "$SK")") <= 90))" "1"
+file_has "spec skill: reads build.md only when a build starts" "$SK" \
+  '`${CLAUDE_SKILL_DIR}/build.md` once, when a build starts or resumes, and follow it.'
+file_lacks "spec skill: holds no build step" "$SK" 'spec status <ID> <task>'
+file_lacks "spec skill: launches no build agent" "$SK" 'odsb:implementer'
+exists "spec build: the build has its own file" "$BM"
+file_has "spec build: launches one agent at a time with the Agent tool" "$BM" \
+  '- Launch one agent at a time with the Agent tool, and wait for its result. Its result is its'
+file_has "spec build: takes each report from the result, relays nothing" "$BM" \
+  'report: never relay a report by hand, and never read an agent'"'"'s transcript.'
+file_has "spec build: names the implementer's model" "$BM" '- `odsb:implementer`: `model: "opus"`.'
+file_has "spec build: names the reviewer's model" "$BM" '- `odsb:reviewer`, in either mode: `model: "opus"`.'
+file_has "spec build: never prints a packet" "$BM" 'Never run `spec packet` here, and never put a packet, a diff or'
+for l in '  - `Story: <ID>, project <project>.`' '  - `Task: <task>.`' '  - `Session: <session id>.`' \
+  '  - Last, the commit line: `Commit it as "<ID> <task>: <title>".`'; do
+  line_is "spec build: the implementer's prompt line ${l#  - }" "$BM" "$l"
+done
+line_is "spec build: building before the implementer" "$BM" '3. `second-brain spec status <ID> <task> building`.'
+file_has "spec build: a blocked build is launched again" "$BM" 'For each task whose build is `todo`, `building` or `blocked`, in the order `spec tasks` lists'
+file_has "spec build: with the owner's ruling" "$BM" '2. A `blocked` task: its `Owner:` line is the owner'"'"'s ruling on it, the status note'
+file_has "spec build: a cut-off build takes only a commit build.json lacks" "$BM" \
+  '- The full hash starts with no listed hash: that run committed. Run'
+file_has "spec build: else it is built again" "$BM" '- No hash, or one `spec status` lists already: build the task again, from item 3.'
+file_has "spec build: a blocked review gets the ruling too" "$BM" '1. A task whose review is `blocked`: its `Owner:` line is the owner'"'"'s ruling on it, found as'
+file_has "spec build: building before a retry too" "$BM" \
+  'Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`'
+line_is "spec build: in-review before the reviewer" "$BM" '2. `second-brain spec status <ID> <task> in-review`.'
+is "spec build: a blocked review's ruling is found before in-review is set" \
+  "$(($(lineno "$BM" '1. A task whose review is `blocked`: its `Owner:` line is the owner') < $(lineno "$BM" '2. `second-brain spec status <ID> <task> in-review`.')))" "1"
+file_has "spec build: a ruling counts only when newer than the stop" "$BM" \
+  'newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.'
+file_has "spec build: a cut-off build's commit is found by its full hash" "$BM" \
+  'hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.'
+file_has "spec build: and a listed hash matches by prefix" "$BM" \
+  '- A hash `spec status` lists under the task is that commit when the full hash starts with it.'
+file_has "contract: a blocked task waits for a ruling newer than its stop" "$here/docs/contract.md" \
+  '- A `blocked` task is launched again with the owner'"'"'s ruling on it, when that ruling is newer than'
+file_has "spec build: sets the result the implementer reports" "$BM" \
+  '6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash'
+file_has "spec build: sets a failed review" "$BM" '6. FAIL: `second-brain spec status <ID> <task> failed`.'
+is "spec build: shows the status once per task, after its review" \
+  "$(grep -c '^[0-9]\. Show the owner `second-brain spec status <ID>`\.$' "$BM")" "1"
+is "spec build: and that is in the review section" \
+  "$(awk '/^## 6\. Review every task/ { on = 1 } /^## 7\./ { on = 0 } on && /^7\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
+  '7. Show the owner `second-brain spec status <ID>`.'
+file_has "spec build: shows the status when a session starts or resumes" "$BM" \
+  '1. Show the owner `second-brain spec status <ID>` as it prints.'
+file_has "spec build: shows the status when the build stops" "$BM" \
+  '1. Show the owner `second-brain spec status <ID>`, the task that stopped the build, and why'
+file_has "spec build: shows the status when it finishes" "$BM" \
+  '4. Show the owner `second-brain spec status <ID>` and the final validation result.'
+for nt in 'Build: started on <branch> at <short hash>.' 'Build: stopped at <task>: <why>.' \
+  'Build: finished; every task passed review, the branch is at <short hash>.' \
+  'Build: the owner ruled on <task>: <the ruling, as written>.'; do
+  file_has "spec build: the status note $nt" "$BM" "\"$nt\""
+done
+file_has "spec build: a task's progress is in build.json alone" "$BM" "A task's progress is in \`build.json\` alone."
+file_has "spec build: reads finish.md when every task passed" "$BM" 'Read `finish.md`, next to this file, and follow it.'
+file_has "spec build: a failed task holds up the later reviews" "$BM" "A task that fails holds up the review of the tasks after it"
+file_has "spec build: keeps track of the build" "$BM" "You keep track of the build"
+IM="$here/agents/implementer.md"
+file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
+file_has "implementer: replies with its commit and one line" "$IM" \
+  '- Reply in two lines: `Commit: <short hash>`, then one line on what you built.'
+file_has "implementer: fixes the packet's issues on a retry" "$IM" "On a retry, the packet's \`## Issues\` lists what the reviewer logged."
+file_has "implementer: calls what earlier tasks provide" "$IM" "The packet's \`## Uses\` names what earlier tasks provide."
+file_has "implementer: runs no check" "$IM" "Run no check, test, linter or build: the reviewer runs them all"
+RV="$here/agents/reviewer.md"
+file_has "reviewer: fetches its own packet" "$RV" '1. Run `second-brain spec packet <story> <task> --project "<project>"`.'
+file_has "reviewer: reads the diff from the file the helper writes" "$RV" "2. Read the change from the file the packet's \`diff:\` line names."
+file_has "reviewer: logs each issue with a proposed fix" "$RV" 'second-brain spec issue <story> <task>'
+file_has "reviewer: replies with its verdict and the number of issues" "$RV" '`VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`'
+file_has "reviewer: runs every check" "$RV" "You run every check: the implementer runs none."
+CT="$here/docs/contract.md"
+line_is "contract: the skill takes each report from the agent's result" "$CT" \
+  '- The skill takes each report from the agent'"'"'s result. Nothing is relayed by hand.'
+file_has "contract: the agents run spec packet themselves" "$CT" \
+  '`spec packet <ID> <task>` themselves. The skill never prints a packet into the owner'"'"'s session.'
+file_has "contract: build progress is build.json in the vault" "$CT" \
+  "- A spec story's build progress is \`build.json\` in its task folder in the vault, whatever its"
+file_has "guide: the build runs in your session" "$here/docs/guide.md" \
+  '- The build runs in your session. The `spec` skill launches `implementer` and `reviewer` one at a'
+file_has "guide: progress is in build.json, never in the README" "$here/docs/guide.md" 'issues and times are in `build.json`, never in the'
+file_has "changelog: names build.md" "$here/CHANGELOG.md" '`skills/spec/build.md`'
+file_has "changelog: names build.json" "$here/CHANGELOG.md" 'build progress is in `build.json`'
 file_has "spec tasks template: every task is built first, then reviewed" "$here/templates/spec-tasks.md.tmpl" "All tasks are built, then reviewed, in order."
-file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
+file_has "spec phases: written for the build build.md runs" "$here/skills/spec/phases.md" "Write every phase for the build \`build.md\` runs."
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
 
 # ---------------------------------------------------------------- spec and validation --json
@@ -2862,48 +3169,47 @@ json_is "spec tasks --json: the same fields as the text" \
 sb spec status SP-9 --json
 rc_is "spec status --json: a story with no build exits 0" 0
 out_is "spec status --json: and prints an empty array" "[]"
+B9="$vault/$S/tasks/SP-9/build.json"
 sb spec status SP-9 T1 built --commit abc1234
 sb spec status SP-9 T1 in-review --commit def5678
-line_is "spec status: a row with no commit keeps commits - over a second write" "$L9" \
-  '- T2 - passed - commits - - Two - parts'
-line_is "spec status: and so does a row with no title" "$L9" '- T3 - todo - commits - - -'
+sb spec status SP-9
+out_has "spec status: a task with no commit prints commits -" 'T2 - build: built - review: passed - commits - - Two - parts'
+out_has "spec status: and one with no title prints -" 'T3 - build: todo - review: - - commits - - -'
 sb spec issue SP-9 T1 'Say "hi" \ there.' --fix "Tab${TAB}here."
 sb spec status SP-9 T2 passed --commit 0a1b2c3
 sb spec status SP-9 T3 todo --commit 1234abc
 sb spec status SP-9 --json
 rc_is "spec status --json: exit 0" 0
 json_ok "spec status --json: parses as JSON"
-row1='{"id": "T1", "state": "in-review", "commits": ["abc1234", "def5678"], '
+row1='{"id": "T1", "build": "built", "review": "in-review", "commits": ["abc1234", "def5678"], '
 row1="$row1"'"title": "Say \"hi\" \\ there", '
 row1="$row1"'"issues": ["Issue 2026-10-08: Say \"hi\" \\ there. Fix: Tab\there."]}'
-out_is "spec status --json: one object per row, commits and issues as arrays" "[
+out_is "spec status --json: one object per task, commits and issues as arrays" "[
   $row1,
-  "'{"id": "T2", "state": "passed", "commits": ["0a1b2c3"], "title": "Two - parts", "issues": []},
-  {"id": "T3", "state": "todo", "commits": ["1234abc"], "title": "-", "issues": []}
+  "'{"id": "T2", "build": "built", "review": "passed", "commits": ["0a1b2c3"], "title": "Two - parts", "issues": []},
+  {"id": "T3", "build": "todo", "review": "-", "commits": ["1234abc"], "title": "-", "issues": []}
 ]'
 sb spec status SP-9
 text="$OUT"
 sb spec status SP-9 --json
 json_is "spec status --json: the same fields as the text" 'for r in d:
-    c = ", ".join("`" + h + "`" for h in r["commits"]) or "-"
-    print("- %s - %s - commits %s - %s" % (r["id"], r["state"], c, r["title"]))
+    c = ", ".join(r["commits"]) or "-"
+    print("%s - build: %s - review: %s - commits %s - %s" % (r["id"], r["build"], r["review"], c, r["title"]))
     for i in r["issues"]: print("  - " + i)' "$text"
-edit "$L9" 's/^- T2 - passed - commits `0a1b2c3` - /- T2 - passed - commits - - /'
-sb spec status SP-9 --json
-out_has "spec status --json: a row with no commit, its title holding a dash" \
-  '{"id": "T2", "state": "passed", "commits": [], "title": "Two - parts", "issues": []}'
+OUT="$(cat "$B9")"
+json_ok "spec issue: build.json with quotes, a backslash and a tab parses as JSON"
+json_is "spec issue: and reads back as written" 'i = d["tasks"][0]["issues"][0]; print(i["issue"] == "Say \"hi\" \\ there." and i["fix"] == "Tab\there.")' "True"
+cp "$B9" "$tmp/b9.before"
 sb spec status SP-9 T1 built --json
 rc_is "spec status --json: a task and a state exit 5" 5
-file_has "spec status --json: and nothing is written" "$L9" \
-  '- T1 - in-review - commits `abc1234`, `def5678` - '
+if cmp -s "$B9" "$tmp/b9.before"; then pass "spec status --json: and nothing is written"; else fail "spec status --json: and nothing is written"; fi
 printf '%s\n' '# SP-9 - Tasks' '' '- [ ] T1 - Say "hi" \ there' '  - Requirements: R1' '- [ ] T3' \
   >"$vault/$S/tasks/SP-9/spec/tasks.md"
 sb spec status SP-9 T1 built
 sb spec status SP-9 T1 built
-line_is "spec status: a row whose task left tasks.md keeps its title over two writes" "$L9" \
-  '- T2 - passed - commits - - Two - parts'
-is "spec status: and it stays at the end" "$(section_of "$L9" Build | tail -1)" \
-  '- T2 - passed - commits - - Two - parts'
+sb spec status SP-9
+is "spec status: a task that left tasks.md keeps its title over two writes, at the end" "$(printf '%s\n' "$OUT" | tail -1)" \
+  'T2 - build: built - review: passed - commits 0a1b2c3 - Two - parts'
 printf '%s\n' "- [ ] T4 - $(printf 'Caf\303\251 \001') a${CR}b" >>"$vault/$S/tasks/SP-9/spec/tasks.md"
 sb spec tasks SP-9 --json
 json_ok "spec tasks --json: a title with UTF-8, a control character and a CR parses as JSON"
@@ -2958,7 +3264,7 @@ file_has "README: points to the guide's Spec-driven delivery" "$RM" \
   '`## Spec-driven delivery` in `docs/guide.md`'
 line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
   "## Spec-driven delivery"
-for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
+for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
 done
@@ -2981,13 +3287,13 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
   'skills/story-tracker/SKILL.md|## Spec-driven stories' \
-  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build' \
+  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/build.md|## 2. Ready to build' \
   'skills/spec/phases.md|## The chat' 'skills/spec/phases.md|## The spec check'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
   line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"
 done
-for pf in skills/sprint/close.md skills/spec/SKILL.md agents/spec-lead.md .github/workflows/test.yml \
+for pf in skills/sprint/close.md skills/spec/SKILL.md skills/spec/build.md .github/workflows/test.yml \
   .github/workflows/e2e.yml scripts/e2e-claude.sh .claude-plugin/plugin.json CHANGELOG.md; do
   file_has "guide: points to $pf" "$GD" "\`$pf\`"
   exists "guide: $pf exists" "$here/$pf"
@@ -3012,7 +3318,7 @@ file_has "guide: vault-setup asks for the task layout" "$here/skills/vault-setup
   '| `task_layout` | whether a done or abandoned task moves once'
 file_has "guide: the status overview flags a story waiting on a task not done" "$here/skills/story-tracker/status.md" \
   'story waits on each task in its `depends_on` cell that is not `done`'
-file_has "guide: no build starts without the repo's steps" "$here/skills/spec/SKILL.md" \
+file_has "guide: no build starts without the repo's steps" "$here/skills/spec/build.md" \
   '`second-brain validation <project> <repo>` must print the repo'"'"'s steps'
 
 # ---------------------------------------------------------------- a new story's branch is cut from the base branch
@@ -3030,7 +3336,7 @@ line_is "story-tracker: a new story's branch is cut from the base branch" "$ST" 
   "- A new story's branch is cut from the base branch."
 line_is "story-tracker: a story that needs another story's code is cut from its branch" "$ST" \
   "  - A story that needs another story's code not yet in the base branch is cut from that story's"
-file_has "spec skill: cuts a missing branch as the branch check says" "$here/skills/spec/SKILL.md" \
+file_has "spec build: cuts a missing branch as the branch check says" "$here/skills/spec/build.md" \
   'No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.'
 line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
   "- \`base_branch\` is the branch a new story's branch is cut from, as"
@@ -3038,10 +3344,10 @@ line_is "contract: base_branch is where a new story's branch is cut from" "$here
 # ---------------------------------------------------------------- a passed spec build is finished
 FN="$here/skills/spec/finish.md"
 exists "spec finish: the step has its own file" "$FN"
-file_has "spec skill: reads finish.md only when the build finished" "$SK" \
-  'Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.'
+file_has "spec build: reads finish.md only when the build finished" "$here/skills/spec/build.md" \
+  'Read `finish.md`, next to this file, and follow it.'
 file_has "spec finish: read only when every task passed" "$FN" \
-  'Read this file only when `spec-lead` finished with every task passed.'
+  'Read this file only when the build finished with every task passed, as `build.md` says.'
 file_has "spec finish: the story's branch stays its own" "$FN" \
   "- The story's \`branch\` stays \`<branch>\` whatever the owner picks: review fixes go on it."
 file_lacks "spec finish: never sets the story's branch" "$FN" 'task set <ID> branch='

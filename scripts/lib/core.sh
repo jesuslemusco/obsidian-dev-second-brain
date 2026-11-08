@@ -93,6 +93,21 @@ sb_today() {
   fi
 }
 
+# Print the time build.json records, as YYYY-MM-DDTHH:MM:SS+HH:MM. SECOND_BRAIN_NOW overrides it;
+# with SECOND_BRAIN_TODAY alone it is that day at midnight.
+sb_now() {
+  local t z
+  if [ -n "${SECOND_BRAIN_NOW:-}" ]; then
+    printf '%s\n' "$SECOND_BRAIN_NOW"
+  elif [ -n "${SECOND_BRAIN_TODAY:-}" ]; then
+    printf '%sT00:00:00+00:00\n' "$SECOND_BRAIN_TODAY"
+  else
+    t="$(date +%Y-%m-%dT%H:%M:%S%z)"
+    z="${t#"${t%?????}"}"
+    printf '%s%s:%s\n' "${t%?????}" "${z%??}" "${z#???}"
+  fi
+}
+
 # Print the awk functions shared by the awk programs in this plugin.
 # Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
 # pattern in a UTF-8 locale, which stops the whole program.

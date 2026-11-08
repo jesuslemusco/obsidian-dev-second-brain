@@ -545,8 +545,8 @@ printf '%s\n' '---' "next: \"Run /${OLD}sprint open\"" '---' '# Rename' '' \
   "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
   '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
   '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}sprint" '' \
-  '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}spec-lead" \
-  '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}spec-lead." >"$N"
+  '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}reviewer" \
+  '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}reviewer." >"$N"
 printf '%s\n' '# Changes' '' "- ${OLD}spec stopped working." >"$vault/$P/docs/CHANGELOG.md"
 mkdir -p "$vault/.trash"
 printf '%s\n' "${OLD}spec" >"$vault/.trash/old.md"
@@ -558,7 +558,7 @@ is "old-namespace: the fix hands the vault lines to docs-keeper" "$(fix_of old-n
   "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:"
 edit "$N" "2s/$OLD/odsb:/;6s/$OLD/odsb:/;11s/$OLD/odsb:/;23s/$OLD/odsb:/;28s/$OLD/odsb:/"
 n_ex3="$(awk 'END { print NR }' "$T/EX-3/README.md")"
-printf '%s\n' '## Build' '' "- T1 - passed - commits - - ${OLD}spec-lead" '## Next' "- Run ${OLD}spec." >>"$T/EX-3/README.md"
+printf '%s\n' '## Build' '' "- T1 - passed - commits - - ${OLD}reviewer" '## Next' "- Run ${OLD}spec." >>"$T/EX-3/README.md"
 doc
 chk "old-namespace: a task README's Build is history, the section after it is not" old-namespace vault \
   "warn | 1 | $P/tasks/EX-3/README.md:$((n_ex3 + 5))"

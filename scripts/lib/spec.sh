@@ -60,10 +60,12 @@ sb_spec_need_folder() {
 }
 
 # Resolve the spec of the task in SB_T_FILE. Sets SB_SP_DELIVERY, SB_SP_HOME, SB_SP_REPO (or "-"),
-# SB_SP_DIR (absolute) and SB_SP_SHOW (the folder as it is printed). Exits 1, with the reason, when
-# the spec lives in a repo that cannot be reached.
+# SB_SP_DIR (absolute), SB_SP_SHOW (the folder as it is printed) and SB_SP_BJ (the story's
+# build.json, in its task folder whatever its spec_home). Exits 1, with the reason, when the spec
+# lives in a repo that cannot be reached.
 sb_spec_resolve() {
   local sub="" subfile="" row name path state
+  SB_SP_BJ="$(dirname "$SB_T_FILE")/build.json"
   sub="$(sb_fm_get "$SB_T_FILE" subproject 2>/dev/null)"
   if [ -n "$sub" ] && sb_sub_resolve "$sub"; then subfile="$SB_S_FILE"; fi
   SB_SP_DELIVERY="$(sb_spec_value delivery "$SB_T_FILE" "$subfile" "$SB_P_PROFILE")"
@@ -271,10 +273,34 @@ sb_spec_trace() {
     }' "$1" "$2"
 }
 
+# Print the "## Uses" body of a task's packet: for each task its "- Uses:" line names, in that
+# order, "### <task> - <title>" and that item's "- Provides:" lines, as written. Exits 1 when a task
+# it names is not in tasks.md, is not an earlier task, or has no "- Provides:" line.
+# Usage: sb_spec_uses <tasks.md> <task> <the Uses value>
+sb_spec_uses() {
+  local tfile="$1" task="$2" rows pos u hit upos uid uti item prov
+  rows="$(sb_spec_task_rows "$tfile")"
+  pos="$(printf '%s\n' "$rows" | SB_ID="$task" awk -F'\t' 'toupper($1) == toupper(ENVIRON["SB_ID"]) { print NR; exit }')"
+  printf '%s\n' "$3" | tr ',' '\n' | while IFS= read -r u; do
+    u="$(printf '%s' "$u" | tr -d ' \t\r')"
+    [ -n "$u" ] || continue
+    hit="$(printf '%s\n' "$rows" | SB_ID="$u" awk -F'\t' 'toupper($1) == toupper(ENVIRON["SB_ID"]) { print NR "\t" $1 "\t" $3; exit }')"
+    [ -n "$hit" ] || sb_die 1 "$task uses $u, which $SB_SP_SHOW/tasks.md has no item for"
+    IFS=$'\t' read -r upos uid uti <<EOF
+$hit
+EOF
+    [ "$upos" -lt "$pos" ] || sb_die 1 "$task uses $uid, which is not an earlier task in $SB_SP_SHOW/tasks.md"
+    item="$(sb_spec_task_item "$tfile" "$uid")" || sb_die 1 "two items in $SB_SP_SHOW/tasks.md have the id $uid: give each task its own id"
+    prov="$(printf '%s\n' "$item" | LC_ALL=C awk '{ sub(/\r$/, "") } /^[ \t]+-[ \t]+[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Ss]:/ { sub(/^[ \t]+/, ""); print }')"
+    [ -n "$prov" ] || sb_die 1 "$task uses $uid, which has no - Provides: line in $SB_SP_SHOW/tasks.md"
+    printf '### %s - %s\n\n%s\n\n' "$uid" "$uti" "$prov"
+  done
+}
+
 # Print the context packet of one task: what the implementer is given, and nothing else.
 sb_spec_packet() {
-  local task="$1" tfile rfile dfile item reqs design title branch row name path state out miss rc
-  local vrow vname vhome vfile vshow vstate vr
+  local task="$1" tfile rfile dfile item reqs design uses title branch row name path state out miss rc
+  local vrow vname vhome vfile vshow vstate vr usesout="" binfo commits issues c clist="" diffline f
   sb_spec_need_file tasks
   tfile="$SB_SP_FILE"
   sb_spec_need_file requirements
@@ -292,11 +318,20 @@ sb_spec_packet() {
   title="$(printf '%s\n' "$item" | sb_spec_task_rows | cut -f3)"
   reqs="$(printf '%s\n' "$item" | sb_spec_field Requirements)"
   design="$(printf '%s\n' "$item" | sb_spec_field Design)"
+  uses="$(printf '%s\n' "$item" | sb_spec_field Uses)"
   case "$(printf '%s' "$reqs" | tr '[:upper:]' '[:lower:]')" in
     '' | '-' | none | n/a | '<'*) sb_die 1 "$task names no requirement in $SB_SP_SHOW/tasks.md" ;;
   esac
-  case "$reqs$design" in *,) sb_die 1 "a field of $task ends in a comma: write each field of a task on one line" ;; esac
+  for f in "$reqs" "$design" "$uses"; do
+    case "$f" in *,) sb_die 1 "a field of $task ends in a comma: write each field of a task on one line" ;; esac
+  done
   case "$(printf '%s' "$design" | tr '[:upper:]' '[:lower:]')" in '-' | none | n/a | '<'*) design="" ;; esac
+  case "$(printf '%s' "$uses" | tr '[:upper:]' '[:lower:]')" in '-' | none | n/a | '<'*) uses="" ;; esac
+  if [ -n "$uses" ]; then usesout="$(sb_spec_uses "$tfile" "$task" "$uses")" || exit $?; fi
+  # The task's commits and issues in build.json; the diff of those commits goes in a temp file.
+  binfo="$(sb_spec_build_run SB_MODE=task SB_TASK="$task")" || { rc=$?; sb_spec_build_fail "$rc"; }
+  commits="$(printf '%s\n' "$binfo" | sed -n '1s/^commits: //p')"
+  issues="$(printf '%s\n' "$binfo" | sed '1d')"
   [ "$SB_SP_REPO" != "-" ] || sb_die 1 "$SB_P_NAME lists no repo to build $task in: add one to repos in $SB_P_PATH/claude/profile.md"
   row="$(sb_spec_repo_row "$SB_SP_REPO")" || sb_die 1 "$SB_SP_REPO is not in repos of $SB_P_NAME"
   IFS=$'\t' read -r name path state <<EOF
@@ -308,11 +343,28 @@ EOF
   IFS=$'\t' read -r vname vhome vfile vshow vstate vr <<EOF
 $vrow
 EOF
+  diffline="none (no commit)"
+  for c in $(printf '%s' "$commits" | tr ',' ' '); do
+    case "$c" in *[!0-9a-fA-F]*) ;; *) clist="$clist $c" ;; esac
+  done
+  if [ -n "$clist" ]; then
+    f="$(mktemp "${TMPDIR:-/tmp}/sb-diff-$SB_T_ID-$task.XXXXXX")" || sb_die 1 "cannot write a temp file"
+    diffline="none (git show failed)"
+    for c in $clist; do
+      if git -C "$path" show --no-color --no-ext-diff "$c" >>"$f" 2>/dev/null; then
+        diffline="$(sb_path_out "$f")"
+      else
+        sb_note "git show $c failed in $name"
+      fi
+    done
+    [ "$diffline" != "none (git show failed)" ] || rm -f "$f"
+  fi
   out="$(mktemp "${TMPDIR:-/tmp}/sb-packet.XXXXXX")" || sb_die 1 "cannot write a temp file"
   {
     printf 'story: %s\ntask: %s\ntitle: %s\nrepo: %s\nrepo_path: %s\nbranch: %s\n' \
       "$SB_T_ID" "$task" "$title" "$name" "$(sb_path_out "$path")" "${branch:--}"
     if [ "$vstate" = "ok" ]; then printf 'validation: %s\n' "$vshow"; else printf 'validation: none (%s)\n' "${vstate:-unknown}"; fi
+    printf 'commits: %s\ndiff: %s\n' "${commits:--}" "$diffline"
     printf '\n## Task\n\n%s\n\n## Requirements\n\n' "$item"
   } >"$out"
   if ! miss="$(sb_spec_sections "$rfile" id "$reqs" 2>&1 >>"$out")"; then
@@ -332,6 +384,8 @@ EOF
       esac
     fi
   fi
+  if [ -n "$usesout" ]; then printf '## Uses\n\n%s\n\n' "$usesout" >>"$out"; fi
+  if [ -n "$issues" ]; then printf '## Issues\n\n%s\n\n' "$issues" >>"$out"; fi
   if [ "$vstate" = "ok" ]; then
     { printf '## Validation\n\n'; sb_section "$vfile" "$name"; } >>"$out"
   fi
@@ -468,118 +522,6 @@ function build_row(t,   r, p) {
 }'
 }
 
-# Rewrite the "## Build" section of the task README in SB_T_FILE: one row per task of tasks.md,
-# "- T<n> - <state> - commits <list or -> - <title>", each with its issues under it as
-# "  - Issue <date>: <issue> Fix: <fix>". Rows come from tasks.md in order, a ticked task starting as
-# passed; rows of tasks no longer there are kept at the end. Then set the state, add the commit or
-# add the issue of one task. The section is made before "## Status notes" when the README has none.
-# Line endings and the final newline are kept. Returns 1 when tasks.md has no such task.
-sb_spec_build_write() {
-  local task="$1" state="$2" commit="$3" issue="$4" fix="$5" tmp nofinal=0 rc=0
-  sb_spec_need_file tasks
-  [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
-  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
-  SB_OUT="$tmp" SB_ROWS="$(sb_spec_task_rows "$SB_SP_FILE")" SB_TASK="$task" SB_STATE="$state" \
-    SB_COMMIT="$commit" SB_ISSUE="$issue" SB_FIX="$fix" SB_DATE="$(sb_today)" SB_NOFINAL="$nofinal" \
-    LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
-    function out_line(s, islast) {
-      if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > o
-      else print s > o
-    }
-    function addrow(id, st, cm, ti,   k) {
-      k = toupper(id)
-      if (k in idx) return idx[k]
-      nr++; rid[nr] = id; rst[nr] = st; rcm[nr] = cm; rti[nr] = ti; nis[nr] = 0; idx[k] = nr
-      return nr
-    }
-    {
-      if (NR == 1) eol = ($0 ~ /\r$/ ? "\r" : "")
-      line[NR] = $0; t = $0; sub(/\r$/, "", t); if (NR == 1) sub(/^\357\273\277/, "", t); txt[NR] = t
-    }
-    END {
-      n = NR; o = ENVIRON["SB_OUT"]; fm = 0; fence = 0; at = 0; last = 0; before = 0
-      for (i = 1; i <= n; i++) {
-        t = txt[i]
-        if (i == 1 && t == "---") { fm = 1; continue }
-        if (fm) { if (t == "---") fm = 0; continue }
-        if (t ~ /^[ \t]*(```|~~~)/) { fence = !fence; if (at && !last) inb[i] = 1; continue }
-        if (!fence && t ~ /^##? /) {
-          if (at && !last) last = i - 1
-          h = tolower(t); sub(/[ \t#]+$/, "", h)
-          if (!at && h == "## build") { at = i; continue }
-          if (!before && h == "## status notes") before = i
-          continue
-        }
-        if (at && !last) inb[i] = 1
-      }
-      if (at && !last) last = n
-      # The rows in the section as it is: kept with their issues.
-      nr = 0; cur = 0
-      if (at) for (i = at + 1; i <= last; i++) {
-        t = txt[i]
-        if (t ~ /^- T[0-9]+ - /) {
-          build_row(t)
-          ex_id[++ne] = B_ID; ex_st[ne] = B_ST; ex_cm[ne] = B_CM; ex_ti[ne] = B_TI; ex_ni[ne] = 0; cur = ne
-          continue
-        }
-        if (cur && t ~ /^[ \t]+- /) { ex_is[cur, ++ex_ni[cur]] = trim(substr(t, index(t, "-") + 2)) }
-      }
-      # tasks.md first, in its order; then any row it no longer has.
-      nt = split(ENVIRON["SB_ROWS"], tr, "\n")
-      for (i = 1; i <= nt; i++) {
-        if (tr[i] == "") continue
-        split(tr[i], c, "\t")
-        r = addrow(c[1], (c[2] == "done" ? "passed" : "todo"), "-", c[3])
-        rti[r] = c[3]
-      }
-      for (e = 1; e <= ne; e++) {
-        k = toupper(ex_id[e]); r = (k in idx) ? idx[k] : addrow(ex_id[e], ex_st[e], ex_cm[e], ex_ti[e])
-        rst[r] = ex_st[e]; rcm[r] = ex_cm[e]
-        for (j = 1; j <= ex_ni[e]; j++) ris[r, ++nis[r]] = ex_is[e, j]
-      }
-      k = toupper(ENVIRON["SB_TASK"])
-      if (!(k in idx)) exit 3
-      r = idx[k]
-      if (ENVIRON["SB_STATE"] != "") rst[r] = ENVIRON["SB_STATE"]
-      cmt = ENVIRON["SB_COMMIT"]
-      if (cmt != "") {
-        q = "`" cmt "`"
-        if (rcm[r] == "-" || rcm[r] == "") rcm[r] = q
-        else if (index(", " rcm[r] ", ", ", " q ", ") == 0) rcm[r] = rcm[r] ", " q
-      }
-      if (ENVIRON["SB_ISSUE"] != "") ris[r, ++nis[r]] = "Issue " ENVIRON["SB_DATE"] ": " ENVIRON["SB_ISSUE"] " Fix: " ENVIRON["SB_FIX"]
-      # The section, as it is written.
-      sec = "## Build" eol "\n" eol
-      for (r = 1; r <= nr; r++) {
-        sec = sec "\n- " rid[r] " - " rst[r] " - commits " rcm[r] " - " rti[r] eol
-        for (j = 1; j <= nis[r]; j++) sec = sec "\n  - " ris[r, j] eol
-      }
-      ns = split(sec, sl, "\n")
-      if (at) {
-        for (i = 1; i < at; i++) out_line(line[i], 0)
-        for (j = 1; j <= ns; j++) out_line(sl[j], last == n && j == ns)
-        if (last < n) out_line(eol, 0)
-        for (i = last + 1; i <= n; i++) out_line(line[i], i == n)
-      } else if (before) {
-        for (i = 1; i < before; i++) out_line(line[i], 0)
-        for (j = 1; j <= ns; j++) out_line(sl[j], 0)
-        out_line(eol, 0)
-        for (i = before; i <= n; i++) out_line(line[i], i == n)
-      } else {
-        for (i = 1; i <= n; i++) out_line(line[i], 0)
-        out_line(eol, 0)
-        for (j = 1; j <= ns; j++) out_line(sl[j], j == ns)
-      }
-    }' "$SB_T_FILE" || rc=$?
-  if [ "$rc" -ne 0 ]; then
-    rm -f "$tmp"
-    [ "$rc" -eq 3 ] && return 1
-    sb_die 1 "cannot write $SB_T_REL"
-  fi
-  cat "$tmp" >"$SB_T_FILE" || { rm -f "$tmp"; sb_die 1 "cannot write $SB_T_REL"; }
-  rm -f "$tmp"
-}
-
 # Read TSV rows on stdin; print them as a JSON array of objects, one key per column, in order.
 # Usage: sb_spec_json_rows <key>...
 sb_spec_json_rows() {
@@ -594,59 +536,366 @@ sb_spec_json_rows() {
     END { print (rows ? "\n]" : "]") }'
 }
 
-# Read the body of a "## Build" section on stdin; print its task rows as a JSON array of objects:
-# id, state, commits (the hashes, without backticks), title and issues (each line under the row).
-sb_spec_build_json() {
-  LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
-    function emit(   j, l) {
-      if (!have) return
-      l = ""; for (j = 1; j <= ni; j++) l = l (j > 1 ? ", " : "") jstr(iss[j])
-      printf "%s\n  {\"id\": %s, \"state\": %s, ", (rows++ ? "," : ""), jstr(id), jstr(st)
-      printf "\"commits\": [%s], ", cm
-      printf "\"title\": %s, \"issues\": [%s]}", jstr(ti == "" ? "-" : ti), l
-      have = 0; ni = 0
-    }
-    BEGIN { printf "[" }
-    { sub(/\r$/, "") }
-    /^- T[0-9]+ - / {
-      emit()
-      build_row($0); id = B_ID; st = B_ST; ti = B_TI; cm = ""
-      n = (B_CM == "-" ? 0 : split(B_CM, h, ","))
-      for (j = 1; j <= n; j++) {
-        v = h[j]; gsub(/`/, "", v); v = trim(v)
-        if (v != "") cm = cm (cm == "" ? "" : ", ") jstr(v)
+# Print the awk functions that read JSON. jp_add(line) adds one line of the text to JC[1..JL], one
+# byte each, and jp_parse() reads it: J[path] gets each scalar, JT[path] its type (o, a, s or l for
+# a number, true, false or null) and JN[path] an array's length. A path is the keys and the array
+# indexes, from 1, joined by SUBSEP. jp_parse returns 0 when the text is not one JSON value, blank
+# text included. Each byte is read once: a substr per byte of the whole text costs its length on
+# some awks.
+sb_json_awk() {
+  printf '%s\n' '
+function jp_add(s,   n, i, ch) {
+  if (JP_SPLIT == "") JP_SPLIT = (split("ab", ch, "") == 2 ? 1 : 0)
+  if (JP_SPLIT) { n = split(s, ch, ""); for (i = 1; i <= n; i++) JC[++JL] = ch[i] }
+  else { n = length(s); for (i = 1; i <= n; i++) JC[++JL] = substr(s, i, 1) }
+  JC[++JL] = "\n"
+}
+function jp_parse() {
+  JI = 1; JERR = 0
+  jp_ws()
+  if (JI > JL) return 0
+  if (!jp_val("")) return 0
+  jp_ws()
+  return JI > JL
+}
+function jp_ws(   c) {
+  while (JI <= JL) { c = JC[JI]; if (c != " " && c != "\t" && c != "\n" && c != "\r") break; JI++ }
+}
+function jp_key(p, k) { return (p == "" ? k : p SUBSEP k) }
+function jp_take(n,   o, i) {
+  o = ""
+  for (i = 0; i < n && JI + i <= JL; i++) o = o JC[JI + i]
+  return o
+}
+function jp_val(p,   c, t) {
+  jp_ws()
+  if (JI > JL) return 0
+  c = JC[JI]
+  if (c == "{") return jp_obj(p)
+  if (c == "[") return jp_arr(p)
+  if (c == "\"") { JT[p] = "s"; J[p] = jp_str(); return !JERR }
+  t = ""
+  while (JI <= JL && index("+-.0123456789Eabcdefilnrstu", JC[JI])) t = t JC[JI++]
+  if (t !~ /^(-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?|true|false|null)$/) return 0
+  JT[p] = "l"; J[p] = t
+  return 1
+}
+function jp_obj(p,   k, c) {
+  JI++; JT[p] = "o"; jp_ws()
+  if (JC[JI] == "}") { JI++; return 1 }
+  while (1) {
+    jp_ws()
+    if (JI > JL || JC[JI] != "\"") return 0
+    k = jp_str()
+    if (JERR) return 0
+    jp_ws()
+    if (JI > JL || JC[JI] != ":") return 0
+    JI++
+    if (!jp_val(jp_key(p, k))) return 0
+    jp_ws()
+    if (JI > JL) return 0
+    c = JC[JI++]
+    if (c == "}") return 1
+    if (c != ",") return 0
+  }
+}
+function jp_arr(p,   n, c) {
+  JI++; JT[p] = "a"; JN[p] = 0; n = 0; jp_ws()
+  if (JC[JI] == "]") { JI++; return 1 }
+  while (1) {
+    if (!jp_val(jp_key(p, ++n))) return 0
+    JN[p] = n
+    jp_ws()
+    if (JI > JL) return 0
+    c = JC[JI++]
+    if (c == "]") return 1
+    if (c != ",") return 0
+  }
+}
+function jp_str(   o, c, e, cp, lo) {
+  JI++; o = ""
+  while (JI <= JL) {
+    c = JC[JI]
+    if (c == "\"") { JI++; return o }
+    if (c != "\\") { o = o c; JI++; continue }
+    e = JC[JI + 1]; JI += 2
+    if (e == "n") o = o "\n"
+    else if (e == "t") o = o "\t"
+    else if (e == "r") o = o "\r"
+    else if (e == "b") o = o "\010"
+    else if (e == "f") o = o "\014"
+    else if (e == "u") {
+      cp = jp_hex(jp_take(4)); JI += 4
+      if (cp < 0) { JERR = 1; return o }
+      if (cp >= 55296 && cp < 56320 && JC[JI] == "\\" && JC[JI + 1] == "u") {
+        JI += 2; lo = jp_hex(jp_take(4))
+        if (lo >= 56320 && lo < 57344) { cp = 65536 + (cp - 55296) * 1024 + (lo - 56320); JI += 4 }
+        else JI -= 2
       }
-      have = 1
-      next
+      o = o jp_utf8(cp)
     }
-    have && /^[ \t]+- / { iss[++ni] = trim(substr($0, index($0, "-") + 2)) }
-    END { emit(); print (rows ? "\n]" : "]") }'
+    else o = o e
+  }
+  JERR = 1
+  return o
+}
+function jp_hex(h,   i, v, d) {
+  if (length(h) != 4) return -1
+  v = 0; h = tolower(h)
+  for (i = 1; i <= 4; i++) { d = index("0123456789abcdef", substr(h, i, 1)); if (!d) return -1; v = v * 16 + d - 1 }
+  return v
+}
+function jp_utf8(cp) {
+  if (cp < 128) return sprintf("%c", cp)
+  if (cp < 2048) return sprintf("%c%c", 192 + int(cp / 64), 128 + cp % 64)
+  if (cp < 65536) return sprintf("%c%c%c", 224 + int(cp / 4096), 128 + int(cp / 64) % 64, 128 + cp % 64)
+  return sprintf("%c%c%c%c", 240 + int(cp / 262144), 128 + int(cp / 4096) % 64, 128 + int(cp / 64) % 64, 128 + cp % 64)
+}'
 }
 
-# second-brain spec status <ID> [<task> <state> [--commit H]] and spec issue <ID> <task> "<issue>"
-# --fix "<fix>": the build log of a spec story, in its README. Each change adds a status note.
-sb_spec_build() {
-  local sub="$1" task="$2" state="$3" commit="$4" issue="$5" fix="$6" session="$7" note
-  if [ "$sub" = "status" ] && [ -z "$task" ]; then
-    sb_section "$SB_T_FILE" "Build" 2>/dev/null || true
-    return 0
-  fi
-  if [ "$sub" = "status" ]; then
-    case "$state" in
-      todo | built | in-review | passed | failed | blocked) ;;
-      *) sb_die 5 "a build state is one of: todo, built, in-review, passed, failed, blocked" ;;
-    esac
-    case "$commit" in '' | [0-9a-fA-F]*) ;; *) sb_die 5 "--commit takes a commit hash: $commit" ;; esac
-    case "$commit" in *[!0-9a-fA-F]*) sb_die 5 "--commit takes a commit hash: $commit" ;; esac
-  fi
-  sb_spec_build_write "$task" "$state" "$commit" "$issue" "$fix" || sb_die 1 "no task $task in $SB_SP_SHOW/tasks.md"
-  task="$(printf '%s' "$task" | tr '[:lower:]' '[:upper:]')"
-  if [ "$sub" = "status" ]; then
-    note="Build: $task $state${commit:+ at $commit}."
+# Run the build program on the story in SB_T_FILE. It reads build.json (SB_SP_BJ, when it is
+# there), the README for a "## Build" section that versions before 0.7.0 wrote, and the rows of
+# tasks.md in SB_ROWS. SB_MODE says what it does:
+# - text, json: print the tasks as spec status prints them; nothing (or []) with no build data.
+# - task: print "commits: <hashes or ->" for the task SB_TASK, then its issue lines.
+# - write: apply SB_OP (status or issue) to SB_TASK, write the JSON to SB_OUT and, when the README
+#   had a "## Build" section, the README without it to SB_OUTMD, and print "moved".
+# Exits 3 when write names no task it knows, 4 when build.json is not a JSON object with a tasks
+# array, blank text included.
+sb_spec_build_awk() {
+  printf '%s\n' "$(sb_awk_lib)$(sb_spec_row_awk)$(sb_json_awk)" '
+function dash(s) { return (s == "" ? "-" : s) }
+function addtask(id, ti,   k) {
+  k = toupper(id)
+  if (k in idx) return idx[k]
+  nt++; tid[nt] = id; tti[nt] = ti; tb[nt] = "todo"; tr[nt] = "-"; ncm[nt] = 0; nis[nt] = 0; nh[nt] = 0
+  idx[k] = nt
+  return nt
+}
+function addcommit(r, c,   j) {
+  for (j = 1; j <= ncm[r]; j++) if (cm[r, j] == c) return
+  cm[r, ++ncm[r]] = c
+}
+function addissue(r, at, se, tx, fx,   j) {
+  j = ++nis[r]; ia[r, j] = at; ise[r, j] = se; itx[r, j] = tx; ifx[r, j] = fx
+}
+function addhist(r, at, se, fd, st,   j) {
+  j = ++nh[r]; ha[r, j] = at; hse[r, j] = se; hfd[r, j] = fd; hst[r, j] = st
+}
+function commits_text(r,   j, s) {
+  s = ""
+  for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") cm[r, j]
+  return dash(s)
+}
+function fold(s) { gsub(/\r\n|\n|\r/, " ", s); return s }
+function issue_line(r, j) { return "Issue " substr(dash(ia[r, j]), 1, 10) ": " fold(itx[r, j]) " Fix: " fold(ifx[r, j]) }
+function md_line(s, islast) {
+  if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > MD
+  else print s > MD
+}
+function write_json(   r, j, s) {
+  printf "{\n  \"story\": %s,\n  \"tasks\": [", jstr(ENVIRON["SB_STORY"]) > JO
+  for (r = 1; r <= nt; r++) {
+    printf "%s\n    {\n      \"id\": %s,\n      \"title\": %s,\n", (r > 1 ? "," : ""), jstr(tid[r]), jstr(dash(tti[r])) > JO
+    printf "      \"build\": %s,\n      \"review\": %s,\n", jstr(tb[r]), jstr(tr[r]) > JO
+    s = ""
+    for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") jstr(cm[r, j])
+    printf "      \"commits\": [%s],\n      \"issues\": [", s > JO
+    for (j = 1; j <= nis[r]; j++)
+      printf "%s\n        {\"at\": %s, \"session\": %s, \"issue\": %s, \"fix\": %s}", (j > 1 ? "," : ""), jstr(dash(ia[r, j])), jstr(dash(ise[r, j])), jstr(itx[r, j]), jstr(ifx[r, j]) > JO
+    printf "%s],\n      \"history\": [", (nis[r] ? "\n      " : "") > JO
+    for (j = 1; j <= nh[r]; j++)
+      printf "%s\n        {\"at\": %s, \"session\": %s, \"field\": %s, \"state\": %s}", (j > 1 ? "," : ""), jstr(dash(ha[r, j])), jstr(dash(hse[r, j])), jstr(hfd[r, j]), jstr(hst[r, j]) > JO
+    printf "%s]\n    }", (nh[r] ? "\n      " : "") > JO
+  }
+  printf "%s]\n}\n", (nt ? "\n  " : "") > JO
+}
+ENVIRON["SB_JF"] == "1" && FILENAME == ARGV[1] { jp_add($0); next }
+{
+  nr++
+  line[nr] = $0; t = $0; sub(/\r$/, "", t); if (nr == 1) sub(/^\357\273\277/, "", t); txt[nr] = t
+}
+END {
+  MD = ENVIRON["SB_OUTMD"]; JO = ENVIRON["SB_OUT"]; mode = ENVIRON["SB_MODE"]
+  # The README "## Build" section, outside frontmatter and fenced code.
+  n = nr; fm = 0; fmend = 0; fence = 0; at = 0; last = 0
+  for (i = 1; i <= n; i++) {
+    t = txt[i]
+    if (i == 1 && t == "---") { fm = 1; continue }
+    if (fm) { if (t == "---") { fm = 0; fmend = i }; continue }
+    if (t ~ /^[ \t]*(```|~~~)/) { fence = !fence; continue }
+    if (!fence && t ~ /^##? /) {
+      if (at && !last) last = i - 1
+      h = tolower(t); sub(/[ \t#]+$/, "", h)
+      if (!at && h == "## build") at = i
+    }
+  }
+  if (at && !last) last = n
+  nold = 0; cur = 0
+  if (at) for (i = at + 1; i <= last; i++) {
+    t = txt[i]
+    if (t ~ /^- T[0-9]+ - /) {
+      build_row(t); nold++; oid[nold] = B_ID; ost[nold] = B_ST; ocm[nold] = B_CM; oti[nold] = B_TI; oni[nold] = 0; cur = nold
+      continue
+    }
+    if (cur && t ~ /^[ \t]+- /) oiss[cur, ++oni[cur]] = trim(substr(t, index(t, "-") + 2))
+  }
+  # tasks.md first, in its order; a ticked task starts as built and passed.
+  nrw = split(ENVIRON["SB_ROWS"], rw, "\n")
+  for (i = 1; i <= nrw; i++) {
+    if (rw[i] == "") continue
+    split(rw[i], c, "\t")
+    r = addtask(c[1], c[3]); inmd[r] = 1
+    if (c[2] == "done") { tb[r] = "built"; tr[r] = "passed" }
+  }
+  # Then build.json, whose tasks win.
+  hasjson = 0
+  if (ENVIRON["SB_JF"] == "1") {
+    if (!jp_parse() || JT[""] != "o" || JT["tasks"] != "a") exit 4
+    hasjson = 1
+    for (q = 1; q <= JN["tasks"]; q++) {
+      p = "tasks" SUBSEP q
+      id = J[p SUBSEP "id"]
+      if (id == "") continue
+      r = addtask(id, J[p SUBSEP "title"]); fromjson[r] = 1
+      if ((p SUBSEP "build") in J) tb[r] = J[p SUBSEP "build"]
+      if ((p SUBSEP "review") in J) tr[r] = J[p SUBSEP "review"]
+      a = p SUBSEP "commits"
+      for (j = 1; j <= JN[a]; j++) addcommit(r, J[a SUBSEP j])
+      a = p SUBSEP "issues"
+      for (j = 1; j <= JN[a]; j++) { e = a SUBSEP j; addissue(r, J[e SUBSEP "at"], J[e SUBSEP "session"], J[e SUBSEP "issue"], J[e SUBSEP "fix"]) }
+      a = p SUBSEP "history"
+      for (j = 1; j <= JN[a]; j++) { e = a SUBSEP j; addhist(r, J[e SUBSEP "at"], J[e SUBSEP "session"], J[e SUBSEP "field"], J[e SUBSEP "state"]) }
+    }
+  }
+  # Then the rows of a README "## Build" section, for each task build.json does not have.
+  for (e = 1; e <= nold; e++) {
+    k = toupper(oid[e])
+    if ((k in idx) && fromjson[idx[k]]) continue
+    r = addtask(oid[e], oti[e]); st = ost[e]; hascm = (ocm[e] != "-" && ocm[e] != "")
+    if (st == "in-review" || st == "passed" || st == "failed") { tb[r] = "built"; tr[r] = st }
+    else if (st == "blocked" && hascm) { tb[r] = "built"; tr[r] = "blocked" }
+    else { tb[r] = st; tr[r] = "-" }
+    if (hascm) {
+      m = split(ocm[e], hh, ",")
+      for (j = 1; j <= m; j++) { v = hh[j]; gsub(/`/, "", v); v = trim(v); if (v != "") addcommit(r, v) }
+    }
+    for (j = 1; j <= oni[e]; j++) {
+      s = oiss[e, j]; d = "-"
+      if (match(s, /^Issue [^:]*: /)) { d = substr(s, 7, RLENGTH - 8); s = substr(s, RLENGTH + 1) }
+      p = index(s, " Fix: ")
+      if (p) addissue(r, d, "-", substr(s, 1, p - 1), substr(s, p + 6))
+      else addissue(r, d, "-", s, "-")
+    }
+  }
+  hasdata = (hasjson || at)
+  if (mode == "text") {
+    if (!hasdata) exit 0
+    for (r = 1; r <= nt; r++) {
+      print tid[r] " - build: " tb[r] " - review: " tr[r] " - commits " commits_text(r) " - " fold(dash(tti[r]))
+      for (j = 1; j <= nis[r]; j++) print "  - " issue_line(r, j)
+    }
+    exit 0
+  }
+  if (mode == "json") {
+    printf "["
+    if (hasdata) for (r = 1; r <= nt; r++) {
+      s = ""
+      for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") jstr(cm[r, j])
+      l = ""
+      for (j = 1; j <= nis[r]; j++) l = l (j > 1 ? ", " : "") jstr(issue_line(r, j))
+      printf "%s\n  {\"id\": %s, \"build\": %s, \"review\": %s, ", (r > 1 ? "," : ""), jstr(tid[r]), jstr(tb[r]), jstr(tr[r])
+      printf "\"commits\": [%s], \"title\": %s, \"issues\": [%s]}", s, jstr(fold(dash(tti[r]))), l
+    }
+    print ((hasdata && nt) ? "\n]" : "]")
+    exit 0
+  }
+  k = toupper(ENVIRON["SB_TASK"]); r = ((k in idx) ? idx[k] : 0)
+  if (mode == "task") {
+    print "commits: " (r ? commits_text(r) : "-")
+    if (r) for (j = 1; j <= nis[r]; j++) print "- " issue_line(r, j)
+    exit 0
+  }
+  if (!r) exit 3
+  now = ENVIRON["SB_NOW"]; se = dash(ENVIRON["SB_SESSION"])
+  if (ENVIRON["SB_OP"] == "status") {
+    st = ENVIRON["SB_STATE"]
+    fd = ((st == "in-review" || st == "passed" || st == "failed" || (st == "blocked" && tr[r] == "in-review")) ? "review" : "build")
+    if (fd == "review") tr[r] = st
+    else tb[r] = st
+    addhist(r, now, se, fd, st)
+    if (ENVIRON["SB_COMMIT"] != "") addcommit(r, ENVIRON["SB_COMMIT"])
+  } else addissue(r, now, se, ENVIRON["SB_ISSUE"], ENVIRON["SB_FIX"])
+  write_json()
+  if (at) {
+    # The section goes; at the end of the README, so do the blank lines before it.
+    c0 = at
+    if (last == n) while (c0 - 1 > fmend && txt[c0 - 1] ~ /^[ \t]*$/) c0--
+    for (i = 1; i < c0; i++) md_line(line[i], 0)
+    for (i = last + 1; i <= n; i++) md_line(line[i], i == n)
+    print "moved"
+  }
+}'
+}
+
+# Run sb_spec_build_awk on the story; the arguments are environment settings, such as SB_MODE=text.
+# build.json is SB_SP_BJ, from sb_spec_resolve; tasks.md is read when it is there.
+sb_spec_build_run() {
+  local rows="" jf=0
+  [ -f "$SB_SP_BJ" ] && jf=1
+  if [ -n "${SB_SP_DIR:-}" ] && [ -f "$SB_SP_DIR/tasks.md" ]; then rows="$(sb_spec_task_rows "$SB_SP_DIR/tasks.md")"; fi
+  if [ "$jf" -eq 1 ]; then
+    env "$@" SB_JF=1 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_SP_BJ" "$SB_T_FILE"
   else
-    note="Build: $task issue: $issue Fix: $fix"
+    env "$@" SB_JF=0 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_T_FILE"
   fi
-  sb_add_status_note "$SB_T_FILE" "$(sb_note_line "$note" "$session")" || sb_die 1 "cannot edit $SB_T_REL"
+}
+
+# Print the build as spec status does: one line per task (text), or the rows as JSON (json).
+sb_spec_build_show() {
+  local rc=0
+  sb_spec_build_run SB_MODE="$1" || rc=$?
+  [ "$rc" -eq 0 ] || sb_spec_build_fail "$rc"
+}
+
+# Exit as a failed build program says: 4 is a build.json that is not a JSON object with a tasks
+# array.
+sb_spec_build_fail() {
+  case "$1" in
+    4) sb_die 1 "$(sb_rel "$SB_SP_BJ") is not a JSON object with a tasks array: fix or remove it" ;;
+    *) sb_die 1 "cannot read or write the build of $SB_T_ID" ;;
+  esac
+}
+
+# second-brain spec status <ID> <task> <state> [--commit H] and spec issue <ID> <task> "<issue>"
+# --fix "<fix>": write the build of a spec story to build.json, and move a README "## Build"
+# section into it. Usage: sb_spec_build <status | issue> <task> <state> <commit> <issue> <fix> <session>
+sb_spec_build() {
+  local sub="$1" task="$2" state="$3" commit="$4" issue="$5" fix="$6" session="$7" tmp tmpmd out rc=0 nofinal=0
+  sb_spec_need_file tasks
+  [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
+  # The new build.json is written next to it, then moved in place: a write cut off leaves the old one.
+  tmp="$SB_SP_BJ.$$.tmp"
+  tmpmd="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
+  # A kill before the move leaves no temp file in the vault.
+  trap 'rm -f "$tmp" "$tmpmd"; exit 1' INT TERM HUP
+  out="$(sb_spec_build_run SB_MODE=write SB_OP="$sub" SB_TASK="$task" SB_STATE="$state" SB_COMMIT="$commit" \
+    SB_ISSUE="$issue" SB_FIX="$fix" SB_SESSION="$session" SB_NOW="$(sb_now)" SB_OUT="$tmp" SB_OUTMD="$tmpmd" \
+    SB_NOFINAL="$nofinal")" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$tmp" "$tmpmd"
+    [ "$rc" -eq 3 ] && sb_die 1 "no task $task in $SB_SP_SHOW/tasks.md"
+    sb_spec_build_fail "$rc"
+  fi
+  # build.json first: a README that cannot be written keeps its section, and build.json wins.
+  mv -f "$tmp" "$SB_SP_BJ" || { rm -f "$tmp" "$tmpmd"; sb_die 1 "cannot write $(sb_rel "$SB_SP_BJ")"; }
+  if [ "$out" = "moved" ]; then
+    cat "$tmpmd" >"$SB_T_FILE" || { rm -f "$tmp" "$tmpmd"; sb_die 1 "cannot write $SB_T_REL"; }
+    sb_note "moved ## Build of $SB_T_REL into $(sb_rel "$SB_SP_BJ")"
+  fi
+  rm -f "$tmp" "$tmpmd"
+  trap - INT TERM HUP
+  task="$(printf '%s' "$task" | tr '[:lower:]' '[:upper:]')"
   printf '%s: %s\n' "$task" "${state:-issue}"
 }
 
@@ -742,10 +991,15 @@ cmd_spec() {
       return 0
       ;;
     status)
-      if [ "$json" -eq 1 ]; then
-        sb_section "$SB_T_FILE" "Build" 2>/dev/null | sb_spec_build_json
+      if [ -z "$task" ]; then
+        if [ "$json" -eq 1 ]; then sb_spec_build_show json; else sb_spec_build_show text; fi
         return 0
       fi
+      case "$third" in
+        todo | building | built | in-review | passed | failed | blocked) ;;
+        *) sb_die 5 "a build state is one of: todo, building, built, blocked; a review state is one of: in-review, passed, failed, blocked" ;;
+      esac
+      case "$commit" in *[!0-9a-fA-F]*) sb_die 5 "--commit takes a commit hash: $commit" ;; esac
       sb_spec_build status "$task" "$third" "$commit" "" "" "$session"
       return 0
       ;;

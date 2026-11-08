@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Implement a story spec-driven - write its requirements, design and tasks with the owner in this chat, one approved phase at a time, then have spec-lead build and review each task.
+description: Implement a story spec-driven - write its requirements, design and tasks with the owner in this chat, one approved phase at a time, then build and review each task here.
 argument-hint: "<ticket id>"
 allowed-tools: Read Bash(second-brain *)
 ---
@@ -39,8 +39,7 @@ A phase changed after its approval has the note `Spec: <phase> reopened.`. An ap
 only when it is newer than every `reopened` note of its own phase or an earlier one.
 
 - Work on the first phase with no approval that counts, in Step 2.
-- All three count: show the owner the build so far, `second-brain spec status <ID>`, then go to
-  Step 3.
+- All three count: go to Step 3.
 - A spec file is missing: run `second-brain spec new <ID>`.
 
 ## Step 2 - One phase at a time
@@ -63,47 +62,15 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
    - After the tasks note, run `second-brain spec link <ID>`.
    - Then go on to the next phase.
 
-## Step 3 - Ready to build
+## Step 3 - The build
 
-1. Check the branch as `## Branch check (start, update, recall)` in
-   `skills/story-tracker/SKILL.md` says.
-   - The repo is the one `second-brain spec <ID>` names, at the path
-     `second-brain repo <project> <repo>` prints.
-   - The branch is the story's `branch`, from `second-brain task head <ID>`.
-   - No branch yet: ask, then cut it as the branch check says, named by `branch_pattern`.
-     Record it with `second-brain task set <ID> branch=<branch>`.
-2. The repo must be on that branch, with nothing uncommitted.
-   - On another branch: ask, then `git -C "<path>" switch <branch>`.
-   - Never stash or discard the owner's changes: ask them to.
-3. `spec_home: repo`: commit the spec files on the story's branch, `git -C "<path>" add spec/<ID>`
-   and `git -C "<path>" commit -m "<ID>: spec"`.
-4. `second-brain validation <project> <repo>` must print the repo's steps, with no `<...>` text
-   left.
-   - Otherwise offer `/odsb:vault-setup validation <project>` and stop.
-5. `second-brain task set <ID> status=in-progress next="spec-lead builds the approved tasks"`.
-6. Launch `odsb:spec-lead` with the Agent tool.
-   - Its prompt: the project, the ticket id, the session id `${CLAUDE_SESSION_ID}`, and
-     `The owner approved the task list.`
-   - Keep its agent id, and wait for its report.
-
-## Step 4 - When spec-lead stops
-
-- Whenever it stops or finishes, show the owner the `## Build` section: `second-brain spec status <ID>`.
-- It stopped on a task, or on the baseline: show the owner its report and ask what to do.
-  - Resume `spec-lead` with SendMessage and the owner's answer as written.
-  - In a new session its agent id is gone: launch it again as Step 3 says.
-- The spec needs a change: write `Spec: <phase> reopened.` as a status note, then go back to
-  Step 2 for that phase.
-  - The owner approves the phases after it again too. Only then does the build go on.
-- It finished: show the task list, one commit per task, and the final validation result.
-  - Then read `${CLAUDE_SKILL_DIR}/finish.md` and follow it.
-  - The story is `in-review`: story-tracker takes it from there.
+The build runs here, in this session, from the approved task list on. Read
+`${CLAUDE_SKILL_DIR}/build.md` once, when a build starts or resumes, and follow it.
 
 ## Rules
 
 - Only the owner approves: never write an approval note the owner did not give.
 - Never pass on an agent's word as the owner's.
 - The owner talks to this session alone: an agent has no AskUserQuestion.
-- This skill writes the spec and no code.
-- `spec-lead` alone launches `implementer` and `reviewer`.
+- This skill writes the spec and no code: `implementer` writes the code.
 - Never start the build before the tasks approval note is written.

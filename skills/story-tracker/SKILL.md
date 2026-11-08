@@ -19,12 +19,12 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 1. `second-brain context`.
    - Command not found: the plugin is not enabled. Say so and stop.
-   - `vault: none`: say no vault is set up, offer `/obsidian-dev-second-brain:vault-setup`, stop.
+   - `vault: none`: say no vault is set up, offer `/odsb:vault-setup`, stop.
 2. Resolve the project, first match wins: the name the user gave
    (`second-brain project --name <N>`), the ticket id (`--key EX-123`), else the `project:` line.
    - `none`, exit 1 or exit 4: show `second-brain projects` and ask.
 3. `second-brain profile <project> --keys` prints the settings the steps below name.
-   - Exit 1: no profile. Say so, offer `/obsidian-dev-second-brain:vault-setup adopt`, stop.
+   - Exit 1: no profile. Say so, offer `/odsb:vault-setup adopt`, stop.
    - A subproject's settings win, from `second-brain subproject <project> <name>`. The subproject
      is the `subproject:` line, the task's `subproject` key, or the one the user names.
    - A new story names its subproject as `## 3. Create the story` in `create.md` says.
@@ -108,7 +108,7 @@ ticket.
   `second-brain spec <ID>`.
 - Read its `delivery` line even when it exits 1 on a repo it cannot reach.
 - `delivery: spec`: say the story is built from a spec and offer
-  `/obsidian-dev-second-brain:spec <ID>`.
+  `/odsb:spec <ID>`.
 - Do not plan or write its code here.
 
 ## Edit an existing story
@@ -127,7 +127,7 @@ ticket.
   with the doc path and what will change.
   - Create that section just before `## Status notes` when it is absent.
 - The story reaches production: start the `docs-keeper` agent
-  (`obsidian-dev-second-brain:docs-keeper`) with the project, the ticket id and the README path.
+  (`odsb:docs-keeper`) with the project, the ticket id and the README path.
   Ask it for Workflow 5, a ticket marked done.
   - Production means its last environment is set to `done`, or the story is set to `done` in a
     project with no environments.

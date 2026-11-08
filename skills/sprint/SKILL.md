@@ -42,9 +42,9 @@ Stop when the setup is missing. Never guess a path.
 
 - `second-brain` is not found: the plugin is not enabled. Say so and stop.
 - `vault: none`, or exit 2: no vault is set up. Say so, offer
-  `/obsidian-dev-second-brain:vault-setup`, stop.
+  `/odsb:vault-setup`, stop.
 - Exit 1 with the vault-setup hint: the profile is missing. Say so, offer
-  `/obsidian-dev-second-brain:vault-setup adopt`, stop.
+  `/odsb:vault-setup adopt`, stop.
 - A profile that only lacks a `## Sprints` section is fine.
 - The user runs vault-setup by name. Do not invoke it from here.
 
@@ -89,7 +89,7 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
    - Joining: `second-brain task set <ID> sprint=<id> --project <project>`.
    - Leaving: `second-brain task set <ID> sprint= --project <project>`.
 6. A task that does not exist yet: create it through the story-tracker skill, with the Skill tool
-   as `obsidian-dev-second-brain:story-tracker`. Then set its sprint as in 5.
+   as `odsb:story-tracker`. Then set its sprint as in 5.
 7. Run `second-brain board <project> "Current sprint"` and show the list back.
 8. Freeze its row count: `second-brain sprint set <project> committed=<count>`.
    - The sprint started before today: ask before changing `committed`.

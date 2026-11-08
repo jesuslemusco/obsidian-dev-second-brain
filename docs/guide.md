@@ -34,7 +34,7 @@ skill next to it:
 | Check my vault for problems. | `vault-doctor` |
 | Implement EX-2 spec-driven, starting with its requirements. | `spec` |
 
-- Any skill runs by name: `/obsidian-dev-second-brain:<skill>`.
+- Any skill runs by name: `/odsb:<skill>`.
 - `vault-setup` runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
 
 ## Other ways to install
@@ -54,7 +54,7 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - A project's files are under `## 3. The project` in `docs/contract.md`.
 - A task names what it is about with topic tags, and never sits in the topic's folder, as
   `## The short version` in `templates/obsidian-conventions.md.tmpl` says.
-- An existing project keeps its folders. `/obsidian-dev-second-brain:vault-setup adopt <path>`
+- An existing project keeps its folders. `/odsb:vault-setup adopt <path>`
   records them in its profile, as
   `## 2. Scaffold only what is missing` in `skills/vault-setup/adopt.md` says.
 - A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
@@ -91,7 +91,7 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 
 ## Spec-driven delivery
 
-- Start one with `/obsidian-dev-second-brain:spec EX-2`, or with the request under
+- Start one with `/odsb:spec EX-2`, or with the request under
   [What to say](#what-to-say).
 - You approve each phase or say what to change, as
   `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.

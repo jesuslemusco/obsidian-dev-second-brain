@@ -15,7 +15,7 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
 
 1. Your first tool call is `second-brain context`.
    - Command not found: the plugin is not enabled. Say so and stop.
-   - `vault: none`: offer `/obsidian-dev-second-brain:vault-setup` and stop.
+   - `vault: none`: offer `/odsb:vault-setup` and stop.
 2. The ticket id is the argument. With none, ask.
 3. `second-brain project --key <ID>` names the project. Then run
    `second-brain spec <ID> --project "<project>"`.
@@ -76,9 +76,9 @@ For requirements, then design, then tasks, write the phase yourself, in this ses
    and `git -C "<path>" commit -m "<ID>: spec"`.
 4. `second-brain validation <project> <repo>` must print the repo's steps, with no `<...>` text
    left.
-   - Otherwise offer `/obsidian-dev-second-brain:vault-setup validation <project>` and stop.
+   - Otherwise offer `/odsb:vault-setup validation <project>` and stop.
 5. `second-brain task set <ID> status=in-progress next="spec-lead builds the approved tasks"`.
-6. Launch `obsidian-dev-second-brain:spec-lead` with the Agent tool.
+6. Launch `odsb:spec-lead` with the Agent tool.
    - Its prompt: the project, the ticket id, the session id `${CLAUDE_SESSION_ID}`, and
      `The owner approved the task list.`
    - Keep its agent id, and wait for its report.

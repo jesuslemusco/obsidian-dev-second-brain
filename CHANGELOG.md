@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 - unreleased
+
+The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.
+
+- The plugin's namespace is `odsb`. Skills run as `/odsb:<skill>`, such as `/odsb:spec EX-2`, and
+  agents show as `odsb:<agent>`, such as `odsb:spec-lead`.
+- The old `obsidian-dev-second-brain:` names stop working: a command, a call or a permission rule
+  that uses one finds nothing.
+- An install keeps its id, `obsidian-dev-second-brain@second-brain`, and updates in place: the
+  marketplace entry keeps its name.
+- After updating, run the doctor's `check`. Its new `old-namespace` row (warn) names each line of
+  a vault note, a vault skill or agent, or `~/.claude/CLAUDE.md` that still names a skill or agent
+  the old way. It also names each string that holds `obsidian-dev-second-brain:` in a
+  `settings.json` or `settings.local.json`: in `~/.claude`, and in `.claude/` at the vault root and
+  in each repo a profile lists, where a "don't ask again" answer is saved.
+- Hand the row's vault lines to `docs-keeper`. Its new `Workflow 6 - A renamed command` rewrites
+  every live reference, leaves status notes, discovery logs, a story's build log and changelogs as
+  written, and adds a status note to each story it changed.
+- `vault-doctor fix` rewrites a `~/.claude/CLAUDE.md` line once you say yes. Change the settings
+  rules yourself: nothing edits a settings file.
+- No template goes up a version: none named the old namespace. `index_version` stays 4,
+  `conventions_version` 6 and `pull_request_version` 3.
+
 ## 0.4.0 - 2026-11-07
 
 A project can build its stories from a spec, and every project says how its code is run and checked.

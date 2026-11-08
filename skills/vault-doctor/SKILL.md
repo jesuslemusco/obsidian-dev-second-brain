@@ -19,7 +19,7 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 1. Run `second-brain context` yourself, as your first tool call.
    - `second-brain` is not found: the plugin is not enabled. Say so and stop. Never guess paths.
 2. `vault: none`: no vault is set up. Run check anyway: it prints the `pointer` row and exits 2.
-   - Then offer `/obsidian-dev-second-brain:vault-setup init` and stop. The user runs it by name.
+   - Then offer `/odsb:vault-setup init` and stop. The user runs it by name.
 3. A project the user named: `second-brain project --name "<name>"`.
    - Exit 1 or 4: show `second-brain projects` and ask.
    - With no project, check the whole vault.

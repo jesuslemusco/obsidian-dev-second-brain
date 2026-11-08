@@ -107,9 +107,10 @@ A resumed build finds each task as an earlier session left it. Go on from its st
    - Such a ruling: a review `blocked` goes on at `### Review it`. A build `blocked` goes on at
      `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
-4. Review `failed`, with `fails` 5 or less: `### The fix loop`.
-   - With `fails` 6 or more the build stopped at the cap. A ruling found as item 3 says sends one
-     more round, as for `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
+4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.
+   - `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.
+   - `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for
+     `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
 5. Build `built`, review `-` or `in-review`: `### Review it`.
 
 ### Build it
@@ -129,15 +130,16 @@ A resumed build finds each task as an earlier session left it. Go on from its st
    a re-review the fix's commits and the findings they answer.
    - Its reply has a line `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
    - No such line: ask it once more with SendMessage. Still none: stop.
-3. Show the owner `second-brain spec status <ID>`.
-4. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
+3. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
    - With `spec_home: repo`, commit the tick:
      `git -C "<path>" commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md`.
-   - Then `second-brain spec status <ID> <task> passed`, and go on to the next task.
+   - Then `second-brain spec status <ID> <task> passed`.
+4. FAIL: `second-brain spec status <ID> <task> failed`.
 5. BLOCKED: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
-6. FAIL: `second-brain spec status <ID> <task> failed`, then `### The fix loop`.
+6. Show the owner `second-brain spec status <ID>`.
+7. PASS: go on to the next task. FAIL: `### The fix loop`.
 
 ### The fix loop
 
@@ -145,8 +147,8 @@ The task's `fails` in `spec status <ID>` is its failed reviews in `build.json`, 
 It picks the round. Never count the rounds yourself.
 
 1. `fails` 6 or more, right after a FAIL: the cap is reached. First the stop note,
-   `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop. The review stays
-   `failed`.
+   `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop, as
+   `## 7. When the build stops` says. The review stays `failed`.
    - A ruling the owner gives at that stop sends one more round, as for `fails` 4, with the
      ruling as its `Owner:` line.
 2. Otherwise, `second-brain spec status <ID> <task> building`, then the round:
@@ -167,6 +169,9 @@ A resumed build with every task passed comes straight here.
 
 1. Run the build-wide checks once, with no agent:
    `second-brain validation run "<project>" <repo> --when each-build`.
+   - Run it with the Bash tool's `run_in_background: true`, and wait for its notice. A run can
+     take longer than a Bash call's timeout, and a helper that a timeout kills leaves its check
+     running.
    - Every row passes or is skipped: go on to item 2.
    - A `fail` row: find the task whose files it covers, the one whose `- Files:` line in
      `tasks.md` holds the code its lines name or test. Several: the last of them in order.
@@ -191,9 +196,9 @@ A resumed build with every task passed comes straight here.
    agent's reply, and the issues `spec status` lists under the task.
    - A stop in `## 6. When every task passed` names its step in place of the task: the
      build-wide checks, the user check or the branch review.
-2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block wrote it
-   already. A block writes it before it sets `blocked`, so a new session never takes an older
-   ruling for this stop.
+2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block or the cap
+   wrote it already. A block writes it before it sets `blocked`, so a new session never takes an
+   older ruling for this stop.
 3. Ask the owner with AskUserQuestion what to do.
    - A ruling on the task:
      `second-brain task note <ID> "Build: the owner ruled on <task>: <the ruling, as written>."`.
@@ -219,5 +224,6 @@ A resumed build with every task passed comes straight here.
 - Never skip, merge or reorder tasks.
 - One agent at a time: wait for each agent's result or reply before the next step.
 - Run a `release` check only when the owner asks:
-  `second-brain validation run "<project>" <repo> --when release`.
+  `second-brain validation run "<project>" <repo> --when release`, in the background as
+  `## 6. When every task passed` says.
 - Write no code, and commit nothing but the spec files and the ticks of a `spec_home: repo` spec.

@@ -31,6 +31,9 @@ Each bullet under `### Checks` and `### Check as a user would` ends with when it
 - Run the checks under `### Checks` only through
   `second-brain validation run "<project>" <repo> --when <when>`. It runs each matching command
   and prints a row per command. A `fail` row is a finding, with the lines under it.
+- Run it with the Bash tool's `run_in_background: true`, and wait for its notice before you go
+  on. A run can take longer than a Bash call's timeout, and a helper that a timeout kills leaves
+  its check running.
 - Run a user step only when your mode takes its `when:`.
 - Never run a `release` check or step: only the owner asks for one.
 

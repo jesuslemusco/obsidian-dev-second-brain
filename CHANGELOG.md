@@ -74,6 +74,13 @@
   [--timeout <seconds>] [--json]` runs the matching checks from the repo's root, one at a time,
   each stopped after 1800 seconds by default. It prints one row per check and exits 0 only when
   all pass.
+- `validation run` stops what a command leaves running when it exits, before the next check
+  starts. On Windows a timeout also stops the command's Windows processes with `taskkill`.
+- `validation run --json` gives `exit` and `seconds` as numbers, `null` on a skipped row.
+- The skill and `reviewer` run `validation run` in the background and wait for its notice, since a
+  build-wide run can outlast a Bash call's timeout.
+- The skill shows `spec status` once a review's state is set. A resumed failed task looks for the
+  owner's ruling as a blocked one does, and the cap writes one stop note.
 - The validation template asks for each check's command in backticks and for when it runs.
   `/odsb:vault-setup validation` drafts both. The doctor still flags the template's earlier
   lines.

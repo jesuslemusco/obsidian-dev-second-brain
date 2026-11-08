@@ -3169,9 +3169,16 @@ line_is "spec build: a sixth failed review stops the build" "$BM" \
   '1. `fails` 6 or more, right after a FAIL: the cap is reached. First the stop note,'
 is "spec build: the cap is checked before a round sets building" \
   "$(($(lineno "$BM" '1. `fails` 6 or more, right after a FAIL') < $(lineno "$BM" '2. Otherwise, `second-brain spec status <ID> <task> building`')))" "1"
+file_has "spec build: every resumed failed task looks for a ruling" "$BM" \
+  '4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.'
+file_has "spec build: below the cap it resumes in the fix loop, with the ruling" "$BM" \
+  '- `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.'
 file_has "spec build: a task stopped at the cap waits for a newer ruling on resume" "$BM" \
-  '- With `fails` 6 or more the build stopped at the cap. A ruling found as item 3 says sends one'
-file_has "spec build: a failed task resumes in the fix loop" "$BM" '4. Review `failed`, with `fails` 5 or less: `### The fix loop`.'
+  '- `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for'
+file_has "spec build: the cap stops as the stop section says" "$BM" \
+  '`second-brain task note <ID> "Build: stopped at <task>: <why>."`, then stop, as'
+file_has "spec build: and that section writes no second stop note" "$BM" \
+  ', unless a block or the cap'
 file_has "spec build: a cut-off fix goes back to the fix loop" "$BM" \
   '- No hash, or one `spec status` lists already: `### The fix loop` when the task'"'"'s `fails` is 1'
 file_has "spec build: a blocked task gets the ruling" "$BM" \
@@ -3190,12 +3197,16 @@ file_has "contract: so does a task stopped at the cap" "$here/docs/contract.md" 
   '- A task stopped past the fix loop'"'"'s cap gets one more round in the same way: only with a ruling'
 file_has "spec build: sets the result the implementer reports" "$BM" \
   '4. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash'
-file_has "spec build: sets a failed review" "$BM" '6. FAIL: `second-brain spec status <ID> <task> failed`, then `### The fix loop`.'
+line_is "spec build: sets a failed review" "$BM" '4. FAIL: `second-brain spec status <ID> <task> failed`.'
+line_is "spec build: then the fix loop" "$BM" '7. PASS: go on to the next task. FAIL: `### The fix loop`.'
 is "spec build: shows the status once per task, after its review" \
   "$(grep -c '^[0-9]\. Show the owner `second-brain spec status <ID>`\.$' "$BM")" "1"
 is "spec build: and that is in the review step" \
-  "$(awk '/^### Review it/ { on = 1 } /^### The fix loop/ { on = 0 } on && /^3\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
-  '3. Show the owner `second-brain spec status <ID>`.'
+  "$(awk '/^### Review it/ { on = 1 } /^### The fix loop/ { on = 0 } on && /^6\. Show the owner `second-brain spec status <ID>`\.$/' "$BM")" \
+  '6. Show the owner `second-brain spec status <ID>`.'
+is "spec build: shown once the verdict's state is set" \
+  "$(($(lineno "$BM" '4. FAIL: `second-brain spec status <ID> <task> failed`.') < $(lineno "$BM" '6. Show the owner `second-brain spec status <ID>`.') && \
+  $(lineno "$BM" '   - Then `second-brain spec status <ID> <task> passed`.') < $(lineno "$BM" '6. Show the owner `second-brain spec status <ID>`.')))" "1"
 file_has "spec build: shows the status when a session starts or resumes" "$BM" \
   '1. Show the owner `second-brain spec status <ID>` as it prints.'
 file_has "spec build: shows the status when the build stops" "$BM" \
@@ -3211,6 +3222,12 @@ file_has "spec build: a task's progress is in build.json alone" "$BM" "A task's 
 file_has "spec build: reads finish.md when every task passed" "$BM" 'Read `finish.md`, next to this file, and follow it.'
 file_has "spec build: keeps track of the build" "$BM" "You keep track of the build"
 file_has "spec build: a release check runs only when the owner asks" "$BM" '- Run a `release` check only when the owner asks:'
+file_has "spec build: the build-wide run runs in the background" "$BM" \
+  '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice. A run can'
+file_has "reviewer: runs validation run in the background" "$here/agents/reviewer.md" \
+  '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice before you go'
+file_has "contract: validation run runs in the background" "$here/docs/contract.md" \
+  '- The skill and `reviewer` run `validation run` with the Bash tool'"'"'s `run_in_background` and wait'
 IM="$here/agents/implementer.md"
 file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
 file_has "implementer: replies with its commit and one line" "$IM" \
@@ -3618,10 +3635,13 @@ sb validation run Runs run-app --when each-build --json
 rc_is "validation run --json: exits as the text does" 1
 json_ok "validation run --json: parses as JSON"
 json_is "validation run --json: the same fields as the text" 'for r in d:
-    print("|".join([r["command"], r["result"], r["exit"]]))
+    print("|".join([r["command"], r["result"], "-" if r["exit"] is None else str(r["exit"])]))
     for l in r["lines"]: print("  " + l)' "$(rows "$text")"
 json_is "validation run --json: each row has its seconds and log" \
   'print(all(set(r) == {"command", "result", "exit", "seconds", "log", "lines"} for r in d))' "True"
+json_is "validation run --json: exit and seconds are numbers, null when skipped" \
+  'print(sorted(set((type(r["exit"]).__name__, type(r["seconds"]).__name__, r["result"]) for r in d)))' \
+  "[('NoneType', 'NoneType', 'skipped'), ('int', 'int', 'fail'), ('int', 'int', 'pass')]"
 sb validation run Runs run-app --when release --timeout 1
 rc_is "validation run: a timeout fails, exit 1" 1
 out_has "validation run: release takes the release bullets too" "echo e2e${TAB}pass${TAB}0"
@@ -3645,6 +3665,19 @@ sb validation run Runs run-app --timeout 1
 rc_is "validation run: a command with a child times out" 1
 sleep 4
 absent "validation run: and its child is stopped with it" "$tmp/rcode/run-app/late.txt"
+# What a command leaves running when it exits is stopped before the next one starts.
+cat >"$RVF" <<'EOF'
+## run-app
+
+### Checks
+
+- `(sleep 2; echo late >late3.txt) & exit 0` - leaves a child behind
+- `sleep 3; test ! -f late3.txt` - the next check runs alone
+EOF
+sb validation run Runs run-app
+rc_is "validation run: a command that leaves a child passes" 0
+out_has "validation run: the next check sees nothing of it" "sleep 3; test ! -f late3.txt${TAB}pass${TAB}0"
+absent "validation run: and the child is stopped, never past the run" "$tmp/rcode/run-app/late3.txt"
 printf '%s\n' '## run-app' '' '### Set up and start' '' '- Nothing.' >"$RVF"
 sb validation run Runs run-app
 rc_is "validation run: a section with no Checks exits 0" 0

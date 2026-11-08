@@ -1248,11 +1248,33 @@ sb_val_checks() {
 sb_val_alive() { kill -0 -- "-$1" 2>/dev/null || kill -0 "$1" 2>/dev/null; }
 
 # Send a signal to the process group a command leads, or to the command alone when it leads none.
-sb_val_kill() { kill -"$2" -- "-$1" 2>/dev/null || kill -"$2" "$1" 2>/dev/null; }
+# On Windows a group reaches only the shell's own processes, so taskkill stops the Windows process
+# tree under the command first, such as a node.exe that npm.cmd started.
+sb_val_kill() {
+  if sb_is_windows && [ -r "/proc/$1/winpid" ]; then
+    taskkill //T //F //PID "$(cat "/proc/$1/winpid" 2>/dev/null)" >/dev/null 2>&1 || true
+  fi
+  kill -"$2" -- "-$1" 2>/dev/null || kill -"$2" "$1" 2>/dev/null
+}
+
+# Stop what a command that has exited left running in its process group: TERM, then KILL after 5
+# seconds. Only the group is signalled: the command's own process id may be reused by now.
+sb_val_reap() {
+  local n=0
+  kill -0 -- "-$1" 2>/dev/null || return 0
+  kill -TERM -- "-$1" 2>/dev/null
+  while [ "$n" -lt 5 ] && kill -0 -- "-$1" 2>/dev/null; do
+    sleep 1
+    n=$((n + 1))
+  done
+  kill -KILL -- "-$1" 2>/dev/null
+  return 0
+}
 
 # Run one command through bash from a folder, stdin from /dev/null, its output and errors in a log;
-# stop it, and what it started, after a number of seconds. Usage: sb_val_exec <dir> <command>
-# <seconds> <log>. Sets SB_VAL_RC (124 when it timed out), SB_VAL_SECS and SB_VAL_TIMED (1 or 0).
+# stop it, and what it started, after a number of seconds. What it leaves running when it exits is
+# stopped too, so the next command runs alone. Usage: sb_val_exec <dir> <command> <seconds> <log>.
+# Sets SB_VAL_RC (124 when it timed out), SB_VAL_SECS and SB_VAL_TIMED (1 or 0).
 sb_val_exec() {
   local dir="$1" cmd="$2" limit="$3" log="$4" flag="$4.timeout" pid wpid start rc=0
   rm -f "$flag"
@@ -1285,8 +1307,9 @@ sb_val_exec() {
   wait "$pid" 2>/dev/null || rc=$?
   kill "$wpid" 2>/dev/null
   wait "$wpid" 2>/dev/null
-  trap - INT TERM HUP
   SB_VAL_SECS=$((SECONDS - start))
+  sb_val_reap "$pid"
+  trap - INT TERM HUP
   SB_VAL_TIMED=0
   if [ -f "$flag" ]; then
     SB_VAL_TIMED=1
@@ -1361,11 +1384,12 @@ EOF
   if [ "$json" -eq 1 ]; then
     LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
       function end_row() { if (open) printf "]}" }
+      function num(v) { return (v == "-" ? "null" : v + 0) }
       BEGIN { printf "[" }
       $1 == "R" {
         end_row(); open = 1; nl = 0
         printf "%s\n  {\"command\": %s, \"result\": %s, \"exit\": %s, \"seconds\": %s, \"log\": %s, \"lines\": [", \
-          (rows++ ? "," : ""), jstr($2), jstr($3), jstr($4), jstr($5), jstr($6)
+          (rows++ ? "," : ""), jstr($2), jstr($3), num($4), num($5), jstr($6)
         next
       }
       $1 == "L" { printf "%s%s", (nl++ ? ", " : ""), jstr(substr($0, 3)) }

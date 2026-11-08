@@ -1,31 +1,26 @@
 # Contract
 
-The interfaces every part of this plugin agrees on. Skills and agents call the helper by the
-commands below; the helper fills the templates by the placeholders below; notes carry the
-frontmatter below. Change this file first, then the code.
+The interfaces every part of this plugin agrees on. Change this file first, then the code.
 
 ## 1. Words and paths
 
 | Word | Meaning |
 |---|---|
 | vault | The Obsidian vault root, the folder that holds `.obsidian/`. |
-| link directory | `~/.claude`, or `SECOND_BRAIN_CLAUDE_HOME` when set (tests set it). Holds the pointer and the links to the vault's own skills and agents. |
-| pointer | `second-brain-vault` in the link directory, a link to the vault: a symlink on macOS and Linux, a directory junction on Windows. `second-brain pointer set` creates it. The environment variable `SECOND_BRAIN_VAULT` overrides it (tests use this). |
-| index | `<vault>/CLAUDE.md`. Always loaded by Claude through an import in `~/.claude/CLAUDE.md`. Holds the only list of projects. |
-| conventions | `<vault>/obsidian-conventions.md`. Skills point to it as `~/.claude/second-brain-vault/obsidian-conventions.md`. Its first section, "The short version", is the default read. |
-| pull request format | `<vault>/claude/pull-request.md`. The headings and style of every pull request description Claude writes. The index points to it in one line. A project's own `<project>/claude/pull-request.md` wins over it. Its frontmatter holds `pull_request_version`, the version of `templates/pull-request.md.tmpl` it follows. |
+| link directory | `~/.claude`. It holds the pointer and the links to the vault's own skills and agents. |
+| pointer | `second-brain-vault` in the link directory: a link to the vault, made by `second-brain pointer set`. |
+| index | `<vault>/CLAUDE.md`, the only list of projects. Claude always loads it through an import in `~/.claude/CLAUDE.md`. |
+| conventions | `<vault>/obsidian-conventions.md`. Its first section is `The short version`. |
+| pull request format | `<vault>/claude/pull-request.md`: the headings and style of every pull request description Claude writes. A project's own `<project>/claude/pull-request.md` wins over it. The index points to it in one line. Its frontmatter holds `pull_request_version`, the version of `templates/pull-request.md.tmpl` it follows. |
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
-| profile | `<vault>/<project path>/claude/profile.md`. The one per-project settings note. |
-| subproject | A part of a project with its own repos, branches and docs folder, declared by one note `<project>/claude/subprojects/<name>.md`. It shares the project's ticket keys, tasks and board. |
-| helper | `bin/second-brain`. On the Bash PATH while the plugin is enabled. It reads and writes the vault's files and never calls Obsidian, which is only the viewer. |
+| profile | `<vault>/<project path>/claude/profile.md`, the project's one settings note. |
+| subproject | A part of a project with its own repos, branches and docs folder. It shares the project's ticket keys, tasks and board. |
+| helper | `bin/second-brain`, on the Bash PATH while the plugin is enabled. |
 | vault path | A path relative to the vault root, with forward slashes on every system. |
-
-Generic files (everything in this repo) never contain an absolute path, a project name, a ticket
-key or a person's name. `scripts/leak-check.sh` enforces part of that.
 
 ## 2. The index
 
-`<vault>/CLAUDE.md` contains a `## Projects` section with exactly this table. The helper parses it.
+`<vault>/CLAUDE.md` holds a `## Projects` section with exactly this table:
 
 ```markdown
 ## Projects
@@ -35,46 +30,44 @@ key or a person's name. `scripts/leak-check.sh` enforces part of that.
 | Example | clients/acme/projects/example | EX, EXOPS | Anything about the Example service. |
 ```
 
-- `Project` is the display name, unique, matched case-insensitively.
-- `Path` is vault-relative, no leading or trailing slash. It is a folder in the vault, and no two
-  rows share one: paths are compared without letter case, with `//` and `/./` folded.
-- `Keys` are ticket key prefixes, comma separated; may be empty. A key belongs to one row. An
-  item with no letter or digit, such as `-`, is no key.
-- A project's folder may sit inside another project's folder. Each row is its own project. The
-  doctor's `task-location` check leaves the notes of the inner project to that project; a check
-  that goes by the path alone, such as `unresolved-links`, lists them under both.
-- A path names no project folder when, with `//` and `/./` folded, it is `.`, holds a `..` part
-  or holds a backslash. The doctor reports such a row in `index`, prints no project rows for it,
-  and opens and writes nothing under it.
+- `Project` is the display name, unique, matched without letter case.
+- `Path` is vault-relative, with no slash in front or behind.
+- Each `Path` is a folder in the vault, and no two rows share one. Paths are compared without
+  letter case, with `//` and `/./` folded.
+- `Keys` are ticket key prefixes, comma separated, and may be empty. A key belongs to one row,
+  compared in upper case.
+- An item with no letter or digit, such as `-`, is no key.
+- A project's folder may sit inside another project's folder. Each row is its own project.
+- A check that goes by the path alone, such as `unresolved-links`, lists the inner project's notes
+  under both projects.
+- A path names no project folder when, with `//` and `/./` folded, it is `.` or holds a `..` part
+  or a backslash. What the doctor does with one is under `### link, doctor, snapshot`.
 
 The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 3
+index_version: 4
 ---
 ```
 
-- It is the version of `templates/vault-index.md.tmpl` that the text above `## Projects` follows.
-  The template's number goes up when that text changes.
-- The doctor's `index` check warns when the vault's number is missing or lower than the template's.
-  A number too long to compare counts as newer. The same holds for `conventions_version` and
-  `pull_request_version`.
-- No command brings an index up to date, because it may hold the user's own lines. It is edited by
-  hand: the text above `## Projects` is brought in line with the template, the table is kept, and
-  `index_version` is set to the template's number.
-- The first line under `## In every session` is the answer style: short, plain English, the answer
-  first, unless the user or their own instructions say otherwise. A test pins its text.
+- `index_version` is the version of `templates/vault-index.md.tmpl` that the text above
+  `## Projects` follows. The template's number goes up when that text changes.
+- The doctor counts a version too long to compare as newer, for `index_version`,
+  `conventions_version` and `pull_request_version`.
+- No command updates an index. By hand: bring the text above `## Projects` in line with the
+  template, keep the table, and set `index_version` to the template's number.
+- The first line under `## In every session` is the answer style: short, plain English, the
+  answer first, unless the user or their own instructions say otherwise.
 - The text says where a rule the user asks Claude to save goes. A rule about one project goes
   under `## Rules` in `<Path>/claude/README.md`, or in its subproject's note. Only a rule for every
   project goes in `~/.claude/CLAUDE.md`. When Claude cannot tell which, it asks.
-- It says to read the subproject's note with the project's `claude/README.md` when
-  `second-brain context` prints a `subproject` line, so the subproject's rules load with the
-  project's.
-- Under `## Rules for notes that most often go wrong` it holds the rule for finding and reading
-  notes: `second-brain find`, `search` (also for related notes before a decision), `task head`,
-  then `outline` and a ranged read, and a whole note last; never grep, cat or sed on vault files.
-  A test pins its text.
+- When `second-brain context` prints a `subproject` line, the text says to read that subproject's
+  note with the project's `claude/README.md`.
+- `## Rules for notes that most often go wrong` holds the rule for finding and reading notes:
+  `second-brain find`, `search` (also for related notes before a decision), `task head`, then
+  `outline` and a ranged read, and a whole note last. Never grep, cat or sed on vault files.
+- A test pins the text of the answer style and of the rule for finding and reading notes.
 
 ## 3. The project
 
@@ -134,75 +127,79 @@ tags:
 
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
-- `topics_root: "."` means topic folders sit at the project root.
+- `topics_root: "."` puts the topic folders at the project root.
 - `tasks_root`, `topics_root` and `sprints_root` are folders inside the project, written with
-  forward slashes. A slash in front or behind is dropped by every command, so `/tasks` is
-  `tasks`. One that holds a `..` part or a backslash leaves the project: the doctor's `profile`
-  check fails, and the doctor checks the project under that root's default, so nothing is
-  opened through the value.
-- `task_layout` is `flat` or `archive`, in any letter case. A profile without the key, or with
-  another value, is `flat`: every task stays in `<tasks_root>/<ID>/`. With `archive`, a done or
-  abandoned task moves once, through `task archive`, to `<tasks_root>/archive/<YYYY>/<ID>/`, the
-  year being the year it was archived. Commands find a task at either depth in both layouts.
-- `archive_after_days` is a whole number of days, 14 when the key is absent. With `archive`, a done
-  or abandoned task outside the archive is due once that many days have passed since the newest
-  date it holds: the date of its newest status note, or its sprint id when that is later. A task
-  with neither is never due, as nothing dates it; `task archive <ID>` archives it by hand. The
-  doctor's `task-layout` check names a task that is due, and `doctor --fix` archives it.
-- `uses_sprints` says whether the project runs sprints. Only `false`, in any letter case, turns
-  them off; a profile without the key uses sprints. With `false` the project has no sprints hub and
-  no `Current sprint` view, the three sprint keys are ignored, every `sprint` command exits 5,
-  `task set` refuses a sprint id and `board <project> "Current sprint"` has no rows.
-  - Turning them on later: set the key to `true` and run `scaffold project` again. It creates the
-    hub and names on stderr what it leaves to add by hand in files that exist: the map line in the
+  forward slashes.
+- Every command drops a slash in front of or behind a root: `/tasks` is `tasks`.
+- A root that holds a `..` part or a backslash leaves the project. What the doctor does with one
+  is under `### link, doctor, snapshot`.
+- `task_layout` is `flat` or `archive`, in any letter case. A missing key or another value is
+  `flat`.
+- `flat`: every task stays in `<tasks_root>/<ID>/`.
+- `archive`: a done or abandoned task moves to the archive through `task archive`, as its row
+  under `## 7. The helper` says.
+- Commands find a task at either depth in both layouts.
+- `archive_after_days` is a whole number of days, 14 when the key is absent.
+- With `archive`, a done or abandoned task outside the archive is due once that many days have
+  passed since its newest date: the date of its newest status note, or its sprint id when that is
+  later.
+- A task with neither date is never due. `task archive <ID>` archives it by hand.
+- `uses_sprints: false`, in any letter case, turns sprints off. Any other value, or no key, uses
+  sprints.
+- With `false` the project has no sprints hub, its board has no `Current sprint` view and no
+  sprint columns, and the three sprint keys are ignored. How each command treats such a project
+  is in its row under `## 7. The helper`.
+  - To turn sprints on later, set the key to `true` and run `scaffold project` again. It creates
+    the hub. It names on stderr what to add by hand in files that exist: the map line in the
     project README, and the board's `Current sprint` view and sprint columns.
-  - Turning them off on a project that ran sprints: close the sprint in progress first. One left
-    in progress can no longer be closed, and the doctor warns about it.
+  - To turn them off on a project that ran sprints, close the sprint in progress first. One left
+    in progress can no longer be closed.
 - `environments` lists environment names in promotion order, or is empty.
-- `repos` are folder names of the code repositories, used to match the working directory. The first
-  one is the default repo for branch checks.
-- `repos_root` is the folder those repositories usually sit in on this machine, absolute or starting
-  with `~`. `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
-  Both may be empty; then a repo's location is unknown and the skills ask for it.
+- `repos` are the folder names of the code repositories, used to match the working directory. The
+  first is the default repo for branch checks.
+- `repos_root` is the folder those repositories usually sit in on this machine, absolute or
+  starting with `~`.
+- `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
+- Both may be empty. A repo's location is then unknown, and the skills ask for it.
 - `achievements_skill` names a skill to hand finished stories to, or is empty.
 - `delivery` is how a story is built. `direct`: from its README. `spec`: from a spec of
-  requirements, design and tasks that the owner approves first. A subproject's note and a task
-  may set it too. The most specific value wins: the task's, then its subproject's, then the
-  profile's.
-- `spec_home` is where a story's spec lives. `vault`: in the task's folder, `spec/` next to its
-  `README.md`. `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
+  requirements, design and tasks that the owner approves first.
+- A subproject's note and a task may set `delivery` too. The most specific value wins: the
+  task's, then its subproject's, then the profile's.
+- `spec_home` is where a story's spec lives. `vault`: `spec/` next to the task's `README.md`.
+  `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
 - The story's repo is the first repo of its subproject, else the project's first repo, in the
   order `repo <project>` lists them.
-- `validation_home` is where `validation.md` lives. `vault`: `claude/validation.md` in the project.
-  `repo`: `validation.md` at the root of each repo. A subproject's note may set it for its repos.
-- These three take any letter case.
-- A missing or empty key passes to the next level. At the profile it means the default: `direct`,
-  `vault` and `vault`.
-- The first value found decides. One that is not allowed means the default, and the doctor's
-  `delivery` check warns about it.
+- `validation_home` is where `validation.md` lives. `vault`: `claude/validation.md` in the
+  project. `repo`: `validation.md` at the root of each repo. A subproject's note may set it for its
+  repos.
+- `delivery`, `spec_home` and `validation_home` take any letter case.
+- A missing or empty value passes to the next level. At the profile it means the default:
+  `direct`, `vault` and `vault`.
+- The first value found decides. One that is not allowed means the default.
 
 ### Profile sections
 
-Fixed level-2 headings, read one at a time with `second-brain profile <project> <section>`:
-`## Stories`, `## Topics`, `## Repos`, `## Environments`, `## Sprints`, `## Docs`, `## Live systems`.
+Fixed level-2 headings: `## Stories`, `## Topics`, `## Repos`, `## Environments`, `## Sprints`,
+`## Docs`, `## Live systems`.
 
-`## Docs` holds, as level-3 headings: `### Repo doc surfaces`, `### Vault doc surfaces`,
+`## Docs` holds these level-3 headings: `### Repo doc surfaces`, `### Vault doc surfaces`,
 `### Code to doc map`, `### Facts in several places`, `### Not drift`, `### Terminology`,
 `### Reference implementation`, `### Neighbours`, `### Debt file`.
 
 `### Code to doc map` is a table with the columns `Repo`, `Change in the code`, `Docs to update`.
-Every repository in `repos` has at least one row. Adding a repository to a project means adding its
-rows in the same change; the doctor's `code-doc-map` check enforces it. So does every repository of
-a subproject, with the subproject's docs folder in its Docs cell; the `subprojects` check enforces it.
+
+- Every repository in `repos` has at least one row.
+- So does every repository of a subproject, with the subproject's docs folder in its
+  `Docs to update` cell.
+- The change that adds a repository to a project adds its rows.
 
 ### Subprojects
 
-A project made of several repos, each with its own branches and docs, splits them into
-subprojects. They split repos and docs, not tracking: one ticket key, one board.
+One note per subproject: `<project>/claude/subprojects/<name>.md`.
 
-Path: `<project>/claude/subprojects/<name>.md`. The name is the file name without `.md`, and is a
-folder name: no slash, none of `| [ ] " # ^ : * ? < >` and the backslash, no blank at either end,
-not starting with `.` or `-`.
+- The name is the file name without `.md`. It is a folder name: no slash, none of
+  `| [ ] " # ^ : * ? < >` and the backslash, no blank at either end, not starting with `.` or `-`.
 
 ```yaml
 ---
@@ -224,50 +221,50 @@ tags:
 ---
 ```
 
-- `repos` lists the subproject's repositories, the first the default for branch checks. Each one
-  belongs to one subproject. It need not be in the profile's `repos`: the project's repositories
-  are the profile's, then each subproject's that the profile does not list.
+- `repos` lists the subproject's repositories. The first is the default for branch checks.
+- A repository belongs to one subproject. It need not be in the profile's `repos`.
+- The project's repositories are the profile's, then each subproject's that the profile does not
+  list.
 - `base_branch`, `production_branch`, `branch_pattern`, `environments`, `repo_paths`, `delivery`,
   `spec_home` and `validation_home` mean what they mean in the profile. One that is absent or
-  empty (`""`, `[]`) takes the profile's value. So
-  a subproject cannot have fewer environments than the project; the empty list means "as the
-  project".
+  empty (`""`, `[]`) takes the profile's value.
 - An empty effective `production_branch` still means the effective `base_branch`.
-- `repos_root` is the profile's. A `repo_paths` entry of a subproject wins over the profile's
-  entry for the same repo.
+- `repos_root` is the profile's.
+- A subproject's `repo_paths` entry wins over the profile's entry for the same repo.
 - The body has a `## Rules` section: the rules Claude follows in that subproject.
 - Its docs folder is `<topics_root>/<name>/`, or `<name>/` at the project root when the topics
   root is `.`. It is a topic folder like any other, with a `README.md` hub.
-- A working directory resolves to a subproject the way it resolves to a project: the deepest
-  recorded folder of a project repository that holds it decides; with none, the deepest folder on
-  the way up whose name is a repo of the project, the profile's included. A directory in a
-  repository of the profile alone is in no subproject, and neither is a folder of the vault.
-- A project with no `claude/subprojects/` folder behaves exactly as before.
+- A working directory resolves to a subproject as it resolves to a project. The deepest recorded
+  folder of a project repository that holds it decides. With none, the deepest folder on the way
+  up whose name is a repo of the project decides, the profile's repos included.
+- A directory in a repository of the profile alone is in no subproject, and neither is a folder of
+  the vault.
 
 ### Validation
 
-`validation.md` says how to run and check a repo's code. Agents read a repo's part before they
-build or review a change, through `second-brain validation <project> <repo>`.
+`validation.md` says how to run and check a repo's code. Agents read a repo's part with
+`second-brain validation <project> <repo>` before they build or review a change.
 
 - A repo's home is the `validation_home` of the subproject that lists it, else the profile's.
 - `vault`: one note, `<project>/claude/validation.md`, written from `validation.md.tmpl`, with one
-  `## <repo>` section per repo. `scaffold project` writes it, with a section for each repo it knows,
-  when the profile's home is `vault`. The project's Claude hub then links to it.
-- `repo`: `validation.md` at the root of the repo, a `# <repo> validation` title and one
+  `## <repo>` section per repo.
+- `scaffold project` writes that note, with a section for each repo it knows, when the profile's
+  home is `vault`. The project's Claude hub then links to it.
+- `repo`: `validation.md` at the root of the repo, with a `# <repo> validation` title and one
   `## <repo>` section. Nothing in the vault points to it.
 - A section is written from `validation-repo.md.tmpl` and keeps its four level-3 headings:
   `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
 - A section is written when something is under its heading. One with nothing is `empty`.
-- `validation new <project> <repo>` writes a missing file and adds a missing section, in the line
-  endings the file has. It never changes a section that is there.
 
 ## 4. A task
 
 Path: `<project>/<tasks_root>/<ID>/README.md`. `<ID>` is the ticket id, or a kebab-case slug when
-there is no ticket yet. An archived task is `<project>/<tasks_root>/archive/<YYYY>/<ID>/README.md`
-(see `task_layout` in the profile). The folder `archive` directly under the tasks root holds the
-archive in every layout: it is never a task, and `archive`, in any letter case, is no task id and
-no alias.
+there is no ticket yet.
+
+- An archived task is `<project>/<tasks_root>/archive/<YYYY>/<ID>/README.md` (see `task_layout`
+  in the profile).
+- The folder `archive` directly under the tasks root holds the archive in every layout. It is
+  never a task. `archive`, in any letter case, is no task id and no alias.
 
 ```yaml
 ---
@@ -292,48 +289,46 @@ tags:
 ---
 ```
 
-- The helper never writes `jira_id`. Notes that already have it keep it; readers ignore it.
-- An archived task carries `archived: "YYYY-MM-DD"`, the day `task archive` moved it, quoted. Its
-  links follow it as any move's do. A `.base` or `.canvas` file that mentions its old path is not
-  rewritten: the move names it on stderr.
-- `depends_on` lists the tasks this one waits on, each a path link to the other task's README
-  with its folder id as display text, double-quoted. It is changed with `task dep`. The reverse,
-  the tasks that wait on this one, is never stored: Obsidian shows it as backlinks.
+- The helper never writes `jira_id`. Notes that have it keep it; readers ignore it.
+- An archived task carries `archived: "YYYY-MM-DD"`, quoted: the day `task archive` moved it.
+- The tasks that wait on a task are never stored: Obsidian shows them as backlinks.
 - `delivery` is `direct` or `spec`. `task set <ID> delivery=<value>` writes it in lower case. Any
-  other value exits 5, and `delivery=` removes the key.
-- `spec <ID>` prints the `delivery` that holds for the task.
-- A spec is three files: `requirements.md`, `design.md` and `tasks.md`. `spec new` writes them
-  from `spec-requirements.md.tmpl`, `spec-design.md.tmpl` and `spec-tasks.md.tmpl`.
-- With `spec_home: vault` they sit in `spec/` in the task's folder. Each carries frontmatter
-  (the alias `"<ID> Requirements"`, `"<ID> Design"` or `"<ID> Tasks"`, `type: spec`, the tag
-  `type/spec`) and opens with `> Up:` and a link to the task's README.
-- With `repo` they sit in `spec/<ID>/` in the story's repo, with no frontmatter and no up link.
+  other value exits 5.
+- A spec is three files: `requirements.md`, `design.md` and `tasks.md`.
+- With `spec_home: vault` each spec file has frontmatter: the alias `"<ID> Requirements"`,
+  `"<ID> Design"` or `"<ID> Tasks"`, `type: spec` and the tag `type/spec`. It opens with `> Up:`
+  and a link to the task's README.
+- With `repo` the spec files have no frontmatter and no up link.
 - A task folder with a `spec/` folder is still one task.
 - In `requirements.md` each requirement is a `## R<n> - <name>` section: a `- Serves:` line
   directly under the heading, then the requirement, then its acceptance checks as `- [ ]` lines.
-- The `- Serves:` line names the story's criteria the requirement meets: `- Serves: AC1, AC3`.
-  The items are comma separated. `AC<n>` is the n-th criterion of the story, counted from 1 by
-  position. It is matched without letter case: `ac2` is `AC2`.
-- A criterion is a line that starts with `- [ ]`, `- [x]` or `- [X]` under `## Acceptance criteria`
-  in the task's README, up to the next level-2 heading. Lines in fenced code are not read. Lines in
-  `###` subsections are counted, in the order they come.
+- The `- Serves:` line names the story's criteria the requirement meets, comma separated:
+  `- Serves: AC1, AC3`. `AC<n>` is the n-th criterion, counted from 1, in any letter case.
+- Every `- Serves:` line of a requirement counts, `Serves` in any letter case.
+- A criterion is a line under `## Acceptance criteria` in the task's README, up to the next `## `
+  or `# ` heading, that starts with `- [ ]`, `- [x]` or `- [X]`, then a blank or the line's end.
+  Lines in `###` subsections count, in the order they come.
+- Fenced code in the README or in `requirements.md` is not read.
 - In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
   `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
-  `- Check: <how it is checked>`. A task is ticked only when its review passes.
-- A spec story's README gets a `## Build` section, before `## Status notes`, that
-  `spec status` and `spec issue` write; it is never edited by hand. One line per task of
-  `tasks.md`, in its order: `- T<n> - <state> - commits <hashes or -> - <title>`, each issue a
-  line under it, `  - Issue <date>: <issue> Fix: <fix>`. A task first written starts `todo`, or
-  `passed` when ticked. A row whose task left `tasks.md` stays at the end.
+  `- Check: <how it is checked>`.
+- A spec story's README gets a `## Build` section, before `## Status notes`. `spec status` and
+  `spec issue` write it; it is never edited by hand.
+- `## Build` has one line per task of `tasks.md`, in its order:
+  `- T<n> - <state> - commits <hashes or -> - <title>`. Each issue is a line under it:
+  `  - Issue <date>: <issue> Fix: <fix>`.
+- A task first written starts `todo`, or `passed` when ticked. A row whose task left `tasks.md`
+  stays at the end.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
-- Strings are written double-quoted when they contain `: `, `#`, start with `-` or `[`, or look
-  like a date or number. Sprint ids are always quoted.
+- Strings are double-quoted when they contain `: ` or `#`, start with `-` or `[`, or look like a
+  date or number. Sprint ids are always quoted.
 - Body sections of a new task, in order: `# <ID> - <title>`, `**Summary:**`, `**Branch:**`,
   `## Description`, `## Findings` (optional), `## Acceptance criteria`,
   `## Approach / Key decisions`, `## Code verification (read-only)`, `## Changes`,
-  `## Verification`, `## Status notes`, `## Discovery log`. A task may also carry
-  `## Docs to update`: one checkbox line per doc edit waiting for the change to reach production.
+  `## Verification`, `## Status notes`, `## Discovery log`.
+- A task may also carry `## Docs to update`: one checkbox line per doc edit waiting for the change
+  to reach production.
 - A status note line is `**YYYY-MM-DD (session `<id>`) - <text>**`, newest first.
 
 ## 5. A sprint
@@ -363,24 +358,23 @@ Body: an up-link to the sprints hub, then `## Goal`, `## Notes`, `## Close`.
 
 ## 6. The board
 
-`<project>/<tasks_root>/tasks.base`, an Obsidian Bases file. Views, by exact name: `Active`,
-`Current sprint`, `By topic`, `By subproject`, `Needs a status`, `All`. It lists only the README
-directly inside each task folder, live or archived (a folder-depth filter that takes
-`<tasks_root>/<ID>/` and `<tasks_root>/archive/<YYYY>/<ID>/`), shows `file.asLink(aliases[0])` as
-the task name, and the `Current sprint` view filters on one literal sprint id that `sprint open`
-rewrites. `By subproject` shows the active tasks grouped by their `subproject`, with a `Subproject`
-column; `board <project> "By subproject"` ends each of its rows with that column. A project with `uses_sprints: false` is scaffolded without the `Current sprint` view and
-the sprint columns.
+`<project>/<tasks_root>/tasks.base`, an Obsidian Bases file.
 
-`board <project> "Current sprint"` goes by the sprint in progress, not by that literal. When the
-two differ, Obsidian shows another sprint than the helper reports; the doctor's `board` check
-warns about it.
+- Views, by exact name: `Active`, `Current sprint`, `By topic`, `By subproject`,
+  `Needs a status`, `All`.
+- It lists only the README directly inside each task folder, live or archived: a folder-depth
+  filter takes `<tasks_root>/<ID>/` and `<tasks_root>/archive/<YYYY>/<ID>/`.
+- It shows `file.asLink(aliases[0])` as the task name.
+- The `Current sprint` view filters on one literal sprint id, which `sprint open` rewrites.
+- `By subproject` shows the active tasks grouped by `subproject`, with a `Subproject` column.
+- For a project that does not use sprints, see `uses_sprints` under `### Profile frontmatter`.
+- `board <project> "Current sprint"` goes by the sprint in progress, not by the literal. The
+  doctor's `board` check warns when the two differ.
 
 ## 7. The helper
 
-`second-brain <command> [args]`. Bash 3.2 and awk only; must run on macOS, on Linux, and on Windows
-in Git Bash, the shell Claude Code uses there. Output is plain text meant to be read by Claude:
-short, stable, no colour.
+`second-brain <command> [args]`. Bash 3.2 and awk only. It runs on macOS, on Linux, and on Windows
+in Git Bash. Output is plain text for Claude: short, stable, no colour.
 
 Exit codes: `0` ok, `1` not found, `2` setup missing (no pointer or not a vault), `4` ambiguous,
 `5` bad usage, `6` already exists. `3` is retired: it meant the Obsidian CLI was unavailable.
@@ -388,19 +382,19 @@ Exit codes: `0` ok, `1` not found, `2` setup missing (no pointer or not a vault)
 Rules that hold for every command:
 
 - An empty cell or value prints `-`. Callers read `-` as empty.
-- Every read and every write is a file operation on the vault. No command needs Obsidian to be
+- Every command works on the vault's files and never calls Obsidian. None needs Obsidian
   installed or running.
-- Wherever a command takes `<ID>`, the folder id or any alias of the task is accepted. Task commands
-  resolve it from the task READMEs on disk.
+- Wherever a command takes `<ID>`, the folder id or any alias of the task is accepted. Task
+  commands resolve it from the task READMEs on disk.
 - A lookup that finds nothing exits 1 (`find`, `topic`, `search`). A listing that finds nothing
   exits 0 with no rows (`board`, `projects`, `backlinks`, `unresolved`).
 - Writes change only the lines they must and keep the file's line endings.
-- Wherever a command takes `<path>`, it is a vault path. One that leaves the vault, enters a dot
-  folder or holds a backslash is refused with exit 5, and so is an absolute path.
-- An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`, which
-  Git Bash and Windows programs both accept. An absolute path that is read (an argument, an
-  environment override, `repos_root`, a `repo_paths` entry) may be in that form, written with
-  backslashes, or in Git Bash's own form, `/c/...`.
+- Wherever a command takes `<path>`, it is a vault path. A path that leaves the vault, enters a
+  dot folder, holds a backslash or is absolute exits 5.
+- An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`.
+- An absolute path that is read (an argument, an environment override, `repos_root`, a
+  `repo_paths` entry) may be in that form, written with backslashes, or in Git Bash's own form,
+  `/c/...`.
 - Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_CLAUDE_HOME` (link
   directory), `SECOND_BRAIN_TODAY` (today's date, for tests).
 
@@ -408,58 +402,58 @@ Rules that hold for every command:
 |---|---|---|
 | `help` | the command list | |
 | `version` | the plugin version | read from `.claude-plugin/plugin.json` |
-| `conventions [section]` | one level-2 section of the vault's conventions note | default section `The short version`; the name is matched case-insensitively; exit 1 when the note or the section is missing |
-| `root` | absolute physical path of the vault | exit 2 when the pointer is missing or not a vault |
-| `context [--cwd DIR]` | at most 5 `key: value` lines: `vault`, `project`, `project_path`, `subproject`, `sprint` | always exits 0; unknown values print `none`. `sprint` is `off` for a project that does not use sprints. The `subproject` line is there only when one subproject's repository holds the directory |
+| `conventions [section]` | one level-2 section of the vault's conventions note | default section `The short version`; the name is matched without letter case; exit 1 when the note or the section is missing |
+| `root` | the absolute physical path of the vault | exit 2 when the pointer is missing or not a vault |
+| `context [--cwd DIR]` | at most 5 `key: value` lines: `vault`, `project`, `project_path`, `subproject`, `sprint` | always exits 0; an unknown value prints `none`. `sprint` is `off` for a project that does not use sprints. The `subproject` line is there only when one subproject's repository holds the directory |
 | `projects` | one TSV row per project: name, path, keys | from the index table |
 | `project --name N` / `--key K` / `--cwd DIR` | one TSV row: name, path, keys | `K` is a key prefix or a full id (`EX` or `EX-123`). With no flag it uses the working directory. Exit 1 none, exit 4 several (prints them) |
-| `repo <project> [name]` | with no name, one TSV row per repo in the profile's order, then each subproject's repos the profile does not list, by subproject name: name, path, state (`ok`, `missing`, or `unknown` when no location is recorded; path is then `-`). With a name, the path alone | paths are absolute, with `~` expanded. With a name: exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
+| `repo <project> [name]` | with no name, one TSV row per repo: name, path, state (`ok`, `missing`, or `unknown` with path `-` when no location is recorded). The profile's repos come first, in order, then each subproject's repos the profile does not list, by subproject name. With a name, the path alone | paths are absolute, with `~` expanded. With a name, exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `subproject <project>` | one TSV row per subproject, by name: name, repos (comma separated, or `-`), docs folder as a vault path | exit 0 with no rows for a project with none; exit 1 when the profile is missing |
-| `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `delivery`, `spec_home`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are each the note's value, or the profile's when the note's is absent or empty; lists are joined with `, `. `delivery`, `spec_home` and `validation_home` are the values that hold, the defaults included (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it (the note's entry, the profile's, then `repos_root`), or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
-| `profile <project> --keys` | profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
-| `profile <project> <section>` | the body of that level-2 section | section name matched case-insensitively; exit 1 when absent |
-| `board <project> [view] [--subproject S]` | one row per task (no rows for `Current sprint` when no sprint is in progress): `id | title | status | sprint | topics | branch | next | envs | depends_on`, and in the `By subproject` view a tenth cell, `subproject` (`-` for none) | default view `Active` (status planned, in-progress or in-review); `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Reads the frontmatter of the task READMEs and applies the view's own rule; the board file is what Obsidian shows and is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README, spelled as on disk for a task of the project whatever the link's letter case, and that task's status, `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
+| `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `delivery`, `spec_home`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are as `### Subprojects` says; lists are joined with `, `. `delivery`, `spec_home` and `validation_home` include the defaults (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it, or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
+| `profile <project> --keys` | the profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
+| `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
+| `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, live or archived, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
 | `task head <ID> [--project P]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
-| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only; setting `status` also sets the `status/` tag, and setting `type` the `type/` tag; `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for list keys (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>` and written as its note is named; exit 1 when none matches |
-| `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; refuses `type/` and `status/` tags (exit 5) |
-| `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoting when needed; the first alias never changes; exit 6 when the alias already names another task, exit 5 for the alias `archive` in any letter case. Renaming a slug-named task to its ticket id (a new first alias and folder name) is not covered yet and is done by hand |
-| `task dep <ID> add\|remove <ID> [--project P]` | the resulting `depends_on` links, or `-` when none is left | the second id is the task the first waits on, found by id or alias like the first; `--project` applies to both. `add` appends `"[[<vault path of its README, no .md>\|<its folder id>]]"` and puts the key after `carried_from`; a task already linked is not added twice. `remove` drops the item whose link leads to that README, however its display text is written, and leaves `depends_on: []` when none is left. Exit 1 for an unknown task, exit 5 for the task itself. No cycle check: the doctor's `depends-on` check reports one |
-| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault-relative path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README, live or archived, or the id is another task's alias; a folder with no README gets one. Exit 5 for the id `archive` in any letter case, and for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none; with `--envs` the subproject's own environments come first |
+| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only. Setting `status` also sets the `status/` tag, and setting `type` the `type/` tag. `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for a list key (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>`, and is written as its note is named; exit 1 when none matches |
+| `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; exit 5 for a `type/` or `status/` tag |
+| `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoted when needed; the first alias never changes. Exit 6 when the alias already names another task, exit 5 for the alias `archive` in any letter case. Renaming a slug-named task to its ticket id is done by hand |
+| `task dep <ID> add\|remove <ID> [--project P]` | the resulting `depends_on` links, or `-` when none is left | the second id is the task the first waits on, found by id or alias like the first; `--project` applies to both. `add` appends `"[[<vault path of its README, no .md>\|<its folder id>]]"` and puts the key after `carried_from`; a task already linked is not added twice. `remove` drops the item whose link leads to that README, whatever its display text, and leaves `depends_on: []` when none is left. Exit 1 for an unknown task, exit 5 for the task itself. No cycle check: the doctor's `depends-on` check reports one |
+| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault path | `--project` may be left out when the id's key names one project. Exit 6 when the task already has a README, live or archived, or the id is another task's alias; a folder with no README gets one. Exit 5 for the id `archive` in any letter case, and for `--envs` when the profile lists no environments. A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none. With `--envs` the subproject's own environments come first |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
-| `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder to `<tasks_root>/archive/<YYYY>/<ID>/` with `move`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`; exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too; exit 1 for an unknown task. A move that fails exits as `move` does |
-| `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task; with `repo`, also when the project lists no repo, the repo has no recorded location or its folder is missing. Then it prints the lines first, with `dir` and the three files as `-`, so `delivery` is still read. The message says which |
-| `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, the task's title filled in. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
+| `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
+| `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task. With `repo`, also exit 1 when the project lists no repo, or the repo has no recorded location or no folder; the message says which. The lines are then still printed, with `dir` and the three files as `-`, so `delivery` can be read |
+| `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, with the task's title. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
 | `spec tasks <ID> [--project P]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does |
-| `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings; the task id is matched without letter case, and fenced code is not read. Exit 1 when no item has it, two items have it, `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
-| `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | the packet is all an implementer is given. `validation` is the repo's `validation.md` path, or `none (<state>)` and no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
-| `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` holds as `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`; with `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one with its link is left alone. Line endings and the final newline are kept, frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story: `no change: <ID> is not built from a spec (delivery: direct)`, nothing written. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
+| `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings. The task id is matched without letter case; fenced code is not read. Exit 1 when no item or two items have it, or `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
+| `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | `validation` is the repo's `validation.md` path, or `none (<state>)` with no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
+| `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` that holds is `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`. With `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one that has its link is left alone. Line endings and the final newline are kept; frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story prints `no change: <ID> is not built from a spec (delivery: direct)` and writes nothing. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
 | `spec status <ID> [--project P]` | the body of the README's `## Build` section, or nothing when it has none | |
-| `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`; `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`, and `--commit` adds a hash to its commits once. Adds a status note, `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` has no such task or is missing |
-| `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds `  - Issue <date>: <issue> Fix: <fix>` under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
-| `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing` means the file is not there, `no-section` that it has no `## <repo>` section, `empty` that nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
+| `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`. `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`. `--commit` adds a hash to its commits once. Adds the status note `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` is missing or has no such task |
+| `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue line (section 4) under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
+| `validation <project>` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing |
 | `validation <project> <repo>` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing |
-| `validation new <project> <repo>` | the path of the file it wrote or added the section to | writes a missing file with the repo's section, or adds the section to a file without it, from `validation-repo.md.tmpl`, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
+| `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
-| `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks, and a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
-| `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | headings are lines that open with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
+| `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
+| `outline <path>` | one row per heading: `<line>: <hashes> <heading>`, as in `12: ## Status notes` | a heading is a line that opens with one to six `#` and a space; those in frontmatter or a fenced code block are skipped. Exit 1 when the note is missing |
 | `backlinks <path>` | `path:line: <link as written>`, one row per link that resolves to the note | covers every note of the vault; exit 1 when the note is missing. A note that cannot be read is named on stderr as `note: <path> could not be read` |
-| `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project. A note that cannot be read is named on stderr in the same way |
+| `unresolved [project]` | `path:line: <link as written>`, one row per link that resolves to no file | the whole vault, or the notes under one project. A note that cannot be read is named on stderr as `backlinks` names it |
 | `move <from> <to> [--dry-run]` | `moved: <from> -> <to>`, then one line `links: <path> \| <count>` per note it rewrote, with the note's path after the move | moves a note, any other file, or a folder with everything under it, and rewrites the links (see Links between notes). `<to>` is the new vault path, taken as written: no extension is added. When it names an existing folder or ends with `/`, the item goes inside it under its own name. Missing folders are created. Exit 1 when `<from>` is missing, exit 6 when the destination exists. Exit 5 when `<from>` is the vault root, or is or holds what the helper finds at a fixed path (the index, the conventions note, an index project's folder or its profile), and when a name in `<to>` cannot be written in a link. `--dry-run` prints the same lines after a first line `dry run`, writes nothing, and exits as the move would. `--` ends the options, for a name that starts with a hyphen |
 | `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; `--` ends the options here too. The extension never changes: `<name>` may end with the file's own extension, in any letter case, or leave it out, and anything else is part of the name, so `api.v2` gives `api.v2.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
-| `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | refuses (exit 6) while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal, and moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
+| `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | exit 6 while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal. It moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
 | `sprint set <project> key=value...` | the changed keys | sets `goal` or `committed` on the sprint in progress; exit 1 when there is none, exit 5 for any other key |
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
-| `scaffold vault [DIR]` | the files it created | never overwrites; creates index, conventions, `claude/README.md`, `claude/pull-request.md`. A file that already exists is reported on stderr as `exists: <path>` |
-| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags adopt a project whose notes already live elsewhere: they are written into a new profile and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile decides here too: its `uses_sprints` wins over the flag |
-| `scaffold subproject <project> <name> [--repos R1,R2]` | the files it created: the subproject note and the `README.md` of its docs folder | never overwrites (`exists: <path>` on stderr). Adds a link to the new docs hub under `## Topics` in the topics hub, once. A repo named twice in `--repos`, in any letter case, is written once. Exit 5 for a name that is not a folder name or a repo name that holds a character outside letters, digits, `.`, `_` and `-`; exit 6 when another subproject has that name in another letter case, or already lists one of the repos; exit 1 for an unknown project or a missing profile. Writes no Code to doc map row: the user names the docs |
+| `scaffold vault [DIR]` | the files it created | never overwrites; creates the index, the conventions note, `claude/README.md` and `claude/pull-request.md`. A file that exists is named on stderr as `exists: <path>` |
+| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags are written into a new profile, and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile's `uses_sprints` wins over the flag |
+| `scaffold subproject <project> <name> [--repos R1,R2]` | the files it created: the subproject note and the `README.md` of its docs folder | never overwrites (`exists: <path>` on stderr). Adds a link to the new docs hub under `## Topics` in the topics hub, once. A repo named twice in `--repos`, in any letter case, is written once. Exit 5 for a name that is not a folder name, or a repo name that holds a character outside letters, digits, `.`, `_` and `-`. Exit 6 when another subproject has that name in another letter case, or already lists one of the repos. Exit 1 for an unknown project or a missing profile. Writes no Code to doc map row: the user names the docs |
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
-| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`, makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`, then archives each task that `task-layout` names `to-archive` through `task archive`, `fixed: <ID> -> <new README path> (<project>)`, then prints the table. It never moves an open task, and archives nothing in a project whose tasks root leaves it. A task that `task archive` refuses, such as one whose destination exists, stays where it is, with the reason on stderr |
+| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`. It makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`. Then it archives each task that `task-layout` names `to-archive` through `task archive`, `fixed: <ID> -> <new README path> (<project>)`, and prints the table. It never moves an open task, and archives nothing in a project whose tasks root leaves it. A task that `task archive` refuses stays where it is, with the reason on stderr |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check [--cwd DIR]` | with no vault, one line; in a directory of a project of the index, the session block; else nothing | for the SessionStart hook, see session-check below; always exits 0. `--cwd` reads another directory than the working one |
 
@@ -468,47 +462,52 @@ Rules that hold for every command:
 `backlinks`, `unresolved`, `move`, `rename`, the doctor's `unresolved-links` check and the snapshot
 share one reading of a note's links, in `scripts/lib/graph.sh`.
 
-- A link is a wikilink, `[[target]]`, or a markdown link to a file, `[text](target)`. A wikilink
-  may carry `#heading` or `#^block` after the target, `|text` after that, and a leading `!` for an
-  embed. A markdown target may be wrapped in `<>` or percent-encoded. One with a scheme (`https:`,
+- A link is a wikilink, `[[target]]`, or a markdown link to a file, `[text](target)`.
+- A wikilink may carry `#heading` or `#^block` after the target, `|text` after that, and a leading
+  `!` for an embed.
+- A markdown target may be wrapped in `<>` or percent-encoded. One with a scheme (`https:`,
   `mailto:`) or one that starts with `#` is not a link to a file.
 - Text in a fenced code block or an inline code span holds no links. Frontmatter does.
 - A link with an empty target, such as `[[#heading]]`, points inside its own note and is skipped.
 - A target is tried as written, then with `.md` added. Letter case is ignored (ASCII letters).
 - A target resolves to the first of these that exists: the file at that vault path; the file at
   that path taken from the linking note's folder; the file whose vault path ends with the target
-  at a folder boundary. When several files match the last rule, the one in the linking note's
-  folder wins, then the one with the fewest folders in its path, then the first in byte order.
+  at a folder boundary.
+- When several files match that last rule, the one in the linking note's folder wins, then the one
+  with the fewest folders in its path, then the first in byte order.
 - A target that starts with `./` or `../` is taken from the linking note's folder only. One that
   starts with `/` is a vault path only.
 - A target that resolves to no file is unresolved.
 - The files of the vault are every file under the vault root outside dot folders (`.obsidian`,
   `.trash`, `.second-brain`). Notes are the `.md` files among them; only notes are read for links.
-  A symlink inside the vault is not followed: what lies behind it is not a file of the vault.
+- A symlink inside the vault is not followed: what lies behind it is not a file of the vault.
 - A markdown link sits on one line. One whose text is wrapped over two lines is not read.
 
 What `move` and `rename` do to links:
 
-- Every link keeps leading to the file it led to. A link that resolved to a moved file is
-  rewritten to resolve to it at its new place. So is a link inside a moved note, and a link
-  anywhere that the moved file would capture at its new place, when it would otherwise resolve to
-  another file or to none. A link that still resolves to the same file is left as written.
+- Every link keeps leading to the file it led to.
+- A link that resolved to a moved file is rewritten to resolve to it at its new place. So is a
+  link inside a moved note.
+- So is a link anywhere that the moved file would capture at its new place, when it would
+  otherwise resolve to another file or to none.
+- A link that still resolves to the same file is left as written.
 - A rewritten wikilink is the new file name alone when the old target was a file name alone and
   the new name is unique in the vault; otherwise it is the new vault path. It has `.md` only when
   the old target had it. `!`, `#heading` and `|text` are kept.
 - A rewritten markdown link keeps its form: a path taken from its note's folder stays one, a vault
   path stays one, and `<>` or percent-encoding is kept.
 - In frontmatter, a link inside a single-quoted value is written, and read, with each apostrophe
-  of its target doubled, as YAML asks. Not covered: a quoted value that runs over several lines,
-  a block scalar, a quoted value behind a tag or an anchor, an unquoted link whose new name YAML
-  reads as structure, and a note whose opening `---` is never closed.
+  of its target doubled.
+- Not covered in frontmatter: a quoted value that runs over several lines, a block scalar, a quoted
+  value behind a tag or an anchor, an unquoted link whose new name YAML reads as structure, and a
+  note whose opening `---` is never closed.
 - Files that are not notes are moved and never edited. A `.canvas` or `.base` file that mentions a
   moved file's old vault path is named on stderr as `note: <path> mentions <old path>`.
 - The links are worked out before anything is written; the files are moved, then the notes edited.
-- A destination is refused with exit 5 when a name the move creates, the new name or a folder
-  that does not exist yet, holds one of `# ^ [ ] | \ : * ? " < >`, a backtick or a control
-  character, or starts or ends with a blank: Obsidian forbids them, and a link could not spell
-  the name. So is a source or a destination that lies behind a symlinked folder.
+- A destination is refused with exit 5 when a name the move creates, the new name or a folder that
+  does not exist yet, holds one of `# ^ [ ] | \ : * ? " < >`, a backtick or a control character,
+  or starts or ends with a blank.
+- A source or a destination that lies behind a symlinked folder is refused with exit 5 too.
 - Where the file system ignores letter case, `<from>` may be written in another case of ASCII
   letters. A spelling that reaches the file only through a fold the helper does not make, a
   Unicode form or the case of a letter outside ASCII, is refused with exit 1.
@@ -517,11 +516,11 @@ What `move` and `rename` do to links:
 - Every rewritten line is read again before anything is moved: each rewritten link must be found
   and must resolve to its file. One that does not stops the command with exit 1, naming the note
   and the line.
-- A note that changed while the command ran is left as it is and named on stderr as still
-  holding old links. The other notes are rewritten and the command exits 1.
+- A note that changed while the command ran is left as it is and named on stderr as still holding
+  old links. The other notes are rewritten and the command exits 1.
 - The destination is looked at again right before the move and is never overwritten.
-- Not covered: a rename that changes only the letter case of a name, on a file system that
-  ignores case. It exits 6.
+- Not covered: a rename that changes only the letter case of a name, on a file system that ignores
+  case. It exits 6.
 
 ### link, doctor, snapshot
 
@@ -532,17 +531,18 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 
 - On macOS and Linux every link is a symlink: one per skill folder in the link directory's
   `skills/`, one per agent file in its `agents/`.
-- On Windows every link is a directory junction, which needs no special rights: one per skill
-  folder, and one per claude folder for its whole `agents` folder, because a junction cannot lead
-  to a file. The agents junction is named `second-brain-vault` for the vault's own `claude/` and
-  `second-brain-project-<project path with each slash as a hyphen>` for a project's. Claude Code
-  reads `agents/` through its sub-folders, so every agent file in a linked folder is found, and so
-  is any other `.md` file kept there.
+- On Windows every link is a directory junction: one per skill folder, and one per claude folder
+  for its whole `agents` folder.
+- The agents junction is named `second-brain-vault` for the vault's own `claude/`, and
+  `second-brain-project-<project path with each slash as a hyphen>` for a project's.
+- Claude Code reads every agent file in a linked `agents` folder, and any other `.md` file kept
+  there.
 - `link` prints one row per agent on every system. On Windows each agent row carries the state of
-  its folder's junction. Two project paths that give the same junction name cannot both be linked:
-  the agents of the later one are `duplicate`.
+  its folder's junction.
+- Two project paths that give the same junction name cannot both be linked: the agents of the
+  later one are `duplicate`.
 - A junction needs a folder on a local drive, so a vault on a network share cannot be linked.
-- A plain `ln -s` is never used on Windows, where Git Bash turns it into a copy.
+- A plain `ln -s` is never used on Windows.
 - `sb_link_scan` prints one row per item, no header: `name | kind | state | target`. `kind` is
   `skill` or `agent`. `state` is one of `linked`, `missing`, `wrong-target`, `name-mismatch`,
   `duplicate`, `dangling`, `foreign`. `cmd_link --check` prints the same rows.
@@ -550,23 +550,26 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
   or `-`.
 - A long offender is cut and ends with `...`: at 48 bytes, or at 120 for the paths of `hubs` and
-  `task-location`. A short tag after its last colon, such as `:no-folder`, is kept whole: the
-  cut falls in the value before it.
+  `task-location`. A short tag after its last colon, such as `:no-folder`, is kept whole: the cut
+  falls in the value before it.
 - A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
-  fail row, with the fail offenders only. `subprojects` and `task-subproject` are the exceptions:
-  a project with no subproject note gets no row for them.
-- The doctor follows no `..`. An index path or a profile root is judged as it is written, and
-  nothing is opened through one that holds a `..` part or a backslash, or through a root that
-  starts with `/`. A link inside the vault is the user's own choice: the doctor does not check
-  where a project folder that is one leads.
+  fail row, with the fail offenders only.
+- `subprojects` and `task-subproject` are the exceptions: a project with no subproject note gets no
+  row for them.
+- The doctor follows no `..`. An index path or a profile root is judged as it is written.
+- For an index path that names no project folder (`## 2. The index`), the doctor prints no
+  project rows, and opens and writes nothing under it.
+- A project whose root leaves it (`### Profile frontmatter`) is checked under that root's default.
+  Nothing is opened through that root, or through a root that starts with `/`.
+- The doctor does not check where a project folder that is a link inside the vault leads.
 - Doctor check names, exactly as printed:
 
 | Scope | Check | Fails or warns when |
 |---|---|---|
 | vault | `pointer` | the pointer does not resolve to a vault (fail) |
-| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that is `.`, or holds a `..` part or a backslash, is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, with names and paths compared without letter case, `//` and `/./` in a path folded, and keys compared in upper case) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
+| vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that names no project folder is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, compared as `## 2. The index` says) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
-| vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn), or its `pull_request_version` is missing or lower than the template's (warn, `claude/pull-request.md:<version or none>`). `--fix` replaces an older note that was never edited, one that holds, CRs dropped, a text the plugin wrote: the helper knows each by its `cksum`. The fix of an edited one says to bring it in line with the template by hand |
+| vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn), or its `pull_request_version` is missing or lower than the template's (warn, `claude/pull-request.md:<version or none>`). A note was never edited when, CRs dropped, it holds a text the plugin wrote: the helper knows each by its `cksum`. The fix of an edited one says to bring it in line with the template by hand |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `global-rules` | a line of the link directory's `CLAUDE.md` names an index project: its name as a whole word, as written, or its path in any letter case (`<project>:<line number>`, or `<project>:@<line number>` for an `@` import line, whose fix is to remove it) (warn). A whole word has no letter, digit, `_` or `-` on either side. The import line of the index and the table rows under a `## Projects` heading are not read, nor the files the `CLAUDE.md` imports |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
@@ -575,7 +578,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `descriptions` | a scanned skill or agent has no description (`<name>:none`), or one over 200 characters (`<name>:<length>`) (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | project | `profile` | the profile is missing, lacks a contract key, lacks one of the seven sections, or has a root that leaves the project (`<key>:leaves-project`) (fail) |
-| project | `board` | the board file is missing (fail); or, while a sprint is in progress, its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is not written as `sprint == "<id>"`, the one form the helper reads and `sprint open` rewrites (`tasks.base:filter`), or it has no such view (`tasks.base:no-view`) (warn). With no sprint in progress, or for a project that does not use sprints, the view is not looked at. For a project with a subproject note, a board with no `By subproject` view (`tasks.base:no-subproject-view`) (warn). For a project with `task_layout: archive`, a board whose own filters do not take `<tasks_root>/archive` (`tasks.base:no-archive-filter`) (warn). The findings share one row |
+| project | `board` | the board file is missing (fail). While a sprint is in progress: its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is not written as `sprint == "<id>"` (`tasks.base:filter`), or it has no such view (`tasks.base:no-view`) (warn); with no sprint in progress, or for a project that does not use sprints, the view is not looked at. For a project with a subproject note, a board with no `By subproject` view (`tasks.base:no-subproject-view`) (warn). For a project with `task_layout: archive`, a board whose own filters do not take `<tasks_root>/archive` (`tasks.base:no-archive-filter`) (warn) |
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project, and a hub that two roots share is named once |
 | project | `placeholders` | a line of `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` holds a placeholder of the template it was written from (warn, `<path under the project>:<line>`). A placeholder is text in angle brackets, with no blank after `<`, outside inline code unless it opens the code; only the template's own count, as written there. Frontmatter, fenced code and task READMEs are not read |
 | project | `task-frontmatter` | first alias differs from the folder name, or `type` or its tag is missing (fail) |
@@ -585,7 +588,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
 | project | `no-readme` | a task folder without a README (warn): a folder directly under the tasks root other than `archive`, or one directly under `<tasks_root>/archive/<YYYY>/` |
 | project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md` or `<tasks_root>/archive/<YYYY>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
-| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it; a task with neither a status note nor a sprint is never due), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`) |
+| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`) |
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |
@@ -593,7 +596,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
 | project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
 | project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
-| project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement, a `## ` heading whose first word is `R` and a number, with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A criterion is a `- [ ]`, `- [x]` or `- [X]` line, then a blank or the line's end, under the README's `## Acceptance criteria`, up to the next `## ` or `# ` heading, numbered from 1. Every `- Serves:` line of a requirement counts, the word in any letter case; its items are comma separated, and a good one is `AC<n>`, in any letter case, for a criterion the story has. Fenced code, the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. A done or abandoned story is not read, nor one with no `requirements.md`, nor one whose spec is in a repo with no recorded location or no folder: the `validation` and `repos` checks name those. Every offender of the project shares the one row, and `--fix` changes nothing |
+| project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A requirement is a `## ` heading whose first word is `R` and a number. Criteria and `- Serves:` lines are read as `## 4. A task` says; the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
@@ -601,24 +604,24 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `depends-on` | a `depends_on` link of a task leads to no note or out of the vault (`<ID>:missing`), or tasks of the project depend on each other in a ring (`<ID>:cycle`, every task of a strongly connected group of two or more, and a task that depends on itself) (warn). A link matches a task of the project without letter case. The check fails with `awk:error` when it cannot run |
 
 - `task-location` takes a note's type from frontmatter that opens on the first line and closes.
-  The key is `type:` followed by a blank: `type:task` is no property, and frontmatter that
-  never closes holds none.
-- Not covered: a tasks root spelled in the profile with a letter outside ASCII in another
-  Unicode form than the folder has on disk. macOS still finds the tasks through it, and
-  `task-location` may then report each of them.
+  The key is `type:` followed by a blank: `type:task` is no property, and frontmatter that never
+  closes holds none.
+- Not covered: a tasks root spelled in the profile with a letter outside ASCII in another Unicode
+  form than the folder has on disk. macOS still finds the tasks through it, and `task-location`
+  may then report each of them.
 - Not covered: the notes behind a project folder that is a link. `task-location` and
   `unresolved-links` go by the files of the vault, and a link is not followed there.
-- A snapshot is a folder `<vault>/.second-brain/snapshots/<name>/` holding `unresolved.txt`,
-  `aliases.txt`, `tasks.tsv` (project, id, status), `links.txt` and `doctor.txt`, all read from
-  the vault's files.
+- A snapshot is a folder `<name>/` holding `unresolved.txt`, `aliases.txt`, `tasks.tsv` (project,
+  id, status), `links.txt` and `doctor.txt`, all read from the vault's files.
 
 ### session-check
 
-The SessionStart hook runs it, so that a session knows from its first message where it is. With
-no vault, or a vault with no index, it prints one line:
-`second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init`. In a
-directory that a project of the index holds, found as `context` finds the project, it prints one
-block:
+The SessionStart hook runs it.
+
+- With no vault, or a vault with no index, it prints one line:
+  `second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init`.
+- In a directory that a project of the index holds, found as `context` finds the project, it
+  prints one block:
 
 ```
 second-brain context for this session:
@@ -631,44 +634,44 @@ story: projects/example/tasks/EX-123/README.md - in-progress, next: Add the colu
 rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.
 ```
 
-- `subproject` is there only when one subproject's repository holds the directory, as in
-  `context`. `sprint` is there only for a project that uses sprints: the sprint in progress, or
-  `none`.
+- `subproject` is there as in `context`.
+- `sprint` is there only for a project that uses sprints: the sprint in progress, or `none`.
 - `branch` is read from the repository's files, never from a git command: `.git/HEAD`, or in a
   linked worktree the `HEAD` of the git folder its `.git` file names. It is `detached` for a
   detached head, and `none` outside a repository.
-- `ticket` is the first `<KEY>-<number>` in the branch for one of the project's keys, at the
-  start of a word, matched without letter case and printed with the key as the index spells it.
-  It is `none` when the branch names none.
-- `story` is there only with a ticket: the vault path of its task README, found by its folder
-  and then by its aliases, with its `status` and `next`; or `none - run story-tracker start`.
+- `ticket` is the first `<KEY>-<number>` in the branch for one of the project's keys, at the start
+  of a word, matched without letter case and printed with the key as the index spells it. It is
+  `none` when the branch names none.
+- `story` is there only with a ticket: the vault path of its task README, found by its folder and
+  then by its aliases, with its `status` and `next`; or `none - run story-tracker start`.
 - The block always ends with the `rule` line, the search and read rule of the index.
-- Anywhere else it prints nothing. Anything that fails while the block is built leaves the block
-  out, and the command still exits 0.
+- Anywhere else it prints nothing.
+- Anything that fails while the block is built leaves the block out, and the command still exits
+  0.
 
 ### Code layout
 
 `bin/second-brain` resolves its own real directory, sources every `scripts/lib/*.sh`, then calls
-the function `cmd_<command>` (dashes become underscores) with the remaining arguments. An unknown
-command prints usage and exits 5. A library file only defines functions.
+the function `cmd_<command>` (dashes become underscores) with the remaining arguments.
 
-Two more library files: `scripts/lib/graph.sh` (`cmd_outline`, `cmd_backlinks`, `cmd_unresolved`,
-`cmd_move`, `cmd_rename`; private helpers `sb_graph_*`) and `scripts/lib/platform.sh` (what differs
-between systems; private helpers `sb_plat_*`). `cmd_pointer` lives in `scripts/lib/link.sh`.
-`scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and
-`sb_need_sub`; `sb_scaffold_subproject` is in `scaffold.sh`. `scripts/lib/spec.sh` holds
-`cmd_spec`, `cmd_validation` and their helpers, `sb_spec_*` and `sb_val_*`; the doctor and
-`scaffold project` call `sb_spec_value`, `sb_val_rows` and `sb_val_placeholders`, and the doctor
-`sb_spec_resolve` and `sb_spec_trace` too.
-
-Inside the helper every absolute path is in the shell's own form, which on Windows is Git Bash's
-`/c/...`. `sb_path_in` turns a path that was read into that form and `sb_path_out` turns one into
-the form that is printed. On macOS and Linux both print the path unchanged.
-
-Git Bash's `awk`, `grep` and `sed` read in text mode and drop the CR of every line. On Windows
-`platform.sh` defines shell functions with those three names that run the tools in binary mode,
-so a CRLF file is read and written byte for byte. They are the one exception to the `sb_*` naming
-rule. A library calls the three tools by their plain names, never through `env` or `command`.
+- An unknown command prints usage and exits 5.
+- A library file only defines functions.
+- `scripts/lib/graph.sh` holds `cmd_outline`, `cmd_backlinks`, `cmd_unresolved`, `cmd_move` and
+  `cmd_rename`. Its private helpers are `sb_graph_*`.
+- `scripts/lib/platform.sh` holds what differs between systems. Its private helpers are
+  `sb_plat_*`.
+- `scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and
+  `sb_need_sub`. `sb_scaffold_subproject` is in `scaffold.sh`.
+- `scripts/lib/spec.sh` holds `cmd_spec`, `cmd_validation` and their helpers, `sb_spec_*` and
+  `sb_val_*`. The doctor and `scaffold project` call `sb_spec_value`, `sb_val_rows` and
+  `sb_val_placeholders`, and the doctor `sb_spec_resolve` and `sb_spec_trace` too.
+- Inside the helper every absolute path is in the shell's own form: on Windows, Git Bash's
+  `/c/...`. `sb_path_in` turns a path that was read into that form, and `sb_path_out` turns one
+  into the printed form. On macOS and Linux both leave the path as it is.
+- On Windows `platform.sh` defines shell functions named `awk`, `grep` and `sed` that run the
+  tools in binary mode, so a CRLF file is read and written byte for byte. They are the one
+  exception to the `sb_*` naming rule.
+- A library calls those three tools by their plain names, never through `env` or `command`.
 
 Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `graph.sh`,
 `projects.sh` and `subproject.sh`:
@@ -696,18 +699,23 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `sb_sub_by_cwd <project path> <dir>` | prints the names of the subprojects whose repository holds the directory |
 | `sb_today` | prints today's date; honours `SECOND_BRAIN_TODAY` for tests |
 
-Every helper function is named `sb_*` and every command `cmd_*`. A library must not redefine a
-function another library owns. Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`,
-`sb_fm_edit`, `sb_fm_keys`, `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_scan`,
-`sb_sprint_current_id`, `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`,
-`sb_note`, `sb_md_files`, `sb_board_sprint_literal`. `sb_task_files` lists a tasks folder's task
-READMEs at both depths, and `sb_task_readme` finds one task folder's README at either: every
-command that looks for a task goes through them.
+- Every helper function is named `sb_*` and every command `cmd_*`.
+- A library must not redefine a function another library owns.
+- Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`, `sb_fm_edit`, `sb_fm_keys`,
+  `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_scan`, `sb_sprint_current_id`,
+  `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`,
+  `sb_board_sprint_literal`.
+- Every command that looks for a task goes through `sb_task_files`, which lists a tasks folder's
+  task READMEs at both depths, and `sb_task_readme`, which finds one task folder's README at
+  either.
 
 ## 8. Templates
 
-`templates/*.tmpl`, filled by the helper (`sb_fill`, awk). Placeholders are `{{UPPER_SNAKE}}`. A
-line that holds only an empty placeholder is dropped. A filled file must contain no `{{`.
+`templates/*.tmpl`, filled by `sb_fill`.
+
+- Placeholders are `{{UPPER_SNAKE}}`.
+- A line that holds only an empty placeholder is dropped.
+- A filled file must contain no `{{`.
 
 | Template | Becomes | Placeholders |
 |---|---|---|
@@ -730,73 +738,77 @@ line that holds only an empty placeholder is dropped. A filled file must contain
 | `validation-repo.md.tmpl` | one `## <repo>` section of a `validation.md` | `REPO` |
 | `spec-requirements.md.tmpl`, `spec-design.md.tmpl`, `spec-tasks.md.tmpl` | the body of a spec file, under the frontmatter and up link the helper writes in the vault | `ID`, `TITLE` |
 
-Links inside generated notes follow the conventions: a bare `[[Alias]]` does not resolve, so a link
-carries the full vault path for a `README.md` and the alias as display text.
+A link in a generated note carries the full vault path of a `README.md`, with the alias as display
+text.
 
 ## 9. Skills and agents
 
 - Frontmatter: `name` (equals the folder or file name), `description` (one sentence, under 200
-  characters, quoted if it contains `: `). A skill that runs only by name sets
-  `disable-model-invocation: true`. `vault-setup` is the one: it writes the pointer and the links
-  into `~/.claude`. Claude may call `vault-doctor` from a request: its check writes nothing, and
-  its fix repairs only what is safe and asks before anything else.
+  characters, quoted if it contains `: `).
+- A skill that runs only by name sets `disable-model-invocation: true`.
+  `vault-setup` is the one: it writes the pointer and the links into `~/.claude`.
+- Claude may call `vault-doctor` from a request: its check writes nothing, and its fix repairs only
+  what is safe and asks before anything else.
 - A skill's `SKILL.md` holds the router and the rules needed on every run. Detail for one mode goes
   in a sibling file that is read only in that mode.
 - Every skill and agent carries this pointer near the top and does not restate the conventions:
   `Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.`
-- Every skill begins its work by running `second-brain context` itself, as its first tool call, and
-  resolves the project with `second-brain project`. No skill uses a command that runs at load time:
-  a load-time command that fails its permission check aborts the whole skill. When the helper is
-  missing the skill says so and stops; it does not guess paths.
+- Every skill runs `second-brain context` as its first tool call, and resolves the project with
+  `second-brain project`.
+- No skill uses a command that runs at load time.
+- When the helper is missing, the skill says so and stops. It does not guess paths.
 - Agents call skills through the Skill tool as `obsidian-dev-second-brain:<name>`.
-- **A spec-driven story is built in two halves.** The `spec` skill runs in the owner's session
-  and writes requirements, then design, then tasks there, with the context the session has.
+- **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
+  design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:
   `Spec: <phase> approved by the owner.`
 - A phase changed after its approval gets the note `Spec: <phase> reopened.` An approval counts
   only when it is newer than every `reopened` note of its own phase or an earlier one.
 - Only the owner's session asks the owner: a subagent has no AskUserQuestion.
-- When the owner approves the task list, the skill runs `spec link <ID>`: the story links to its
-  spec in place of repeating it.
+- When the owner approves the task list, the skill runs `spec link <ID>`.
 - Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
-  first commits the spec files on the story's branch, so the tree is clean.
+  first commits the spec files on the story's branch.
 - `spec-lead` checks the approval note itself, and keeps track of the build in the story's
-  `## Build` section. It launches `reviewer` on the untouched branch first. Then it builds every
-  task, one `implementer` run per task, then reviews them in order, one `reviewer` run per task.
-- `implementer` runs no check: `reviewer` runs them all. `reviewer` logs each issue with its
-  proposed fix through `spec issue`, and `spec-lead` gives the issues to `implementer` again.
+  `## Build` section.
+- `spec-lead` launches `reviewer` on the untouched branch first. Then it builds every task, one
+  `implementer` run per task, then reviews them in order, one `reviewer` run per task.
+- `implementer` runs no check: `reviewer` runs them all.
+- `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
+  issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
-  `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
+- `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
 - `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
   the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
-- A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the
-  review of later tasks. A BLOCKED, or an
-  implementer reply that starts `BLOCKED:`, stops the build at once: no retry can fix it.
-- Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on
-  from the `## Build` section, so a build resumes in a new session.
+- A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the review
+  of later tasks.
+- A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
+- Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on from
+  the `## Build` section, so a build resumes in a new session.
 - The three agents and their tools:
 
 | Agent | Tools | Job |
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
-| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; runs no check; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep | runs every check and reads the diff; edits no file; logs issues with `spec issue`; ends with a verdict line |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
+| `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
-  production. Confirmed means the user says so, or the change's story shows it: its last environment
-  is `done`, or the story is `done` when the project has no environments. The code a doc is checked
-  against is the production branch on the remote. Until a change is confirmed, the planned doc
-  edits are recorded as pending and not made: under `## Docs to update` in the task README when
-  there is a ticket, else as a line starting `pending production:` in the profile's debt file.
+  production.
+- Confirmed means the user says so, or the change's story shows it: its last environment is
+  `done`, or the story is `done` when the project has no environments.
+- The code a doc is checked against is the production branch on the remote.
+- Until a change is confirmed, its planned doc edits are recorded as pending and not made: under
+  `## Docs to update` in the task README when there is a ticket, else as a line starting
+  `pending production:` in the profile's debt file.
 - **A ticket marked done starts `docs-keeper`.** When `story-tracker` sets a story `done` in a
   project with no environments, or sets its last environment `done`, it starts the `docs-keeper`
-  agent with the ticket id and the README path. The agent makes the edits under
-  `## Docs to update` and ticks them; with no such section it checks the ticket's change against
-  the "Code to doc map". A gap it does not fix goes to the debt file, and it adds a status note
-  to the ticket. The sprint close only reports done tasks with unticked doc lines, from
-  `task docs`.
-- Frontmatter is the source of truth. A status is never inferred from prose. A missing or
-  non-standard status is reported as "Needs a status" and never set without asking.
+  agent with the ticket id and the README path.
+- `docs-keeper` makes the edits under `## Docs to update` and ticks them. With no such section it
+  checks the ticket's change against the "Code to doc map".
+- A gap `docs-keeper` does not fix goes to the debt file, and it adds a status note to the ticket.
+- The sprint close only reports done tasks with unticked doc lines, from `task docs`.
+- Frontmatter is the source of truth. A status is never inferred from prose.
+- A missing or non-standard status is reported as "Needs a status" and never set without asking.
 - Notes are moved and renamed with `second-brain move` / `rename`, never `mv`.
 - No skill or agent runs `ln`, `mklink` or the Obsidian CLI. The pointer is made with
   `second-brain pointer set` and the links with `second-brain link --apply`.
@@ -804,34 +816,38 @@ carries the full vault path for a `README.md` and the alias as display text.
   read), then a scoped search, and a whole note last.
 - The plugin's hooks are written in shell form, a `command` string with no `args`, so that Claude
   Code runs them through a shell on every system: Git Bash on Windows.
-- `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`, which
-  prints the session block (see session-check). PreToolUse
-  runs `hooks/search-rule.sh` on every Bash, Grep and Read call, with `"onFailure": "continue"` so
-  that a hook that cannot run never holds a call back: on Windows without Git Bash, a shell-form
-  PreToolUse hook that fails with no `onFailure` can block the call. The key needs Claude Code
-  2.1.295 or later, which the README names.
-- `search-rule.sh` warns and never blocks. It prints one JSON object whose
-  `hookSpecificOutput.additionalContext` says what the call does, then the search and read rule,
-  when one of these reaches into the vault: a Grep call; a Read of a whole task note, a
+- `hooks/hooks.json` holds two hooks. SessionStart runs `second-brain session-check`, which prints
+  the session block (see session-check).
+- PreToolUse runs `hooks/search-rule.sh` on every Bash, Grep and Read call, with
+  `"onFailure": "continue"`, so that a hook that cannot run never holds a call back. The key needs
+  Claude Code 2.1.295 or later, which the README names.
+- `search-rule.sh` warns and never blocks. It sets no `permissionDecision`, so the call goes on
+  through the normal permission flow. It always exits 0.
+- It warns when one of these reaches into the vault: a Grep call; a Read of a whole task note, a
   `tasks/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md` read with no `offset` and no
-  `limit`; a Bash command that runs grep,
-  egrep, fgrep, rg, cat or sed. It sets no `permissionDecision`, so the call goes on through the
-  normal permission flow. Otherwise it prints nothing. It always exits 0.
+  `limit`; a Bash command that runs grep, egrep, fgrep, rg, cat or sed.
+- The warning is one JSON object whose `hookSpecificOutput.additionalContext` says what the call
+  does, then the search and read rule. Otherwise it prints nothing.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last
   two parts of the vault's path, through the pointer or the physical one, as whole names: after a
   slash, a quote, a blank or the start, and at the end of a name.
-  Letter case is ignored and a backslash counts as a slash, so `~/`, `$HOME/`, `C:\` and `/c/`
-  forms all match. A Bash command also does when it holds `second-brain root`.
-- Edit and Write are never matched, and a ranged Read or a Read of another note passes in silence:
-  the index tells Claude to read some notes whole, and an Edit needs the note read first.
-- It loads no library and starts one awk, so it stays fast on every call, and it reads a long
-  command in one pass. With no vault, or with input it cannot read, it prints nothing.
+- Letter case is ignored and a backslash counts as a slash, so `~/`, `$HOME/`, `C:\` and `/c/`
+  forms all match. A Bash command also reaches into the vault when it holds `second-brain root`.
+- Edit and Write are never matched. A ranged Read, or a Read of another note, passes in silence.
+- It loads no library, starts one awk, and reads a long command in one pass. With no vault, or
+  with input it cannot read, it prints nothing.
 
 ## 10. Writing rules for every file in this repo
 
 - Plain hyphens only. No long dashes, no emojis, no decorative symbols.
-- No absolute paths, project names, ticket keys or people's names. Examples use `EX-123`,
-  `Example`, `example-api`, `docs/billing/invoices`.
+- No absolute paths, project names, ticket keys or people's names. `scripts/leak-check.sh`
+  checks part of this.
+- Examples use `EX-123`, `Example`, `example-api`, `docs/billing/invoices`.
 - Do not name any file-sync product.
 - Tests may use other made-up keys (`ZZ`, `TWO`) where they need two projects or a clash.
 - Short sentences. One idea per bullet.
+- Name a file by its path and code by its function. Do not describe them.
+- One idea per bullet.
+- Do not restate: say a rule once, in its home.
+- A rule stated in several files has one home. The others point to it by path, and by heading
+  when it is one section.

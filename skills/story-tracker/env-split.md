@@ -1,17 +1,19 @@
 # Environment sets
 
-One goal tracked as a ticket per environment. The environment names and their order are the
-profile's `environments`, or the subproject's when the story has one and it sets them;
-`second-brain profile <project> environments` says what differs between them. The examples use
-dev, qa and prod.
+One goal tracked as a ticket per environment.
+
+- The environment names and their order are the profile's `environments`, or the subproject's
+  when the story has one and it sets them.
+- `second-brain profile <project> environments` says what differs between them.
+- The examples use dev, qa and prod.
 
 ## One file for the whole set
 
-One task folder and one README hold the whole set, named for the FIRST environment's ticket id.
-The set is one change promoted through the environments; separate files would mean several copies
-of the root cause and the code walk, which drift. Create it with
-`second-brain task new EX-123 --title "..." --envs`. With three environments tracked, the
-frontmatter carries:
+- One task folder and one README hold the whole set, named for the first environment's ticket id.
+- Add `envs:` only when the user runs a ticket per environment.
+- Create the set with `second-brain task new EX-123 --title "..." --envs`.
+
+With three environments tracked, the frontmatter carries:
 
 ```yaml
 aliases:
@@ -24,32 +26,32 @@ envs:
   prod: { id: EX-151, status: planned }
 ```
 
-- `aliases` lists every id, so `second-brain find` and every `second-brain task` command reach
-  this file from any of them. An alias still does not make a bare link resolve.
-- Top-level `status` is the set's: the least advanced environment still open, `done` only when the
-  last one is done. Per-environment statuses live in `envs:`, the one part edited by hand. Keep
-  its shape.
-- One branch, named for the first environment's id, carries the work through every environment.
-  The branch check in `SKILL.md` has the rule.
-- Add `envs:` only when the user really runs a per-environment split. Most stories are standalone.
-- In the overview the set is one board row and one block, counted once. The row's `envs` cell
-  carries each environment's id and status; `status.md` has the format.
+- `aliases` lists every id. Any of them finds this file, as `## Find the story` in `SKILL.md` says.
+- Link to the set as `## Links` in `SKILL.md` says: an alias does not make a bare link resolve.
+- Top-level `status` is the set's: the least advanced environment still open.
+- The set is `done` only when the last environment is done.
+- Each environment's status lives in `envs:`.
+- `envs:` is the one part of the frontmatter edited by hand. Keep its shape.
+- One branch serves the whole set, as `## Branch check (start, update, recall)` in `SKILL.md` says.
+- The overview shows the set as one block, counted once. `## Render` in `status.md` has the format.
 
 ## Shared and per environment
 
-- Shared, written once: Summary, Description, Findings, Approach, Code verification, Changes. It
-  is the same change everywhere.
-- Per environment, each under its own `### <ENV> - <ID> (<status>)` heading: Acceptance criteria
-  and Verification. Each environment has its own configuration and data, so write different
-  checks, the top 4 for each. Do not copy the first four down.
-- `## Status notes` and `## Discovery log` stay single logs for the set, newest first, each entry
-  naming its environment: `second-brain task note EX-123 "qa: promotion validated" --session <id>`.
-  A finding in one environment usually explains a result in the next.
+- Written once for the set: Summary, Description, Findings, Approach, Code verification, Changes.
+- Acceptance criteria and Verification get one subsection per environment, headed
+  `### <ENV> - <ID> (<status>)`.
+- Write different checks for each environment's configuration and data, the top 4 for each. Never
+  copy the first environment's checks down.
+- `## Status notes` and `## Discovery log` stay one log each for the whole set.
+- Each entry names its environment:
+  `second-brain task note EX-123 "qa: promotion validated" --session <id>`.
 
 ## Add the next environment
 
-Edit the existing file; a later id never gets a folder (`SKILL.md`, "Find the story"). Ask for the
-new ticket id; do not assume it is the previous one plus one. Run
-`second-brain task alias EX-123 add EX-151`, add `prod: { id: EX-151, status: planned }` to `envs:`
-by hand, add its Acceptance criteria and Verification subsections, then
-`second-brain task set EX-123 status=<set status>` if the set moved.
+Edit the existing file. A later id never gets a folder, as `## Find the story` in `SKILL.md` says.
+
+1. Ask for the new ticket id. Never assume it is the previous one plus one.
+2. Run `second-brain task alias EX-123 add EX-151`.
+3. Add `prod: { id: EX-151, status: planned }` to `envs:` by hand.
+4. Add its Acceptance criteria and Verification subsections.
+5. The set's status moved: run `second-brain task set EX-123 status=<set status>`.

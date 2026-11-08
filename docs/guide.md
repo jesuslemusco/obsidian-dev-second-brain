@@ -1,29 +1,28 @@
 # Guide
 
-What the plugin ships, how a vault is laid out, what differs on Windows, how to work on the plugin
-itself, and how a release is made. The short version is in the [README](../README.md); every helper
-command and note format is in the [contract](contract.md).
+Start with the [README](../README.md). Every helper command and note format is in the
+[contract](contract.md).
 
 ## What you get
 
 | Piece | Kind | Does |
 |---|---|---|
-| `story-tracker` | skill | Writes ticket text, and keeps one README per ticket in the vault: draft, start, update, recall, or list what is active. |
-| `sprint` | skill | Open a sprint, plan it, show its status, close it and carry work over. |
-| `vault-setup` | skill | Set up a vault, add a project, adopt an existing project, register your own skills. |
-| `vault-doctor` | skill | Check the vault and the registration against the standard. |
+| `story-tracker` | skill | Drafts ticket text, and starts, updates, recalls and lists your tickets. |
+| `sprint` | skill | Opens, plans, shows and closes a sprint, and carries work over. |
+| `vault-setup` | skill | Sets up a vault, adds or adopts a project, and registers your own skills. |
+| `vault-doctor` | skill | Checks the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
-| `docs-keeper` | agent | Keeps a project's docs in step with its code. Runs when a ticket is marked done. |
-| `spec` | skill | Builds a story from a spec: writes its requirements, design and tasks with you in the chat, one approved phase at a time, then hands the build to `spec-lead`. |
-| `spec-lead` | agent | Builds the approved tasks one at a time through `implementer` and `reviewer`, and ticks only what passes review. |
+| `docs-keeper` | agent | Keeps a project's docs in step with its code. |
+| `spec` | skill | Writes a story's spec with you, one approved phase at a time, then starts `spec-lead`. |
+| `spec-lead` | agent | Builds the approved tasks through `implementer` and `reviewer`. |
 | `implementer` | agent | Builds and commits one task from its context packet alone. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
-| `second-brain` | command | The helper the skills call: lookups, the task board, task and sprint writes, moving notes with their links, scaffolding. |
+| `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
 
 ## What to say
 
-Claude picks a skill by matching your words against the skill's description. The end-to-end check
-proves that each of these requests loads the skill next to it:
+Claude loads a skill when your words match its `description`. Each of these requests loads the
+skill next to it:
 
 | You say | Skill |
 |---|---|
@@ -35,8 +34,8 @@ proves that each of these requests loads the skill next to it:
 | Check my vault for problems. | `vault-doctor` |
 | Implement EX-2 spec-driven, starting with its requirements. | `spec` |
 
-`vault-setup` writes into `~/.claude`, so it runs only when you name it:
-`/obsidian-dev-second-brain:vault-setup`. Any skill runs by name the same way.
+- Any skill runs by name: `/obsidian-dev-second-brain:<skill>`.
+- `vault-setup` runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
 
 ## Other ways to install
 
@@ -47,200 +46,144 @@ From a local clone:
 /plugin install obsidian-dev-second-brain@second-brain
 ```
 
-To try it for one session without installing: `claude --plugin-dir /path/to/obsidian-dev-second-brain`.
+For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-second-brain`.
 
 ## How it is laid out
 
-On your machine:
+- The vault's files are under `## 1. Words and paths` in `docs/contract.md`.
+- A project's files are under `## 3. The project` in `docs/contract.md`.
+- A task names what it is about with topic tags, and never sits in the topic's folder, as
+  `## The short version` in `templates/obsidian-conventions.md.tmpl` says.
+- An existing project keeps its folders. `/obsidian-dev-second-brain:vault-setup adopt <path>`
+  records them in its profile, as
+  `## 2. Scaffold only what is missing` in `skills/vault-setup/adopt.md` says.
+- A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
+- A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
+  any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
+- In a subproject's repo the status overview lists that subproject's tasks.
+- The board's `By subproject` view groups the tasks by subproject.
+- A rule you ask Claude to save goes where it applies, as
+  `## 2. The index` in `docs/contract.md` says.
+- The doctor's `global-rules` check warns about a line of `~/.claude/CLAUDE.md` that names a
+  project.
+- To run a project without sprints, say so when `vault-setup` sets it up, as
+  `## project <name>` in `skills/vault-setup/SKILL.md` says.
+- Tell Claude a story waits on another task, and it runs `second-brain task dep EX-2 add EX-1`.
+- The board shows the tasks a story waits on in its `Depends on` column.
+- The status overview flags a story in progress that waits on a task not done, as
+  `## Render` in `skills/story-tracker/status.md` says.
+- The doctor's `depends-on` check warns about a link to no task, and about tasks that wait on each
+  other in a ring.
 
-```
-~/.claude/second-brain-vault      a link to your vault; the only per-machine setting
-~/.claude/CLAUDE.md               one import line for the vault index
-```
+### Archived tasks
 
-In the vault:
-
-```
-CLAUDE.md                         the index: how to use the vault, and the list of projects
-obsidian-conventions.md           the rules: note metadata, topic tags, links, searching
-claude/                           your own global skills and agents
-claude/pull-request.md            the format of every pull request description Claude writes
-<project>/
-  README.md
-  claude/profile.md               the project's settings, read by every skill and agent
-  claude/validation.md            how to run and check each repo
-  claude/subprojects/<name>.md    one note per subproject, when the project has several repos
-  tasks/<TICKET-ID>/README.md     one task per folder
-  tasks/<TICKET-ID>/spec/         its spec, for a story built from one
-  tasks/tasks.base                the task board (Obsidian Bases)
-  docs/                           the project's docs, organised by topic
-  sprints/<YYYY-MM-DD>.md         one note per sprint, named by its end date
-```
-
-A task says what it is about with topic tags. A topic tag is a folder path under the project's
-topics root, lowercased: with the default root `docs/`, the folder `docs/Billing/Invoices` is the
-tag `billing/invoices`. A task never lives inside the topic it is about.
-
-An existing project does not have to move its folders. Its profile says where its topics and
-sprint notes are.
-
-A project made of several repos, such as an app and its infrastructure, can split them into
-subprojects. Each one is a note, `claude/subprojects/<name>.md`, that lists its repos and may set
-its own branches and environments; what it leaves empty comes from the profile. Its docs live in
-`docs/<name>/`, and its rules in the note's `## Rules` section. The project keeps one ticket key and
-one board. Working in a subproject's repo, Claude knows both the project and the subproject. Run
-`/obsidian-dev-second-brain:vault-setup subproject <project>` to add one. The board's
-`By subproject` view groups the tasks by subproject, and in a subproject's repo the status overview
-lists that subproject's tasks. A task names its subproject in its `subproject` property: a story
-started in a subproject's repo gets it from there, and elsewhere Claude asks which one, if any.
-
-A rule you ask Claude to save goes where it applies: a rule about one project under `## Rules` in
-its `claude/README.md`, or in its subproject's note. Only a rule for every project goes in
-`~/.claude/CLAUDE.md`, and Claude asks when it cannot tell. `vault-doctor` warns about a line of
-`~/.claude/CLAUDE.md` that names a project.
-
-Sprints are optional per project. `uses_sprints: false` in a project's profile, written by
-`vault-setup` when you say the project runs none, leaves out the sprints hub and the board's
-`Current sprint` view; its stories are tracked by status alone.
-
-A task can say which tasks it waits on. `second-brain task dep EX-2 add EX-1` writes a link to
-EX-1 in the `depends_on` list of EX-2. The board shows the list in its `Depends on` column, the
-status overview flags a task in progress that waits on one not done, and the doctor warns about a
-link to no task and about tasks that wait on each other in a ring.
-
-The tasks folder can stay short. `task_layout: archive` in a project's profile lets
-`second-brain task archive EX-1` move a done or abandoned task, once, to
-`tasks/archive/<year>/EX-1/`. Its links follow it, and every command still finds it by its id.
-With `task_layout: flat`, the default, no task ever moves. The doctor names a done task still in
-the live folder `archive_after_days` days after its last status note or its sprint's end, 14 by
-default, and `second-brain doctor --fix` archives it. It never moves an open task. When a story is
-set done, and when a sprint closes, Claude asks once whether to archive the done tasks now; nothing
-moves without a yes. `vault-setup` asks for the layout when it sets up or adopts a project.
+- `task_layout: archive` in the profile lets a done or abandoned task move once to
+  `tasks/archive/<year>/<ID>/`. The keys are under `### Profile frontmatter` in `docs/contract.md`.
+- `vault-setup` asks for the layout when it sets up or adopts a project, as
+  `## project <name>` in `skills/vault-setup/SKILL.md` says.
+- When a story is set done, Claude asks once whether to archive it now, as
+  `## Edit an existing story` in `skills/story-tracker/SKILL.md` says.
+- When a sprint closes, Claude asks once whether to archive its done tasks, as
+  `skills/sprint/close.md` says.
+- `second-brain task archive EX-1` archives one task by hand.
+- `second-brain doctor --fix` archives each task that is due, as
+  `## fix` in `skills/vault-doctor/SKILL.md` says.
 
 ## Spec-driven delivery
 
-A story can be built from a spec instead of straight from its README. The spec has three files:
-`requirements.md`, numbered requirements with checks someone else can run; `design.md`, how it is
-built; and `tasks.md`, the build plan, one task at a time, each naming its requirements, design
-sections, files and check.
+- Start one with `/obsidian-dev-second-brain:spec EX-2`, or with the request under
+  [What to say](#what-to-say).
+- You approve each phase or say what to change, as
+  `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
+- One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
+- A project's default, and where its specs live, are `delivery` and `spec_home` under
+  `### Profile frontmatter` in `docs/contract.md`.
+- `second-brain spec EX-2` prints the story's `delivery`, `spec_home` and the paths of its three
+  spec files.
+- The spec files' shape is under `## 4. A task` in `docs/contract.md`.
+- The doctor's `spec-trace` check names an acceptance criterion that no requirement serves.
+- Once you approve the tasks, the story's Approach, Changes and Verification link to the spec.
+- The build runs in agents, which cannot ask you anything. Every question comes through your
+  session.
+- When the build stops, your session shows where it stands and asks you what to do. The cases
+  that stop it are in `agents/spec-lead.md`.
+- `second-brain spec status EX-2` prints where the build stands, one line per task.
+- When the last task passes, the story moves to `in-review`.
 
-- `delivery: spec` in the profile makes it the project's default. A subproject's note, or one
-  story with `second-brain task set EX-2 delivery=spec`, can say otherwise. The story's own value
-  wins, then its subproject's, then the profile's.
-- `spec_home` says where specs live: `vault`, in `spec/` in the task's folder, or `repo`, in
-  `spec/<ID>/` in the story's repo, where it is reviewed with the code. The profile or a
-  subproject's note sets it.
-- `second-brain spec EX-2` prints what holds for the story and the paths of its three files.
-  `second-brain spec new EX-2` writes them from the templates.
+### Validation steps
 
-A spec story keeps what you manage it by: its status, branch and place on the board and in a
-sprint, why it exists, its acceptance criteria, its key decisions and its dated log. What it is
-built from lives in its spec. Each requirement names the criteria it serves on a `- Serves:` line,
-such as `- Serves: AC1, AC3`, and the doctor's `spec-trace` check names a criterion no requirement
-serves. When you approve the task list, `second-brain spec link EX-2` links the story's Approach,
-Changes and Verification to the spec, so the story does not repeat it.
-
-Ask Claude to implement a story spec-driven, or run `/obsidian-dev-second-brain:spec EX-2`. The
-spec is written with you, in the chat: Claude drafts the requirements with what your session
-already knows of the story and the code, asks you what they do not settle, and you approve them
-or say what to change. Then the design, then the tasks. The build runs in agents, which cannot
-ask you anything, so every question comes through your session. Once you approve the tasks, `spec-lead` builds them on the story's branch:
-
-- First `reviewer` runs the repo's validation steps on the untouched branch. A branch that fails
-  before any change stops the build.
-- Then `implementer` builds every task, one fresh run per task. It gets the task's context
-  packet, `second-brain spec packet EX-2 T1`, and nothing else, and commits the task. It runs no
-  check: the reviewer runs them all.
-- Then `reviewer` reviews each task in order: it reads the task's commits, runs the validation
-  steps, including the check as a user would, and ends with PASS, FAIL or BLOCKED. It logs each
-  issue in the story with a proposed fix. Only a PASS ticks the task. A FAIL goes back to
-  `implementer` with those issues, twice at most, and then the build stops and asks you.
-  BLOCKED, a step it could not run, stops the build at once.
-- `spec-lead` keeps track in the story's `## Build` section: one line per task with its state,
-  its commits and its issues. `second-brain spec status EX-2` prints it, and your session shows
-  it whenever the build stops. When the last task passes, the story moves to `in-review`.
-
-Every project also has a `validation.md` that says, for each repo, how to set it up and start it,
-which checks must pass, how to check a change as a user would, and what a pass is. Unit tests
-alone miss the bugs a user would hit, so the check as a user would is part of every repo's steps.
-
-- `validation_home: vault`, the default, keeps every repo's section in `claude/validation.md`.
-  `repo` puts a `validation.md` at the root of each repo. A subproject's note can set it for its
-  repos.
-- `second-brain validation <project>` lists each repo's file and whether it has its section.
-  `second-brain validation <project> <repo>` prints the steps, and
-  `second-brain validation new <project> <repo>` adds a missing file or section.
-- `/obsidian-dev-second-brain:vault-setup validation <project>` drafts each repo's steps from its
-  README, scripts and CI config, and writes what you confirm. The doctor's `validation` check
-  names a repo whose steps are missing or still the template's text.
+- The agents read a repo's validation steps before they build or review a change, as
+  `### Validation` in `docs/contract.md` says.
+- A build does not start on a repo whose steps are missing, as
+  `## Step 3 - Ready to build` in `skills/spec/SKILL.md` says.
+- `second-brain validation <project>` lists each repo's steps file and its state.
+- `second-brain validation <project> <repo>` prints one repo's steps.
+- Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- The doctor's `validation` check names a repo whose steps are missing or still the template's
+  text.
 
 ## On Windows
 
-Claude Code runs its Bash tool through Git Bash, which comes with Git for Windows, and so does the
-helper. PowerShell alone is not enough.
-
+- Claude Code and the helper run in Git Bash, which comes with Git for Windows. PowerShell alone is
+  not enough.
 - The links are directory junctions, which need no administrator rights and no Developer Mode.
-- A junction cannot lead to a single file, so a vault's or a project's agents are linked as one
-  folder. Every `.md` file in a `claude/agents` folder is then seen by Claude Code.
-- A junction needs a folder on a local drive. A vault on a network share cannot be linked.
-- Absolute paths are printed as `C:/...`, and one you give may use backslashes. Paths inside the
-  vault always use forward slashes, and so does a repository location in a project's profile.
+- Keep only agents in a `claude/agents` folder: it is linked whole, so Claude Code reads every `.md`
+  file in it.
+- Keep the vault on a local drive. A vault on a network share cannot be linked.
+- A path you give may use backslashes. The helper prints an absolute path as `C:/...`.
+- Write a path inside the vault, and a repository location in a profile, with forward slashes.
+- How the links work on Windows is under `### link, doctor, snapshot` in `docs/contract.md`.
 
 ## Why it is cheap to run
 
-- The always-loaded text is one short index. The rules live in one note that is read on demand.
-- Each skill is a short core plus one file per mode. Only the mode in use is read.
-- The helper returns the whole task board in one call, a note's frontmatter in one call, and a
-  note's outline with line numbers, so a section is read instead of a file.
-- A search prints at most forty lines, three per note, the ones that hold the most of the words.
+- Claude always loads one short index. The doctor's `always-loaded-size` check warns when it grows.
+- A skill reads only the file of the mode in use, and notes are read cheapest first, as
+  `## 9. Skills and agents` in `docs/contract.md` says.
 
 ## What it does not do
 
-- It does not call Obsidian. Obsidian is where you read the vault; the helper works on the files.
-- It does not talk to your ticket tracker or to any live system. It needs no credentials.
-- It does not move or rename existing notes unless you ask, and then it rewrites the links to them
-  in the vault's notes. A `.canvas` or `.base` file that mentions a moved note is named, not edited.
+- It never calls Obsidian: the helper works on the files.
+- It does not talk to your ticket tracker or to any live system.
+- It moves or renames a note only when you ask. What a move does to links is under
+  `### Links between notes` in `docs/contract.md`.
 - It supports one vault per machine.
 
 ## Development
 
+From the repo root:
+
 ```
-bash scripts/test.sh          builds a scratch vault and checks every helper command
-bash scripts/test-link.sh     checks the pointer and link registration on a scratch vault
-bash scripts/test-graph.sh    checks outline, backlinks, unresolved, move and rename
-bash scripts/test-doctor.sh   checks every doctor check on a scratch vault
-bash scripts/test-snapshot.sh checks snapshot and compare
-bash scripts/leak-check.sh    fails if a generic file carries a home path or a session id
+bash scripts/test.sh
+bash scripts/test-link.sh
+bash scripts/test-graph.sh
+bash scripts/test-doctor.sh
+bash scripts/test-snapshot.sh
+bash scripts/leak-check.sh
 claude plugin validate . --strict
 ```
 
-The suites run on Linux, macOS and Windows for every pull request to `main`. On Windows they
-build symlinks as fixtures, which takes Developer Mode or an elevated shell; using the plugin
-takes neither.
-
-`scripts/e2e-claude.sh` runs Claude Code itself against a scratch vault, on a Linux and a Windows
-runner. It costs API usage, so the `e2e` workflow runs only when started from the Actions tab. It
-asks each request under [What to say](#what-to-say) and fails when one does not load its skill.
-A request that fails is fixed in the skill's `description`, in the user's words, not in the
-request.
-
-`docs/contract.md` is the interface every part agrees on: helper commands, note frontmatter,
-template placeholders. Change it first, then the code.
+- Change `docs/contract.md` first, then the code.
+- `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
+  to `main`.
+- On Windows the suites build symlinks as fixtures, which takes Developer Mode or an elevated
+  shell.
+- `scripts/e2e-claude.sh` runs Claude Code itself on a scratch vault. It fails when a request under
+  [What to say](#what-to-say) does not load its skill.
+- It costs API usage, so `.github/workflows/e2e.yml` runs only when started from the Actions tab.
+- A request that fails is fixed in the skill's `description`, in the user's words, never in the
+  request.
 
 ## Releases
 
 Claude Code updates an installed plugin only when `version` in `.claude-plugin/plugin.json`
-changes. Two different copies of the plugin that say the same `version` look the same to it, so
-the people who have the older copy never get the newer one. That is why `version` changes in one
-place only, at the end of a release.
+changes. So `version` changes in one commit only, at the end of a release.
 
 - Feature branches merge into a `release/<version>` branch, such as `release/0.3.0`.
-- One pull request takes the release branch into `main`.
-- Neither a feature branch nor the release branch changes `version`.
-- After that pull request is merged, one commit on `main` sets `version` in
-  `.claude-plugin/plugin.json` and dates the changelog section: `## 0.3.0 - unreleased` becomes
-  `## 0.3.0 - 2026-10-21`, with the release date. Tag that commit `v<version>`, as in
-  `git tag v0.3.0`, and push the tag. This is the only commit that changes `version`.
 - Every release has a section in `CHANGELOG.md`, written as the feature branches merge.
+- Neither a feature branch nor the release branch changes `version`.
+- One pull request takes the release branch into `main`.
+- After it is merged, one commit on `main` sets `version` and dates the changelog section:
+  `## 0.3.0 - unreleased` becomes `## 0.3.0 - 2026-10-21`, with the release date.
+- Tag that commit `v<version>`, as in `git tag v0.3.0`, and push the tag.
 
 A user updates with the steps in the [README](../README.md#update).

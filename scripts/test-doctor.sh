@@ -59,6 +59,9 @@ rc_is() {
 is() {
   if [ "$2" = "$3" ]; then pass "$1"; else fail "$1" "got:    $2" "wanted: $3"; fi
 }
+exists() {
+  if [ -e "$2" ]; then pass "$1"; else fail "$1" "missing: $2"; fi
+}
 out_is() { is "$1" "$OUT" "$2"; }
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
@@ -251,6 +254,68 @@ is "pull-request: --fix leaves an edited note alone" "$(printf '%s\n' "$OUT" | h
 is "pull-request: the edited note is unchanged" "$(cmp -s "$tmp/pr.before" "$vault/claude/pull-request.md" && printf same)" "same"
 chk "pull-request: an edited note of 0.2.0 warns" pull-request vault "warn | 1 | claude/pull-request.md:none"
 is "pull-request: the fix says to bring an edited note in line by hand" "$(fix_of pull-request vault)" "$EDITED"
+# The note as version 2 of the template wrote it: a later template still counts it unedited.
+cat >"$tmp/pr-2.md" <<'EOF'
+---
+aliases:
+  - Pull Request Format
+type: onboarding
+pull_request_version: 2
+tags:
+  - type/onboarding
+---
+
+> Conventions: [[obsidian-conventions|Obsidian Conventions]]
+
+# Pull request format
+
+Every pull request description Claude writes follows this format. A project that keeps its own
+`<project>/claude/pull-request.md` uses that one instead. Edit this note to change the format.
+
+## The rules
+
+- Write the description from the branch, never from memory of the work. The source branch holds
+  the work; the target is the branch it merges into, usually `main`.
+- Read `git log <target>..<source>` for the commits and `git diff <target>...<source>` for the
+  changes. Name both branches: the checkout may be on another one. Take the target as the remote
+  has it, as in `origin/main`, after a `git fetch`. Describe what they show and nothing else.
+- Use the five headings below, in this order, and no others. Every heading is bold.
+- Under `Goal`, say in one or two lines why the pull request exists.
+- Under each other heading, write a few bullets in short plain English, one line each. Every
+  bullet starts with a bold label, the part it is about: `- **doctor:** warns on an old index`.
+- Name the file, the command or the setting. Leave out what the diff already shows line by line.
+- Under a heading with nothing to say, write `- **None.**`
+
+## The format
+
+```markdown
+## **Goal**
+
+<why this pull request exists, in one or two lines>
+
+## **What was changed?**
+
+- **<part>:** <behaviour that works differently now>
+
+## **What was added?**
+
+- **<part>:** <a new file, command, check or option>
+
+## **Dependencies:**
+
+- **<part>:** <what must be merged, installed or set first>
+
+## **Risks:**
+
+- **<part>:** <what could break, and for whom>
+```
+EOF
+cat "$tmp/pr-2.md" >"$vault/claude/pull-request.md"
+doc
+chk "pull-request: the note of version 2 warns, with its version" pull-request vault "warn | 1 | claude/pull-request.md:2"
+is "pull-request: the note of version 2, never edited, is left to --fix" "$(fix_of pull-request vault)" "$UNEDITED"
+doc --fix
+is "pull-request: --fix replaces the note of version 2 with the template" "$(cmp -s "$PRT" "$vault/claude/pull-request.md" && printf same)" "same"
 cat "$PRT" >"$vault/claude/pull-request.md"
 edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_version: $((pv - 1))/"
 doc
@@ -635,7 +700,7 @@ PF="$vault/$P/claude/profile.md"
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:42, claude/profile.md:43"
+  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:41, claude/profile.md:42"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -651,7 +716,7 @@ doc Example
 chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:42"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:41"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
@@ -662,7 +727,7 @@ doc Example
 chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
 sb scaffold subproject Example infra --repos example-infra
 doc Example
-chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:35"
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -1544,6 +1609,9 @@ is "validation: the fix names validation new" "$(fix_of validation)" \
 sb validation new Example example-api
 doc Example
 chk "validation: a section that still holds the template's text" validation Example "warn | 1 | example-api:placeholders"
+edit "$vault/$P/claude/validation.md" '/^- <What a pass needs: every check above passes, the user steps work, nothing else broke\.>$/!s/^- <.*>$/- make test/'
+doc Example
+chk "validation: a section with only the A pass line left unfilled" validation Example "warn | 1 | example-api:placeholders"
 edit "$vault/$P/claude/validation.md" 's/^- <.*>$/- make test/'
 doc Example
 chk "validation: ok once the section is written" validation Example "ok | 0 | -"

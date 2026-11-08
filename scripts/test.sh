@@ -2713,7 +2713,11 @@ for a in implementer reviewer spec-checker; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
 file_has "spec build: read only once all three approvals count" "$BM" 'Read this file only when all three approvals count'
-file_has "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: `second-brain spec status <ID> <task> blocked`, and stop.'
+line_is "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: first the stop note,'
+file_has "spec build: a BLOCKED build stops at once" "$BM" '5. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,'
+is "spec build: each block writes the stop note before it sets blocked" \
+  "$(awk '/stopped at <task>: <why>\."`, then$/ { n = NR } /^   `second-brain spec status <ID> <task> blocked`, and stop\.$/ && n == NR - 1 { k++ } END { print k + 0 }' "$BM")" "2"
+is "spec build: and nothing sets blocked any other way" "$(grep -c 'spec status <ID> <task> blocked`' "$BM")" "2"
 file_has "spec build: commits the tick of a repo spec" "$BM" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
 file_has "spec build: a session resumes the build from build.json" "$BM" \
   'It prints a line: the build resumes, from the states `build.json` in the story'"'"'s folder'

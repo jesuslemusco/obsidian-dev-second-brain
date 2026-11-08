@@ -38,6 +38,8 @@
 - A resumed build takes a cut-off task's commit only when `build.json` does not list it yet,
   compared by full hash. It launches a `blocked` task again only with a ruling newer than the
   stop, and asks the owner otherwise.
+- A block writes its stop note before it sets `blocked`, so a new session never takes an older
+  ruling for it.
 - A `build.json` that is blank, or not an object with a `tasks` array, makes `spec status`,
   `spec issue` and `spec packet` exit 1. It never reads as a build that has not started.
 - `build.json` is written next to itself, then moved in place, so a write cut off leaves the old

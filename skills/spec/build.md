@@ -85,7 +85,8 @@ them:
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
 3. `second-brain spec status <ID> <task> building`.
 4. Launch `implementer` on the task.
-5. Its reply starts with `BLOCKED:`, or names no commit:
+5. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,
+   `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
 6. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
    its reply names.
@@ -105,7 +106,9 @@ Then, for each task whose review is not `passed`, in the same order:
    - With `spec_home: repo`, commit the tick:
      `git -C "<path>" commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md`.
    - Then `second-brain spec status <ID> <task> passed`.
-5. BLOCKED: `second-brain spec status <ID> <task> blocked`, and stop.
+5. BLOCKED: first the stop note,
+   `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
+   `second-brain spec status <ID> <task> blocked`, and stop.
 6. FAIL: `second-brain spec status <ID> <task> failed`.
    - Retry the task: `second-brain spec status <ID> <task> building`, then launch `implementer`
      on it again. Its packet now holds the issues the reviewer logged.
@@ -120,7 +123,9 @@ A task that fails holds up the review of the tasks after it until it passes or t
 
 1. Show the owner `second-brain spec status <ID>`, the task that stopped the build, and why: the
    agent's reply, and the issues `spec status` lists under the task.
-2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`.
+2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block wrote it
+   already. A block writes it before it sets `blocked`, so a new session never takes an older
+   ruling for this stop.
 3. Ask the owner with AskUserQuestion what to do.
    - A ruling on the task:
      `second-brain task note <ID> "Build: the owner ruled on <task>: <the ruling, as written>."`.

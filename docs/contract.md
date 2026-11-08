@@ -861,6 +861,7 @@ text.
   again.
 - A `blocked` task is launched again with the owner's ruling on it, when that ruling is newer than
   the note the build stopped at it with. Otherwise the owner is asked first.
+- A block writes its `Build: stopped at <task>` note before it sets `blocked`.
 - Each story-level update is a status note in the README: each phase approval, the build
   started, stopped and why, and finished, and each ruling of the owner. A task's progress is in
   `build.json` alone.

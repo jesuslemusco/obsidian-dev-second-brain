@@ -50,6 +50,8 @@ A project can build its stories from a spec, and every project says how its code
 - `scripts/test-doctor.sh` defines `exists`, so its two `task-layout --fix` checks on the archive
   run again; they were skipped before.
 - A call to an undefined command fails the `scripts/test*.sh` suites, and the result names it.
+- `story-tracker` and the `spec` skill cut a new story's branch from `base_branch`. This repo's
+  feature branches start from `main`, as `## Releases` in `docs/guide.md` says.
 
 ## 0.3.0 - 2026-10-22
 

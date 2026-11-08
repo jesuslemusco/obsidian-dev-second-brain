@@ -178,7 +178,10 @@ claude plugin validate . --strict
 Claude Code updates an installed plugin only when `version` in `.claude-plugin/plugin.json`
 changes. So `version` changes in one commit only, at the end of a release.
 
-- Feature branches merge into a `release/<version>` branch, such as `release/0.3.0`.
+- A release starts with a `release/<version>` branch cut from `main`, such as `release/0.3.0`.
+- A feature branch is cut from `main` and merges into the release branch.
+- A story that needs another story's code not yet in `main` is cut from that story's branch. It
+  merges into the release branch after that story.
 - Every release has a section in `CHANGELOG.md`, written as the feature branches merge.
 - Neither a feature branch nor the release branch changes `version`.
 - One pull request takes the release branch into `main`.

@@ -579,7 +579,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |
 | vault | `descriptions` | a scanned skill or agent has no description (`<name>:none`), or one over 200 characters (`<name>:<length>`) (warn) |
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
-| vault | `old-namespace` | a line names a skill or agent of the plugin by its old name, `obsidian-dev-second-brain:<name>`: in a note of the vault outside its history (`<vault path>:<line>`), or in the link directory's `CLAUDE.md` (`~/.claude/CLAUDE.md:<line>`); or a string of a settings file in the link directory holds `obsidian-dev-second-brain:` (`~/.claude/<file>:<string>`) (warn). See the bullets under this table |
+| vault | `old-namespace` | a line names a skill or agent of the plugin by its old name, `obsidian-dev-second-brain:<name>`: in a note of the vault outside its history (`<vault path>:<line>`), or in the link directory's `CLAUDE.md` (`~/.claude/CLAUDE.md:<line>`); or a string of a settings file holds `obsidian-dev-second-brain:`: in the link directory (`~/.claude/<file>:<string>`), the vault root (`.claude/<file>:<string>`) or a repo (`<repo>/.claude/<file>:<string>`) (warn). See the bullets under this table |
 | project | `profile` | the profile is missing, lacks a contract key, lacks one of the seven sections, or has a root that leaves the project (`<key>:leaves-project`) (fail) |
 | project | `board` | the board file is missing (fail). While a sprint is in progress: its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is not written as `sprint == "<id>"` (`tasks.base:filter`), or it has no such view (`tasks.base:no-view`) (warn); with no sprint in progress, or for a project that does not use sprints, the view is not looked at. For a project with a subproject note, a board with no `By subproject` view (`tasks.base:no-subproject-view`) (warn). For a project with `task_layout: archive`, a board whose own filters do not take `<tasks_root>/archive` (`tasks.base:no-archive-filter`) (warn) |
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project, and a hub that two roots share is named once |
@@ -619,21 +619,28 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A name of the plugin is a folder of its `skills/` or a file of its `agents/`. It counts only
   when no letter, digit, `_` or `-` follows it, so a cut name such as
   `obsidian-dev-second-brain:s` is none.
-- A note's history is not read: the body of a heading `Status notes`, `Discovery log`, `Build` or
+- A note's history is not read: the body of a heading `Status notes`, `Discovery log` or
   `Changelog`, of level 1 or 2 and in any letter case, up to the next heading of its level or
   higher; and the whole of a note named `CHANGELOG.md`, in any letter case.
+- A heading `Build` opens history in a task README alone: a note whose frontmatter has
+  `type: task`, read as `task-location` reads it. Elsewhere it is a heading like any other.
 - A heading in frontmatter or fenced code opens no history. Frontmatter and fenced code are read.
 - `docs-keeper` leaves exactly that history as written, so the warning clears once it has run:
   `Workflow 6 - A renamed command` in `agents/docs-keeper.md`.
-- The settings files are `settings.json` and `settings.local.json` in the link directory, found
-  as the link directory is: `SECOND_BRAIN_CLAUDE_HOME`, else `~/.claude`. No other settings file
-  is read.
+- The settings files are `settings.json` and `settings.local.json`, in this order of folders:
+  - the link directory, found as it always is: `SECOND_BRAIN_CLAUDE_HOME`, else `~/.claude`;
+  - `.claude/` at the vault root;
+  - `.claude/` in each repo a profile lists, a subproject's included, whose folder is there, in
+    the order of the index and of `repo`.
+- A file is read once, under its first label, even when two folders lead to it. No other settings
+  file is read.
 - A string is JSON text from a `"` to the next `"` that no backslash escapes, on one line. Any
   string that holds `obsidian-dev-second-brain:` counts, a rule with a wildcard such as
   `Skill(obsidian-dev-second-brain:*)` included.
 - The link directory's `CLAUDE.md` is read whole, unless it is the index itself.
-- Offenders name the link directory `~/.claude`. The vault lines come first, by path and line,
-  then the `CLAUDE.md` lines, then the strings of `settings.json` and of `settings.local.json`.
+- Offenders name the link directory `~/.claude`, and a repo by its name in `repos`. The vault
+  lines come first, by path and line, then the `CLAUDE.md` lines, then the settings strings, by
+  file in the order above.
 - The fix hands the vault lines to `docs-keeper`. A `CLAUDE.md` line is rewritten after the
   owner's yes. Nothing edits a settings file: the owner changes its strings.
 - A snapshot is a folder `<name>/` holding `unresolved.txt`, `aliases.txt`, `tasks.tsv` (project,

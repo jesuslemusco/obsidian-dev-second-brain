@@ -46,7 +46,7 @@ fail() {
     shift
   done
 }
-# A command the suite calls but never defines fails the suite. Bash runs this hook in a subshell,
+# On bash 4 and later, an undefined command fails the suite. Bash runs this hook in a subshell,
 # so it writes the name to a file, and the result counts each name as a failure.
 command_not_found_handle() {
   printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"

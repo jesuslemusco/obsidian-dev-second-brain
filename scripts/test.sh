@@ -43,7 +43,7 @@ fail() {
     shift
   done
 }
-# A command the suite calls but never defines fails the suite. Bash runs this hook in a subshell,
+# On bash 4 and later, an undefined command fails the suite. Bash runs this hook in a subshell,
 # so it writes the name to a file, and the result counts each name as a failure.
 command_not_found_handle() {
   printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"
@@ -147,15 +147,15 @@ is "awk: every program that loads the shared functions runs in the C locale" \
 # Each suite's head and result block, with a call to a command it never defines in between.
 # Bash 3.2, on macOS, never calls command_not_found_handle; the same lines run on Linux.
 if [ "${BASH_VERSINFO[0]}" -ge 4 ]; then
-  for f in test.sh test-doctor.sh test-link.sh test-graph.sh test-snapshot.sh; do
+  for f in "$here"/scripts/test*.sh; do
     probe="$(
-      awk '/^# -----/ { exit } { print }' "$here/scripts/$f"
+      awk '/^# -----/ { exit } { print }' "$f"
       printf '%s\n' 'no_such_check "a check"'
-      sed -n '/^# -* result$/,$p' "$here/scripts/$f"
+      sed -n '/^# -* result$/,$p' "$f"
     )"
-    run env TMPDIR="$tmp" bash -c "$probe" "$here/scripts/$f"
-    rc_is "undefined command: $f exits 1" 1
-    out_has "undefined command: $f names it as a failure" "FAIL  undefined command: no_such_check at line "
+    run env TMPDIR="$tmp" "$BASH" -c "$probe" "$f"
+    rc_is "undefined command: ${f#"$here"/} exits 1" 1
+    out_has "undefined command: ${f#"$here"/} names it as a failure" "FAIL  undefined command: no_such_check at line "
   done
 fi
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 - unreleased
+## 0.4.0 - 2026-11-07
 
 A project can build its stories from a spec, and every project says how its code is run and checked.
 

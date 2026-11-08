@@ -299,7 +299,7 @@ EOF
 
 # Print the context packet of one task: what the implementer is given, and nothing else.
 sb_spec_packet() {
-  local task="$1" tfile rfile dfile item reqs design uses title branch row name path state out miss rc
+  local task="$1" tfile rfile dfile item reqs design uses check eachtask="" title branch row name path state out miss rc
   local vrow vname vhome vfile vshow vstate vr usesout="" binfo commits nfail fixes commits_shown issues c clist="" diffline f
   sb_spec_need_file tasks
   tfile="$SB_SP_FILE"
@@ -319,6 +319,7 @@ sb_spec_packet() {
   reqs="$(printf '%s\n' "$item" | sb_spec_field Requirements)"
   design="$(printf '%s\n' "$item" | sb_spec_field Design)"
   uses="$(printf '%s\n' "$item" | sb_spec_field Uses)"
+  check="$(printf '%s\n' "$item" | sb_spec_field Check)"
   case "$(printf '%s' "$reqs" | tr '[:upper:]' '[:lower:]')" in
     '' | '-' | none | n/a | '<'*) sb_die 1 "$task names no requirement in $SB_SP_SHOW/tasks.md" ;;
   esac
@@ -327,6 +328,7 @@ sb_spec_packet() {
   done
   case "$(printf '%s' "$design" | tr '[:upper:]' '[:lower:]')" in '-' | none | n/a | '<'*) design="" ;; esac
   case "$(printf '%s' "$uses" | tr '[:upper:]' '[:lower:]')" in '-' | none | n/a | '<'*) uses="" ;; esac
+  case "$(printf '%s' "$check" | tr '[:upper:]' '[:lower:]')" in '' | '-' | none | n/a | '<'*) check=none ;; esac
   if [ -n "$uses" ]; then usesout="$(sb_spec_uses "$tfile" "$task" "$uses")" || exit $?; fi
   # The task's commits and issues in build.json; the diff of those commits, or of a fix's alone, goes
   # in a temp file.
@@ -396,6 +398,16 @@ EOF
   fi
   if [ -n "$usesout" ]; then printf '## Uses\n\n%s\n\n' "$usesout" >>"$out"; fi
   if [ -n "$issues" ]; then printf '## Issues\n\n%s\n\n' "$issues" >>"$out"; fi
+  # The checks the implementer runs before it commits: the task's own, then each command that
+  # validation run --when each-task runs.
+  if [ "$vstate" = "ok" ]; then
+    eachtask="$(sb_section "$vfile" "$name" | sb_val_checks 1 | LC_ALL=C awk '/^run\t/ { sub(/^run\t/, ""); print "- each task: " $0 }')"
+  fi
+  {
+    printf '## Checks\n\n- task: %s\n' "$check"
+    [ -z "$eachtask" ] || printf '%s\n' "$eachtask"
+    printf '\n'
+  } >>"$out"
   if [ "$vstate" = "ok" ]; then
     { printf '## Validation\n\n'; sb_section "$vfile" "$name"; } >>"$out"
   fi

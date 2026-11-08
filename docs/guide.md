@@ -14,7 +14,7 @@ Start with the [README](../README.md). Every helper command and note format is i
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. |
 | `spec` | skill | Writes a story's spec with you, one approved phase at a time, then builds and reviews each task in your session. |
-| `implementer` | agent | Builds and commits one task from the context packet it fetches. |
+| `implementer` | agent | Builds one task test-first from the context packet it fetches, runs its checks and commits it. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
 | `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
 | `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
@@ -115,11 +115,17 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - The build runs in your session. The `spec` skill launches `implementer` and `reviewer` one at a
   time, and each agent's report comes back to it, so you relay nothing.
 - The agents cannot ask you anything. Every question comes through your session.
-- Each agent fetches its own packet and replies in a line or two, so your session stays small
+- Each agent fetches its own packet and replies in a few short lines, so your session stays small
   through a long build. `reviewer` reads the task's diff from a file the helper writes.
 - Each task is reviewed right after it is built, before the next one starts, so no task builds on
   an unreviewed one. The review reads the task's diff, against its requirements first, then for
   code quality.
+- `implementer` builds each task test-first. It writes a test that fails for the task's
+  requirement, then makes it pass. A task with nothing to test, such as a doc change, says why.
+- Who runs which check: `implementer` runs the task's `Check` and the repo's `each task` checks
+  before it commits, as its packet's `## Checks` names them. It commits only when they pass, and
+  its reply names each result.
+- `reviewer` runs those checks again in the task's review, with the `each task` user steps.
 - A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
   rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
   session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.

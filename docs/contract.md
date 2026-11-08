@@ -399,13 +399,14 @@ Rules that hold for every command:
   `/c/...`.
 - Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_CLAUDE_HOME` (link
   directory), `SECOND_BRAIN_TODAY` (today's date, for tests).
-- `--json` prints the same fields as the text, as one JSON value and nothing else on stdout. Exit
-  codes and stderr do not change.
+- `--json` prints the same fields as the text, as one JSON value and nothing else on stdout.
+- With `--json`, exit codes and stderr do not change.
 - Only a form whose row below names `--json` takes it.
 - In JSON a row is an object, its keys the field names. Rows are an array of objects, `[]` when
   there is none.
 - A list field is an array of strings, `[]` for `-`.
-- A count is a number. Any other field is a string, `-` when empty, as in the text.
+- A count is a number.
+- Any other field is a string, `-` when empty, as in the text.
 - A string escapes `"`, `\` and every control character.
 
 | Command | Output | Notes |
@@ -443,7 +444,7 @@ Rules that hold for every command:
 | `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`. `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`. `--commit` adds a hash to its commits once. Adds the status note `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` is missing or has no such task |
 | `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue line (section 4) under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
 | `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
-| `validation <project> <repo> [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--json` prints one object: `path`, and `body`, the body as one string |
+| `validation <project> <repo> [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |

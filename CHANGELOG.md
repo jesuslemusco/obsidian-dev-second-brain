@@ -12,11 +12,12 @@ The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows
   marketplace entry keeps its name.
 - After updating, run the doctor's `check`. Its new `old-namespace` row (warn) names each line of
   a vault note, a vault skill or agent, or `~/.claude/CLAUDE.md` that still names a skill or agent
-  the old way. It also names each string of `~/.claude/settings.json` or
-  `~/.claude/settings.local.json` that holds `obsidian-dev-second-brain:`.
+  the old way. It also names each string that holds `obsidian-dev-second-brain:` in a
+  `settings.json` or `settings.local.json`: in `~/.claude`, and in `.claude/` at the vault root and
+  in each repo a profile lists, where a "don't ask again" answer is saved.
 - Hand the row's vault lines to `docs-keeper`. Its new `Workflow 6 - A renamed command` rewrites
-  every live reference, leaves status notes, discovery logs, build logs and changelogs as written,
-  and adds a status note to each story it changed.
+  every live reference, leaves status notes, discovery logs, a story's build log and changelogs as
+  written, and adds a status note to each story it changed.
 - `vault-doctor fix` rewrites a `~/.claude/CLAUDE.md` line once you say yes. Change the settings
   rules yourself: nothing edits a settings file.
 - No template goes up a version: none named the old namespace. `index_version` stays 4,

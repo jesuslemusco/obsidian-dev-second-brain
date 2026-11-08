@@ -424,10 +424,12 @@ sb_doc_plugin_names() {
 # Read "<file> TAB <label> TAB <history>" lines on stdin. Print <label>:<line> for each line of the
 # file that names a plugin skill or agent by its old name: the old name, then a whole name of the
 # plugin. With history 1 a note's history is not read: the body of a level 1 or 2 heading Status
-# notes, Discovery log, Build or Changelog, up to the next heading of its level or higher, and the
-# whole of a note named CHANGELOG.md. A heading in frontmatter or fenced code opens none.
+# notes, Discovery log or Changelog, and Build in a task README, up to the next heading of its
+# level or higher; and the whole of a note named CHANGELOG.md. A task README is a note whose
+# frontmatter has type: task, as task-location reads it. A heading in frontmatter or fenced code
+# opens none.
 sb_doc_old_lines() {
-  LC_ALL=C SB_OLD="$1" SB_NAMES="$2" awk '
+  LC_ALL=C SB_OLD="$1" SB_NAMES="$2" awk "$(sb_awk_lib)"'
     function named(s,   i) {
       while ((i = index(s, old)) > 0) {
         s = substr(s, i + length(old))
@@ -443,20 +445,21 @@ sb_doc_old_lines() {
     {
       file = $1; label = $2; hist = ($3 == 1)
       if (hist && tolower(file) ~ /(^|\/)changelog\.md$/) next
-      ln = 0; front = 0; fence = 0; skip = 0; lvl = 0
+      ln = 0; front = 0; fence = 0; skip = 0; lvl = 0; type = ""; task = 0
       while ((getline line < file) > 0) {
         ln++
         sub(/\r$/, "", line)
         if (ln == 1) { sub(/^\357\273\277/, "", line); if (line == "---") { front = 1; continue } }
         if (front) {
-          if (line == "---") front = 0
+          if (line == "---") { front = 0; task = (type == "task") }
+          else if (line ~ /^type:([ \t]|$)/) type = unq(substr(line, 6))
         } else if (line ~ /^[ \t]*(```|~~~)/) {
           fence = !fence
         } else if (!fence && hist && line ~ /^##?[ \t]/) {
           lv = (substr(line, 2, 1) == "#") ? 2 : 1
           h = line; sub(/^#+[ \t]+/, "", h); sub(/[ \t]+$/, "", h); h = tolower(h)
           if (skip && lv <= lvl) skip = 0
-          if (!skip && (h == "status notes" || h == "discovery log" || h == "build" || h == "changelog")) { skip = 1; lvl = lv; continue }
+          if (!skip && (h == "status notes" || h == "discovery log" || h == "changelog" || (task && h == "build"))) { skip = 1; lvl = lv; continue }
         }
         if (!skip && index(line, old) && named(line)) print label ":" ln
       }
@@ -487,14 +490,35 @@ sb_doc_old_strings() {
     }' "$2"
 }
 
+# Print each settings file old-namespace may read: its path, a tab, its label. The link
+# directory's, then the vault root's, then those of each repo a profile lists with a folder, in
+# the order of the index and of second-brain repo.
+sb_doc_settings_files() {
+  local home name path keys rname rpath state f
+  home="$(sb_link_home)"
+  for f in settings.json settings.local.json; do printf '%s\t~/.claude/%s\n' "$home/$f" "$f"; done
+  for f in settings.json settings.local.json; do printf '%s\t.claude/%s\n' "$SB_ROOT/.claude/$f" "$f"; done
+  while IFS=$'\t' read -r name path keys <&3; do
+    sb_doc_folder "$path" || continue
+    while IFS=$'\t' read -r rname rpath state; do
+      [ "$state" = "ok" ] || continue
+      for f in settings.json settings.local.json; do printf '%s\t%s/.claude/%s\n' "$rpath/.claude/$f" "$rname" "$f"; done
+    done <<EOF
+$(sb_repo_rows_at "$SB_DOC_FOLD" 2>/dev/null)
+EOF
+  done 3<<EOF
+$(sb_projects_tsv 2>/dev/null)
+EOF
+}
+
 # Check that no line names a skill or agent of the plugin by its old name: the notes of the vault
-# outside their history, then the link directory's CLAUDE.md. Then that no string of the link
-# directory's settings.json or settings.local.json holds it. The link directory is named ~/.claude.
+# outside their history, then the link directory's CLAUDE.md. Then that no string of a settings
+# file holds it, each file read once. The link directory is named ~/.claude.
 sb_doc_check_old_namespace() {
-  local old="obsidian-dev-second-brain:" home names bad line fix="" v="" c="" s=""
+  local old="obsidian-dev-second-brain:" home names lines sets line fix="" v="" c="" nl=$'\n'
   home="$(sb_link_home)"
   names="$(sb_doc_plugin_names)"
-  bad="$(
+  lines="$(
     {
       (cd "$SB_ROOT" && find . -type d -name '.?*' -prune -o -type f -name '*.[mM][dD]' -print 2>/dev/null) |
         LC_ALL=C sort | SB_R="$SB_ROOT/" awk '{ p = substr($0, 3); print ENVIRON["SB_R"] p "\t" p "\t1" }'
@@ -502,23 +526,33 @@ sb_doc_check_old_namespace() {
         printf '%s\t%s\t0\n' "$home/CLAUDE.md" "~/.claude/CLAUDE.md"
       fi
     } | sb_doc_old_lines "$old" "$names"
-    sb_doc_old_strings "$old" "$home/settings.json" "~/.claude/settings.json"
-    sb_doc_old_strings "$old" "$home/settings.local.json" "~/.claude/settings.local.json"
+  )"
+  sets="$(
+    read_files=()
+    while IFS=$'\t' read -r f label; do
+      [ -f "$f" ] || continue
+      for g in ${read_files[@]+"${read_files[@]}"}; do
+        if [ "$f" -ef "$g" ]; then continue 2; fi
+      done
+      read_files[${#read_files[@]}]="$f"
+      sb_doc_old_strings "$old" "$f" "$label"
+    done <<EOF
+$(sb_doc_settings_files)
+EOF
   )"
   while IFS= read -r line; do
     case "$line" in
       '') ;;
       '~/.claude/CLAUDE.md:'*) c=1 ;;
-      '~/.claude/settings'*) s=1 ;;
       *) v=1 ;;
     esac
   done <<EOF
-$bad
+$lines
 EOF
   [ -z "$v" ] || fix="hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from obsidian-dev-second-brain: to odsb:"
   [ -z "$c" ] || fix="${fix:+$fix; }write odsb: in the ~/.claude/CLAUDE.md lines"
-  [ -z "$s" ] || fix="${fix:+$fix; }change the settings rules to odsb: yourself, as nothing edits a settings file"
-  sb_doc_report warn old-namespace vault "$bad" "$fix" 120
+  [ -z "$sets" ] || fix="${fix:+$fix; }change the settings rules to odsb: yourself, as nothing edits a settings file"
+  sb_doc_report warn old-namespace vault "$lines${lines:+${sets:+$nl}}$sets" "$fix" 120
 }
 
 # Set SB_DOC_ROOT to a root of the profile, folded, or to its default when the key is absent.

@@ -173,13 +173,16 @@ of `## 0. Before you start` applies.
    `obsidian-dev-second-brain:s`, is none: leave it.
 4. In each note named, rewrite every live reference, not only the line named. Change the name
    alone; the rest of the line stays.
-5. Leave history as written. The doctor skips exactly these lines, so its row clears once you
-   are done:
-   - the body of a level 1 or 2 heading `Status notes`, `Discovery log`, `Build` or `Changelog`,
-     in any letter case, up to the next heading of its level or higher;
+5. Leave history as written, and only history. Principle 10 does not apply here: rewrite every
+   reference outside that history, a dated decision record included. The doctor skips exactly
+   these lines, so its row clears once you are done:
+   - the body of a level 1 or 2 heading `Status notes`, `Discovery log` or `Changelog`, in any
+     letter case, up to the next heading of its level or higher;
+   - the body of a `Build` heading the same way, in a task README alone: a note whose
+     frontmatter has `type: task`;
    - every line of a note named `CHANGELOG.md`.
-6. Never edit `~/.claude/CLAUDE.md` or a settings file. List the row's `~/.claude` offenders in
-   your report: the `vault-doctor` fix and the owner change them.
+6. Never edit `~/.claude/CLAUDE.md` or a settings file. List the row's `CLAUDE.md` and settings
+   offenders in your report: the `vault-doctor` fix and the owner change them.
 7. Add a status note to each story you changed:
    `second-brain task note <ID> "Renamed <old> to <new> in <n> lines." --project <project>`.
 
@@ -209,12 +212,12 @@ Read cheapest first: a whole note is the last resort.
 
 ## Output
 
-- Open with the code ref.
+- Open with the code ref. It does not apply to Workflow 6, which has none.
 - When auditing: the discrepancies, as step 4 of Workflow 2 says.
 - When editing: what changed, which other surfaces still need the same update, and that each
   changed region was re-read.
 - A change not in production yet: the pending list and where it was recorded.
 - A ticket marked done: the status note written on it.
-- A renamed command: the notes changed, the status notes written, and the `~/.claude` offenders
-  left for the owner.
+- A renamed command: the notes changed, the status notes written, and the `CLAUDE.md` and
+  settings offenders left for the owner.
 - Any proposed map row or debt line.

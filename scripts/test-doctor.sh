@@ -552,11 +552,17 @@ mkdir -p "$vault/.trash"
 printf '%s\n' "${OLD}spec" >"$vault/.trash/old.md"
 doc
 rc_is "old-namespace: a warn alone keeps exit 0" 0
-chk "old-namespace: live lines warn, frontmatter and fenced code too; history, a CHANGELOG.md, a dot folder and a cut name do not" \
-  old-namespace vault "warn | 4 | $P/docs/rename.md:2, $P/docs/rename.md:6, $P/docs/rename.md:11, $P/docs/rename.md:28"
+chk "old-namespace: live lines warn, frontmatter, fenced code and a Build outside a task too; history, a CHANGELOG.md, a dot folder and a cut name do not" \
+  old-namespace vault "warn | 5 | $P/docs/rename.md:2, $P/docs/rename.md:6, $P/docs/rename.md:11, $P/docs/rename.md:23, $P/docs/rename.md:28"
 is "old-namespace: the fix hands the vault lines to docs-keeper" "$(fix_of old-namespace vault)" \
   "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:"
-edit "$N" "2s/$OLD/odsb:/;6s/$OLD/odsb:/;11s/$OLD/odsb:/;28s/$OLD/odsb:/"
+edit "$N" "2s/$OLD/odsb:/;6s/$OLD/odsb:/;11s/$OLD/odsb:/;23s/$OLD/odsb:/;28s/$OLD/odsb:/"
+n_ex3="$(awk 'END { print NR }' "$T/EX-3/README.md")"
+printf '%s\n' '## Build' '' "- T1 - passed - commits - - ${OLD}spec-lead" '## Next' "- Run ${OLD}spec." >>"$T/EX-3/README.md"
+doc
+chk "old-namespace: a task README's Build is history, the section after it is not" old-namespace vault \
+  "warn | 1 | $P/tasks/EX-3/README.md:$((n_ex3 + 5))"
+edit "$T/EX-3/README.md" "$((n_ex3 + 5))s/$OLD/odsb:/"
 doc
 chk "old-namespace: ok once the live lines are rewritten, with the history left as written" old-namespace vault "ok | 0 | -"
 reset
@@ -1157,6 +1163,24 @@ chk "repos: ok once the exception's folder exists" repos Example "ok | 0 | -"
 set_repos '[example-api, example-web]' '' '[]'
 doc Example
 chk "repos: ok when repositories are listed with no location" repos Example "ok | 0 | -"
+reset
+
+# ---------------------------------------------------------------- old-namespace, the settings of the vault root and the repos
+R="$tmp/nscode"
+mkdir -p "$R/example-api/.claude" "$R/example-web/.claude" "$vault/.claude"
+set_repos '[example-api, example-web, gone-repo]' "$R" '[]'
+printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}story-tracker)\"] } }" >"$R/example-api/.claude/settings.local.json"
+printf '%s\n' "{ \"permissions\": { \"deny\": [\"Skill(${OLD}vault-setup)\"] } }" >"$R/example-web/.claude/settings.json"
+printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}spec)\"] } }" >"$vault/.claude/settings.local.json"
+doc
+chk "old-namespace: the settings of the vault root, then of each repo the profile lists with a folder" old-namespace vault \
+  "warn | 3 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker), example-web/.claude/settings.json:Skill(${OLD}vault-setup)"
+is "old-namespace: the fix leaves a repo's settings rules to the owner" "$(fix_of old-namespace vault)" \
+  "change the settings rules to odsb: yourself, as nothing edits a settings file"
+set_repos '[example-api, example-web]' "$R" "[\"example-web=$vault\"]"
+doc
+chk "old-namespace: a repo whose folder is the vault root has its settings read once" old-namespace vault \
+  "warn | 2 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker)"
 reset
 
 # ---------------------------------------------------------------- code-doc-map

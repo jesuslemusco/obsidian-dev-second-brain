@@ -2413,7 +2413,8 @@ sb task set SP-1 subproject= branch=feature/SP-1-first
 printf '%s\n' '# SP-1 - Requirements' '' '## R1 - Login form' '' 'WHEN a user opens the page, THE app SHALL show a form.' '' \
   '- [ ] The form has two fields.' '' '## R2 - Bad password' '' 'IF the password is wrong, THEN the app SHALL say so.' '' '## R3 - Unused' '' 'Left out.' >"$SD/requirements.md"
 printf '%s\n' '# SP-1 - Design' '' '## Approach' '' 'A new route.' '' '## Components' '' 'The form.' '' '## Testing' '' 'A browser check.' >"$SD/design.md"
-printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' '  - Check: open the page' '' \
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - The login form' '  - Requirements: R1' '  - Design: Approach, components' '  - Files: src/login.ts' \
+  '  - Check: open /login - expected: shows `Sign in: email, password`' '' \
   '- [x] T2 - The error' '  - Requirements: R2, R9' '  - Design: Approach' '- [ ] T3 - Nothing named' '  - Requirements: <R1, R2>' '- [ ] T4 - No design' '  - Requirements: r2' '  - Design: none' >"$SD/tasks.md"
 sb spec tasks SP-1
 rc_is "spec tasks: exit 0" 0
@@ -2431,6 +2432,8 @@ repo_path: $oT/scode/spec-app
 branch: feature/SP-1-first
 validation: $S/claude/validation.md"
 out_has "spec packet: the item as written" "  - Files: src/login.ts"
+out_has "spec packet: the check and its expected result, as written" \
+  '  - Check: open /login - expected: shows `Sign in: email, password`'
 out_has "spec packet: the requirement it names, with its checks" "### R1 - Login form
 
 WHEN a user opens the page, THE app SHALL show a form.
@@ -2494,7 +2497,7 @@ done
 file_has "spec skill: asks the owner with AskUserQuestion" "$SK" "Ask with AskUserQuestion whether to approve the phase"
 file_has "spec skill: never builds before the tasks are approved" "$SK" "Never start the build before the tasks approval note is written."
 file_has "spec skill: resumes spec-lead with the owner's answer" "$SK" "Resume \`spec-lead\` with SendMessage and the owner's answer as written."
-for a in spec-lead implementer reviewer; do
+for a in spec-lead implementer reviewer spec-checker; do
   AF="$here/agents/$a.md"
   line_is "$a: named as its file" "$AF" "name: $a"
   ad="$(sed -n 's/^description: //p' "$AF")"
@@ -2502,10 +2505,73 @@ for a in spec-lead implementer reviewer; do
   file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
 done
 line_is "spec-lead: the only agent with the Agent tool" "$here/agents/spec-lead.md" "tools: Agent, Bash, Read, Glob, Grep"
-for a in implementer reviewer docs-keeper scrum-master; do
+for a in implementer reviewer docs-keeper scrum-master spec-checker; do
   if grep -q '^tools:.*Agent' "$here/agents/$a.md"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
 done
 line_is "reviewer: edits no file" "$here/agents/reviewer.md" "tools: Bash, Read, Glob, Grep"
+SC="$here/agents/spec-checker.md"
+line_is "spec-checker: reads, and has no tool that writes" "$SC" "tools: Read, Glob, Grep"
+line_is "spec-checker: runs on opus" "$SC" "model: opus"
+for g in 'a requirement or design heading a task names that the files lack.' 'a requirement no task meets.' \
+  'a task that needs a later one.'; do
+  line_is "spec-checker: a tasks.md gap, $g" "$SC" "- In \`tasks.md\`: $g"
+done
+file_has "spec-checker: its prompt is the spec files' paths alone" "$SC" \
+  'Your prompt is the paths of'
+file_has "spec-checker: reads nothing but those files" "$SC" \
+  '- Read nothing else: not the story, not the code, not another file in the folder.'
+file_has "spec-checker: a vague task check is a gap" "$SC" \
+  'a task with no `- Check: <command or step> - expected: <what it prints or shows>`'
+file_has "spec-checker: reports one line per gap" "$SC" \
+  '- One line per gap: `- <file> > <heading> - <what an agent could not build> - <a question>`.'
+file_has "spec-checker: says when there is no gap" "$SC" 'No gap: reply `No gaps.` and nothing else.'
+file_has "spec-checker: proposes no fix" "$SC" '- Propose no fix: the caller closes each gap with the owner.'
+line_is "spec-checker: writes nothing" "$SC" "- Write nothing, anywhere."
+PH="$here/skills/spec/phases.md"
+file_has "spec phases: one question per AskUserQuestion call" "$PH" \
+  '- Ask one question at a time: one question per AskUserQuestion call. Wait for its answer.'
+file_has "spec phases: the draft in chunks of 200 to 300 words" "$PH" \
+  '- Show the draft in chunks of about 200 to 300 words'
+file_has "spec phases: each chunk asks what is wrong or missing, as plain text" "$PH" \
+  "- End each chunk with the line \`What's wrong or missing?\` as plain text, not an AskUserQuestion"
+line_is "spec phases: then stops for the owner's answer" "$PH" "  call. Then stop for the owner's answer."
+line_is "spec phases: the check runs once the last chunk's fixes are written" "$PH" \
+  'For design and tasks, once the owner has answered the last chunk and its fixes are written:'
+line_is "spec phases: approval only after the last chunk" "$PH" "- Ask for the approval only after the last chunk."
+file_has "spec phases: each task check names its expected result" "$PH" \
+  '`- Check: <command or step> - expected: <what it prints or shows>`.'
+file_has "spec phases: a vague check is rewritten with the owner" "$PH" \
+  '- A check with no command or step, or no expected result, is vague: rewrite it with the owner.'
+line_is "spec phases: the spec check has a section" "$PH" "## The spec check"
+file_has "spec phases: launches spec-checker" "$PH" '1. Launch `odsb:spec-checker` with the Agent tool.'
+line_is "spec phases: the design check reads requirements and design" "$PH" \
+  '   - Design: `requirements.md` and `design.md`.'
+line_is "spec phases: the tasks check reads all three files" "$PH" \
+  '   - Tasks: `requirements.md`, `design.md` and `tasks.md`.'
+file_has "spec phases: shows the owner the gaps" "$PH" '3. Show the owner the gaps, numbered, as it wrote them.'
+file_has "spec phases: closes each gap with the owner" "$PH" \
+  '4. Close each gap with the owner, and write the answer in the phase file.'
+line_is "spec phases: a gap the owner rejects is left" "$PH" '   - The owner says a gap is not one: leave it.'
+line_is "spec phases: a gap in an approved phase reopens it" "$PH" \
+  '   - A gap in an approved phase: write `Spec: <phase> reopened.` as a status note, then go back to'
+line_is "spec phases: and goes back to that phase" "$PH" '     that phase.'
+line_is "spec skill: a change at approval is shown, then asked again" "$SK" \
+  '   - A change: make it, show the changed chunk, then ask again.'
+file_has "spec skill: asks as the chat rules say" "$SK" 'Ask as `## The chat` in `phases.md` says.'
+file_has "spec skill: shows the phase in chunks" "$SK" \
+  '4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.'
+file_has "spec skill: spec-checker reads design and tasks before approval" "$SK" \
+  '5. Design and tasks: have `spec-checker` read the spec, and close its gaps with the owner, as'
+line_is "spec tasks template: the check names its expected result" "$here/templates/spec-tasks.md.tmpl" \
+  '  - Check: <The command or step the reviewer runs.> - expected: <What it prints or shows.>'
+line_is "contract: spec-checker and its tools" "$here/docs/contract.md" \
+  '| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |'
+line_is "contract: a task check names its expected result" "$here/docs/contract.md" \
+  '  `- Check: <command or step> - expected: <what it prints or shows>`.'
+line_is "guide: lists spec-checker" "$here/docs/guide.md" \
+  '| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |'
+file_has "changelog: names spec-checker" "$here/CHANGELOG.md" \
+  'the new `spec-checker` agent reads the spec'
 file_has "spec-lead: the packet is the implementer's whole context" "$here/agents/spec-lead.md" "The packet is the implementer's whole context."
 file_has "spec-lead: only a reviewer's pass ticks a task" "$here/agents/spec-lead.md" 'Only a reviewer'"'"'s `VERDICT: PASS` ticks a task.'
 file_has "spec-lead: the baseline comes first" "$here/agents/spec-lead.md" "## 1. The baseline"
@@ -2556,7 +2622,7 @@ rc_is "spec: a repo spec with no recorded location still exits 1" 1
 out_has "spec: but prints the delivery first" "delivery: direct"
 out_has "spec: and the folder as -" "dir: -"
 edit "$SPF" "s|^repos_root: \"\"\$|repos_root: \"$tmp/scode\"|; s/^spec_home: repo$/spec_home: vault/"
-for a in implementer reviewer; do
+for a in implementer reviewer spec-checker; do
   line_is "$a: loads no CLAUDE.md" "$here/agents/$a.md" "omitClaudeMd: true"
 done
 file_has "spec-lead: checks the approval note itself" "$here/agents/spec-lead.md" 'no note reads `Spec: tasks approved by the owner.`'
@@ -2827,7 +2893,8 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
   'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
-  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build'; do
+  'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build' \
+  'skills/spec/phases.md|## The chat' 'skills/spec/phases.md|## The spec check'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
   line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"

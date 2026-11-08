@@ -313,7 +313,7 @@ tags:
 - Fenced code in the README or in `requirements.md` is not read.
 - In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
   `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
-  `- Check: <how it is checked>`.
+  `- Check: <command or step> - expected: <what it prints or shows>`.
 - A spec story's README gets a `## Build` section, before `## Status notes`. `spec status` and
   `spec issue` write it; it is never edited by hand.
 - `## Build` has one line per task of `tasks.md`, in its order:
@@ -812,6 +812,11 @@ text.
   only when it is newer than every `reopened` note of its own phase or an earlier one.
 - Only the owner's session asks the owner: a subagent has no AskUserQuestion.
 - When the owner approves the task list, the skill runs `spec link <ID>`.
+- Before the owner approves the design, and again the tasks, the skill launches `spec-checker`.
+  Its prompt is the paths of the spec files written so far, and nothing else.
+- `spec-checker` reads and never writes. Its reply lists what it could not build from the files.
+- The skill shows the owner the gaps and closes each one with the owner before it asks for the
+  approval.
 - Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
   first commits the spec files on the story's branch.
 - `spec-lead` checks the approval note itself, and keeps track of the build in the story's
@@ -822,7 +827,8 @@ text.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
   issues to `implementer` again.
 - The output of `spec packet`, and the commit line, are all `implementer` is given.
-- `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to it.
+- `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
+  to what they are given.
 - `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
   the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
 - A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the review
@@ -830,13 +836,14 @@ text.
 - A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
 - Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on from
   the `## Build` section, so a build resumes in a new session.
-- The three agents and their tools:
+- The four agents and their tools:
 
 | Agent | Tools | Job |
 |---|---|---|
 | `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
 | `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
 | `reviewer` | Bash, Read, Glob, Grep | reads the diff; edits no file |
+| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to
   production.

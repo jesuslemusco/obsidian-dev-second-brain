@@ -10,6 +10,12 @@
 - A `## Build` row with no commit keeps `commits -` when `spec status` or `spec issue` writes the
   section again.
 - A `## Build` row whose task left `tasks.md` keeps its title when the section is written again.
+- The `spec` skill asks one question at a time and shows each draft in chunks of about 200 to 300
+  words, as `## The chat` in `skills/spec/phases.md` says.
+- Each task's check names its command or step and its expected result:
+  `- Check: <command or step> - expected: <what it prints or shows>`. The tasks template shows it.
+- Before you approve the design, and again the tasks, the new `spec-checker` agent reads the spec
+  files alone and lists what it could not build from them. You close each gap before you approve.
 
 ## 0.5.0 - 2026-11-08
 

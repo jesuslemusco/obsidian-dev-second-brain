@@ -17,6 +17,7 @@ Start with the [README](../README.md). Every helper command and note format is i
 | `spec-lead` | agent | Builds the approved tasks through `implementer` and `reviewer`. |
 | `implementer` | agent | Builds and commits one task from its context packet alone. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
+| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
 | `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
 
 ## What to say
@@ -95,12 +96,18 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   [What to say](#what-to-say).
 - You approve each phase or say what to change, as
   `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
+- The skill asks one question at a time and shows each draft in short chunks, as
+  `## The chat` in `skills/spec/phases.md` says.
+- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
+  lists what it could not build from it. You close each gap first, as
+  `## The spec check` in `skills/spec/phases.md` says.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
 - A project's default, and where its specs live, are `delivery` and `spec_home` under
   `### Profile frontmatter` in `docs/contract.md`.
 - `second-brain spec EX-2` prints the story's `delivery`, `spec_home` and the paths of its three
   spec files.
-- The spec files' shape is under `## 4. A task` in `docs/contract.md`.
+- The spec files' shape is under `## 4. A task` in `docs/contract.md`, such as each task's
+  `- Check: <command or step> - expected: <what it prints or shows>` line.
 - The doctor's `spec-trace` check names an acceptance criterion that no requirement serves.
 - Once you approve the tasks, the story's Approach, Changes and Verification link to the spec.
 - The build runs in agents, which cannot ask you anything. Every question comes through your

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- The `spec` skill asks one question at a time and shows each draft in chunks of about 200 to 300
+  words, as `## The chat` in `skills/spec/phases.md` says.
+- Each task's check names its command or step and its expected result:
+  `- Check: <command or step> - expected: <what it prints or shows>`. The tasks template shows it.
+- Before you approve the design, and again the tasks, the new `spec-checker` agent reads the spec
+  files alone and lists what it could not build from them. You close each gap before you approve.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

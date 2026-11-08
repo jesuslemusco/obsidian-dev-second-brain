@@ -9,6 +9,8 @@ to you as its result.
 - `<session id>` is the session id for notes in `SKILL.md`. Every `task note`, `spec status` and
   `spec issue` takes `--session <session id>`.
 - `<short hash>` is what `git -C "<path>" rev-parse --short HEAD` prints.
+- `<start>` is where the branch starts: the `<short hash>` that item 2 of `## 2. Ready to build`
+  notes, before a spec is committed.
 
 ## 1. Where the build stands
 
@@ -16,7 +18,8 @@ to you as its result.
    - It prints nothing: the build has not started.
    - It prints a line: the build resumes, from the states `build.json` in the story's folder
      holds.
-2. `second-brain spec tasks <ID>` must list a task. None: say so and stop.
+2. `second-brain spec tasks <ID>` must list a task. None, or exit 1 as for a split bundle: say so
+   and stop.
 
 ## 2. Ready to build
 
@@ -31,6 +34,7 @@ to you as its result.
    `spec_home: repo` spec.
    - On another branch: ask, then `git -C "<path>" switch <branch>`.
    - Never stash or discard the owner's changes: ask them to.
+   - Then note `<short hash>`: it is `<start>`.
 3. `spec_home: repo`, with `spec/<ID>` not yet committed: commit the spec files on the story's
    branch, `git -C "<path>" add spec/<ID>` and `git -C "<path>" commit -m "<ID>: spec"`.
 4. `second-brain validation <project> <repo>` must print the repo's steps, with no `<...>` text
@@ -52,6 +56,8 @@ to you as its result.
   - `odsb:reviewer` in branch mode: `model: "fable"`, the most capable model.
 - Name each `implementer` launch, so that a fix can reach it again with SendMessage:
   - The build and fix rounds 1 to 3: `name: "<ID>-<task>-implementer"`.
+  - A bundle's build, and fix rounds 1 to 3 of its tasks: `name: "<ID>-bundle-<n>-implementer"`,
+    with `<n>` its bundle.
   - From fix round 4 on: `name: "<ID>-<task>-implementer-2"`.
 - An agent fetches its own packet. Never run `spec packet` here, and never put a packet, a diff or
   the spec in a prompt.
@@ -66,8 +72,18 @@ to you as its result.
   - `Session: <session id>.`
   - The `Owner:` line, when there is one.
   - Last, the commit line.
+- `implementer`'s prompt for a bundle, one line each:
+  - `Story: <ID>, project <project>.`
+  - `Bundle: <n>.`
+  - `Tasks: <task>, <task>.`: the tasks of the bundle it builds, in order.
+  - `Session: <session id>.`
+  - For each of those tasks with a ruling: `Owner on <task>: <the ruling, as written>.`
+  - Last, one commit line per task, in order: `Commit <task> as "<ID> <task>: <title>".`
+- A fix is always on one task, with the prompt and message above, even for a task of a bundle.
 - `reviewer`'s prompt in task mode: `Mode: task.`, then the story, task and session lines, and the
   `Owner:` line when there is one.
+- `reviewer`'s prompt for a bundle, in task mode: `Mode: task.`, the story line, `Bundle: <n>.`,
+  the `Tasks:` line of the tasks it reviews, the session line and the `Owner on <task>:` lines.
 - `reviewer`'s prompt in baseline mode: `Mode: baseline.`, `Project: <project>.`,
   `Repo: <repo> at <path>.` and `Branch: <branch>.`
 - `reviewer`'s prompt in user mode: `Mode: user.`, the story and session lines,
@@ -77,10 +93,28 @@ to you as its result.
 
 ## 4. The baseline
 
-- Skip it when the build resumes.
-- Launch `reviewer` in baseline mode on the branch as it is.
-- `VERDICT: FAIL` or `VERDICT: BLOCKED`: stop, as `## 7. When the build stops` says.
-- `VERDICT: PASS`: `second-brain task note <ID> "Build: the baseline passed at <short hash>."`.
+The baseline tells a break already on the branch from one a task makes. A branch that starts on
+the base branch holds nothing of its own yet, and the base is tested, so it needs none.
+
+1. Skip it when the build resumes, whatever the start.
+2. The base branch is the `base_branch` that `second-brain subproject <project> <subproject>`
+   prints when `task head` names a subproject. Else it is the one
+   `second-brain profile <project> --keys` prints.
+   - `<base>` is `origin/<base_branch>` when
+     `git -C "<path>" rev-parse --verify --quiet "refs/remotes/origin/<base_branch>"` prints a
+     hash, else `<base_branch>`.
+   - No base branch: item 4.
+3. Run `git -C "<path>" merge-base --is-ancestor <start> <base>`.
+   - Exit 0: the branch starts on the base. Skip the baseline: write
+     `second-brain task note <ID> "Build: baseline skipped: the branch starts at <start> on <base>."`,
+     then go on to `## 5. Each task in turn`.
+   - Any other exit, such as on a branch cut from `release/<version>` or with commits the base
+     lacks: item 4.
+4. Launch `reviewer` in baseline mode on the branch as it is.
+5. `VERDICT: FAIL` or `VERDICT: BLOCKED`: stop, as `## 7. When the build stops` says.
+6. `VERDICT: PASS`: `second-brain task note <ID> "Build: the baseline passed at <short hash>."`.
+
+The build-wide checks in `## 6. When every task passed` run either way.
 
 ## 5. Each task in turn
 
@@ -88,13 +122,17 @@ Take each task whose review is not `passed`, in the order `spec tasks` lists the
 review it right after, before the next task starts. A task that fails holds up the tasks after it
 until it passes or the build stops.
 
+A task whose `spec tasks` row names a bundle, in its last column, goes with the other tasks of
+that bundle, as `### A bundle` says. One task or bundle at a time, never in parallel.
+
 ### Where the task stands
 
 A resumed build finds each task as an earlier session left it. Go on from its state:
 
 1. Build `todo`: `### Build it`.
 2. Build `building`: it was cut off in an earlier session. Look for a commit it made, by its full
-   hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.
+   hash: the first line of `git -C "<path>" log --format="%H %s" --grep="^<ID> <task>: "` whose
+   subject is not `<ID> <task>: passed review`. That one is the tick of a `spec_home: repo` spec.
    - A hash `spec status` lists under the task is that commit when the full hash starts with it.
    - The full hash starts with no listed hash: that run committed. Run
      `second-brain spec status <ID> <task> built --commit <hash>`, with the hash
@@ -108,6 +146,8 @@ A resumed build finds each task as an earlier session left it. Go on from its st
      `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
 4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.
+   - A `fix` in `spec status` that is not `-`: its fix was built before the session ended.
+     `### Review it`, with the ruling as its `Owner:` line when there is one.
    - `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.
    - `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for
      `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
@@ -117,10 +157,13 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 
 1. `second-brain spec status <ID> <task> building`.
 2. Launch `implementer` on the task, named for the build.
-3. Its reply starts with `BLOCKED:`, or has no `Commit:` line: first the stop note,
+3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commit
+   first, as item 2 of `### Where the task stands` says. A commit found goes on as that item
+   says. None found: item 4.
+4. Its reply starts with `BLOCKED:`, or no commit was found: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
-4. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
+5. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
    its `Commit:` line names. Then `### Review it`.
    - Its `Test:` and `Check:` lines are its own report. The review runs the checks again: never
      skip it on them.
@@ -155,7 +198,8 @@ It picks the round. Never count the rounds yourself.
      ruling as its `Owner:` line.
 2. Otherwise, `second-brain spec status <ID> <task> building`, then the round:
    - `fails` 1 to 3: the same `implementer`. Send the fix message to
-     `<ID>-<task>-implementer`, and wait for its reply.
+     `<ID>-<task>-implementer`, or to `<ID>-bundle-<n>-implementer` for a task of bundle `<n>`,
+     and wait for its reply.
    - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh
      `implementer` in its place, with the build's prompt, name and model.
    - `fails` 4: launch a fresh `implementer` on the stronger model, named from round 4 on, with
@@ -163,7 +207,47 @@ It picks the round. Never count the rounds yourself.
    - `fails` 5: send the fix message to `<ID>-<task>-implementer-2`, or launch a fresh one as for
      `fails` 4 when it cannot be reached.
    - `fails` 6 or more, on a ruling: as for `fails` 4, with the ruling as its `Owner:` line.
-3. Take its reply as items 3 and 4 of `### Build it` say. Its review then reads only the fix.
+3. Take its reply as items 3 to 5 of `### Build it` say. Its review then reads only the fix.
+
+### A bundle
+
+A bundle's tasks are built in one `implementer` run, one commit per task. Then one `reviewer`
+reviews them all, before the next task or bundle starts. Take the bundle's tasks whose review is
+not `passed`, in order:
+
+1. Where they stand: a build `building` looks for its commit, and sets `built` when it finds one,
+   as item 2 of `### Where the task stands` says. A `blocked` one looks for its ruling, as item 3
+   says. Then go on to item 2 here, not to the step those items name.
+   - A `blocked` task with no ruling: ask the owner first, as `## 7. When the build stops` says.
+2. Build the tasks with `fails` 0 whose build is `todo`, `building` with no commit found, or
+   `blocked` with a ruling. None: item 3.
+   1. `second-brain spec status <ID> <task> building` for each of them, in order.
+   2. Launch one fresh `implementer` on them, with the bundle's prompt and name.
+   3. Its reply holds one report per task, in order, each under a line `Task: <task>`. Take each
+      task in order:
+      - A report with a `Commit:` line:
+        `second-brain spec status <ID> <task> built --commit <hash>`, with the hash it names.
+      - No report, or one with no `Commit:` and no `BLOCKED:` line: look for its commit first, as
+        item 1 does.
+      - A report with `BLOCKED:`, or no commit found: that task stopped the run. Take no task
+        after it.
+   4. A task stopped the run: first `second-brain spec status <ID> <task> todo` for each task
+      after it. Then it stops the build, as item 4 of `### Build it` says.
+3. Review the tasks whose build is `built` and whose review is `-`, `in-review`, or `blocked` with
+   a ruling. Review too each task whose review is `failed` and whose `fix` in `spec status` is
+   not `-`, as item 4 of `### Where the task stands` says. Only one: items 1 to 6 of
+   `### Review it`, then item 4 here. Two or more:
+   1. `second-brain spec status <ID> <task> in-review` for each of them, in order.
+   2. Launch one fresh `reviewer` in task mode on them, with the bundle's prompt.
+   3. Its reply holds one line per task, `<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`. A task with
+      no such line: ask it once more with SendMessage. Still none: stop.
+   4. Set each task's result as items 3 to 5 of `### Review it` say. Set every PASS and FAIL
+      first, then a BLOCKED, which stops the build.
+   5. Show the owner `second-brain spec status <ID>`, as item 6 of `### Review it` says.
+4. Fix each task left whose review is not `passed`, one at a time, in order. Go on from its state
+   as `### Where the task stands` says: it takes `### The fix loop`, and `### Review it` reviews
+   its fix alone.
+5. Every task of the bundle has passed: go on to the next task or bundle.
 
 ## 6. When every task passed
 
@@ -222,8 +306,8 @@ A resumed build with every task passed comes straight here.
   build started, stopped and why, and finished, and each ruling.
 - Only a reviewer's `VERDICT: PASS` ticks a task. Never on the implementer's word.
 - The packet is the implementer's whole context. Never give it the other tasks or this
-  conversation.
-- Never skip, merge or reorder tasks.
+  conversation. A bundle's run gets its own tasks' packets alone.
+- Never skip, merge or reorder tasks. A task of a bundle keeps its own commit, verdict and states.
 - One agent at a time: wait for each agent's result or reply before the next step.
 - Run a `release` check only when the owner asks:
   `second-brain validation run "<project>" <repo> --when release`, in the background as

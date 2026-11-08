@@ -80,6 +80,18 @@ Write every phase for the build `build.md` runs.
   and results they call.
 - A task that calls them adds one line, `- Uses: T1, T2`. Its packet then holds those
   `- Provides:` lines. It uses only earlier tasks.
+- Small, alike tasks may form a bundle: each adds one line, `- Bundle: <n>`, the same whole number
+  for every task of one bundle. A bundle's tasks go to one `implementer` run, one commit per task,
+  then one review, as `### A bundle` in `build.md` says.
+- Bundle only tasks that follow one pattern and take a few lines each, such as one template per
+  task. A bundle is small enough for one agent with a fresh context to build and commit all of
+  it.
+- A bundle's tasks stand next to each other in the list, and none uses another task of its
+  bundle. `spec tasks` checks both.
+- Each task of a bundle keeps its own requirements, `- Check:` and commit.
+- Show the bundles with the task list. The owner approves them with the tasks.
+- Run `second-brain spec tasks <ID>`. It must succeed, and its last column names each task's
+  bundle, `-` for none.
 - Every requirement is met by at least one task.
 - Run `second-brain spec packet <ID> T<n> >/dev/null` for every task. It must succeed: fix what
   it names, such as a requirement or a design heading that does not exist.

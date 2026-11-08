@@ -150,6 +150,53 @@ sb_spec_task_rows() {
     }' "$@"
 }
 
+# Print the rows of spec tasks: one TSV row per task item of a tasks.md, as sb_spec_task_rows finds
+# them, with a fourth column, the item's bundle ("-" when none). The bundle is the first
+# "  - Bundle: <n>" line of the item, which ends as sb_spec_task_item ends it; leading zeros go.
+# Exits 1, with no row, when a bundle is not a whole number ("bad<TAB>task<TAB>value" on stderr),
+# when a bundle's tasks are not next to each other ("split<TAB>task<TAB>bundle"), or when the first
+# "- Uses:" line of a task names a task of its own bundle ("uses<TAB>task<TAB>used<TAB>bundle").
+sb_spec_task_list() {
+  LC_ALL=C awk "$(sb_awk_lib)"'
+    function none(v,   l) { l = tolower(v); return (l == "" || l == "-" || l == "none" || l == "n/a" || substr(l, 1, 1) == "<") }
+    { sub(/\r$/, "") }
+    /^[ \t]*(```|~~~)/ { if (/^(```|~~~)/) cfence = !cfence; ifence = !ifence; next }
+    on && !ifence && /^[^ \t]/ { on = 0 }
+    !cfence && /^- \[[ xX]\] T[0-9]+([ \t:]|$)/ {
+      st = (substr($0, 4, 1) == " " ? "todo" : "done")
+      rest = substr($0, 7); id = rest; sub(/[ \t:].*$/, "", id)
+      t = substr(rest, length(id) + 1); sub(/^[ \t]*[-:]?[ \t]*/, "", t); gsub(/\t/, " ", t); t = trim(t)
+      n++; rid[n] = id; rst[n] = st; rti[n] = (t == "" ? "-" : t); rbu[n] = "-"; ruse[n] = ""
+      on = 1; got = 0; gotu = 0
+      next
+    }
+    on && /^[ \t]+-[ \t]/ {
+      line = $0; sub(/^[ \t]+-[ \t]+/, "", line); l = tolower(line)
+      if (!gotu && substr(l, 1, 5) == "uses:") { gotu = 1; ruse[n] = trim(substr(line, 6)) }
+      if (got || substr(l, 1, 7) != "bundle:") next
+      got = 1; v = trim(substr(line, 8))
+      if (none(v)) next
+      if (v !~ /^[0-9]+$/) { if (!bad) { bad = 1; badmsg = "bad\t" rid[n] "\t" v } ; next }
+      sub(/^0+/, "", v); rbu[n] = (v == "" ? "0" : v)
+    }
+    END {
+      if (bad) { print badmsg > "/dev/stderr"; exit 1 }
+      for (i = 1; i <= n; i++) {
+        b = rbu[i]
+        if (b == "-") continue
+        if ((b in seen) && rbu[i - 1] != b) { print "split\t" rid[i] "\t" b > "/dev/stderr"; exit 1 }
+        seen[b] = 1
+        if (none(ruse[i])) continue
+        m = split(ruse[i], us, ",")
+        for (k = 1; k <= m; k++) {
+          u = toupper(trim(us[k])); if (u == "") continue
+          for (j = 1; j <= n; j++) if (toupper(rid[j]) == u && rbu[j] == b) { print "uses\t" rid[i] "\t" rid[j] "\t" b > "/dev/stderr"; exit 1 }
+        }
+      }
+      for (i = 1; i <= n; i++) print rid[i] "\t" rst[i] "\t" rti[i] "\t" rbu[i]
+    }' "$1"
+}
+
 # Tick a task item of a tasks.md, keeping the file's line endings; fenced code is not read.
 # Returns 1 when no item has the id, 4 when two items have it, 6 when it is ticked already and 2
 # when the file cannot be written.
@@ -721,6 +768,21 @@ function lastfail(r,   j) {
   for (j = nh[r]; j >= 1; j--) if (hfd[r, j] == "review" && hst[r, j] == "failed") return j
   return 0
 }
+# The fix of task r: the commit of each history entry after its last failed review, each once, in
+# FX[1..nfx]; none with no failed review.
+function fixes(r,   lf, j, k, c) {
+  nfx = 0; lf = lastfail(r)
+  if (lf) for (j = lf + 1; j <= nh[r]; j++) {
+    c = hcm[r, j]; if (c == "") continue
+    for (k = 1; k <= nfx; k++) if (FX[k] == c) break
+    if (k > nfx) FX[++nfx] = c
+  }
+}
+function fix_text(r,   k, s) {
+  fixes(r); s = ""
+  for (k = 1; k <= nfx; k++) s = s (k > 1 ? ", " : "") FX[k]
+  return dash(s)
+}
 function commits_text(r,   j, s) {
   s = ""
   for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") cm[r, j]
@@ -831,7 +893,7 @@ END {
   if (mode == "text") {
     if (!hasdata) exit 0
     for (r = 1; r <= nt; r++) {
-      print tid[r] " - build: " tb[r] " - review: " tr[r] " - fails " fails(r) " - commits " commits_text(r) " - " fold(dash(tti[r]))
+      print tid[r] " - build: " tb[r] " - review: " tr[r] " - fails " fails(r) " - commits " commits_text(r) " - fix " fix_text(r) " - " fold(dash(tti[r]))
       for (j = 1; j <= nis[r]; j++) print "  - " issue_line(r, j)
     }
     exit 0
@@ -841,10 +903,12 @@ END {
     if (hasdata) for (r = 1; r <= nt; r++) {
       s = ""
       for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") jstr(cm[r, j])
+      x = ""; fixes(r)
+      for (j = 1; j <= nfx; j++) x = x (j > 1 ? ", " : "") jstr(FX[j])
       l = ""
       for (j = 1; j <= nis[r]; j++) l = l (j > 1 ? ", " : "") jstr(issue_line(r, j))
       printf "%s\n  {\"id\": %s, \"build\": %s, \"review\": %s, \"fails\": %d, ", (r > 1 ? "," : ""), jstr(tid[r]), jstr(tb[r]), jstr(tr[r]), fails(r)
-      printf "\"commits\": [%s], \"title\": %s, \"issues\": [%s]}", s, jstr(fold(dash(tti[r]))), l
+      printf "\"commits\": [%s], \"fix\": [%s], \"title\": %s, \"issues\": [%s]}", s, x, jstr(fold(dash(tti[r]))), l
     }
     print ((hasdata && nt) ? "\n]" : "]")
     exit 0
@@ -854,9 +918,8 @@ END {
     print "commits: " (r ? commits_text(r) : "-")
     f = (r ? fails(r) : 0); print "fails: " f
     # The packet of a fix: the commits after the last failed review, and the findings they answer.
-    fx = ""; lf = (f ? lastfail(r) : 0); k = (lf ? reviews(r, lf) : 0)
-    if (lf) for (j = lf + 1; j <= nh[r]; j++) if (hcm[r, j] != "") fx = fx (fx == "" ? "" : ", ") hcm[r, j]
-    print "fix: " dash(fx)
+    lf = (f ? lastfail(r) : 0); k = (lf ? reviews(r, lf) : 0)
+    print "fix: " (r ? fix_text(r) : "-")
     if (r) for (j = 1; j <= nis[r]; j++) if (!f || ird[r, j] == k) print "- " issue_line(r, j)
     exit 0
   }
@@ -946,7 +1009,7 @@ sb_spec_build() {
 # second-brain spec [new | tasks | tick | packet | link | status | issue] <ID> ..., each with [--project P].
 cmd_spec() {
   local sub="" id="" task="" project="" rc third="" commit="" fix="" session="${CLAUDE_SESSION_ID:-}" hasfix=0
-  local json=0
+  local json=0 rows why
   local usage="usage: second-brain spec <ID> | spec new <ID> | spec tasks <ID> [--json] | spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID> | spec status <ID> [--json | <task> <state> [--commit H]] | spec issue <ID> <task> \"<issue>\" --fix \"<fix>\", each with [--project P] (status and issue also take --session S)"
   case "${1:-}" in
     new | tasks | tick | packet | link | status | issue)
@@ -1006,10 +1069,25 @@ cmd_spec() {
       ;;
     tasks)
       sb_spec_need_file tasks
+      # The rows on stdout, or on a bad bundle only its reason, from stderr.
+      rc=0
+      rows="$(sb_spec_task_list "$SB_SP_FILE" 2>&1)" || rc=$?
+      if [ "$rc" -ne 0 ]; then
+        why="${rows#*$'\t'}"
+        case "$rows" in
+          bad$'\t'*) sb_die 1 "${why%%$'\t'*} has the bundle ${why#*$'\t'} in $SB_SP_SHOW/tasks.md: a bundle is a whole number" ;;
+          split$'\t'*) sb_die 1 "${why%%$'\t'*} is in bundle ${why#*$'\t'}, but the task before it is not: put a bundle's tasks next to each other in $SB_SP_SHOW/tasks.md" ;;
+          uses$'\t'*)
+            set -- "${why%%$'\t'*}" "${why#*$'\t'}"
+            sb_die 1 "$1 uses ${2%%$'\t'*}, which is in its own bundle ${2#*$'\t'}: move one of them out of the bundle in $SB_SP_SHOW/tasks.md"
+            ;;
+          *) sb_die 1 "cannot read $SB_SP_SHOW/tasks.md" ;;
+        esac
+      fi
       if [ "$json" -eq 1 ]; then
-        sb_spec_task_rows "$SB_SP_FILE" | sb_spec_json_rows id state title
-      else
-        sb_spec_task_rows "$SB_SP_FILE"
+        printf '%s\n' "$rows" | sb_spec_json_rows id state title bundle
+      elif [ -n "$rows" ]; then
+        printf '%s\n' "$rows"
       fi
       return 0
       ;;

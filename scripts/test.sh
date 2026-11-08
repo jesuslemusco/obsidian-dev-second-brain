@@ -2750,6 +2750,18 @@ rc_is "spec tasks: a bundle split by another task exits 1" 1
 out_is "spec tasks: and prints no row either" ""
 err_has "spec tasks: and names the task out of place" \
   "T3 is in bundle 1, but the task before it is not: put a bundle's tasks next to each other in $S/tasks/SP-1/spec/tasks.md"
+printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' '  - Provides: one()' \
+  '- [ ] T2 - Two' '  - Requirements: R1' '  - Uses: T1' '  - Bundle: 1' '- [ ] T3 - Three' '  - Requirements: R1' '  - Bundle: 1' '  - uses: none' \
+  '- [ ] T4 - Four' '  - Requirements: R1' '  - Provides: four()' '  - Bundle: 2' '- [ ] T5 - Five' '  - Requirements: R1' '  - Bundle: 2' '  - Uses: t2, T4' >"$CRT"
+sb spec tasks SP-1
+rc_is "spec tasks: a task that uses a task of its own bundle exits 1" 1
+out_is "spec tasks: and prints no row" ""
+err_has "spec tasks: and names both tasks and the bundle" \
+  "T5 uses T4, which is in its own bundle 2: move one of them out of the bundle in $S/tasks/SP-1/spec/tasks.md"
+edit "$CRT" 's/^  - Uses: t2, T4$/  - Uses: t2, T1/'
+sb spec tasks SP-1
+rc_is "spec tasks: a task may use a task of another bundle, or of none" 0
+out_has "spec tasks: and lists each bundle" "T5${TAB}todo${TAB}Five${TAB}2"
 printf '\n## R1 - Again\n' >>"$SD/requirements.md"
 printf '%s\n' '# SP-1 - Tasks' '' '- [ ] T1 - One' '  - Requirements: R1' >"$CRT"
 sb spec packet SP-1 T1
@@ -3240,7 +3252,12 @@ file_has "spec build: a cut-off build takes only a commit build.json lacks" "$BM
 file_has "spec build: a ruling counts only when newer than the stop" "$BM" \
   'newest `Build: stopped at <task>: <why>.` note. Status notes are newest first, so it is above.'
 file_has "spec build: a cut-off build's commit is found by its full hash" "$BM" \
-  'hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.'
+  'hash: the first line of `git -C "<path>" log --format="%H %s" --grep="^<ID> <task>: "` whose'
+file_has "spec build: a cut-off build never takes the tick commit for its own" "$BM" \
+  'subject is not `<ID> <task>: passed review`. That one is the tick of a `spec_home: repo` spec.'
+file_lacks "spec build: no longer takes the newest commit of the task whatever it is" "$BM" 'log -1 --format=%H --grep='
+file_has "contract: the tick commit is never a task's own" "$here/docs/contract.md" \
+  '- The tick commit of a `spec_home: repo` spec, `<ID> <task>: passed review`, is never a task'"'"'s own'
 file_has "spec build: and a listed hash matches by prefix" "$BM" \
   '- A hash `spec status` lists under the task is that commit when the full hash starts with it.'
 file_has "contract: a blocked task waits for a ruling newer than its stop" "$here/docs/contract.md" \
@@ -3963,7 +3980,22 @@ done
 file_has "spec build: names the bundle's implementer" "$BM" '`name: "<ID>-bundle-<n>-implementer"`'
 file_has "spec build: each task of a bundle is set building first" "$BM" \
   '1. `second-brain spec status <ID> <task> building` for each of them, in order.'
-file_has "spec build: each committed task is set built" "$BM" '`second-brain spec status <ID> <task> built --commit <hash>`, with the hash its `Commit:`'
+file_has "spec build: each committed task is set built" "$BM" '`second-brain spec status <ID> <task> built --commit <hash>`, with the hash it names.'
+file_has "spec build: a task with no report or no commit line is looked for by its commit" "$BM" \
+  '- No report, or one with no `Commit:` and no `BLOCKED:` line: look for its commit first, as'
+file_has "spec build: a block, or no commit found, stops the run there" "$BM" \
+  '- A report with `BLOCKED:`, or no commit found: that task stopped the run. Take no task'
+file_has "spec build: a fix found built is reviewed, not fixed again" "$BM" \
+  'Review too each task whose fix commit item 1 found, its review `failed`.'
+file_has "reviewer: follows a ruling on one task of a bundle" "$RV" \
+  '- An `Owner on <task>:` line is the owner'"'"'s ruling on that task alone: follow it there.'
+file_has "contract: a bundle task with no report is looked for by its commit" "$CT" \
+  '- A task the run gives no report on, or no commit line, is looked for by its commit first, in the'
+file_has "contract: a task of a bundle uses none of it" "$CT" '- A task of a bundle uses no other task of its bundle on its `- Uses:` line.'
+file_has "contract: spec tasks refuses such a Uses line" "$CT" 'or when a task'"'"'s `- Uses:` line names a task of its own bundle'
+file_has "spec phases: spec tasks checks the bundle rules" "$PH" 'bundle. `spec tasks` checks both.'
+file_has "changelog: a resumed task never takes the tick commit" "$here/CHANGELOG.md" \
+  '- A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`'
 file_has "spec build: the tasks after a stop go back to todo" "$BM" \
   'first `second-brain spec status <ID> <task> todo` for each task'
 file_has "spec build: and the stop is a block, as for a task alone" "$BM" 'Then it stops the build, as item 3 of `### Build it` says.'

@@ -114,9 +114,11 @@
   verdict per task, before the next task or bundle starts. Nothing builds in parallel.
 - A task of a bundle that fails its review takes the fix loop alone, with its own cap. A bundle
   cut off part way resumes from `build.json`.
+- A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`
+  spec, `<ID> <task>: passed review`, for its own.
 - `second-brain spec tasks` prints each task's bundle in a fourth column, `-` for none, and
-  `--json` adds the key `bundle`. A bundle that is not a whole number, or whose tasks are not next
-  to each other, exits 1.
+  `--json` adds the key `bundle`. A bundle that is not a whole number, whose tasks are not next to
+  each other, or whose task uses another of its tasks, exits 1.
 
 ## 0.6.0 - 2026-11-08
 

@@ -87,7 +87,7 @@ Write every phase for the build `build.md` runs.
   task. A bundle is small enough for one agent with a fresh context to build and commit all of
   it.
 - A bundle's tasks stand next to each other in the list, and none uses another task of its
-  bundle.
+  bundle. `spec tasks` checks both.
 - Each task of a bundle keeps its own requirements, `- Check:` and commit.
 - Show the bundles with the task list. The owner approves them with the tasks.
 - Run `second-brain spec tasks <ID>`. It must succeed, and its last column names each task's

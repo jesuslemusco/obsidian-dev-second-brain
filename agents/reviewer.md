@@ -96,6 +96,8 @@ one commit per task. Review each task against its own packet:
 5. Judge each task by `### A pass` on its own findings, and log each finding on its own task, as
    steps 7 and 8 say.
 
+- An `Owner on <task>:` line is the owner's ruling on that task alone: follow it there.
+
 ## User mode
 
 The caller gives the story and its project, the session id, the repo, `<repo_path>` and the

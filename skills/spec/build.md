@@ -131,7 +131,8 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 
 1. Build `todo`: `### Build it`.
 2. Build `building`: it was cut off in an earlier session. Look for a commit it made, by its full
-   hash: `git -C "<path>" log -1 --format=%H --grep="^<ID> <task>: "`.
+   hash: the first line of `git -C "<path>" log --format="%H %s" --grep="^<ID> <task>: "` whose
+   subject is not `<ID> <task>: passed review`. That one is the tick of a `spec_home: repo` spec.
    - A hash `spec status` lists under the task is that commit when the full hash starts with it.
    - The full hash starts with no listed hash: that run committed. Run
      `second-brain spec status <ID> <task> built --commit <hash>`, with the hash
@@ -217,15 +218,19 @@ not `passed`, in order:
    `blocked` with a ruling. None: item 3.
    1. `second-brain spec status <ID> <task> building` for each of them, in order.
    2. Launch one fresh `implementer` on them, with the bundle's prompt and name.
-   3. Its reply holds one report per task, in order, each under a line `Task: <task>`. A report
-      with `BLOCKED:` or with no `Commit:` line, or a task with no report, stopped the run.
-   4. Each task before the one that stopped:
-      `second-brain spec status <ID> <task> built --commit <hash>`, with the hash its `Commit:`
-      line names.
-   5. A task stopped the run: first `second-brain spec status <ID> <task> todo` for each task
+   3. Its reply holds one report per task, in order, each under a line `Task: <task>`. Take each
+      task in order:
+      - A report with a `Commit:` line:
+        `second-brain spec status <ID> <task> built --commit <hash>`, with the hash it names.
+      - No report, or one with no `Commit:` and no `BLOCKED:` line: look for its commit first, as
+        item 1 does.
+      - A report with `BLOCKED:`, or no commit found: that task stopped the run. Take no task
+        after it.
+   4. A task stopped the run: first `second-brain spec status <ID> <task> todo` for each task
       after it. Then it stops the build, as item 3 of `### Build it` says.
 3. Review the tasks whose build is `built` and whose review is `-`, `in-review`, or `blocked` with
-   a ruling. Only one: items 1 to 6 of `### Review it`, then item 4 here. Two or more:
+   a ruling. Review too each task whose fix commit item 1 found, its review `failed`. Only one:
+   items 1 to 6 of `### Review it`, then item 4 here. Two or more:
    1. `second-brain spec status <ID> <task> in-review` for each of them, in order.
    2. Launch one fresh `reviewer` in task mode on them, with the bundle's prompt.
    3. Its reply holds one line per task, `<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`. A task with

@@ -153,8 +153,9 @@ sb_spec_task_rows() {
 # Print the rows of spec tasks: one TSV row per task item of a tasks.md, as sb_spec_task_rows finds
 # them, with a fourth column, the item's bundle ("-" when none). The bundle is the first
 # "  - Bundle: <n>" line of the item, which ends as sb_spec_task_item ends it; leading zeros go.
-# Exits 1, with no row, when a bundle is not a whole number ("bad<TAB>task<TAB>value" on stderr), or
-# when a bundle's tasks are not next to each other ("split<TAB>task<TAB>bundle").
+# Exits 1, with no row, when a bundle is not a whole number ("bad<TAB>task<TAB>value" on stderr),
+# when a bundle's tasks are not next to each other ("split<TAB>task<TAB>bundle"), or when the first
+# "- Uses:" line of a task names a task of its own bundle ("uses<TAB>task<TAB>used<TAB>bundle").
 sb_spec_task_list() {
   LC_ALL=C awk "$(sb_awk_lib)"'
     function none(v,   l) { l = tolower(v); return (l == "" || l == "-" || l == "none" || l == "n/a" || substr(l, 1, 1) == "<") }
@@ -165,12 +166,14 @@ sb_spec_task_list() {
       st = (substr($0, 4, 1) == " " ? "todo" : "done")
       rest = substr($0, 7); id = rest; sub(/[ \t:].*$/, "", id)
       t = substr(rest, length(id) + 1); sub(/^[ \t]*[-:]?[ \t]*/, "", t); gsub(/\t/, " ", t); t = trim(t)
-      n++; rid[n] = id; rst[n] = st; rti[n] = (t == "" ? "-" : t); rbu[n] = "-"; on = 1; got = 0
+      n++; rid[n] = id; rst[n] = st; rti[n] = (t == "" ? "-" : t); rbu[n] = "-"; ruse[n] = ""
+      on = 1; got = 0; gotu = 0
       next
     }
-    on && !got && /^[ \t]+-[ \t]/ {
-      line = $0; sub(/^[ \t]+-[ \t]+/, "", line)
-      if (tolower(substr(line, 1, 7)) != "bundle:") next
+    on && /^[ \t]+-[ \t]/ {
+      line = $0; sub(/^[ \t]+-[ \t]+/, "", line); l = tolower(line)
+      if (!gotu && substr(l, 1, 5) == "uses:") { gotu = 1; ruse[n] = trim(substr(line, 6)) }
+      if (got || substr(l, 1, 7) != "bundle:") next
       got = 1; v = trim(substr(line, 8))
       if (none(v)) next
       if (v !~ /^[0-9]+$/) { if (!bad) { bad = 1; badmsg = "bad\t" rid[n] "\t" v } ; next }
@@ -183,6 +186,12 @@ sb_spec_task_list() {
         if (b == "-") continue
         if ((b in seen) && rbu[i - 1] != b) { print "split\t" rid[i] "\t" b > "/dev/stderr"; exit 1 }
         seen[b] = 1
+        if (none(ruse[i])) continue
+        m = split(ruse[i], us, ",")
+        for (k = 1; k <= m; k++) {
+          u = toupper(trim(us[k])); if (u == "") continue
+          for (j = 1; j <= n; j++) if (toupper(rid[j]) == u && rbu[j] == b) { print "uses\t" rid[i] "\t" rid[j] "\t" b > "/dev/stderr"; exit 1 }
+        }
       }
       for (i = 1; i <= n; i++) print rid[i] "\t" rst[i] "\t" rti[i] "\t" rbu[i]
     }' "$1"
@@ -1052,6 +1061,10 @@ cmd_spec() {
         case "$rows" in
           bad$'\t'*) sb_die 1 "${why%%$'\t'*} has the bundle ${why#*$'\t'} in $SB_SP_SHOW/tasks.md: a bundle is a whole number" ;;
           split$'\t'*) sb_die 1 "${why%%$'\t'*} is in bundle ${why#*$'\t'}, but the task before it is not: put a bundle's tasks next to each other in $SB_SP_SHOW/tasks.md" ;;
+          uses$'\t'*)
+            set -- "${why%%$'\t'*}" "${why#*$'\t'}"
+            sb_die 1 "$1 uses ${2%%$'\t'*}, which is in its own bundle ${2#*$'\t'}: move one of them out of the bundle in $SB_SP_SHOW/tasks.md"
+            ;;
           *) sb_die 1 "cannot read $SB_SP_SHOW/tasks.md" ;;
         esac
       fi

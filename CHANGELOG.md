@@ -49,6 +49,8 @@ A project can build its stories from a spec, and every project says how its code
   to 3. Run the doctor's `check` and `fix`, then update by hand each note it names.
 - `scripts/test-doctor.sh` defines `exists`, so its two `task-layout --fix` checks on the archive
   run again; they were skipped before.
+- `story-tracker` and the `spec` skill cut a new story's branch from `base_branch`. This repo's
+  feature branches start from `main`, as `## Releases` in `docs/guide.md` says.
 
 ## 0.3.0 - 2026-10-22
 

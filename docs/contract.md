@@ -125,6 +125,8 @@ tags:
 ---
 ```
 
+- `base_branch` is the branch a new story's branch is cut from, as
+  `## Branch check (start, update, recall)` in `skills/story-tracker/SKILL.md` says.
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `topics_root: "."` puts the topic folders at the project root.

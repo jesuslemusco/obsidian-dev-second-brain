@@ -83,6 +83,9 @@ ticket.
 - List every local or remote branch whose name carries the ticket id:
   `git -C "<repo path>" branch -a --list '*<ID>*'`.
 - `base_branch` and `branch_pattern` give the base branch and the branch naming.
+- A new story's branch is cut from the base branch.
+  - A story that needs another story's code not yet in the base branch is cut from that story's
+    branch.
 - No id given: derive it from the branch with `branch_pattern`. Still unknown: ask.
 - The branch does not match the ticket: read the right ref without switching, with
   `git -C "<repo path>" show <branch>:<file>`, or tell the user.

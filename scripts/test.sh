@@ -2665,6 +2665,25 @@ file_has "guide: the status overview flags a story waiting on a task not done" "
 file_has "guide: no build starts without the repo's steps" "$here/skills/spec/SKILL.md" \
   '`second-brain validation <project> <repo>` must print the repo'"'"'s steps'
 
+# ---------------------------------------------------------------- a new story's branch is cut from the base branch
+line_is "guide: a release branch is cut from main" "$GD" \
+  '- A release starts with a `release/<version>` branch cut from `main`, such as `release/0.3.0`.'
+line_is "guide: a feature branch is cut from main and merges into the release" "$GD" \
+  '- A feature branch is cut from `main` and merges into the release branch.'
+line_is "guide: a story that needs another story's code is cut from its branch" "$GD" \
+  "- A story that needs another story's code not yet in \`main\` is cut from that story's branch. It"
+line_is "guide: the release goes to main in one pull request" "$GD" \
+  '- One pull request takes the release branch into `main`.'
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: a new story's branch is cut from the base branch" "$ST" \
+  "- A new story's branch is cut from the base branch."
+line_is "story-tracker: a story that needs another story's code is cut from its branch" "$ST" \
+  "  - A story that needs another story's code not yet in the base branch is cut from that story's"
+file_has "spec skill: cuts a missing branch from the base branch, as the branch check says" "$here/skills/spec/SKILL.md" \
+  'No branch yet: ask, then cut it from the base branch as the branch check says'
+line_is "contract: base_branch is where a new story's branch is cut from" "$here/docs/contract.md" \
+  "- \`base_branch\` is the branch a new story's branch is cut from, as"
+
 # ---------------------------------------------------------------- result
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

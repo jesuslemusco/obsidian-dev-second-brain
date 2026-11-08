@@ -36,6 +36,10 @@
 - `reviewer` removes only an untracked path its first `git status --porcelain` did not list, and
   never runs `git checkout`, `restore`, `reset`, `clean` or `stash`.
 - The doctor's `validation` check also warns about the earlier template's user-check line.
+- When a spec build passes, the `spec` skill asks whether to merge the branch into the release
+  branch, open a pull request into it, or keep it, as the new `skills/spec/finish.md` says. It
+  names each push or pull request before it runs, and deletes the branch only when the owner
+  types `discard`.
 
 ## 0.5.0 - 2026-11-08
 

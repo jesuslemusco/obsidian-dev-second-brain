@@ -119,6 +119,8 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   that stop it are in `agents/spec-lead.md`.
 - `second-brain spec status EX-2` prints where the build stands, one line per task.
 - When the last task passes, the story moves to `in-review`.
+- Then Claude asks whether to merge the branch into the release branch, open a pull request into
+  it, or keep it, as `skills/spec/finish.md` says.
 
 ### Validation steps
 

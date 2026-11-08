@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- `story-tracker` weighs a story with no `delivery` of its own when work starts on it. A simple
+  one is set `direct` with no question. For one that needs a spec it asks the owner, and on
+  `spec` offers `/odsb:spec <ID>`. A value from the profile or a subproject no longer decides.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

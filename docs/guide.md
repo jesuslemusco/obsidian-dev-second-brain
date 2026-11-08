@@ -95,6 +95,9 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   [What to say](#what-to-say).
 - You approve each phase or say what to change, as
   `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
+- When work starts on a story with no `delivery` of its own, Claude weighs it. A simple one is
+  built direct with no question. For one that needs a spec, Claude asks you. The signs are under
+  `## Spec-driven stories` in `skills/story-tracker/SKILL.md`.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
 - A project's default, and where its specs live, are `delivery` and `spec_home` under
   `### Profile frontmatter` in `docs/contract.md`.

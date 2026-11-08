@@ -104,12 +104,30 @@ ticket.
 
 ## Spec-driven stories
 
-- Before work starts on a story, in start mode or on a move to `in-progress`, run
-  `second-brain spec <ID>`.
-- Read its `delivery` line even when it exits 1 on a repo it cannot reach.
-- `delivery: spec`: say the story is built from a spec and offer
-  `/odsb:spec <ID>`.
-- Do not plan or write its code here.
+Weigh how a story is built when work starts on it: in start mode once the story exists, or on a
+move to `in-progress`.
+
+- A story has its own `delivery` when its README's frontmatter sets the key. Read the frontmatter
+  with a ranged read.
+  - `second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the
+    profile.
+- A story with its own `delivery` is never weighed again.
+  - `spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.
+  - `direct`: go on here.
+- The user says how to build it, such as "spec-driven": write it with
+  `second-brain task set <ID> delivery=<value>`, then go on as for a story with its own `delivery`.
+- Any other story: weigh it from its criteria and the code they touch.
+  - Spec-driven: the story is big, unclear, or meant to run without the owner.
+  - Signs: many files or repos, open questions in the criteria, a long unattended build.
+  - Direct: any other story.
+- Weighed direct: run `second-brain task set <ID> delivery=direct` and ask nothing. Say so in one
+  line, with the reason.
+- Weighed spec-driven: describe the story in at most three lines: what it changes, what it
+  touches and how many criteria it has. Then say why a spec helps.
+  - Ask the owner with AskUserQuestion: `spec` or `direct`.
+  - Write the answer with `second-brain task set <ID> delivery=<answer>`.
+  - `spec`: offer `/odsb:spec <ID>`. `direct`: go on here.
+- A story built from a spec: do not plan or write its code here.
 
 ## Edit an existing story
 

@@ -2461,7 +2461,41 @@ file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKIL
 file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
 file_has "spec phases: never the whole repo" "$here/skills/spec/phases.md" "and what they call. Not the whole"
 if [ -e "$here/agents/spec-writer.md" ]; then fail "spec-writer: the agent is gone"; else pass "spec-writer: the agent is gone"; fi
-file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: weighs a story when work starts" "$ST" \
+  'Weigh how a story is built when work starts on it: in start mode once the story exists, or on a'
+file_has "story-tracker: its own delivery is the key in its frontmatter" "$ST" \
+  "A story has its own \`delivery\` when its README's frontmatter sets the key."
+file_has "story-tracker: the spec command does not tell where delivery comes from" "$ST" \
+  '`second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the'
+file_lacks "story-tracker: no longer reads the delivery that holds" "$ST" 'Read its `delivery` line'
+file_has "story-tracker: a story with its own delivery is never weighed again" "$ST" \
+  'A story with its own `delivery` is never weighed again.'
+file_has "story-tracker: its own spec offers the spec skill" "$ST" \
+  '`spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.'
+file_has "story-tracker: a delivery the user names is written, not weighed" "$ST" \
+  'The user says how to build it, such as "spec-driven": write it with'
+file_has "story-tracker: a spec helps a big, unclear or unattended story" "$ST" \
+  'Spec-driven: the story is big, unclear, or meant to run without the owner.'
+file_has "story-tracker: gives the signs of a spec" "$ST" \
+  'Signs: many files or repos, open questions in the criteria, a long unattended build.'
+file_has "story-tracker: a simple story is set direct with no question" "$ST" \
+  'Weighed direct: run `second-brain task set <ID> delivery=direct` and ask nothing. Say so in one'
+line_is "story-tracker: it says so in one line, with the reason" "$ST" '  line, with the reason.'
+file_has "story-tracker: a spec story is described in three lines" "$ST" \
+  'describe the story in at most three lines: what it changes, what it'
+file_has "story-tracker: the description names what it touches and the criteria" "$ST" \
+  'touches and how many criteria it has. Then say why a spec helps.'
+file_has "story-tracker: the owner is asked" "$ST" 'Ask the owner with AskUserQuestion: `spec` or `direct`.'
+file_has "story-tracker: the answer is written" "$ST" \
+  'Write the answer with `second-brain task set <ID> delivery=<answer>`.'
+file_has "story-tracker: spec offers the spec skill, direct goes on" "$ST" \
+  '`spec`: offer `/odsb:spec <ID>`. `direct`: go on here.'
+st_desc="$(sed -n 's/^description: //p' "$ST")"
+case "$st_desc" in
+  *spec*) fail "story-tracker: the description leaves spec requests to the spec skill" "in: $st_desc" ;;
+  *) pass "story-tracker: the description leaves spec requests to the spec skill" ;;
+esac
 file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
 file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
 
@@ -2659,6 +2693,7 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
   'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/story-tracker/SKILL.md|## Spec-driven stories' \
   'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"

@@ -117,11 +117,13 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 
 1. `second-brain spec status <ID> <task> building`.
 2. Launch `implementer` on the task, named for the build.
-3. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,
+3. Its reply starts with `BLOCKED:`, or has no `Commit:` line: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
 4. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
-   its reply names. Then `### Review it`.
+   its `Commit:` line names. Then `### Review it`.
+   - Its `Test:` and `Check:` lines are its own report. The review runs the checks again: never
+     skip it on them.
 
 ### Review it
 

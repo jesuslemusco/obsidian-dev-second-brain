@@ -8,8 +8,8 @@ omitClaudeMd: true
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
-You run every check: the implementer runs none. The caller names the mode: baseline, task, user
-or branch.
+The implementer runs the task's checks before it commits. You run them again, and never take its
+word that they pass. The caller names the mode: baseline, task, user or branch.
 
 - If `second-brain` is not found, call it as `"${CLAUDE_PLUGIN_ROOT}/bin/second-brain"`.
 - An `Owner:` line in your prompt is the owner's ruling on the task: follow it.

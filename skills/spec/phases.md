@@ -35,10 +35,12 @@ The owner answers in this chat, so make each answer easy.
 
 Write every phase for the build `build.md` runs.
 
-- No requirement or task asks `implementer` to run a check: `reviewer` runs every check.
+- `implementer` builds each task test-first and runs its `- Check:` before it commits. `reviewer`
+  runs it again in the task's review.
 - A check that needs the whole branch, such as every suite passing,
   belongs to the final validation, not to one task's review.
-- A task's `- Check:` runs in that task's review, before the next task is built: keep it quick.
+- A task's `- Check:` runs before its commit and again in its review: keep it quick. Name the
+  narrowest command that runs the task's test, such as one test file, not every suite.
 
 ## requirements
 
@@ -70,7 +72,8 @@ Write every phase for the build `build.md` runs.
 - Each item is `- [ ] T<n> - <what it builds>`, then four indented lines, each on one line:
   `- Requirements: R1, R2`, `- Design: <headings of design.md>`, `- Files: <paths>` and
   `- Check: <command or step> - expected: <what it prints or shows>`.
-- A check names a command the reviewer runs, or a step it takes, and what that prints or shows:
+- A check names a command the implementer and the reviewer run, or a step they take, and what
+  that prints or shows:
   `- Check: open the login page, send an empty form - expected: shows "Email is required"`.
 - A check with no command or step, or no expected result, is vague: rewrite it with the owner.
 - A task whose code later tasks call adds `- Provides: <signatures>` lines: the names, arguments

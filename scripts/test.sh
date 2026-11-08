@@ -2459,6 +2459,11 @@ out_has "spec packet: the repo's validation steps" "## Validation
 
 ### Set up and start"
 out_lacks "spec packet: no other task" "T2 - The error"
+out_has "spec packet: names the task's check first, and no each-task line when the section has no command" "## Checks
+
+- task: open /login - expected: shows \`Sign in: email, password\`
+
+## Validation"
 sb spec packet SP-1 T2
 rc_is "spec packet: a requirement with no section exits 1" 1
 err_has "spec packet: and names it" "T2 names R9, which $S/tasks/SP-1/spec/requirements.md has no section for"
@@ -2574,8 +2579,8 @@ file_has "spec skill: shows the phase in chunks" "$SK" \
   '4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.'
 file_has "spec skill: spec-checker reads design and tasks before approval" "$SK" \
   '5. Design and tasks: have `spec-checker` read the spec, and close its gaps with the owner, as'
-line_is "spec tasks template: the check names its expected result" "$here/templates/spec-tasks.md.tmpl" \
-  '  - Check: <The command or step the reviewer runs.> - expected: <What it prints or shows.>'
+line_is "spec tasks template: the check names its expected result, and who runs it" "$here/templates/spec-tasks.md.tmpl" \
+  '  - Check: <The command or step the implementer and the reviewer run.> - expected: <What it prints or shows.>'
 line_is "contract: spec-checker and its tools" "$here/docs/contract.md" \
   '| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |'
 line_is "contract: a task check names its expected result" "$here/docs/contract.md" \
@@ -2715,7 +2720,7 @@ for a in implementer reviewer spec-checker; do
 done
 file_has "spec build: read only once all three approvals count" "$BM" 'Read this file only when all three approvals count'
 line_is "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: first the stop note,'
-file_has "spec build: a BLOCKED build stops at once" "$BM" '3. Its reply starts with `BLOCKED:`, or names no commit: first the stop note,'
+file_has "spec build: a BLOCKED build stops at once" "$BM" '3. Its reply starts with `BLOCKED:`, or has no `Commit:` line: first the stop note,'
 is "spec build: each block writes the stop note before it sets blocked" \
   "$(awk '/stopped at <task>: <why>\."`, then$/ { n = NR } /^   `second-brain spec status <ID> <task> blocked`, and stop\.$/ && n == NR - 1 { k++ } END { print k + 0 }' "$BM")" "2"
 is "spec build: and nothing sets blocked any other way" "$(grep -c 'spec status <ID> <task> blocked`' "$BM")" "2"
@@ -3026,8 +3031,8 @@ out_has "spec packet: holds the task's logged issues, each on one line" "## Issu
 - Issue 2026-10-08: Logout is missing, at login.txt:1. Fix: Add logout.
 - Issue 2026-10-08: Two lines. Fix: One line."
 case "$OUT" in
-  *"## Issues"*"## Validation"*) pass "spec packet: the issues come before the validation steps" ;;
-  *) fail "spec packet: the issues come before the validation steps" "in: $OUT" ;;
+  *"## Issues"*"## Checks"*"## Validation"*) pass "spec packet: the issues, then the checks, then the validation steps" ;;
+  *) fail "spec packet: the issues, then the checks, then the validation steps" "in: $OUT" ;;
 esac
 printf 'two\n' >>"$APP/login.txt"
 git -C "$APP" -c user.name=Test -c user.email=test@example.com commit -qam "SP-10 T1: The API"
@@ -3226,21 +3231,60 @@ file_has "spec build: the build-wide run runs in the background" "$BM" \
   '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice. A run can'
 file_has "reviewer: runs validation run in the background" "$here/agents/reviewer.md" \
   '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice before you go'
-file_has "contract: validation run runs in the background" "$here/docs/contract.md" \
-  '- The skill and `reviewer` run `validation run` with the Bash tool'"'"'s `run_in_background` and wait'
+file_has "contract: validation run runs in the background, and implementer's tests too" "$here/docs/contract.md" \
+  '- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and'
 IM="$here/agents/implementer.md"
 file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
-file_has "implementer: replies with its commit and one line" "$IM" \
-  '- Reply in two lines: `Commit: <short hash>`, then one line on what you built.'
+line_is "implementer: replies with its commit first" "$IM" '1. `Commit: <short hash>`.'
+line_is "implementer: then one line on what it built" "$IM" '2. One line on what you built. It also names anything the task asks that you could not do, and'
+line_is "implementer: then its test" "$IM" \
+  '3. `Test: <the test you wrote> - failed first, then passed`, or `Test: none - <why>` for a task'
+line_is "implementer: then each check's result" "$IM" \
+  '4. One line per check you ran: `Check: <the command or step> - <pass, fail or skipped>`.'
+file_has "implementer: a stop names the checks it ran" "$IM" \
+  '- You stop without a commit: the first line is `BLOCKED: <why>`, then the `Check:` lines of the'
 file_has "implementer: fixes the packet's issues on a fix" "$IM" "On a fix, the packet's \`fails:\` is above 0 and its \`## Issues\` lists the findings of the last"
 file_has "implementer: calls what earlier tasks provide" "$IM" "The packet's \`## Uses\` names what earlier tasks provide."
-file_has "implementer: runs no check" "$IM" "Run no check, test, linter or build: the reviewer runs them all"
+file_lacks "implementer: no longer runs no check" "$IM" "Run no check"
+file_lacks "implementer: and its description no longer says so" "$IM" "runs no check"
+file_has "implementer: writes a test that fails for the requirement first" "$IM" \
+  '1. Write a test that fails for the task'"'"'s requirement first, where the task'"'"'s `Check` and the'
+file_has "implementer: sees it fail before the change" "$IM" '- Run it and see it fail, for the reason the requirement gives.'
+line_is "implementer: then makes it pass" "$IM" '2. Then make the change, until the test passes.'
+line_is "implementer: runs its own test narrowly, never every suite" "$IM" \
+  '   that holds it. Never every suite.'
+line_is "implementer: a task with nothing to test says why" "$IM" \
+  '4. A task with nothing to test, such as a doc change, gets no test. Your reply says why.'
+line_is "implementer: has a check step" "$IM" "## 2. Check"
+file_has "implementer: runs every check the packet names" "$IM" \
+  "Before you commit, run every check under the packet's \`## Checks\`."
+file_has "implementer: the each-task checks through validation run" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
+file_has "implementer: runs its tests and checks in the background" "$IM" \
+  '- Run each test and check with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice'
+line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
+  '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
+line_is "implementer: but the suite that holds its own test" "$IM" \
+  '  suite that holds your own test. The `spec` skill runs the build'"'"'s checks once every task has'
+line_is "implementer: a step it has no tool for is not its to take" "$IM" \
+  '  - A step that needs a tool you do not have, such as a browser or a skill, is not yours to take.'
+line_is "implementer: it reports it skipped and leaves it to the review" "$IM" \
+  '    Report it as `Check: <the step> - skipped - needs <the tool>`, and leave it to the review.'
+line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
+  '- A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,'
+line_is "implementer: commits only when every check passed or was skipped" "$IM" \
+  '- Commit only when every check under `## Checks` passed or was skipped. A row `validation run`'
+file_has "implementer: never changes a test so that it passes" "$IM" \
+  'Never change a test or a check'
+is "implementer: checks before it commits" \
+  "$(($(linex "$IM" '## 1. Build test-first') < $(linex "$IM" '## 2. Check') && $(linex "$IM" '## 2. Check') < $(linex "$IM" '## 3. Commit')))" "1"
 RV="$here/agents/reviewer.md"
 file_has "reviewer: fetches its own packet" "$RV" '1. Run `second-brain spec packet <story> <task> --project "<project>"`.'
 file_has "reviewer: reads the diff from the file the helper writes" "$RV" "2. Read the change from the file the packet's \`diff:\` line names, and nothing else of the code."
 file_has "reviewer: logs each issue with a proposed fix" "$RV" 'second-brain spec issue <story> <task>'
 file_has "reviewer: replies with its verdict and the number of issues" "$RV" '`VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`'
-file_has "reviewer: runs every check" "$RV" "You run every check: the implementer runs none."
+file_lacks "reviewer: no longer says the implementer runs no check" "$RV" "the implementer runs none"
+file_has "reviewer: runs the task's checks again" "$RV" "The implementer runs the task's checks before it commits. You run them again, and never take its"
 CT="$here/docs/contract.md"
 line_is "contract: the skill takes each report from the agent's result" "$CT" \
   '- The skill takes each report from the agent'"'"'s result. Nothing is relayed by hand.'
@@ -3585,6 +3629,46 @@ cat >"$RVF" <<'EOF'
 
 - Every check passes.
 EOF
+# The packet names the checks implementer runs before it commits: the task's own, then each command
+# validation run --when each-task runs, in order.
+sb task new RN-1 --project Runs --title "Checks story"
+sb task set RN-1 delivery=spec branch=feature/RN-1
+sb spec new RN-1
+DR="$vault/$RN/tasks/RN-1/spec"
+printf '%s\n' '# RN-1 - Requirements' '' '## R1 - One' '' 'WHEN a user runs it, THE app SHALL pass.' >"$DR/requirements.md"
+printf '%s\n' '# RN-1 - Tasks' '' '- [ ] T1 - With a check' '  - Requirements: R1' '  - Files: marker.txt' \
+  '  - Check: `test -f marker.txt` - expected: exit 0' \
+  '- [ ] T2 - No check' '  - Requirements: R1' \
+  '- [ ] T3 - The template' '  - Requirements: R1' \
+  '  - Check: <The command or step the implementer and the reviewer run.> - expected: <What it prints or shows.>' \
+  '- [ ] T4 - None' '  - Requirements: R1' '  - Check: None' >"$DR/tasks.md"
+sb spec packet RN-1 T1
+rc_is "spec packet: a task with a check exits 0" 0
+out_has "spec packet: names the task's check, then each each-task command, in order" "## Checks
+
+- task: \`test -f marker.txt\` - expected: exit 0
+- each task: test -f marker.txt
+- each task: test -z \"\$(cat)\"
+- each task: echo long
+- each task: echo \`tick\` ${NL}${NL}## Validation"
+for c in "echo build-only" "all good" "echo odd" "echo e2e" "A note with no command" "echo nested"; do
+  is "spec packet: no each-task line for $c" "$(printf '%s\n' "$OUT" | grep -c -- "^- each task: .*$c" || true)" "0"
+done
+for t in T2 T3 T4; do
+  sb spec packet RN-1 "$t"
+  out_has "spec packet: $t has no check of its own, and still the each-task ones" "## Checks
+
+- task: none
+- each task: test -f marker.txt"
+done
+mv "$RVF" "$RVF.away"
+sb spec packet RN-1 T1
+rc_is "spec packet: no validation.md still exits 0" 0
+out_has "spec packet: and says so" "validation: none (missing)"
+is "spec packet: its Checks part is the task's line alone" "$(printf '%s\n' "$OUT" | sed -n '/^## Checks$/,$p')" "## Checks
+
+- task: \`test -f marker.txt\` - expected: exit 0"
+mv "$RVF.away" "$RVF"
 ODIR="${TMPDIR:-}"
 export TMPDIR="$tmp/tmpr"
 # rows <output>: each row's command, result and exit code, and each line under a row.
@@ -3748,6 +3832,52 @@ IM="$here/agents/implementer.md"
 line_is "implementer: takes a fix message" "$IM" "## A fix message"
 file_has "implementer: fetches its packet again on a fix" "$IM" \
   '- Run `second-brain spec packet <ID> <task> --project "<project>"` again, and check where you are'
+file_has "implementer: a fix runs the checks again before it commits" "$IM" \
+  '`## 2. Check` says, commit with the message'"'"'s last line and reply as `## 4. Report` says.'
+# Who runs which check: the contract, the guide, the build and the changelog say the same.
+CT="$here/docs/contract.md"
+file_has "contract: says who runs which check" "$CT" \
+  '- **Who runs which check.** `implementer` runs its task'"'"'s checks before it commits. `reviewer`'
+file_has "contract: and the skill runs the each-build checks once" "$CT" \
+  'runs them again in the task'"'"'s review. The skill runs the `each build` checks once, at the end.'
+line_is "contract: implementer writes a failing test first" "$CT" \
+  '- `implementer` writes a test that fails for its task'"'"'s requirement first, then makes it pass.'
+line_is "contract: a task with nothing to test says why" "$CT" \
+  '- A task with nothing to test, such as a doc change, gets no test, and the reply says why.'
+line_is "contract: implementer's checks are its packet's" "$CT" \
+  '- Its checks are the ones under its packet'"'"'s `## Checks`: the task'"'"'s `Check`, and the repo'"'"'s'
+line_is "contract: it commits only when they pass" "$CT" '- It commits only when they all pass, and names each result in its reply.'
+line_is "contract: it runs no other build-wide check, no release check and no user step" "$CT" \
+  '- It runs no other `each build` check, no `release` check and no user step.'
+line_is "contract: the suite that holds its own test is allowed" "$CT" '  even an `each build` one.'
+line_is "contract: a step implementer has no tool for is skipped" "$CT" \
+  '- A task `Check` that is a step its tools cannot take, such as a browser or a skill step, is'
+line_is "contract: it still commits, and the review takes the step" "$CT" \
+  '  reported as `Check: <step> - skipped - needs <tool>`. It still commits, and the review takes'
+file_lacks "contract: no longer says implementer runs no check" "$CT" '`implementer` runs no check'
+file_has "contract: the reviewer runs the task's checks again" "$CT" \
+  '- It runs the task'"'"'s `Check` and the `each task` checks again, through'
+file_has "contract: implementer's reply names each check's result" "$CT" \
+  '`Check:` line with the result of each check it ran.'
+file_has "contract: the packet has a Checks part" "$CT" \
+  '`## Checks` (the checks `implementer` runs before it commits: `- task: <the item'"'"'s Check, as written>`'
+GD="$here/docs/guide.md"
+file_has "guide: implementer builds test-first" "$GD" '- `implementer` builds each task test-first. It writes a test that fails for the task'"'"'s'
+file_has "guide: says who runs which check" "$GD" \
+  '- Who runs which check: `implementer` runs the task'"'"'s `Check` and the repo'"'"'s `each task` checks'
+line_is "guide: the reviewer runs them again" "$GD" \
+  '- `reviewer` runs those checks again in the task'"'"'s review, with the `each task` user steps.'
+file_has "guide: the full validation still runs once at the end" "$GD" \
+  '- When every task has passed, the helper runs the repo'"'"'s checks once, with no agent.'
+line_is "spec build: never skips the review on its check lines" "$BM" \
+  '   - Its `Test:` and `Check:` lines are its own report. The review runs the checks again: never'
+line_is "spec phases: implementer runs the task's check before it commits" "$here/skills/spec/phases.md" \
+  '- `implementer` builds each task test-first and runs its `- Check:` before it commits. `reviewer`'
+file_lacks "spec phases: no longer says reviewer runs every check" "$here/skills/spec/phases.md" '`reviewer` runs every check'
+file_has "spec phases: a task's check is its narrowest command" "$here/skills/spec/phases.md" \
+  'narrowest command that runs the task'"'"'s test, such as one test file, not every suite.'
+file_has "changelog: names the test-first build" "$here/CHANGELOG.md" '- `implementer` builds each task test-first.'
+file_has "changelog: names the packet's Checks part" "$here/CHANGELOG.md" '- The packet'"'"'s new `## Checks` part names those checks'
 
 # ---------------------------------------------------------------- result
 if [ -f "$tmp/undefined" ]; then

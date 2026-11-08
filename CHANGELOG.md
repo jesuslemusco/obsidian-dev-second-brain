@@ -36,8 +36,8 @@
 - A task may name `- Provides: <signatures>`. A task that names `- Uses: T<n>` gets those lines
   in its packet, under `## Uses`. On a retry the packet holds the task's logged issues, under
   `## Issues`.
-- `implementer` replies with its commit and one line. `reviewer` logs its findings with
-  `spec issue` and replies with its verdict and the number of issues.
+- `reviewer` logs its findings with `spec issue` and replies with its verdict and the number of
+  issues.
 - The tasks phase checks every task's packet without printing it.
 - A resumed build takes a cut-off task's commit only when `build.json` does not list it yet,
   compared by full hash. It launches a `blocked` task again only with a ruling newer than the
@@ -90,6 +90,19 @@
 - Upgrading: in a `validation.md` with no `when:`, every check runs once, at the end of each
   build, and none in a task's review. Add `when: each task` to a quick check to run it in each
   review, and `when: release` to a costly one.
+- `implementer` builds each task test-first. It writes a test that fails for the task's
+  requirement, makes it pass, and runs the checks its packet names before it commits. A task with
+  nothing to test, such as a doc change, says why.
+- The packet's new `## Checks` part names those checks: the task's `Check`, then each command
+  `validation run --when each-task` runs. The `each build` checks still run once, when every task
+  has passed.
+- `implementer` commits only when its checks pass. Its reply adds a `Test:` line and a `Check:`
+  line per check with its result. It runs them in the background, so a long suite is never cut
+  off.
+- A task's `- Check:` step that `implementer` has no tool for, such as a browser or a skill step,
+  is reported as skipped and left to the review. The build goes on.
+- A task's `- Check:` now runs before its commit and again in its review. Write it as the
+  narrowest command that runs the task's test, not every suite.
 
 ## 0.6.0 - 2026-11-08
 

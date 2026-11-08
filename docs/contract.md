@@ -857,8 +857,10 @@ text.
 - It shows the owner `spec status <ID>` after each task's review, when the build stops or
   finishes, and when a session resumes a build.
 - A build resumes in a new session from `build.json`. A task cut off while `building` takes a
-  commit of its own that `build.json` does not list yet, or is built again. A `blocked` task is
-  launched again with the owner's ruling.
+  commit of its own that `build.json` does not list yet, compared by full hash, or is built
+  again.
+- A `blocked` task is launched again with the owner's ruling on it, when that ruling is newer than
+  the note the build stopped at it with. Otherwise the owner is asked first.
 - Each story-level update is a status note in the README: each phase approval, the build
   started, stopped and why, and finished, and each ruling of the owner. A task's progress is in
   `build.json` alone.

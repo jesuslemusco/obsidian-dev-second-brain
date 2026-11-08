@@ -2779,7 +2779,8 @@ for a in implementer reviewer spec-checker; do
 done
 file_has "spec build: read only once all three approvals count" "$BM" 'Read this file only when all three approvals count'
 line_is "spec build: a BLOCKED review stops at once" "$BM" '5. BLOCKED: first the stop note,'
-file_has "spec build: a BLOCKED build stops at once" "$BM" '4. Its reply starts with `BLOCKED:`, or no commit was found: first the stop note,'
+file_has "spec build: a BLOCKED build stops, unless a ruling settles it" "$BM" '4. Its reply starts with `BLOCKED:`, or no commit was found: a stop, unless a ruling settles it.'
+file_has "spec build: and any other BLOCKED stops at once" "$BM" '   - Any other, or the same question again after its ruling: first the stop note,'
 file_has "spec build: a lone task with no commit line is looked for by its commit first" "$BM" \
   '3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commit'
 file_has "spec build: a resumed failed task with a built fix goes to review" "$BM" \
@@ -2794,7 +2795,7 @@ file_has "contract: a failed task with a built fix goes to review" "$here/docs/c
 file_has "contract: spec status names the fix" "$here/docs/contract.md" '- commits <hashes or -> - fix <hashes or -> - <title>`'
 file_has "changelog: spec status names the fix" "$here/CHANGELOG.md" '- `spec status` names each task'"'"'s `fix`'
 is "spec build: each block writes the stop note before it sets blocked" \
-  "$(awk '/stopped at <task>: <why>\."`, then$/ { n = NR } /^   `second-brain spec status <ID> <task> blocked`, and stop\.$/ && n == NR - 1 { k++ } END { print k + 0 }' "$BM")" "2"
+  "$(awk '/stopped at <task>: <why>\."`, then$/ { n = NR } /^ +`second-brain spec status <ID> <task> blocked`, and stop\.$/ && n == NR - 1 { k++ } END { print k + 0 }' "$BM")" "2"
 is "spec build: and nothing sets blocked any other way" "$(grep -c 'spec status <ID> <task> blocked`' "$BM")" "2"
 file_has "spec build: commits the tick of a repo spec" "$BM" 'commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md'
 file_has "spec build: a session resumes the build from build.json" "$BM" \
@@ -3992,7 +3993,8 @@ file_has "spec build: a bundle's tasks go to one fresh implementer run" "$BM" \
 line_is "spec build: one commit line per task" "$BM" \
   '  - Last, one commit line per task, in order: `Commit <task> as "<ID> <task>: <title>".`'
 for l in '  - `Bundle: <n>.`' '  - `Tasks: <task>, <task>.`: the tasks of the bundle it builds, in order.' \
-  '  - For each of those tasks with a ruling: `Owner on <task>: <the ruling, as written>.`'; do
+  '  - The ruling lines of those tasks, each led by its task:' '    `Owner on <task>: <the ruling, as written>.` or' \
+  '    `Ruling on <task>: <the question> - <the decision and why>.`'; do
   line_is "spec build: the bundle prompt line ${l#  - }" "$BM" "$l"
 done
 file_has "spec build: names the bundle's implementer" "$BM" '`name: "<ID>-bundle-<n>-implementer"`'
@@ -4016,7 +4018,7 @@ file_has "changelog: a resumed task never takes the tick commit" "$here/CHANGELO
   '- A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`'
 file_has "spec build: the tasks after a stop go back to todo" "$BM" \
   'first `second-brain spec status <ID> <task> todo` for each task'
-file_has "spec build: and the stop is a block, as for a task alone" "$BM" 'Then it stops the build, as item 4 of `### Build it` says.'
+file_has "spec build: and the stop is taken as for a task alone" "$BM" 'after it. Then take its stop as item 4 of `### Build it` says: a ruling, or a stop of the'
 file_has "spec build: then one fresh reviewer reads the bundle" "$BM" \
   '2. Launch one fresh `reviewer` in task mode on them, with the bundle'"'"'s prompt.'
 file_has "spec build: each task of a bundle is set in-review first" "$BM" \
@@ -4076,6 +4078,150 @@ file_has "guide: spec tasks names each bundle" "$GD" '- `second-brain spec tasks
 file_has "changelog: the baseline skip" "$here/CHANGELOG.md" '- A new build skips the baseline when the story'"'"'s branch starts on the base branch'
 file_has "changelog: bundles" "$here/CHANGELOG.md" '- A bundle'"'"'s tasks go to one `implementer` run, one commit per'
 file_has "changelog: spec tasks names the bundle" "$here/CHANGELOG.md" '- `second-brain spec tasks` prints each task'"'"'s bundle in a fourth column'
+
+# ---------------------------------------------------------------- the build asks only for a stop list, and rules on the rest
+BM="$here/skills/spec/build.md"
+FN="$here/skills/spec/finish.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RV="$here/agents/reviewer.md"
+q="'"
+line_is "spec build: has the stop list" "$BM" '## 8. When to ask the owner'
+file_has "spec build: the stop list holds once the build has started" "$BM" \
+  'Once the build has started, stop and ask the owner with AskUserQuestion only for these. Each one'
+for l in "1. A destructive action, such as discarding the owner${q}s changes or deleting a branch." \
+  '2. A security-sensitive action, such as one that needs a secret, a credential or a permission.' \
+  '3. An outside effect, such as a push, a merge or a publish.' \
+  '4. A spec too broken to follow: going on would change, add or drop a requirement, a design' \
+  '5. A task blocked, or past its last fix round. A `BLOCKED` from the user check or the branch' \
+  '6. A failed baseline.'; do
+  line_is "spec build: the stop list names ${l%%,*}" "$BM" "$l"
+done
+is "spec build: the stop list has six items and no more" \
+  "$(awk '/^## 8\. When to ask the owner/ { on = 1; next } /^### / { on = 0 } on && /^[0-9]+\. /' "$BM" | grep -c '')" "6"
+is "spec build: asks with AskUserQuestion only in the list and at a stop" "$(grep -c 'AskUserQuestion' "$BM")" "2"
+line_is "spec build: a stop asks the owner" "$BM" '3. Ask the owner with AskUserQuestion what to do.'
+line_is "spec build: only a listed stop comes to the stop section" "$BM" \
+  'Only a stop that `## 8. When to ask the owner` lists comes here.'
+file_has "spec build: decides any other question itself" "$BM" \
+  '- Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.'
+file_has "spec build: the steps before the build starts ask as they say" "$BM" \
+  '- The steps before the `Build: started` or `Build: resumed` note ask as they say: the owner has'
+file_has "spec build: the finish asks only for outside effects and destructive actions" "$BM" \
+  'just run the skill. So does `finish.md`: each of its questions is an outside effect or a'
+line_is "spec build: has the ruling step" "$BM" '### A ruling'
+file_has "spec build: an ambiguous requirement is a ruling" "$BM" \
+  "A question comes in an agent's reply, such as an \`implementer\`'s \`BLOCKED:\` on a requirement it"
+file_has "spec build: two agents that disagree are a ruling" "$BM" \
+  'reads two ways, or from two agents that disagree, such as two reviews of a task that ask for'
+line_is "spec build: records each ruling as a status note" "$BM" \
+  '   `second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`.'
+file_has "spec build: a ruling decides by the spec first" "$BM" \
+  '1. Decide by the approved spec first, then the story, then the code on the branch. Pick what keeps'
+file_has "spec build: a ruling never adds a requirement" "$BM" \
+  '- A ruling never adds a requirement or a task. One that would is a spec too broken to follow:'
+file_has "spec build: one ruling note per task it touches" "$BM" \
+  'A question on several tasks gets one note per'
+file_has "spec build: a ruling never lifts a stop" "$BM" '- A ruling of yours never lifts a stop.'
+file_has "spec build: a BLOCKED on a question gets a ruling, not a stop" "$BM" \
+  '- A `BLOCKED:` on a question a ruling settles, such as a requirement it reads two ways: rule on'
+file_has "spec build: and goes on from the task's state, a bundle's task too" "$BM" \
+  '`### Where the task stands` says, or item 1 of `### A bundle` for a task of a bundle. Its'
+file_has "spec build: a review with no verdict twice is BLOCKED" "$BM" \
+  'Still none: take it as BLOCKED, as item 5'
+file_has "spec build: so is a bundle task with no verdict twice" "$BM" 'Still none: its verdict is BLOCKED.'
+file_lacks "spec build: no stop that the list does not name" "$BM" 'Still none: stop.'
+file_has "spec build: a failing check no task holds goes to the last task, with a ruling" "$BM" \
+  '- No task you can tell: the last task in order, with a ruling, as `### A ruling` says.'
+file_lacks "spec build: a failing check no longer stops the build" "$BM" 'No task you can tell: stop'
+file_has "spec build: a user check FAIL takes the fix loop" "$BM" \
+  '   - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the'
+file_has "spec build: each task with a new issue is set failed" "$BM" \
+  '   - Then `second-brain spec status <ID> <task> failed` for each task with a new issue in'
+file_has "spec build: the branch review FAIL too" "$BM" '   FAIL: as item 2 says.'
+file_lacks "spec build: a FAIL of the user check no longer stops the build" "$BM" 'FAIL or BLOCKED: stop'
+line_is "spec build: has the rulings of this build" "$BM" '### The rulings of this build'
+file_has "spec build: the rulings of a build come after its newest start note" "$BM" \
+  '- They are the status notes newer than the newest'
+file_has "spec build: the skill's rulings and the owner's" "$BM" \
+  '`Build: started on <branch> at <short hash>.` note: each of your `Ruling: <task>:` notes and'
+file_has "spec build: an earlier build's rulings are left out" "$BM" 'A note below it is from an earlier build of the'
+line_is "spec build: has the rulings in each prompt" "$BM" '### Rulings in each prompt'
+file_has "spec build: every ruling of the build goes into each later prompt" "$BM" \
+  '- Every ruling of this build on a task goes, as written and oldest first, into each later prompt'
+line_is "spec build: the owner's ruling line" "$BM" '    `Owner: <the ruling, as written>.`'
+line_is "spec build: the skill's ruling line" "$BM" '    `Ruling: <the question> - <the decision and why>.`'
+line_is "spec build: the implementer's prompt holds the ruling lines" "$BM" \
+  "  - The task's ruling lines, one per ruling of this build on it, as \`### Rulings in each prompt\`"
+line_is "spec build: so does the fix message" "$BM" "  - The task's ruling lines."
+file_has "spec build: so does the reviewer's prompt" "$BM" "  task's ruling lines."
+file_has "spec build: so does the bundle reviewer's" "$BM" 'the session line and their ruling lines, each led by'
+file_has "spec build: the user and branch reviews get every task's" "$BM" \
+  '`Repo: <repo> at <path>.` and `Branch: <branch>.`, then the ruling lines of every task, each led'
+file_lacks "spec build: no prompt takes only one owner ruling" "$BM" 'when there is one: `Owner:'
+file_has "spec build: the owner's ruling wins" "$BM" '- The agents follow both. Where they differ, the `Owner:` line wins.'
+line_is "spec build: has the list of rulings" "$BM" '### The list of rulings'
+file_has "spec build: lists every ruling when the build finishes or stops" "$BM" \
+  'When the build finishes or stops, show the owner every ruling of this build, as written, oldest'
+file_has "spec build: names the phase each ruling touched" "$BM" \
+  '- Name for each the phase it touched: the requirements, the design or the tasks.'
+is "spec build: lists them at the finish and at a stop" \
+  "$(grep -c '^   - Then list the rulings of the build, as `### The list of rulings` says\.$' "$BM")" "2"
+is "spec build: the finish lists them before finish.md" \
+  "$(($(lineno "$BM" '6. Show the owner `second-brain spec status <ID>` and the final validation result.') < $(lineno "$BM" '   - Then list the rulings of the build') && \
+  $(lineno "$BM" '   - Then list the rulings of the build') < $(lineno "$BM" '7. Read `finish.md`, next to this file')))" "1"
+file_has "spec build: the owner can reopen the phase a ruling touched" "$BM" \
+  '- The owner can reopen the phase a ruling touched, or reverse a ruling with one of their own. At a'
+file_has "spec build: a reversed ruling is the owner's ruling on its task" "$BM" \
+  '- The owner reverses a ruling of yours: their ruling on its task, as above. It wins over yours.'
+file_has "spec build: a stop can reopen the phase a ruling touched" "$BM" \
+  '- The spec needs a change, such as in the phase a ruling touched: write'
+file_has "spec finish: the owner can reverse a ruling or reopen its phase" "$FN" \
+  '- Say too that the owner can reverse a ruling of the build, or reopen the phase one touched, in'
+file_has "spec finish: and the story goes back in progress first" "$FN" \
+  '`second-brain task set <ID> status=in-progress next="The spec skill builds the approved tasks"`.'
+is "spec finish: that answer comes before any other is a keep" \
+  "$(($(lineno "$FN" '- Say too that the owner can reverse a ruling') < $(lineno "$FN" '- Do only what the owner picks.')))" "1"
+file_has "implementer: follows a ruling line" "$IM" \
+  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+file_has "implementer: and one on a task of its bundle" "$IM" \
+  "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
+file_has "implementer: puts a BLOCKED as one question" "$IM" 'stop with `BLOCKED:` and say what, as one question the'
+file_has "reviewer: follows a ruling line" "$RV" \
+  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+file_has "reviewer: and one on a task of its bundle" "$RV" \
+  "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
+for f in "$IM" "$RV"; do
+  file_has "${f##*/}: the owner's line wins over a ruling" "$f" '  Where it and an `Owner:` line differ, the `Owner:` line wins.'
+done
+file_has "reviewer: what a ruling decided is no finding" "$RV" '- What an `Owner:` or `Ruling:` line decided is never a finding.'
+file_has "reviewer: the user and branch modes get the build's rulings" "$RV" \
+  '- The caller gives too an `Owner on <task>:` or `Ruling on <task>:` line for each ruling of the'
+file_has "contract: the stop list" "$CT" \
+  '- **The stop list.** Once the build has started, the skill stops and asks the owner with'
+file_has "contract: names its six reasons" "$CT" \
+  'such as a push, a merge or a publish, a spec too broken to follow, a task blocked or past its'
+file_has "contract: any other question is a ruling" "$CT" \
+  '`second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`, before'
+file_has "contract: the rulings of a build" "$CT" '- **The rulings of a build** are the status notes newer than its newest'
+file_has "contract: every ruling goes into the task's prompts" "$CT" \
+  '- Every ruling of the build on a task goes, as written and oldest first, into each later'
+file_has "contract: the list when the build finishes or stops" "$CT" \
+  '- When the build finishes or stops, the skill lists every ruling of the build, as written, oldest'
+file_has "contract: a user or branch FAIL takes the fix loop" "$CT" \
+  '- A FAIL from either sends each task it logged a finding on to the fix loop, as a failing check'
+file_has "guide: the short stop list" "$GD" \
+  '- Once the build has started, it stops and asks you only for a short list: a destructive action,'
+file_has "guide: any other question is a ruling" "$GD" '  `Ruling: <task>: <the question> - <the decision and why>`.'
+file_has "guide: rulings go to the agents" "$GD" '  `implementer` and `reviewer` prompts, so no review flags what was decided.'
+file_has "guide: the owner can reopen the phase a ruling touched" "$GD" 'You can reopen the phase a ruling touched,'
+file_has "changelog: the stop list" "$here/CHANGELOG.md" \
+  '- Once the build has started, the `spec` skill stops and asks you only for a short list: a'
+file_has "changelog: rulings go into the task's prompts" "$here/CHANGELOG.md" \
+  "- Every ruling of the build on a task, the skill's and yours, goes as written into that task's"
+file_has "changelog: the list of rulings" "$here/CHANGELOG.md" \
+  '- When the build finishes or stops, the skill lists every ruling of the build, with the phase'
 
 # ---------------------------------------------------------------- result
 if [ -f "$tmp/undefined" ]; then

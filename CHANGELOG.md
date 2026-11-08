@@ -123,6 +123,26 @@
 - `second-brain spec tasks` prints each task's bundle in a fourth column, `-` for none, and
   `--json` adds the key `bundle`. A bundle that is not a whole number, whose tasks are not next to
   each other, or whose task uses another of its tasks, exits 1.
+- Once the build has started, the `spec` skill stops and asks you only for a short list: a
+  destructive action, a security-sensitive one, an outside effect such as a push, a merge or a
+  publish, a spec too broken to follow, a task blocked or past its last fix round, and a failed
+  baseline. `## 8. When to ask the owner` in `skills/spec/build.md` holds it.
+- Any other question, such as an ambiguous requirement or two agents that disagree, the skill
+  decides itself and records as a status note,
+  `Ruling: <task>: <the question> - <the decision and why>`.
+- An `implementer` `BLOCKED:` on such a question, such as a requirement it reads two ways, gets a
+  ruling and the task goes on. The same question again stops the build.
+- Every ruling of the build on a task, the skill's and yours, goes as written into that task's
+  next `implementer` and `reviewer` prompts, as `Ruling:` and `Owner:` lines. The user and branch
+  reviews get them all. Where the two differ, yours wins.
+- The rulings of a build are the status notes newer than its newest `Build: started` note, so a
+  new session finds them and never takes those of an earlier build.
+- When the build finishes or stops, the skill lists every ruling of the build, with the phase
+  each touched. You can reopen that phase, or reverse a ruling with your own.
+- A FAIL of the user check or the branch review no longer stops the build. Each task it logged a
+  finding on takes the fix loop, as a failing build-wide check does.
+- A failing build-wide check, or a user or branch finding, that no task covers goes to the last
+  task, with a ruling. A review that gives no verdict twice is taken as BLOCKED.
 
 ## 0.6.0 - 2026-11-08
 

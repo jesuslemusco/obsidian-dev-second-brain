@@ -13,6 +13,9 @@ word that they pass. The caller names the mode: baseline, task, user or branch.
 
 - If `second-brain` is not found, call it as `"${CLAUDE_PLUGIN_ROOT}/bin/second-brain"`.
 - An `Owner:` line in your prompt is the owner's ruling on the task: follow it.
+- A `Ruling:` line is the `spec` skill's ruling on a question the spec left open: follow it too.
+  Where it and an `Owner:` line differ, the `Owner:` line wins.
+- What an `Owner:` or `Ruling:` line decided is never a finding.
 
 ## 0. Check where you are
 
@@ -97,11 +100,15 @@ one commit per task. Review each task against its own packet:
    steps 7 and 8 say.
 
 - An `Owner on <task>:` line is the owner's ruling on that task alone: follow it there.
+- A `Ruling on <task>:` line is the skill's ruling on that task alone: follow it there.
 
 ## User mode
 
 The caller gives the story and its project, the session id, the repo, `<repo_path>` and the
 branch. The build has passed every task and run the checks.
+
+- The caller gives too an `Owner on <task>:` or `Ruling on <task>:` line for each ruling of the
+  build. Follow each on its task, as `### A bundle` says.
 
 1. Run `second-brain validation "<project>" <repo>` for the steps.
 2. On the finished branch, run each user step whose `when:` is `each task` or `each build`.

@@ -143,8 +143,18 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   `## 6. When every task passed` in `skills/spec/build.md` says.
 - A task may name what it provides on `- Provides:` lines. A task that names it on `- Uses:` gets
   those lines in its packet, as `## 4. A task` in `docs/contract.md` says.
-- When the build stops, your session shows where it stands and asks you what to do. The cases
-  that stop it are in `skills/spec/build.md`.
+- Once the build has started, it stops and asks you only for a short list: a destructive action,
+  a security-sensitive one, an outside effect such as a push, a merge or a publish, a spec too
+  broken to follow, a task blocked or past its last fix round, and a failed baseline. The list is
+  under `## 8. When to ask the owner` in `skills/spec/build.md`.
+- Any other question, such as an ambiguous requirement or two agents that disagree, the skill
+  decides itself. It records each as a status note,
+  `Ruling: <task>: <the question> - <the decision and why>`.
+- Each ruling, and each answer you give on a task, goes as written into that task's next
+  `implementer` and `reviewer` prompts, so no review flags what was decided.
+- When the build stops, your session shows where it stands, lists the build's rulings and asks
+  you what to do. When it finishes, it lists them too. You can reopen the phase a ruling touched,
+  or reverse the ruling.
 - `second-brain spec status EX-2` prints where the build stands, one line per task, from
   `build.json` in the story's folder. A new session goes on from there.
 - Each task's build and review state, commits, issues and times are in `build.json`, never in the

@@ -44,6 +44,8 @@ prompt with a `Bundle:` line names several tasks, as `## A bundle` says.
   review. Fix each issue, with its proposed fix or a better one.
   - An issue about what the code does gets a test that fails first, as for the task.
 - An `Owner:` line in your prompt is the owner's ruling on the task: follow it.
+- A `Ruling:` line is the `spec` skill's ruling on a question the spec left open: follow it too.
+  Where it and an `Owner:` line differ, the `Owner:` line wins.
 
 ## 2. Check
 
@@ -91,7 +93,8 @@ Reply in short lines, in this order:
 
 - Report each result as it ran. Never say the change works: that is the reviewer's to say.
 - You stop without a commit: the first line is `BLOCKED: <why>`, then the `Check:` lines of the
-  checks you ran. A fix cannot help that: the build stops and the owner is asked.
+  checks you ran. A fix cannot help that: the `spec` skill rules on your question, or stops the
+  build and asks the owner.
 
 ## A bundle
 
@@ -106,6 +109,7 @@ per task. Build them one at a time, in that order, each as a task alone:
 - Each task's packet is all you build that task from. What an earlier task of the bundle built is
   in the repo, committed.
 - An `Owner on <task>:` line is the owner's ruling on that task alone: follow it there.
+- A `Ruling on <task>:` line is the skill's ruling on that task alone: follow it there.
 - Reply with one report per task, in order. Each opens with a line `Task: <task>`, then the lines
   `## 4. Report` gives.
 - A task you cannot commit stops the bundle. Its report is the `BLOCKED:` one, and you build no
@@ -126,5 +130,5 @@ The `spec` skill may send you a message that starts with `Fix:` after your task 
   `spec` skill ticks a task after the reviewer passes it.
 - Read nothing outside `repo_path` but your packets: not the vault, not the spec, not a task your
   prompt does not name.
-- The packet lacks something you need: stop with `BLOCKED:` and say what. Never guess at a
-  requirement.
+- The packet lacks something you need: stop with `BLOCKED:` and say what, as one question the
+  `spec` skill can rule on. Never guess at a requirement.

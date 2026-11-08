@@ -2715,6 +2715,9 @@ rc_is "spec status --json: a story with no build exits 0" 0
 out_is "spec status --json: and prints an empty array" "[]"
 sb spec status SP-9 T1 built --commit abc1234
 sb spec status SP-9 T1 in-review --commit def5678
+line_is "spec status: a row with no commit keeps commits - over a second write" "$L9" \
+  '- T2 - passed - commits - - Two - parts'
+line_is "spec status: and so does a row with no title" "$L9" '- T3 - todo - commits - - -'
 sb spec issue SP-9 T1 'Say "hi" \ there.' --fix "Tab${TAB}here."
 sb spec status SP-9 T2 passed --commit 0a1b2c3
 sb spec status SP-9 T3 todo --commit 1234abc
@@ -2744,6 +2747,14 @@ sb spec status SP-9 T1 built --json
 rc_is "spec status --json: a task and a state exit 5" 5
 file_has "spec status --json: and nothing is written" "$L9" \
   '- T1 - in-review - commits `abc1234`, `def5678` - '
+printf '%s\n' '# SP-9 - Tasks' '' '- [ ] T1 - Say "hi" \ there' '  - Requirements: R1' '- [ ] T3' \
+  >"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec status SP-9 T1 built
+sb spec status SP-9 T1 built
+line_is "spec status: a row whose task left tasks.md keeps its title over two writes" "$L9" \
+  '- T2 - passed - commits - - Two - parts'
+is "spec status: and it stays at the end" "$(section_of "$L9" Build | tail -1)" \
+  '- T2 - passed - commits - - Two - parts'
 sb spec SP-9 --json
 rc_is "spec --json: the spec form takes no --json, exit 5" 5
 sb spec tick SP-9 T1 --json

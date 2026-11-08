@@ -5,6 +5,9 @@
 - `--json` on `task head`, `spec tasks`, `spec status <ID>` and `validation <project> [repo]`
   prints the same fields as one JSON value, as `doctor --json` does, so an agent never misreads a
   field. `docs/contract.md` section 7 gives each shape.
+- A `## Build` row with no commit keeps `commits -` when `spec status` or `spec issue` writes the
+  section again.
+- A `## Build` row whose task left `tasks.md` keeps its title when the section is written again.
 
 ## 0.5.0 - 2026-11-08
 

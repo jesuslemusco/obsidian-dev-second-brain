@@ -449,6 +449,25 @@ EOF
   rm -f "$tmp"
 }
 
+# Print the awk function build_row(t), which reads a "## Build" row into B_ID, B_ST, B_CM (the
+# commits as written, "-" when none) and B_TI. It reads left to right: a title may hold " - ", and
+# a row with no commit may read "commits -" or "commits " before the title.
+sb_spec_row_awk() {
+  printf '%s\n' '
+function build_row(t,   r, p) {
+  r = substr(t, 3); p = index(r, " - "); B_ID = substr(r, 1, p - 1); r = substr(r, p + 3)
+  p = index(r, " - "); B_ST = (p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
+  B_CM = "-"
+  if (sub(/^ - commits/, "", r)) {
+    if (r ~ /^ +`/) {
+      p = index(r, " - "); B_CM = trim(p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
+    } else if (r ~ /^ -( |$)/) r = substr(r, 3)
+  }
+  if (!sub(/^ +- /, "", r)) r = ""
+  B_TI = r
+}'
+}
+
 # Rewrite the "## Build" section of the task README in SB_T_FILE: one row per task of tasks.md,
 # "- T<n> - <state> - commits <list or -> - <title>", each with its issues under it as
 # "  - Issue <date>: <issue> Fix: <fix>". Rows come from tasks.md in order, a ticked task starting as
@@ -462,7 +481,7 @@ sb_spec_build_write() {
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-build.XXXXXX")" || sb_die 1 "cannot write a temp file"
   SB_OUT="$tmp" SB_ROWS="$(sb_spec_task_rows "$SB_SP_FILE")" SB_TASK="$task" SB_STATE="$state" \
     SB_COMMIT="$commit" SB_ISSUE="$issue" SB_FIX="$fix" SB_DATE="$(sb_today)" SB_NOFINAL="$nofinal" \
-    LC_ALL=C awk "$(sb_awk_lib)"'
+    LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
     function out_line(s, islast) {
       if (islast && ENVIRON["SB_NOFINAL"] == "1") printf "%s", s > o
       else print s > o
@@ -499,10 +518,8 @@ sb_spec_build_write() {
       if (at) for (i = at + 1; i <= last; i++) {
         t = txt[i]
         if (t ~ /^- T[0-9]+ - /) {
-          m = split(t, f, " - ")
-          ti = ""; for (j = 4; j <= m; j++) ti = ti (j > 4 ? " - " : "") f[j]
-          cm = f[3]; sub(/^commits[ \t]*/, "", cm)
-          ex_id[++ne] = substr(f[1], 3); ex_st[ne] = f[2]; ex_cm[ne] = cm; ex_ti[ne] = ti; ex_ni[ne] = 0; cur = ne
+          build_row(t)
+          ex_id[++ne] = B_ID; ex_st[ne] = B_ST; ex_cm[ne] = B_CM; ex_ti[ne] = B_TI; ex_ni[ne] = 0; cur = ne
           continue
         }
         if (cur && t ~ /^[ \t]+- /) { ex_is[cur, ++ex_ni[cur]] = trim(substr(t, index(t, "-") + 2)) }
@@ -580,7 +597,7 @@ sb_spec_json_rows() {
 # Read the body of a "## Build" section on stdin; print its task rows as a JSON array of objects:
 # id, state, commits (the hashes, without backticks), title and issues (each line under the row).
 sb_spec_build_json() {
-  LC_ALL=C awk "$(sb_awk_lib)"'
+  LC_ALL=C awk "$(sb_awk_lib)$(sb_spec_row_awk)"'
     function emit(   j, l) {
       if (!have) return
       l = ""; for (j = 1; j <= ni; j++) l = l (j > 1 ? ", " : "") jstr(iss[j])
@@ -591,25 +608,15 @@ sb_spec_build_json() {
     }
     BEGIN { printf "[" }
     { sub(/\r$/, "") }
-    # Read left to right: a title may hold " - ", and a row with no commit may read "commits -" or
-    # "commits " before the title.
     /^- T[0-9]+ - / {
       emit()
-      r = substr($0, 3); p = index(r, " - "); id = substr(r, 1, p - 1); r = substr(r, p + 3)
-      p = index(r, " - "); st = (p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
-      cm = ""
-      if (sub(/^ - commits/, "", r)) {
-        if (r ~ /^ +`/) {
-          p = index(r, " - "); c = (p ? substr(r, 1, p - 1) : r); r = (p ? substr(r, p) : "")
-          n = split(c, h, ",")
-          for (j = 1; j <= n; j++) {
-            v = h[j]; gsub(/`/, "", v); v = trim(v)
-            if (v != "") cm = cm (cm == "" ? "" : ", ") jstr(v)
-          }
-        } else if (r ~ /^ -( |$)/) r = substr(r, 3)
+      build_row($0); id = B_ID; st = B_ST; ti = B_TI; cm = ""
+      n = (B_CM == "-" ? 0 : split(B_CM, h, ","))
+      for (j = 1; j <= n; j++) {
+        v = h[j]; gsub(/`/, "", v); v = trim(v)
+        if (v != "") cm = cm (cm == "" ? "" : ", ") jstr(v)
       }
-      if (!sub(/^ +- /, "", r)) r = ""
-      ti = r; have = 1
+      have = 1
       next
     }
     have && /^[ \t]+- / { iss[++ni] = trim(substr($0, index($0, "-") + 2)) }

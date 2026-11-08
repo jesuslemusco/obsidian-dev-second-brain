@@ -939,6 +939,9 @@ text.
   its ruling lines.
 - A resumed `failed` task whose newest stop note has no newer owner's ruling stopped the build
   there. The owner is asked first, whatever its `fails`.
+- A `Spec: <phase> reopened.` note newer than a task's stop note answers that stop too, for a
+  `blocked` task and a `failed` one: the owner changed the spec, and the phases were approved
+  again.
 - A block writes its `Build: stopped at <task>` note before it sets `blocked`.
 - **The stop list.** Once the build has started, the skill stops and asks the owner with
   AskUserQuestion only for: a destructive action, a security-sensitive one, an outside effect

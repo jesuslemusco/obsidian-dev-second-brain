@@ -71,7 +71,7 @@ sb_doc_check_pointer() {
     bad="second-brain-vault"
     [ -z "${SECOND_BRAIN_VAULT:-}" ] || bad="SECOND_BRAIN_VAULT"
   fi
-  sb_doc_report fail pointer vault "$bad" "run /obsidian-dev-second-brain:vault-setup init"
+  sb_doc_report fail pointer vault "$bad" "run /odsb:vault-setup init"
 }
 
 # Check that the index exists and holds the Projects table, that each row leads to a folder and
@@ -79,7 +79,7 @@ sb_doc_check_pointer() {
 sb_doc_check_index() {
   local f="$SB_ROOT/CLAUDE.md" rows name path keys have want bad="" nl=$'\n'
   if [ ! -f "$f" ]; then
-    sb_doc_row fail index vault "CLAUDE.md" "run /obsidian-dev-second-brain:vault-setup init"
+    sb_doc_row fail index vault "CLAUDE.md" "run /odsb:vault-setup init"
     return 0
   fi
   LC_ALL=C awk '
@@ -407,6 +407,120 @@ sb_doc_check_skill_size() {
   sb_doc_report warn skill-size vault "$bad" "move the detail of one mode into a sibling file read only in that mode"
 }
 
+# Print the names of the plugin's own skills and agents, one per line.
+sb_doc_plugin_names() {
+  local root f
+  root="$(sb_plugin_root)"
+  for f in "$root"/skills/*/SKILL.md "$root"/agents/*.md; do
+    [ -f "$f" ] || continue
+    case "$f" in
+      */SKILL.md) f="${f%/SKILL.md}" ;;
+      *) f="${f%.md}" ;;
+    esac
+    printf '%s\n' "${f##*/}"
+  done
+}
+
+# Read "<file> TAB <label> TAB <history>" lines on stdin. Print <label>:<line> for each line of the
+# file that names a plugin skill or agent by its old name: the old name, then a whole name of the
+# plugin. With history 1 a note's history is not read: the body of a level 1 or 2 heading Status
+# notes, Discovery log, Build or Changelog, up to the next heading of its level or higher, and the
+# whole of a note named CHANGELOG.md. A heading in frontmatter or fenced code opens none.
+sb_doc_old_lines() {
+  LC_ALL=C SB_OLD="$1" SB_NAMES="$2" awk '
+    function named(s,   i) {
+      while ((i = index(s, old)) > 0) {
+        s = substr(s, i + length(old))
+        if (match(s, /^[A-Za-z0-9_-]+/) && (substr(s, 1, RLENGTH) in pname)) return 1
+      }
+      return 0
+    }
+    BEGIN {
+      FS = "\t"; old = ENVIRON["SB_OLD"]
+      n = split(ENVIRON["SB_NAMES"], t, "\n")
+      for (i = 1; i <= n; i++) if (t[i] != "") pname[t[i]] = 1
+    }
+    {
+      file = $1; label = $2; hist = ($3 == 1)
+      if (hist && tolower(file) ~ /(^|\/)changelog\.md$/) next
+      ln = 0; front = 0; fence = 0; skip = 0; lvl = 0
+      while ((getline line < file) > 0) {
+        ln++
+        sub(/\r$/, "", line)
+        if (ln == 1) { sub(/^\357\273\277/, "", line); if (line == "---") { front = 1; continue } }
+        if (front) {
+          if (line == "---") front = 0
+        } else if (line ~ /^[ \t]*(```|~~~)/) {
+          fence = !fence
+        } else if (!fence && hist && line ~ /^##?[ \t]/) {
+          lv = (substr(line, 2, 1) == "#") ? 2 : 1
+          h = line; sub(/^#+[ \t]+/, "", h); sub(/[ \t]+$/, "", h); h = tolower(h)
+          if (skip && lv <= lvl) skip = 0
+          if (!skip && (h == "status notes" || h == "discovery log" || h == "build" || h == "changelog")) { skip = 1; lvl = lv; continue }
+        }
+        if (!skip && index(line, old) && named(line)) print label ":" ln
+      }
+      close(file)
+    }'
+}
+
+# Print <label>:<string> for each JSON string of a file that holds the old name. A string runs
+# from a double quote to the next one that no backslash escapes, on one line.
+sb_doc_old_strings() {
+  [ -f "$2" ] || return 0
+  LC_ALL=C SB_OLD="$1" SB_L="$3" awk '
+    BEGIN { old = ENVIRON["SB_OLD"]; label = ENVIRON["SB_L"] }
+    index($0, old) {
+      s = $0; n = length(s); i = 1
+      while (i <= n) {
+        if (substr(s, i, 1) != "\"") { i++; continue }
+        v = ""
+        for (i++; i <= n; i++) {
+          c = substr(s, i, 1)
+          if (c == "\"") break
+          if (c == "\\") { e = substr(s, ++i, 1); v = v ((e == "\"" || e == "\\" || e == "/") ? e : c e); continue }
+          v = v c
+        }
+        i++
+        if (index(v, old)) print label ":" v
+      }
+    }' "$2"
+}
+
+# Check that no line names a skill or agent of the plugin by its old name: the notes of the vault
+# outside their history, then the link directory's CLAUDE.md. Then that no string of the link
+# directory's settings.json or settings.local.json holds it. The link directory is named ~/.claude.
+sb_doc_check_old_namespace() {
+  local old="obsidian-dev-second-brain:" home names bad line fix="" v="" c="" s=""
+  home="$(sb_link_home)"
+  names="$(sb_doc_plugin_names)"
+  bad="$(
+    {
+      (cd "$SB_ROOT" && find . -type d -name '.?*' -prune -o -type f -name '*.[mM][dD]' -print 2>/dev/null) |
+        LC_ALL=C sort | SB_R="$SB_ROOT/" awk '{ p = substr($0, 3); print ENVIRON["SB_R"] p "\t" p "\t1" }'
+      if [ -f "$home/CLAUDE.md" ] && ! [ "$home/CLAUDE.md" -ef "$SB_ROOT/CLAUDE.md" ]; then
+        printf '%s\t%s\t0\n' "$home/CLAUDE.md" "~/.claude/CLAUDE.md"
+      fi
+    } | sb_doc_old_lines "$old" "$names"
+    sb_doc_old_strings "$old" "$home/settings.json" "~/.claude/settings.json"
+    sb_doc_old_strings "$old" "$home/settings.local.json" "~/.claude/settings.local.json"
+  )"
+  while IFS= read -r line; do
+    case "$line" in
+      '') ;;
+      '~/.claude/CLAUDE.md:'*) c=1 ;;
+      '~/.claude/settings'*) s=1 ;;
+      *) v=1 ;;
+    esac
+  done <<EOF
+$bad
+EOF
+  [ -z "$v" ] || fix="hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from obsidian-dev-second-brain: to odsb:"
+  [ -z "$c" ] || fix="${fix:+$fix; }write odsb: in the ~/.claude/CLAUDE.md lines"
+  [ -z "$s" ] || fix="${fix:+$fix; }change the settings rules to odsb: yourself, as nothing edits a settings file"
+  sb_doc_report warn old-namespace vault "$bad" "$fix" 120
+}
+
 # Set SB_DOC_ROOT to a root of the profile, folded, or to its default when the key is absent.
 # The value is read as every command reads it, with a slash in front or behind dropped. One
 # that leaves the project gives the default too, and is kept for the profile check.
@@ -523,7 +637,7 @@ sb_doc_facts() {
 sb_doc_check_profile() {
   local bad fix="add them to claude/profile.md, as in the profile template"
   if [ ! -f "$SB_P_PROFILE" ]; then
-    sb_doc_row fail profile "$SB_P_NAME" "profile.md" "run /obsidian-dev-second-brain:vault-setup adopt $SB_P_PATH"
+    sb_doc_row fail profile "$SB_P_NAME" "profile.md" "run /odsb:vault-setup adopt $SB_P_PATH"
     return 0
   fi
   [ -z "$SB_DOC_LEAVES" ] ||
@@ -1312,7 +1426,7 @@ sb_doc_rows() {
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
   for c in pointer index conventions pull_request import global_rules links double_registration \
-    always_loaded_size descriptions skill_size; do
+    always_loaded_size descriptions skill_size old_namespace; do
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do
@@ -1542,7 +1656,7 @@ cmd_session_check() {
   if [ "${1:-}" = "--cwd" ] && [ $# -ge 2 ]; then cwd="$(sb_path_in "$2")"; fi
   [ -n "$v" ] || v="$(sb_link_home)/second-brain-vault"
   if [ ! -d "$v/.obsidian" ] || [ ! -f "$v/CLAUDE.md" ]; then
-    printf 'second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init\n'
+    printf 'second-brain: no vault is set up - run /odsb:vault-setup init\n'
     return 0
   fi
   # Built in a subshell: a command that exits on an odd vault leaves no half block and no failure.

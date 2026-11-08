@@ -16,9 +16,9 @@ carry over what is left.
    asking.
 2. Never write a story, sprint or achievement file yourself. Invoke the skill that owns it with the
    Skill tool, in the plugin form, with its own arguments:
-   - `obsidian-dev-second-brain:sprint` owns the sprint note and the `sprint` property on tasks.
+   - `odsb:sprint` owns the sprint note and the `sprint` property on tasks.
      It takes a mode and a project, as in `status Example`.
-   - `obsidian-dev-second-brain:story-tracker` owns one README per ticket, the source of truth
+   - `odsb:story-tracker` owns one README per ticket, the source of truth
      for story state. It takes one ticket id, as in `EX-123`, never a project name.
    - The skill the profile names in `achievements_skill`, when it names one, owns the
      achievements. Invoke it by that exact name.

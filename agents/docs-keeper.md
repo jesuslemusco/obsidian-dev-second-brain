@@ -155,6 +155,34 @@ The caller, usually the `story-tracker` skill, gives the project, the ticket id 
 6. Add a status note to the ticket naming what was updated, ticked and left as debt:
    `second-brain task note <ID> "<text>" --project <project>`.
 
+## Workflow 6 - A renamed command
+
+The caller gives the old name and the new one: for the plugin, `obsidian-dev-second-brain:` and
+`odsb:`, from the doctor's `old-namespace` row. The job covers the whole vault, so only step 1
+of `## 0. Before you start` applies.
+
+1. No code ref is needed. The new name is in production once the plugin that has it is
+   installed, and the doctor's `old-namespace` row shows it is.
+2. Find the lines.
+   - The plugin's names: run `second-brain doctor` and read the `old-namespace` row. Each vault
+     offender is `<vault path>:<line>`. It names five at most: run the doctor again after each
+     round, until it names no vault line.
+   - Any other name: `second-brain search <project> "<old name>"` in each project.
+3. A reference is the old name followed by the whole name of a skill or agent, as in
+   `obsidian-dev-second-brain:spec-lead`. A cut name, as in a quote of
+   `obsidian-dev-second-brain:s`, is none: leave it.
+4. In each note named, rewrite every live reference, not only the line named. Change the name
+   alone; the rest of the line stays.
+5. Leave history as written. The doctor skips exactly these lines, so its row clears once you
+   are done:
+   - the body of a level 1 or 2 heading `Status notes`, `Discovery log`, `Build` or `Changelog`,
+     in any letter case, up to the next heading of its level or higher;
+   - every line of a note named `CHANGELOG.md`.
+6. Never edit `~/.claude/CLAUDE.md` or a settings file. List the row's `~/.claude` offenders in
+   your report: the `vault-doctor` fix and the owner change them.
+7. Add a status note to each story you changed:
+   `second-brain task note <ID> "Renamed <old> to <new> in <n> lines." --project <project>`.
+
 ## Working in the vault
 
 Read cheapest first: a whole note is the last resort.
@@ -187,4 +215,6 @@ Read cheapest first: a whole note is the last resort.
   changed region was re-read.
 - A change not in production yet: the pending list and where it was recorded.
 - A ticket marked done: the status note written on it.
+- A renamed command: the notes changed, the status notes written, and the `~/.claude` offenders
+  left for the owner.
 - Any proposed map row or debt line.

@@ -73,7 +73,7 @@ tool_out='select(.type == "user") | .message.content[]? | select(.type == "tool_
 
 printf '== before setup: the hook reports the missing vault ==\n'
 ask "$tmp/first.jsonl" "Reply with the single word OK."
-holds "plugin: loaded from the folder" "$(field "$tmp/first.jsonl" "$init_of | .plugins[].name")" "obsidian-dev-second-brain"
+holds "plugin: loaded from the folder" "$(field "$tmp/first.jsonl" "$init_of | .plugins[].name")" "odsb"
 got="$(field "$tmp/first.jsonl" "$hook_out")"
 holds "hook: the SessionStart hook ran the helper" "$got" "no vault is set up"
 holds "hook: it exits 0" "$got" "exit=0"

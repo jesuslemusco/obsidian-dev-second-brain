@@ -536,6 +536,66 @@ chk "descriptions: a 250-character and a folded description warn" descriptions v
 chk "skill-size: a 200-line SKILL.md warns" skill-size vault "warn | 1 | long-skill:200"
 reset
 
+# ---------------------------------------------------------------- old-namespace
+OLD='obsidian-dev-second-brain:'
+N="$vault/$P/docs/rename.md"
+doc
+chk "old-namespace: ok on a fresh vault" old-namespace vault "ok | 0 | -"
+printf '%s\n' '---' "next: \"Run /${OLD}sprint open\"" '---' '# Rename' '' \
+  "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
+  '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
+  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}sprint" '' \
+  '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}spec-lead" \
+  '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}spec-lead." >"$N"
+printf '%s\n' '# Changes' '' "- ${OLD}spec stopped working." >"$vault/$P/docs/CHANGELOG.md"
+mkdir -p "$vault/.trash"
+printf '%s\n' "${OLD}spec" >"$vault/.trash/old.md"
+doc
+rc_is "old-namespace: a warn alone keeps exit 0" 0
+chk "old-namespace: live lines warn, frontmatter and fenced code too; history, a CHANGELOG.md, a dot folder and a cut name do not" \
+  old-namespace vault "warn | 4 | $P/docs/rename.md:2, $P/docs/rename.md:6, $P/docs/rename.md:11, $P/docs/rename.md:28"
+is "old-namespace: the fix hands the vault lines to docs-keeper" "$(fix_of old-namespace vault)" \
+  "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:"
+edit "$N" "2s/$OLD/odsb:/;6s/$OLD/odsb:/;11s/$OLD/odsb:/;28s/$OLD/odsb:/"
+doc
+chk "old-namespace: ok once the live lines are rewritten, with the history left as written" old-namespace vault "ok | 0 | -"
+reset
+mkdir -p "$vault/claude/skills/mine" "$home/skills"
+printf '%s\n' '---' 'name: mine' 'description: A skill of my own.' '---' "Call ${OLD}story-tracker first." >"$vault/claude/skills/mine/SKILL.md"
+symlink "$vault/claude/skills/mine" "$home/skills/mine"
+printf '## Status notes\r\n- %sspec\r\n## Next\r\n- Run %sspec.\r\n' "$OLD" "$OLD" >"$vault/$P/docs/crlf.md"
+printf '%s\n' '# Mine' "- Run ${OLD}vault-doctor after an update." '- Then odsb:vault-doctor fix.' >"$home/CLAUDE.md"
+doc
+chk "old-namespace: a vault skill, a CRLF note, then the link directory's CLAUDE.md" old-namespace vault \
+  "warn | 3 | claude/skills/mine/SKILL.md:5, $P/docs/crlf.md:4, ~/.claude/CLAUDE.md:2"
+is "old-namespace: the fix adds the CLAUDE.md lines" "$(fix_of old-namespace vault)" \
+  "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:; write odsb: in the ~/.claude/CLAUDE.md lines"
+reset
+printf '%s\n' '{' '  "permissions": {' "    \"allow\": [\"Skill(${OLD}spec)\", \"Bash(ls)\"]," "    \"deny\": [\"Skill(${OLD}*)\"]" '  },' \
+  '  "enabledPlugins": { "obsidian-dev-second-brain@second-brain": true }' '}' >"$home/settings.json"
+printf '%s\n' "{ \"permissions\": { \"ask\": [\"Bash(echo \\\"${OLD}spec\\\")\"] } }" >"$home/settings.local.json"
+cp "$home/settings.json" "$tmp/settings.before"
+cp "$home/settings.local.json" "$tmp/settings.local.before"
+doc
+chk "old-namespace: each settings string with the old name, a wildcard and an escape included; the install id is none" old-namespace vault \
+  "warn | 3 | ~/.claude/settings.json:Skill(${OLD}spec), ~/.claude/settings.json:Skill(${OLD}*), ~/.claude/settings.local.json:Bash(echo \"${OLD}spec\")"
+is "old-namespace: the fix leaves the settings rules to the owner" "$(fix_of old-namespace vault)" \
+  "change the settings rules to odsb: yourself, as nothing edits a settings file"
+doc --json
+out_has "old-namespace: --json holds the same row" \
+  "\"check\": \"old-namespace\", \"scope\": \"vault\", \"count\": 3, \"offenders\": [\"~/.claude/settings.json:Skill(${OLD}spec)\", \"~/.claude/settings.json:Skill(${OLD}*)\", \"~/.claude/settings.local.json:Bash(echo \\\"${OLD}spec\\\")\"]"
+doc --fix
+is "old-namespace: --fix writes no settings file" \
+  "$(cmp -s "$tmp/settings.before" "$home/settings.json" && cmp -s "$tmp/settings.local.before" "$home/settings.local.json" && printf same)" "same"
+reset
+printf '%s\n' "- Run ${OLD}spec." >>"$vault/CLAUDE.md"
+n_index="$(awk 'END { print NR }' "$vault/CLAUDE.md")"
+symlink "$vault/CLAUDE.md" "$home/CLAUDE.md"
+doc
+chk "old-namespace: a link directory CLAUDE.md that is the index is read once, as the vault's note" old-namespace vault \
+  "warn | 1 | CLAUDE.md:$n_index"
+reset
+
 # ---------------------------------------------------------------- profile, board
 doc Example
 rc_is "a named project: exit 0" 0
@@ -620,7 +680,7 @@ is "outside: it gets no project rows, and nothing under it is read" "$(scope_row
 chk "outside: the skill in its claude folder is not scanned" descriptions vault "ok | 0 | -"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
-is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "11/0/0"
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "12/0/0"
 doc --fix
 is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 index_back
@@ -1359,7 +1419,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "34"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "35"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1397,8 +1457,8 @@ names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("spec-trace") - names.index("validation"), by["spec-trace"]["result"], by["spec-trace"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 34 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
-    "34 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 35 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
+    "35 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1414,15 +1474,15 @@ sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 is "two projects: twenty-three rows for each" "$(scope_rows Example)/$(scope_rows Two)" "23/23"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -11 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size "
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -12 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size old-namespace "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "11/23/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "12/23/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -1482,7 +1542,7 @@ doc --bogus
 rc_is "an unknown flag: exit 5" 5
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor
 rc_is "no vault: exit 2" 2
-out_is "no vault: the pointer row fails first" "fail | pointer | vault | 1 | SECOND_BRAIN_VAULT | run /obsidian-dev-second-brain:vault-setup init"
+out_is "no vault: the pointer row fails first" "fail | pointer | vault | 1 | SECOND_BRAIN_VAULT | run /odsb:vault-setup init"
 
 # ---------------------------------------------------------------- session-check
 sb session-check
@@ -1490,7 +1550,7 @@ rc_is "session-check: exit 0 when set up" 0
 out_is "session-check: silent when set up" ""
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check
 rc_is "session-check: exit 0 with no vault" 0
-out_is "session-check: one line with no vault" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+out_is "session-check: one line with no vault" "second-brain: no vault is set up - run /odsb:vault-setup init"
 mkdir -p "$tmp/bare/.obsidian"
 run env SECOND_BRAIN_VAULT="$tmp/bare" "$SB" session-check
 rc_is "session-check: exit 0 for a vault with no index" 0
@@ -1587,7 +1647,7 @@ sb session-check --cwd "$R"
 rc_is "session-check: exit 0 with an index that has no table" 0
 out_is "session-check: silent with an index that has no table" ""
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
-out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /obsidian-dev-second-brain:vault-setup init"
+out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /odsb:vault-setup init"
 reset
 
 # ---------------------------------------------------------------- delivery and validation

@@ -18,8 +18,9 @@
 - `second-brain spec status <ID> <task> <state>` sets the field its state belongs to, and adds no
   status note. `spec issue` adds the issue to `build.json`.
 - `second-brain spec status <ID>` prints one line per task:
-  `T1 - build: built - review: failed - fails 1 - commits <hashes> - <title>`, its issues under
-  it. `--json` has the keys `id`, `build`, `review`, `fails`, `commits`, `title` and `issues`.
+  `T1 - build: built - review: failed - fails 1 - commits <hashes> - fix <hashes> - <title>`, its
+  issues under it. `--json` has the keys `id`, `build`, `review`, `fails`, `commits`, `fix`,
+  `title` and `issues`.
 - Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
   The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
   README.
@@ -116,6 +117,9 @@
   cut off part way resumes from `build.json`.
 - A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`
   spec, `<ID> <task>: passed review`, for its own.
+- `spec status` names each task's `fix`: the commits built since its last failed review. A
+  resumed failed task with a fix goes to the review of that fix, not to a new fix round.
+- A task whose reply names no commit is looked for by its commit before it is set `blocked`.
 - `second-brain spec tasks` prints each task's bundle in a fourth column, `-` for none, and
   `--json` adds the key `bundle`. A bundle that is not a whole number, whose tasks are not next to
   each other, or whose task uses another of its tasks, exits 1.

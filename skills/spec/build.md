@@ -146,6 +146,8 @@ A resumed build finds each task as an earlier session left it. Go on from its st
      `### The fix loop` when the task's `fails` is 1 or more, else at `### Build it`.
    - No such ruling: ask the owner first, as `## 7. When the build stops` says.
 4. Review `failed`: look for its ruling as item 3 says, since a stop may have left one.
+   - A `fix` in `spec status` that is not `-`: its fix was built before the session ended.
+     `### Review it`, with the ruling as its `Owner:` line when there is one.
    - `fails` 5 or less: `### The fix loop`, with the ruling as its `Owner:` line when there is one.
    - `fails` 6 or more, the build stopped at the cap: a ruling sends one more round, as for
      `fails` 4, with the ruling as its `Owner:` line. None: ask the owner first.
@@ -155,10 +157,13 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 
 1. `second-brain spec status <ID> <task> building`.
 2. Launch `implementer` on the task, named for the build.
-3. Its reply starts with `BLOCKED:`, or has no `Commit:` line: first the stop note,
+3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commit
+   first, as item 2 of `### Where the task stands` says. A commit found goes on as that item
+   says. None found: item 4.
+4. Its reply starts with `BLOCKED:`, or no commit was found: first the stop note,
    `second-brain task note <ID> "Build: stopped at <task>: <why>."`, then
    `second-brain spec status <ID> <task> blocked`, and stop.
-4. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
+5. Otherwise: `second-brain spec status <ID> <task> built --commit <short hash>`, with the hash
    its `Commit:` line names. Then `### Review it`.
    - Its `Test:` and `Check:` lines are its own report. The review runs the checks again: never
      skip it on them.
@@ -202,7 +207,7 @@ It picks the round. Never count the rounds yourself.
    - `fails` 5: send the fix message to `<ID>-<task>-implementer-2`, or launch a fresh one as for
      `fails` 4 when it cannot be reached.
    - `fails` 6 or more, on a ruling: as for `fails` 4, with the ruling as its `Owner:` line.
-3. Take its reply as items 3 and 4 of `### Build it` say. Its review then reads only the fix.
+3. Take its reply as items 3 to 5 of `### Build it` say. Its review then reads only the fix.
 
 ### A bundle
 
@@ -227,10 +232,11 @@ not `passed`, in order:
       - A report with `BLOCKED:`, or no commit found: that task stopped the run. Take no task
         after it.
    4. A task stopped the run: first `second-brain spec status <ID> <task> todo` for each task
-      after it. Then it stops the build, as item 3 of `### Build it` says.
+      after it. Then it stops the build, as item 4 of `### Build it` says.
 3. Review the tasks whose build is `built` and whose review is `-`, `in-review`, or `blocked` with
-   a ruling. Review too each task whose fix commit item 1 found, its review `failed`. Only one:
-   items 1 to 6 of `### Review it`, then item 4 here. Two or more:
+   a ruling. Review too each task whose review is `failed` and whose `fix` in `spec status` is
+   not `-`, as item 4 of `### Where the task stands` says. Only one: items 1 to 6 of
+   `### Review it`, then item 4 here. Two or more:
    1. `second-brain spec status <ID> <task> in-review` for each of them, in order.
    2. Launch one fresh `reviewer` in task mode on them, with the bundle's prompt.
    3. Its reply holds one line per task, `<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`. A task with

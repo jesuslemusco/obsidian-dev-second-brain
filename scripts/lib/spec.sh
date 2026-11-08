@@ -768,6 +768,21 @@ function lastfail(r,   j) {
   for (j = nh[r]; j >= 1; j--) if (hfd[r, j] == "review" && hst[r, j] == "failed") return j
   return 0
 }
+# The fix of task r: the commit of each history entry after its last failed review, each once, in
+# FX[1..nfx]; none with no failed review.
+function fixes(r,   lf, j, k, c) {
+  nfx = 0; lf = lastfail(r)
+  if (lf) for (j = lf + 1; j <= nh[r]; j++) {
+    c = hcm[r, j]; if (c == "") continue
+    for (k = 1; k <= nfx; k++) if (FX[k] == c) break
+    if (k > nfx) FX[++nfx] = c
+  }
+}
+function fix_text(r,   k, s) {
+  fixes(r); s = ""
+  for (k = 1; k <= nfx; k++) s = s (k > 1 ? ", " : "") FX[k]
+  return dash(s)
+}
 function commits_text(r,   j, s) {
   s = ""
   for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") cm[r, j]
@@ -878,7 +893,7 @@ END {
   if (mode == "text") {
     if (!hasdata) exit 0
     for (r = 1; r <= nt; r++) {
-      print tid[r] " - build: " tb[r] " - review: " tr[r] " - fails " fails(r) " - commits " commits_text(r) " - " fold(dash(tti[r]))
+      print tid[r] " - build: " tb[r] " - review: " tr[r] " - fails " fails(r) " - commits " commits_text(r) " - fix " fix_text(r) " - " fold(dash(tti[r]))
       for (j = 1; j <= nis[r]; j++) print "  - " issue_line(r, j)
     }
     exit 0
@@ -888,10 +903,12 @@ END {
     if (hasdata) for (r = 1; r <= nt; r++) {
       s = ""
       for (j = 1; j <= ncm[r]; j++) s = s (j > 1 ? ", " : "") jstr(cm[r, j])
+      x = ""; fixes(r)
+      for (j = 1; j <= nfx; j++) x = x (j > 1 ? ", " : "") jstr(FX[j])
       l = ""
       for (j = 1; j <= nis[r]; j++) l = l (j > 1 ? ", " : "") jstr(issue_line(r, j))
       printf "%s\n  {\"id\": %s, \"build\": %s, \"review\": %s, \"fails\": %d, ", (r > 1 ? "," : ""), jstr(tid[r]), jstr(tb[r]), jstr(tr[r]), fails(r)
-      printf "\"commits\": [%s], \"title\": %s, \"issues\": [%s]}", s, jstr(fold(dash(tti[r]))), l
+      printf "\"commits\": [%s], \"fix\": [%s], \"title\": %s, \"issues\": [%s]}", s, x, jstr(fold(dash(tti[r]))), l
     }
     print ((hasdata && nt) ? "\n]" : "]")
     exit 0
@@ -901,9 +918,8 @@ END {
     print "commits: " (r ? commits_text(r) : "-")
     f = (r ? fails(r) : 0); print "fails: " f
     # The packet of a fix: the commits after the last failed review, and the findings they answer.
-    fx = ""; lf = (f ? lastfail(r) : 0); k = (lf ? reviews(r, lf) : 0)
-    if (lf) for (j = lf + 1; j <= nh[r]; j++) if (hcm[r, j] != "") fx = fx (fx == "" ? "" : ", ") hcm[r, j]
-    print "fix: " dash(fx)
+    lf = (f ? lastfail(r) : 0); k = (lf ? reviews(r, lf) : 0)
+    print "fix: " (r ? fix_text(r) : "-")
     if (r) for (j = 1; j <= nis[r]; j++) if (!f || ird[r, j] == k) print "- " issue_line(r, j)
     exit 0
   }

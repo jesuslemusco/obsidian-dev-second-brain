@@ -824,7 +824,8 @@ text.
 - A browser step saves its screenshots in a temp folder outside the repo, and `reviewer` names
   the folder in its findings.
 - `reviewer` keeps the `git status --porcelain` output of its first step. After the user steps it
-  removes only a path that output did not list, and names it.
+  removes only an untracked (`??`) path that output did not list, and names it.
+- A tracked file a user step changed is a finding, never deleted.
 - `reviewer` never runs `git checkout`, `restore`, `reset`, `clean` or `stash`. Any other change
   to the tree is a finding.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the

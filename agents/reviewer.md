@@ -57,7 +57,8 @@ that runs it. Run the step with that tool.
 - Before the first browser step, make one temp folder outside the repo with `mktemp -d`. Have the
   skill or command save its screenshots there, never in the repo.
 - After the last step, run `git -C "<repo_path>" status --porcelain` again.
-- Remove only a path that step 0's output did not list, and name it.
+- Remove only an untracked (`??`) path that step 0's output did not list, and name it.
+- A tracked file a step changed is a finding. Never delete it.
 - Never run `git checkout`, `restore`, `reset`, `clean` or `stash`. Any other change is a finding.
 
 ## Verdict

@@ -8,8 +8,8 @@
   and names the tool, and a browser step's screenshots go in a temp folder it names.
 - A step written before, with no tool, runs through Bash when Bash can do what it says. One that
   needs a browser is BLOCKED and asks for its tool.
-- `reviewer` removes only a path its first `git status --porcelain` did not list, and never runs
-  `git checkout`, `restore`, `reset`, `clean` or `stash`.
+- `reviewer` removes only an untracked path its first `git status --porcelain` did not list, and
+  never runs `git checkout`, `restore`, `reset`, `clean` or `stash`.
 - The doctor's `validation` check also warns about the earlier template's user-check line.
 
 ## 0.5.0 - 2026-11-08

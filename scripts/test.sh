@@ -43,6 +43,13 @@ fail() {
     shift
   done
 }
+# On bash 4 and later, an undefined command fails the suite. Bash runs this hook in a subshell,
+# so it writes the name to a file, and the result counts each name as a failure.
+command_not_found_handle() {
+  printf '%s at line %s\n' "$1" "${BASH_LINENO[0]}" >>"$tmp/undefined"
+  printf '%s: line %s: %s: command not found\n' "$0" "${BASH_LINENO[0]}" "$1" >&2
+  return 127
+}
 # run <command...>: capture stdout, stderr and the exit code.
 run() {
   OUT="$("$@" 2>"$tmp/stderr")"
@@ -135,6 +142,22 @@ for f in "$here/bin/second-brain" "$here"/scripts/lib/*.sh "$here"/scripts/*.sh;
 done
 is "awk: every program that loads the shared functions runs in the C locale" \
   "$(grep -n '"$(sb_awk_lib)"' "$here"/scripts/lib/*.sh | grep -v 'LC_ALL=C' || true)" ""
+
+# ---------------------------------------------------------------- undefined commands
+# Each suite's head and result block, with a call to a command it never defines in between.
+# Bash 3.2, on macOS, never calls command_not_found_handle; the same lines run on Linux.
+if [ "${BASH_VERSINFO[0]}" -ge 4 ]; then
+  for f in "$here"/scripts/test*.sh; do
+    probe="$(
+      awk '/^# -----/ { exit } { print }' "$f"
+      printf '%s\n' 'no_such_check "a check"'
+      sed -n '/^# -* result$/,$p' "$f"
+    )"
+    run env TMPDIR="$tmp" "$BASH" -c "$probe" "$f"
+    rc_is "undefined command: ${f#"$here"/} exits 1" 1
+    out_has "undefined command: ${f#"$here"/} names it as a failure" "FAIL  undefined command: no_such_check at line "
+  done
+fi
 
 # ---------------------------------------------------------------- dispatcher
 sb version
@@ -2666,5 +2689,8 @@ file_has "guide: no build starts without the repo's steps" "$here/skills/spec/SK
   '`second-brain validation <project> <repo>` must print the repo'"'"'s steps'
 
 # ---------------------------------------------------------------- result
+if [ -f "$tmp/undefined" ]; then
+  while IFS= read -r cmd; do fail "undefined command: $cmd"; done <"$tmp/undefined"
+fi
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

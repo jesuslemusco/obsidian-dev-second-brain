@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 - unreleased
+## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.
 

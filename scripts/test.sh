@@ -2705,6 +2705,8 @@ for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Vali
 done
 file_has "README: points to the guide's Spec-driven delivery" "$RM" \
   '`## Spec-driven delivery` in `docs/guide.md`'
+line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
+  "## Spec-driven delivery"
 for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"

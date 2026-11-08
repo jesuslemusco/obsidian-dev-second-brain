@@ -821,6 +821,12 @@ text.
 - A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
 - Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on from
   the `## Build` section, so a build resumes in a new session.
+- When `spec-lead` finishes with every task passed, the skill asks the owner whether to merge the
+  story's branch, open a pull request, or keep the branch. `skills/spec/finish.md` names the
+  target branch and the steps.
+- A merge or a pull request runs only on the owner's pick. Each push or pull request is named
+  before it runs.
+- The story's branch is deleted only when the owner types `discard`.
 - The three agents and their tools:
 
 | Agent | Tools | Job |

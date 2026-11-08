@@ -51,7 +51,10 @@ for the files it names, and the repo's `each task` checks, which are quick and r
 
 - `- task:` is the task's `Check`, as written. Run its command from `repo_path`, with stdin from
   `/dev/null`, and compare what it prints with its `expected:`.
-  - A step that is not a command: take it as it says. `none`: your test is the task's check.
+  - A step that is not a command: take it with your tools, as it says. `none`: your test is the
+    task's check.
+  - A step that needs a tool you do not have, such as a browser or a skill, is not yours to take.
+    Report it as `Check: <the step> - skipped - needs <the tool>`, and leave it to the review.
 - `- each task:` lines: run them all at once with
   `second-brain validation run "<project>" <repo> --when each-task`, with the packet's `repo`.
   Each row it prints is one result.
@@ -59,15 +62,16 @@ for the files it names, and the repo's `each task` checks, which are quick and r
   before you go on. A suite can take longer than a Bash call's timeout of 2 minutes.
 - A check fails: fix the cause in your change, then run it again. Never change a test or a check
   only so that it passes.
-- A check you cannot make pass, or cannot run, such as a command that is not found: commit
-  nothing, and stop with `BLOCKED:`.
-- Run no other check: no `each build` or `release` check, and no user step. The `spec` skill runs
-  the build's checks once every task has passed, and `reviewer` runs the user steps.
+- A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,
+  and stop with `BLOCKED:`.
+- Run no other check: no `release` check, no user step, and no `each build` check but the one
+  suite that holds your own test. The `spec` skill runs the build's checks once every task has
+  passed, and `reviewer` runs the user steps.
 
 ## 3. Commit
 
-- Commit only when every check under `## Checks` passed. A row `validation run` skips has no
-  command to run.
+- Commit only when every check under `## Checks` passed or was skipped. A row `validation run`
+  skips has no command to run, and a step skipped for its tool is the review's.
 - Stage the task's files by name: `git -C "<repo_path>" add <file>...`.
 - Commit with the message the prompt's last line gives.
 - Never amend or push.

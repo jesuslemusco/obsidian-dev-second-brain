@@ -96,6 +96,8 @@
 - `implementer` commits only when its checks pass. Its reply adds a `Test:` line and a `Check:`
   line per check with its result. It runs them in the background, so a long suite is never cut
   off.
+- A task's `- Check:` step that `implementer` has no tool for, such as a browser or a skill step,
+  is reported as skipped and left to the review. The build goes on.
 - A task's `- Check:` now runs before its commit and again in its review. Write it as the
   narrowest command that runs the task's test, not every suite.
 

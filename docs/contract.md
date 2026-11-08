@@ -905,8 +905,12 @@ text.
 - Its checks are the ones under its packet's `## Checks`: the task's `Check`, and the repo's
   `each task` checks through `validation run <project> <repo> --when each-task`.
 - It commits only when they all pass, and names each result in its reply.
-- It runs its own test the narrowest way the repo allows, such as the one suite that holds it.
-- It runs no `each build` or `release` check, and no user step.
+- A task `Check` that is a step its tools cannot take, such as a browser or a skill step, is
+  reported as `Check: <step> - skipped - needs <tool>`. It still commits, and the review takes
+  the step.
+- It runs its own test the narrowest way the repo allows, such as the one suite that holds it,
+  even an `each build` one.
+- It runs no other `each build` check, no `release` check and no user step.
 - `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
   skill through the Skill tool, anything else through Bash.
 - A line that names no tool runs through Bash when Bash can do what it says. One that needs a

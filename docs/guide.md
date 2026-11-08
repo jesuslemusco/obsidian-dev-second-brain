@@ -124,7 +124,8 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   requirement, then makes it pass. A task with nothing to test, such as a doc change, says why.
 - Who runs which check: `implementer` runs the task's `Check` and the repo's `each task` checks
   before it commits, as its packet's `## Checks` names them. It commits only when they pass, and
-  its reply names each result.
+  its reply names each result. A step it has no tool for, such as a browser step, is left to the
+  review.
 - `reviewer` runs those checks again in the task's review, with the `each task` user steps.
 - A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
   rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new

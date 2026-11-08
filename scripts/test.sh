@@ -3262,10 +3262,18 @@ file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
 file_has "implementer: runs its tests and checks in the background" "$IM" \
   '- Run each test and check with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice'
-file_has "implementer: runs no build-wide check and no user step" "$IM" \
-  '- Run no other check: no `each build` or `release` check, and no user step.'
-line_is "implementer: commits only when every check passed" "$IM" \
-  '- Commit only when every check under `## Checks` passed. A row `validation run` skips has no'
+line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
+  '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
+line_is "implementer: but the suite that holds its own test" "$IM" \
+  '  suite that holds your own test. The `spec` skill runs the build'"'"'s checks once every task has'
+line_is "implementer: a step it has no tool for is not its to take" "$IM" \
+  '  - A step that needs a tool you do not have, such as a browser or a skill, is not yours to take.'
+line_is "implementer: it reports it skipped and leaves it to the review" "$IM" \
+  '    Report it as `Check: <the step> - skipped - needs <the tool>`, and leave it to the review.'
+line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
+  '- A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,'
+line_is "implementer: commits only when every check passed or was skipped" "$IM" \
+  '- Commit only when every check under `## Checks` passed or was skipped. A row `validation run`'
 file_has "implementer: never changes a test so that it passes" "$IM" \
   'Never change a test or a check'
 is "implementer: checks before it commits" \
@@ -3839,8 +3847,13 @@ line_is "contract: a task with nothing to test says why" "$CT" \
 line_is "contract: implementer's checks are its packet's" "$CT" \
   '- Its checks are the ones under its packet'"'"'s `## Checks`: the task'"'"'s `Check`, and the repo'"'"'s'
 line_is "contract: it commits only when they pass" "$CT" '- It commits only when they all pass, and names each result in its reply.'
-line_is "contract: it runs no build-wide check and no user step" "$CT" \
-  '- It runs no `each build` or `release` check, and no user step.'
+line_is "contract: it runs no other build-wide check, no release check and no user step" "$CT" \
+  '- It runs no other `each build` check, no `release` check and no user step.'
+line_is "contract: the suite that holds its own test is allowed" "$CT" '  even an `each build` one.'
+line_is "contract: a step implementer has no tool for is skipped" "$CT" \
+  '- A task `Check` that is a step its tools cannot take, such as a browser or a skill step, is'
+line_is "contract: it still commits, and the review takes the step" "$CT" \
+  '  reported as `Check: <step> - skipped - needs <tool>`. It still commits, and the review takes'
 file_lacks "contract: no longer says implementer runs no check" "$CT" '`implementer` runs no check'
 file_has "contract: the reviewer runs the task's checks again" "$CT" \
   '- It runs the task'"'"'s `Check` and the `each task` checks again, through'

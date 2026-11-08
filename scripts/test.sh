@@ -765,7 +765,7 @@ command -v python3 >/dev/null 2>&1 && HAS_PY=1
 NL=$'\n'
 json_ok() {
   if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
-  if printf '%s\n' "$OUT" | python3 -I -c 'import json,sys; json.load(sys.stdin)' \
+  if printf '%s\n' "$OUT" | python3 -I -c 'import json,sys; json.load(sys.stdin.buffer)' \
     2>"$tmp/pyerr"; then
     pass "$1"
   else
@@ -776,7 +776,7 @@ json_is() {
   if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
   # A Python built for Windows ends the lines it prints with CRLF; tr takes that away.
   is "$1" "$(printf '%s\n' "$OUT" | python3 -I -c "import json,sys
-d = json.load(sys.stdin)
+d = json.load(sys.stdin.buffer)
 $2" 2>&1 | tr -d '\r')" "$3"
 }
 # The task head lines rebuilt from its JSON.
@@ -2755,6 +2755,13 @@ line_is "spec status: a row whose task left tasks.md keeps its title over two wr
   '- T2 - passed - commits - - Two - parts'
 is "spec status: and it stays at the end" "$(section_of "$L9" Build | tail -1)" \
   '- T2 - passed - commits - - Two - parts'
+printf '%s\n' "- [ ] T4 - $(printf 'Caf\303\251 \001') a${CR}b" >>"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec tasks SP-9 --json
+json_ok "spec tasks --json: a title with UTF-8, a control character and a CR parses as JSON"
+out_has "spec tasks --json: UTF-8 bytes are kept, \\u0001 and \\r are escaped" \
+  "$(printf '{"id": "T4", "state": "todo", "title": "Caf\303\251 \\u0001 a\\rb"}')"
+json_is "spec tasks --json: and the title reads back as written" \
+  'print(d[-1]["title"] == "Caf\u00e9 \x01 a\rb")' "True"
 sb spec SP-9 --json
 rc_is "spec --json: the spec form takes no --json, exit 5" 5
 sb spec tick SP-9 T1 --json

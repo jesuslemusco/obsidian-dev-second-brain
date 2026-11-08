@@ -23,6 +23,8 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
    - Exit 1 about a repo: say which case it is and stop.
 4. `delivery: direct`: ask whether to build this story from a spec. Yes:
    `second-brain task set <ID> delivery=spec`.
+5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the
+   subproject or the profile becomes the story's own, so story-tracker never weighs it.
 
 ## Step 1 - Where the spec stands
 

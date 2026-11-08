@@ -2431,6 +2431,11 @@ is "spec skill: the description is under 200 characters" "$((${#sk_desc} < 200))
 case "$sk_desc" in *"spec-driven"*) pass "spec skill: the description names spec-driven" ;; *) fail "spec skill: the description names spec-driven" "in: $sk_desc" ;; esac
 file_has "spec skill: carries the conventions pointer" "$SK" 'Conventions: before writing notes, run `second-brain conventions`'
 file_has "spec skill: its first tool call is the context" "$SK" 'Your first tool call is `second-brain context`'
+file_has "spec skill: an inherited spec becomes the story's own delivery" "$SK" \
+  '5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the'
+file_has "spec skill: so story-tracker never weighs it" "$SK" \
+  'subproject or the profile becomes the story'"'"'s own, so story-tracker never weighs it.'
+file_lacks "README: no longer says the profile decides a spec" "$here/README.md" 'or set `delivery: spec` in'
 for ph in requirements design tasks; do
   file_has "spec skill: the $ph approval note" "$SK" "Spec: $ph approved by the owner."
 done
@@ -2666,7 +2671,8 @@ RM="$here/README.md"
 line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
 for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Validation' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
-  'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent'; do
+  'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent' \
+  'docs/guide.md|## Spec-driven delivery'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
   line_is "README: $pf has the heading $ph" "$here/$pf" "$ph"

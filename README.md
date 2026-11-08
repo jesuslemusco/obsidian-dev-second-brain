@@ -13,9 +13,10 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
 - **Docs.** A ticket that reaches production starts `docs-keeper`, which brings the project's
   docs in step with its code. The hand-off is under
   `## Edit an existing story` in `skills/story-tracker/SKILL.md`.
-- **Spec-driven stories.** Ask Claude to implement a story spec-driven, or set `delivery: spec` in
-  a project's profile or a subproject's note. You approve its requirements, then its design, then
-  its tasks. Then `spec-lead` builds and reviews each task, as `agents/spec-lead.md` says.
+- **Spec-driven stories.** A story is built from a spec when you ask, or when Claude thinks it
+  needs one and you agree, as `## Spec-driven delivery` in `docs/guide.md` says. You approve its
+  requirements, then its design, then its tasks. Then `spec-lead` builds and reviews each task, as
+  `agents/spec-lead.md` says.
 - **Validation.** Each repo's steps to run and check it are in a `validation.md`, in the vault or
   in the repo, as `### Validation` in `docs/contract.md` says.
   `/odsb:vault-setup validation <project>` drafts them for you to confirm.

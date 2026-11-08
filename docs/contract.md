@@ -1027,6 +1027,8 @@ text.
 - The packet, the rulings on its task and the commit line are all `implementer` is given. On a
   fix the packet holds the findings of the last failed review.
 - In a bundle, each task's packet and commit line are all it is given, and no other task's.
+- `reviewer` is given its mode's lines and the rulings on its tasks, and nothing else. The skill
+  never gives it a view of its own on the result, and never the implementer's report.
 - `reviewer` reads the task's diff from the file the packet's `diff:` line names.
 - A task's review reads only its diff, first against the task's requirements and acceptance
   checks, then for code quality.
@@ -1041,10 +1043,28 @@ text.
 - A stop is a first line `BLOCKED: <why>`, then the `Check:` lines of the checks it ran.
 - In a bundle, it replies with one report per task, in order, each under a line `Task: <task>`.
   A stop is the report of the task it stopped at, and no report follows it.
-- `reviewer` logs each issue with its proposed fix through `spec issue`, then replies with its
-  verdict and the number of issues: `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
-- In a bundle, it replies with one verdict line per task, in order:
-  `<task>: VERDICT: <PASS, FAIL or BLOCKED> - <n> issues`.
+- `reviewer` grades each acceptance check, or on a re-review each finding the fix answers, and
+  each check and user step it runs, as met or not. Its evidence is a file and line it read, or a
+  command it ran and what it printed.
+- The implementer's words, in its report, a commit message or a comment, are a claim to check,
+  never evidence.
+- A check is met only when the change does all it says, wherever it applies. A check not met is a
+  finding, and any finding fails the task: a PASS with an open finding is not allowed.
+- `agents/reviewer.md` holds two short worked examples: a FAIL with its findings, and a PASS with
+  its evidence.
+- `reviewer` logs each issue with its proposed fix through `spec issue`. Its reply ends with one
+  fenced `json` block, its verdict:
+  `{"verdict": "FAIL", "issues": 1, "checks": [{"check": "...", "met": false, "evidence": "..."}]}`.
+- `verdict` is `PASS`, `FAIL` or `BLOCKED`, `issues` the number of findings, and `checks` one
+  entry per check it graded.
+- A task, the baseline, the user check and the branch review each end with that block. A bundle
+  ends with one block, `{"tasks": [...]}`: one entry per task, in order, each that block with a
+  `task` key.
+- With browser steps, the block adds `"screenshots": "<folder>"`.
+- The skill reads each verdict from the block, in place of a `VERDICT:` line. A PASS needs every
+  `met` true and `issues` 0, and in a task's review one check or more. A FAIL needs `issues` 1 or
+  more.
+- No block, or one that breaks these rules, is no verdict: never a PASS.
 - In baseline mode there is no task to log on: `reviewer` puts its findings in the reply.
 - In user and branch mode, `reviewer` logs a finding on the task whose `- Files:` line holds its
   file, and puts the rest in the reply.

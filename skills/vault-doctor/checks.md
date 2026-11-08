@@ -187,7 +187,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 ### validation
 
-- Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text (`<repo>:placeholders`). A repo whose `validation.md` is in the repo and whose location is not recorded: `<repo>:no-location`. A project with no repo and no `claude/validation.md`: `claude/validation.md:missing`.
+- Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text, or a placeholder an earlier template had (`<repo>:placeholders`). A repo whose `validation.md` is in the repo and whose location is not recorded: `<repo>:no-location`. A project with no repo and no `claude/validation.md`: `claude/validation.md:missing`.
 - Why: the agents that build and review a change run the steps in its repo's section, so with none a change is called done on the builder's word.
 - Fix: `no-location`: record where the repo is, in `repos_root` or `repo_paths`. Otherwise run `second-brain validation new <project> <repo>`, which writes the file or adds the section and never changes one that is there. Then ask how the repo is set up and started, which checks must pass, how a change is checked as a user would and what a pass is. Look first in the repo's README, scripts and CI config; write only what the user confirms. Never invent a step.
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 - unreleased
+
+- The vault-doctor skill's `validation` row says it also warns on a placeholder an earlier
+  validation template had, as the doctor has done since 0.6.0.
+
 ## 0.6.0 - 2026-11-08
 
 - The test workflow runs the doctor tests in a job of their own on each runner, in parallel with

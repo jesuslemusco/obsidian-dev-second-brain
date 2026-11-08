@@ -97,6 +97,38 @@ to you as its result.
   by its task.
 - `reviewer`'s prompt in branch mode: the same lines with `Mode: branch.`, then `Base: <hash>.`:
   the hash of the newest `Build: started on <branch> at <short hash>.` note.
+- A `reviewer` prompt holds only these lines, and a message to it only the one
+  `### Reading a verdict` gives. Never add a view of your own on the result, such as the
+  implementer's report, its `Test:` or `Check:` lines, or the verdict you expect.
+
+### Reading a verdict
+
+`reviewer`'s reply ends with a JSON block, as `## Verdict` in `agents/reviewer.md` says. Take its
+verdict from that block alone, never from the words before it.
+
+1. Before a review's first launch, but the baseline's, note the issue count of each task it
+   reviews: the length of its `issues` in `second-brain spec status <ID> --json`. The user check
+   and the branch review review every task.
+   - Item 5's ask and item 6's fresh `reviewer` take no new count: they are judged against these.
+2. The block is the reply's last fenced block tagged `json`. It parses when it is one JSON object
+   with `verdict`, `issues` and `checks`. A bundle's has `tasks` in their place: a list of entries,
+   each with `task` and those three.
+3. A block that parses is good when:
+   - `verdict` is `PASS`, `FAIL` or `BLOCKED`, and `issues` is a whole number.
+   - `checks` is a list. Each entry has a `check` text and a `met` of `true` or `false`.
+   - A `PASS` has every `met` `true` and `issues` 0. Its task's count did not grow; in user and
+     branch mode, no task's count grew. In task and branch mode it has one check or more.
+   - A `FAIL` has `issues` 1 or more. In task mode, its task's count grew. In user and branch
+     mode, item 2 of `## 6. When every task passed` checks the counts.
+   - In a bundle, each task of its `Tasks:` line is judged on its own entry. A task with no entry
+     has no good block.
+4. No good block is no verdict, and never a PASS.
+5. No block, or one that does not parse: ask the reviewer once more with SendMessage,
+   `Your reply has no JSON verdict block that parses. Reply with the block alone.`
+6. A block that parses and is not good, or no good block after item 5: launch one fresh
+   `reviewer` in its place, with the same prompt. In a bundle, launch it on the tasks with no good
+   block, with the bundle's prompt for those tasks.
+7. No good block from the fresh `reviewer` either: take it as BLOCKED.
 
 ## 4. The baseline
 
@@ -118,8 +150,9 @@ the base branch holds nothing of its own yet, and the base is tested, so it need
    - Any other exit, such as on a branch cut from `release/<version>` or with commits the base
      lacks: item 4.
 4. Launch `reviewer` in baseline mode on the branch as it is.
-5. `VERDICT: FAIL` or `VERDICT: BLOCKED`: stop, as `## 7. When the build stops` says.
-6. `VERDICT: PASS`: `second-brain task note <ID> "Build: the baseline passed at <short hash>."`.
+5. Read its verdict as `### Reading a verdict` says. A FAIL or a BLOCKED: stop, as
+   `## 7. When the build stops` says.
+6. PASS: `second-brain task note <ID> "Build: the baseline passed at <short hash>."`.
 
 The build-wide checks in `## 6. When every task passed` run either way.
 
@@ -191,9 +224,7 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 1. `second-brain spec status <ID> <task> in-review`.
 2. Launch a fresh `reviewer` in task mode on the task. Its packet gives it the task's diff, or on
    a re-review the fix's commits and the findings they answer.
-   - Its reply has a line `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`.
-   - No such line: ask it once more with SendMessage. Still none: launch one fresh `reviewer` in
-     its place, with the same prompt. Still none: take it as BLOCKED, as item 5 says.
+   - Read its verdict as `### Reading a verdict` says, then take it as items 3 to 5 say.
 3. PASS: `second-brain spec tick <ID> <task>`. Exit 6 means it is ticked already: go on.
    - With `spec_home: repo`, commit the tick:
      `git -C "<path>" commit -m "<ID> <task>: passed review" -- spec/<ID>/tasks.md`.
@@ -260,10 +291,7 @@ not `passed`, in order:
    `### Review it`, then item 4 here. Two or more:
    1. `second-brain spec status <ID> <task> in-review` for each of them, in order.
    2. Launch one fresh `reviewer` in task mode on them, with the bundle's prompt.
-   3. Its reply holds one line per task, `<task>: VERDICT: PASS`, `FAIL` or `BLOCKED`. A task with
-      no such line: ask it once more with SendMessage. Still none: launch one fresh `reviewer` on
-      the tasks with none, with the prompt item 2 gives them. A task still with none: its verdict
-      is BLOCKED.
+   3. Read each task's verdict from its entry in the block, as `### Reading a verdict` says.
    4. Set each task's result as items 3 to 5 of `### Review it` say. Set every PASS and FAIL
       first, then a BLOCKED, which stops the build.
    5. Show the owner `second-brain spec status <ID>`, as item 6 of `### Review it` says.
@@ -290,16 +318,19 @@ A resumed build with every task passed comes straight here.
    - Then `second-brain spec status <ID> <task> failed` for each such task, and go back to
      `## 5. Each task in turn`. It comes back here once every task has passed again.
 2. Launch `reviewer` in user mode on the finished branch.
-   - Before the launch, note each task's issue count: the length of its `issues` in
-     `second-brain spec status <ID> --json`.
+   - Read its verdict as `### Reading a verdict` says. Item 1 there notes each task's issue count
+     before its first launch.
    - BLOCKED: stop, as `## 7. When the build stops` says.
    - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the
      last task in order, with a ruling, and with the fix you propose:
      `second-brain spec issue <ID> <task> "<the finding>" --fix "<the fix you propose>"`.
-   - Then `second-brain spec status <ID> <task> failed` for each task whose issue count grew since
-     the launch, and go back to `## 5. Each task in turn`, as item 1 does.
+   - Now no task's issue count is above the one item 1 of `### Reading a verdict` noted: the FAIL
+     is no verdict. Go on as items 6 and 7 there say.
+   - Else `second-brain spec status <ID> <task> failed` for each task whose issue count grew since
+     then, and go back to `## 5. Each task in turn`, as item 1 does.
 3. Launch `reviewer` in branch mode: one review of the whole branch ends the build. BLOCKED or
    FAIL: as item 2 says.
+   - Read its verdict as item 2 does.
 4. `second-brain task set <ID> status=in-review next="Owner reviews the built story"`.
 5. `second-brain task note <ID> "Build: finished; every task passed review, the branch is at <short hash>."`.
 6. Show the owner `second-brain spec status <ID>` and the final validation result.
@@ -420,7 +451,7 @@ first: yours and the owner's.
 - You keep track of the build: set each state with `spec status` as the agents report it.
 - A task's progress is in `build.json` alone. The README gets the story-level notes above: the
   build started, stopped and why, and finished, and each ruling, the owner's and yours.
-- Only a reviewer's `VERDICT: PASS` ticks a task. Never on the implementer's word.
+- Only a reviewer's PASS, read from its JSON block, ticks a task. Never on the implementer's word.
 - The packet is the implementer's whole context. Never give it the other tasks or this
   conversation. A bundle's run gets its own tasks' packets alone.
 - Never skip, merge or reorder tasks. A task of a bundle keeps its own commit, verdict and states.

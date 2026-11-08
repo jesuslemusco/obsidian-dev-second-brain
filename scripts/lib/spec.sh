@@ -1169,7 +1169,7 @@ sb_val_write() {
 # Read a repo's section of a validation.md on stdin; print the bullets under "### Checks" that a run
 # takes, one TSV row each: "run<TAB><command>", or "skip<TAB><text><TAB><why>". SB_LEVEL is the run's
 # level: 1 takes "each task", 2 "each build" too, 3 "release" too. A bullet with an unknown "when:"
-# is skipped in every run. Prints "none" when the section has no "### Checks".
+# counts as "each build", and every run gets a row "warn<TAB><text><TAB><value>" for it. Prints "none" when the section has no "### Checks".
 sb_val_checks() {
   LC_ALL=C SB_LEVEL="$1" awk "$(sb_awk_lib)"'
     # Set CODE1 to the first code span of s and HASCODE to 1 when it has one; return s with each
@@ -1216,7 +1216,7 @@ sb_val_checks() {
         if (v == "each task") lvl = 1
         else if (v == "each build") lvl = 2
         else if (v == "release") lvl = 3
-        else { print "skip\t" t "\tunknown when: " raw; return }
+        else print "warn\t" t "\t" raw
       }
       if (lvl > LEVEL) return
       if (!HASCODE || trim(CODE1) == "") print "skip\t" t "\tno command"
@@ -1325,6 +1325,10 @@ sb_val_run() {
   SB_VAL_ROWS="$rows"
   while IFS="$tab" read -r kind a b; do
     [ -n "$kind" ] || continue
+    if [ "$kind" = "warn" ]; then
+      sb_note "unknown when: $b, read as each build: $a"
+      continue
+    fi
     if [ "$kind" = "skip" ]; then
       printf 'R\t%s\tskipped\t-\t-\t-\nL\t%s\n' "$a" "$b" >>"$rows"
       [ "$json" -eq 1 ] || printf '%s\tskipped\t-\t-\t-\n  %s\n' "$a" "$b"

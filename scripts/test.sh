@@ -3574,16 +3574,17 @@ export TMPDIR="$tmp/tmpr"
 rows() { printf '%s\n' "$1" | awk -F'\t' '/^  / { print; next } { print $1 "|" $2 "|" $3 }'; }
 OUT="$(printf 'some input\n' | "$SB" validation run Runs run-app --when each-task 2>"$tmp/stderr")"
 RC=$?
+ERR="$(cat "$tmp/stderr")"
 rc_is "validation run: each-task, every check passes, exit 0" 0
 is "validation run: each-task takes only the each-task bullets, in order, and names the skipped ones" "$(rows "$OUT")" \
   "test -f marker.txt|pass|0
 test -z \"\$(cat)\"|pass|0
 A note with no command - when: each task|skipped|-
   no command
-\`echo odd\` - when: nightly|skipped|-
-  unknown when: nightly
 echo long|pass|0
 echo \`tick\` |pass|0"
+err_has "validation run: an unknown when is named as a warning, even in a run it is not part of" \
+  "note: unknown when: nightly, read as each build: \`echo odd\` - when: nightly"
 log1="$(printf '%s\n' "$OUT" | head -1 | cut -f5)"
 is "validation run: the log is a temp file, outside the repo and the vault" "${log1%/*/*}" "$(shown "$tmp/tmpr")"
 is "validation run: a row's seconds are whole seconds" "$(printf '%s\n' "$OUT" | head -1 | cut -f4 | grep -c '^[0-9][0-9]*$')" "1"
@@ -3602,10 +3603,11 @@ printf 'line one\\nan Error here\\nFAILED: x\\n'; exit 3|fail|3
 echo \"when: release\"|pass|0
 A note with no command - when: each task|skipped|-
   no command
-\`echo odd\` - when: nightly|skipped|-
-  unknown when: nightly
+echo odd|pass|0
 echo long|pass|0
 echo \`tick\` |pass|0"
+err_has "validation run: an unknown when runs as each build, with its warning" \
+  "note: unknown when: nightly, read as each build: \`echo odd\` - when: nightly"
 out_lacks "validation run: a nested item is no check" "nested"
 out_lacks "validation run: nor a step of another part" "echo never"
 out_lacks "validation run: nor a user step" "echo user"
@@ -3673,6 +3675,8 @@ CT="$here/docs/contract.md"
 file_has "contract: a check's first code span is its command" "$CT" "- Under \`### Checks\` a bullet's first inline code span is its command:"
 file_has "contract: each bullet ends with when it runs" "$CT" '  `when: each task`, `when: each build` or `when: release`.'
 line_is "contract: a bullet with no when is each build" "$CT" '- A bullet with no `when:` is `each build`.'
+line_is "contract: so is an unknown one, so a typo never drops a check" "$CT" \
+  '- Any other value is unknown and counts as `each build`, so a typo never drops a check.'
 file_has "contract: documents validation run" "$CT" '| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--json]` |'
 file_has "contract: the fix loop's rounds" "$CT" '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
 file_has "contract: the build-wide run has no agent" "$CT" '- When every task has passed, the skill runs `validation run <project> <repo> --when each-build`'

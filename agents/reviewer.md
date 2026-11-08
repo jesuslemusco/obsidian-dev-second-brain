@@ -26,7 +26,7 @@ Keep the `status --porcelain` output: the user steps are checked against it.
 
 Each bullet under `### Checks` and `### Check as a user would` ends with when it runs, as
 `### Validation` in `docs/contract.md` says: `when: each task`, `when: each build` or
-`when: release`. A bullet with none is `each build`.
+`when: release`. A bullet with none, or with another value, is `each build`.
 
 - Run the checks under `### Checks` only through
   `second-brain validation run "<project>" <repo> --when <when>`. It runs each matching command

@@ -68,7 +68,8 @@
 - Then `reviewer` runs the user steps on the finished branch, in the new user mode. One review of
   the whole branch, in the new branch mode, ends the build.
 - Each check and user step in `validation.md` ends with `when: each task`, `when: each build` or
-  `when: release`. None means `each build`. A `release` check runs only when you ask.
+  `when: release`. None means `each build`, and so does any other value, which every run names
+  as a warning. A `release` check runs only when you ask.
 - The new `second-brain validation run <project> <repo> [--when each-task|each-build|release]
   [--timeout <seconds>] [--json]` runs the matching checks from the repo's root, one at a time,
   each stopped after 1800 seconds by default. It prints one row per check and exits 0 only when

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - unreleased
+
+- `--json` on `task head`, `spec tasks`, `spec status <ID>` and `validation <project> [repo]`
+  prints the same fields as one JSON value, as `doctor --json` does, so an agent never misreads a
+  field. `docs/contract.md` section 7 gives each shape.
+
 ## 0.5.0 - 2026-11-08
 
 The plugin's skills and agents are named `odsb:<name>`, so the agent panel shows which agent runs.

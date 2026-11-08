@@ -49,6 +49,7 @@ setup:    scaffold vault [DIR]
           pointer | pointer set <DIR> [--replace]
           link [--check | --apply] | doctor [project] [--json] [--fix]
           snapshot [name] | compare [name] | session-check
+json:     task head, spec tasks, spec status <ID> and validation <project> [repo] take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
             6 already exists
 EOF
@@ -161,6 +162,20 @@ function dq(s,   i, c, out, n) {
     c = substr(s, i, 1)
     if (c == "\\" || c == "\"") out = out "\\"
     out = out c
+  }
+  return "\"" out "\""
+}
+function jstr(s,   i, c, out, n) {
+  if (!_jdone) {
+    for (i = 1; i < 32; i++) _jctl[sprintf("%c", i)] = sprintf("\\u%04x", i)
+    _jctl["\n"] = "\\n"; _jctl["\r"] = "\\r"; _jctl["\t"] = "\\t"; _jdone = 1
+  }
+  out = ""; n = length(s)
+  for (i = 1; i <= n; i++) {
+    c = substr(s, i, 1)
+    if (c == "\\" || c == "\"") out = out "\\" c
+    else if (c in _jctl) out = out _jctl[c]
+    else out = out c
   }
   return "\"" out "\""
 }

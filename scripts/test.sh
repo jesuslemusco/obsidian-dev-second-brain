@@ -756,6 +756,56 @@ sb task head EX-404
 rc_is "task head: unknown task gives exit 1" 1
 sb task head
 rc_is "task head: no id gives exit 5" 5
+
+# ---------------------------------------------------------------- task head --json
+# json_ok <desc>: OUT parses as one JSON value. json_is <desc> <python> <wanted>: the python, run
+# with the parsed value as d, prints the wanted text. Both skip when python3 is not installed.
+HAS_PY=0
+command -v python3 >/dev/null 2>&1 && HAS_PY=1
+NL=$'\n'
+json_ok() {
+  if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
+  if printf '%s\n' "$OUT" | python3 -I -c 'import json,sys; json.load(sys.stdin)' \
+    2>"$tmp/pyerr"; then
+    pass "$1"
+  else
+    fail "$1" "$(cat "$tmp/pyerr")" "in: $OUT"
+  fi
+}
+json_is() {
+  if [ "$HAS_PY" -eq 0 ]; then printf 'skip  %s: python3 is not installed\n' "$1"; return 0; fi
+  # A Python built for Windows ends the lines it prints with CRLF; tr takes that away.
+  is "$1" "$(printf '%s\n' "$OUT" | python3 -I -c "import json,sys
+d = json.load(sys.stdin)
+$2" 2>&1 | tr -d '\r')" "$3"
+}
+# The task head lines rebuilt from its JSON.
+HEAD_PY='for k, v in d.items():
+    if isinstance(v, list): v = (", " if k == "topics" else ",").join(v) or "-"
+    print(k + ": " + v)'
+sb task head EX-1
+text="$OUT"
+sb task head EX-1 --json
+rc_is "task head --json: exit 0" 0
+json_ok "task head --json: parses as JSON"
+json_is "task head --json: the same fields as the text, in its order" "$HEAD_PY" "$text"
+out_has "task head --json: one object, a key per line" \
+  "{${NL}  \"id\": \"EX-1\",${NL}  \"path\": \"$P/tasks/EX-1/README.md\","
+out_has "task head --json: quotes are escaped" '"title": "Fix: totals \"rounded\" twice"'
+out_has "task head --json: topics is an array" '"topics": ["billing/invoices"]'
+out_has "task head --json: no environment set is an empty array" '"envs": []'
+out_has "task head --json: a missing value is a dash" '"epic": "-"'
+is "task head --json: the object closes on the last line" "$(printf '%s\n' "$OUT" | tail -1)" "}"
+sb task head EX-7 --json
+out_has "task head --json: each environment is an item" \
+  '"envs": ["dev:EX-7:done", "qa:EX-70:planned"]'
+sb task head EX-7
+text="$OUT"
+sb task head --json EX-7
+json_is "task head --json: the flag may come first" "$HEAD_PY" "$text"
+sb task head EX-404 --json
+rc_is "task head --json: unknown task gives exit 1" 1
+out_is "task head --json: and prints nothing" ""
 sb task bogus
 rc_is "task: unknown subcommand gives exit 5" 5
 
@@ -1843,12 +1893,19 @@ line_is "task new --subproject --envs: the subproject's first environment" "$TM"
 is "task new --subproject: the key sits after epic" "$(($(lineno "$TM" 'subproject:') - $(lineno "$TM" 'epic:')))" "1"
 sb task head MU-1
 out_has "task head: shows the subproject" "subproject: infra"
+text="$OUT"
+sb task head MU-1 --json
+out_has "task head --json: the subproject key, before topics" \
+  ",${NL}  \"subproject\": \"infra\",${NL}  \"topics\": "
+json_is "task head --json: with a subproject, the same fields as the text" "$HEAD_PY" "$text"
 sb task new MU-2 --project Multi --subproject nope
 rc_is "task new --subproject: an unknown subproject gives exit 1" 1
 absent "task new --subproject: and writes no README" "$vault/$M/tasks/MU-2/README.md"
 sb task new MU-2 --project Multi --title "App work"
 sb task head MU-2
 out_lacks "task head: no subproject line on a task with none" "subproject:"
+sb task head MU-2 --json
+out_lacks "task head --json: no subproject key on a task with none" '"subproject"'
 sb task set MU-2 subproject=Tools
 out_is "task set subproject: written as the note is named" "subproject: tools"
 is "task set subproject: the key sits after epic" "$(($(lineno "$vault/$M/tasks/MU-2/README.md" 'subproject:') - $(lineno "$vault/$M/tasks/MU-2/README.md" 'epic:')))" "1"
@@ -2626,6 +2683,99 @@ file_has "spec skill: shows the Build section when spec-lead stops" "$here/skill
 file_has "spec tasks template: every task is built first, then reviewed" "$here/templates/spec-tasks.md.tmpl" "All tasks are built, then reviewed, in order."
 file_has "spec phases: written for the build spec-lead runs" "$here/skills/spec/phases.md" "## How the build runs"
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
+
+# ---------------------------------------------------------------- spec and validation --json
+sb help
+out_has "help: names the commands that take --json" \
+  "json:     task head, spec tasks, spec status <ID> and validation <project> [repo] take --json"
+sb task new SP-9 --project Specs --title "Json story"
+sb task set SP-9 delivery=spec
+sb spec tasks SP-9 --json
+rc_is "spec tasks --json: no tasks.md exits 1" 1
+out_is "spec tasks --json: and prints nothing" ""
+sb spec new SP-9
+L9="$vault/$S/tasks/SP-9/README.md"
+printf '%s\n' '# SP-9 - Tasks' '' '- [ ] T1 - Say "hi" \ there' '  - Requirements: R1' \
+  '- [x] T2 - Two - parts' '  - Requirements: R1' '- [ ] T3' >"$vault/$S/tasks/SP-9/spec/tasks.md"
+sb spec tasks SP-9 --json
+rc_is "spec tasks --json: exit 0" 0
+json_ok "spec tasks --json: parses as JSON"
+out_is "spec tasks --json: one object per row, quotes and backslashes escaped" '[
+  {"id": "T1", "state": "todo", "title": "Say \"hi\" \\ there"},
+  {"id": "T2", "state": "done", "title": "Two - parts"},
+  {"id": "T3", "state": "todo", "title": "-"}
+]'
+sb spec tasks SP-9
+text="$OUT"
+sb spec tasks SP-9 --json
+json_is "spec tasks --json: the same fields as the text" \
+  'for r in d: print("\t".join([r["id"], r["state"], r["title"]]))' "$text"
+sb spec status SP-9 --json
+rc_is "spec status --json: a story with no build exits 0" 0
+out_is "spec status --json: and prints an empty array" "[]"
+sb spec status SP-9 T1 built --commit abc1234
+sb spec status SP-9 T1 in-review --commit def5678
+sb spec issue SP-9 T1 'Say "hi" \ there.' --fix "Tab${TAB}here."
+sb spec status SP-9 T2 passed --commit 0a1b2c3
+sb spec status SP-9 T3 todo --commit 1234abc
+sb spec status SP-9 --json
+rc_is "spec status --json: exit 0" 0
+json_ok "spec status --json: parses as JSON"
+row1='{"id": "T1", "state": "in-review", "commits": ["abc1234", "def5678"], '
+row1="$row1"'"title": "Say \"hi\" \\ there", '
+row1="$row1"'"issues": ["Issue 2026-10-08: Say \"hi\" \\ there. Fix: Tab\there."]}'
+out_is "spec status --json: one object per row, commits and issues as arrays" "[
+  $row1,
+  "'{"id": "T2", "state": "passed", "commits": ["0a1b2c3"], "title": "Two - parts", "issues": []},
+  {"id": "T3", "state": "todo", "commits": ["1234abc"], "title": "-", "issues": []}
+]'
+sb spec status SP-9
+text="$OUT"
+sb spec status SP-9 --json
+json_is "spec status --json: the same fields as the text" 'for r in d:
+    c = ", ".join("`" + h + "`" for h in r["commits"]) or "-"
+    print("- %s - %s - commits %s - %s" % (r["id"], r["state"], c, r["title"]))
+    for i in r["issues"]: print("  - " + i)' "$text"
+edit "$L9" 's/^- T2 - passed - commits `0a1b2c3` - /- T2 - passed - commits - - /'
+sb spec status SP-9 --json
+out_has "spec status --json: a row with no commit, its title holding a dash" \
+  '{"id": "T2", "state": "passed", "commits": [], "title": "Two - parts", "issues": []}'
+sb spec status SP-9 T1 built --json
+rc_is "spec status --json: a task and a state exit 5" 5
+file_has "spec status --json: and nothing is written" "$L9" \
+  '- T1 - in-review - commits `abc1234`, `def5678` - '
+sb spec SP-9 --json
+rc_is "spec --json: the spec form takes no --json, exit 5" 5
+sb spec tick SP-9 T1 --json
+rc_is "spec tick --json: exit 5" 5
+sb validation Specs
+text="$OUT"
+sb validation Specs --json
+rc_is "validation --json: exit 0" 0
+json_ok "validation --json: parses as JSON"
+json_is "validation --json: the same fields as the text" \
+  'for r in d: print("\t".join([r["name"], r["home"], r["path"], r["state"]]))' "$text"
+vrow="{\"name\": \"spec-app\", \"home\": \"vault\", "
+vrow="$vrow\"path\": \"$S/claude/validation.md\", \"state\": \"ok\"}"
+out_has "validation --json: one object per repo" "$vrow"
+sb validation RepoHome --json
+rc_is "validation --json: a project with no repo exits 0" 0
+out_is "validation --json: and prints an empty array" "[]"
+sb validation Specs spec-app
+text="$OUT"
+sb validation Specs spec-app --json
+rc_is "validation <repo> --json: exit 0" 0
+json_ok "validation <repo> --json: parses as JSON"
+json_is "validation <repo> --json: the same fields as the text" 'print("path: " + d["path"])
+if d["body"]: print(d["body"])' "$text"
+out_has "validation <repo> --json: one object, the path first" \
+  "{${NL}  \"path\": \"$S/claude/validation.md\",${NL}  \"body\": \""
+out_has "validation <repo> --json: the body's lines are escaped" '\n\n### Checks'
+sb validation Specs nope --json
+rc_is "validation <repo> --json: an unknown repo exits 1" 1
+out_is "validation <repo> --json: and prints nothing" ""
+sb validation new Specs spec-app --json
+rc_is "validation new --json: exit 5" 5
 
 # ---------------------------------------------------------------- README: each rule it points to has a home
 RM="$here/README.md"

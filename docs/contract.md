@@ -168,6 +168,10 @@ tags:
   requirements, design and tasks that the owner approves first.
 - A subproject's note and a task may set `delivery` too. The most specific value wins: the
   task's, then its subproject's, then the profile's.
+- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`
+  skill fall back to.
+- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and writes
+  the story's own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.
 - `spec_home` is where a story's spec lives. `vault`: `spec/` next to the task's `README.md`.
   `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
 - The story's repo is the first repo of its subproject, else the project's first repo, in the

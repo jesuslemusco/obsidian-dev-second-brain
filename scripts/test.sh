@@ -368,7 +368,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 6"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 7"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -458,8 +458,10 @@ line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `f
 line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
-line_is "profile: what spec delivery builds a story from" "$PF" '- `delivery:` above is `direct | spec`. `spec` builds each story from a spec of requirements, design'
-line_is "profile: a spec is approved before code, and a subproject or story may set its own" "$PF" '  and tasks, approved before any code. A subproject or a story may set its own.'
+file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \
+  '- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back'
+line_is "profile: delivery points to the contract" "$PF" \
+  "  as \`### Profile frontmatter\` in the plugin's \`docs/contract.md\` says."
 line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
 line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
 line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
@@ -2343,7 +2345,10 @@ sb scaffold project Specs --path "$S" --keys SP
 err_has "validation: a second scaffold leaves the note alone" "exists: $S/claude/validation.md"
 VS="$here/skills/vault-setup/SKILL.md"
 file_has "vault-setup: lists the validation mode" "$VS" '| validation <project> | link]'
-file_has "vault-setup: asks for delivery" "$VS" '| `delivery` | whether stories are built from an approved spec'
+file_has "vault-setup: asks for delivery, a fallback" "$VS" \
+  '| `delivery` | what a story with no `delivery` of its own falls back to, as `### Profile'
+file_has "vault-setup subproject: delivery is a fallback" "$here/skills/vault-setup/subproject.md" \
+  '- `delivery` is a fallback, as `### Profile frontmatter` in `docs/contract.md` says.'
 file_has "vault-setup: asks for spec_home" "$VS" '| `spec_home` | with `spec`:'
 file_has "vault-setup: asks for validation_home" "$VS" '| `validation_home` | whether `validation.md`'
 file_has "vault-setup: project mode ends with the validation steps" "$VS" "10. Write each repo's validation steps as"
@@ -2491,6 +2496,12 @@ is "spec skill: the description is under 200 characters" "$((${#sk_desc} < 200))
 case "$sk_desc" in *"spec-driven"*) pass "spec skill: the description names spec-driven" ;; *) fail "spec skill: the description names spec-driven" "in: $sk_desc" ;; esac
 file_has "spec skill: carries the conventions pointer" "$SK" 'Conventions: before writing notes, run `second-brain conventions`'
 file_has "spec skill: its first tool call is the context" "$SK" 'Your first tool call is `second-brain context`'
+file_has "spec skill: an inherited spec becomes the story's own delivery" "$SK" \
+  '5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the'
+file_has "spec skill: so story-tracker never weighs it" "$SK" \
+  'subproject or the profile becomes the story'"'"'s own, so story-tracker never weighs it.'
+file_lacks "README: no longer says the profile decides a spec" "$here/README.md" \
+  'or set `delivery: spec` in'
 for ph in requirements design tasks; do
   file_has "spec skill: the $ph approval note" "$SK" "Spec: $ph approved by the owner."
 done
@@ -2584,7 +2595,62 @@ file_has "spec skill: reads only what the session lacks" "$here/skills/spec/SKIL
 file_has "spec skill: asks what the story and the code do not settle" "$here/skills/spec/SKILL.md" "what the story and the code do not settle, before you"
 file_has "spec phases: never the whole repo" "$here/skills/spec/phases.md" "and what they call. Not the whole"
 if [ -e "$here/agents/spec-writer.md" ]; then fail "spec-writer: the agent is gone"; else pass "spec-writer: the agent is gone"; fi
-file_has "story-tracker: offers the spec skill" "$here/skills/story-tracker/SKILL.md" '`delivery: spec`: say the story is built from a spec and offer'
+ST="$here/skills/story-tracker/SKILL.md"
+file_has "story-tracker: weighs a story when work starts" "$ST" \
+  'Weigh how a story is built when work starts on it: in start mode once the story exists, or on a'
+file_has "story-tracker: its own delivery is the key in its frontmatter" "$ST" \
+  "A story has its own \`delivery\` when its README's frontmatter sets the key to \`direct\` or"
+file_has "story-tracker: the spec command does not tell where delivery comes from" "$ST" \
+  '`second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the'
+file_lacks "story-tracker: no longer reads the delivery that holds" "$ST" 'Read its `delivery` line'
+file_has "story-tracker: a story with its own delivery is never weighed again" "$ST" \
+  'A story with its own `delivery` is never weighed again.'
+file_has "story-tracker: its own spec offers the spec skill" "$ST" \
+  '`spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.'
+file_has "story-tracker: a delivery the owner names is written, not weighed" "$ST" \
+  'The owner says how to build it, such as "spec-driven": write it with'
+file_has "story-tracker: an approved spec note makes a story spec" "$ST" \
+  '- A story with a `Spec: <phase> approved by the owner.` status note is `spec`: its spec was'
+file_has "story-tracker: that story's spec key is written" "$ST" \
+  '  - Write `second-brain task set <ID> delivery=spec`, then go on as for a story with its own'
+file_has "story-tracker create: start mode reaches the weighing" "$STC" \
+  '6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.'
+file_has "story-tracker: a spec helps a big, unclear or unattended story" "$ST" \
+  'Spec-driven: the story is big, unclear, or meant to run without the owner.'
+file_has "story-tracker: gives the signs of a spec" "$ST" \
+  'Signs: many files or repos, open questions in the criteria, a long unattended build.'
+file_has "story-tracker: a simple story is set direct with no question" "$ST" \
+  'Weighed direct: run `second-brain task set <ID> delivery=direct` and ask nothing. Say so in one'
+line_is "story-tracker: it says so in one line, with the reason" "$ST" '  line, with the reason.'
+file_has "story-tracker: a spec story is described in three lines" "$ST" \
+  'describe the story in at most three lines: what it changes, what it'
+file_has "story-tracker: the description names what it touches and the criteria" "$ST" \
+  'touches and how many criteria it has. Then say why a spec helps.'
+file_has "story-tracker: the owner is asked" "$ST" \
+  'Ask the owner with AskUserQuestion: `spec` or `direct`.'
+file_has "story-tracker: the answer is written" "$ST" \
+  'Write the answer with `second-brain task set <ID> delivery=<answer>`.'
+line_is "story-tracker: an answered spec offers the spec skill" "$ST" \
+  '  - `spec`: offer `/odsb:spec <ID>`.'
+line_is "story-tracker: direct goes on" "$ST" '  - `direct`: go on here.'
+file_has "conventions: a task's delivery is set when work starts" \
+  "$here/templates/obsidian-conventions.md.tmpl" \
+  '  - `delivery` - `spec` or `direct`, how the story is built, set when work starts on it.'
+file_lacks "guide: the profile's delivery is no default" "$here/docs/guide.md" \
+  "A project's default, and where"
+file_has "contract: an inherited delivery is what spec falls back to" "$here/docs/contract.md" \
+  '- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`'
+file_has "contract: story-tracker weighs a story with no delivery of its own" \
+  "$here/docs/contract.md" \
+  '- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and'
+file_has "contract: points to the weighing in story-tracker" "$here/docs/contract.md" \
+  'the story'"'"'s own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.'
+st_desc="$(sed -n 's/^description: //p' "$ST")"
+st_check="story-tracker: the description leaves spec requests to the spec skill"
+case "$st_desc" in
+  *[Ss][Pp][Ee][Cc]*) fail "$st_check" "in: $st_desc" ;;
+  *) pass "$st_check" ;;
+esac
 file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
 file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
 
@@ -2871,6 +2937,10 @@ for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Vali
   file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
   line_is "README: $pf has the heading $ph" "$here/$pf" "$ph"
 done
+file_has "README: points to the guide's Spec-driven delivery" "$RM" \
+  '`## Spec-driven delivery` in `docs/guide.md`'
+line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
+  "## Spec-driven delivery"
 for pf in agents/spec-lead.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
@@ -2893,6 +2963,7 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
   'skills/story-tracker/create.md|## 3. Create the story' 'skills/story-tracker/status.md|## Render' \
   'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/story-tracker/SKILL.md|## Spec-driven stories' \
   'skills/spec/SKILL.md|## Step 2 - One phase at a time' 'skills/spec/SKILL.md|## Step 3 - Ready to build' \
   'skills/spec/phases.md|## The chat' 'skills/spec/phases.md|## The spec check'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"

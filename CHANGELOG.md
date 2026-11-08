@@ -16,6 +16,17 @@
   `- Check: <command or step> - expected: <what it prints or shows>`. The tasks template shows it.
 - Before you approve the design, and again the tasks, the new `spec-checker` agent reads the spec
   files alone and lists what it could not build from them. You close each gap before you approve.
+- `story-tracker` weighs a story with no `delivery` of its own when work starts on it. A simple
+  one is set `direct` with no question. For one that needs a spec it asks the owner, and on
+  `spec` offers `/odsb:spec <ID>`.
+- A `delivery` from the profile or a subproject is now a fallback, as `### Profile frontmatter` in
+  `docs/contract.md` says. The `spec` skill writes `delivery=spec` on a story that inherits it.
+- The conventions note is at version 7: a task's `delivery` is set when work starts on it. The
+  doctor's `conventions` check warns about an older note. Its fix is under `### conventions` in
+  `skills/vault-doctor/checks.md`.
+- Upgrading: a story built from an inherited `spec` before 0.6.0 has no `delivery` of its own.
+  `story-tracker` takes its `Spec: <phase> approved by the owner.` note as `spec` and writes the
+  key. To set it ahead, run `second-brain task set <ID> delivery=spec`.
 
 ## 0.5.0 - 2026-11-08
 

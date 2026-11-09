@@ -6,9 +6,9 @@
   with what it does and when to use it.
 - Its new examples show what you type and what Claude does: a ticket, a standup, a spec build and
   a vault check.
-- Its overview says what each feature does in place, and describes the spec build: test-first
-  tasks, a review of each, the fix rounds and the JSON verdict.
-- The README's update steps are four lines. What to do when an update does not take, and
+- Its overview says what each feature does in place. Its `/odsb:spec` section describes the build:
+  test-first tasks, a review of each, the capped fix rounds and the JSON verdict.
+- The README's update steps are four steps. What to do when an update does not take, and
   auto-update, moved to `## Updating` in `docs/guide.md`. The note on an early 0.2.0 copy is gone.
 - `## What you get` in `docs/guide.md` links to the README's commands and agents, in place of its
   own table.

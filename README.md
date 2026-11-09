@@ -13,13 +13,13 @@ It can also build a story from a spec you approve, one task at a time, each test
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
 - **Spec-driven builds.** You approve a story's requirements, design and tasks. Claude then builds
-  each task test-first and has it reviewed before the next one starts.
-- **Validation.** Each repo keeps the commands that check it, and the steps to try it as a user
-  would, in a `validation.md`.
+  the tasks one at a time, test-first, and has each reviewed before the next one starts.
+- **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
+  in a `validation.md`, in the vault or in the repo.
 - **Several repos.** A project's repos can split into subprojects, each with its own branches and
   docs, under one ticket key and one board.
-- **A health check.** The doctor checks the vault, its projects and the plugin's links, and fixes
-  what it safely can.
+- **A health check.** The doctor checks the vault, its projects and their registration in Claude
+  Code, and fixes what it safely can.
 
 The plugin keeps no project data and needs no credentials: your notes stay in your vault.
 
@@ -49,8 +49,9 @@ Other ways to install are under `## Other ways to install` in `docs/guide.md`.
 
 ## Commands
 
-Claude loads a skill when your request matches it, so you seldom type one. Each also runs by
-name, as `/odsb:<skill>`. `vault-setup` runs only by name.
+Claude loads a skill when your request matches it, so you seldom type one. You can also type its
+name, as in the headings below. Which requests load which skill is under
+`## What to say` in `docs/guide.md`.
 
 ### `/odsb:story-tracker`
 
@@ -61,7 +62,7 @@ Drafts, starts, updates and recalls tickets, and gives a standup.
   criteria, checked against the code.
 - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
   current.
-- When work starts, it weighs how the story is built: direct, or from a spec when one helps.
+- When work starts, it builds a simple story direct, and asks you when a spec would help.
 
 ```
 Where does EX-2 stand?
@@ -84,24 +85,17 @@ Open a new sprint for the Example project.
 
 Writes a story's spec with you, then builds and reviews it in your session.
 
-- The spec has three phases: requirements, design and tasks. You approve each before the next.
-- Claude asks one question at a time and shows each draft in short chunks.
-- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
-  lists what it could not build from it.
-- Then Claude builds the tasks in order. `implementer` writes a failing test for the task, makes
-  it pass, runs the task's checks and commits.
-- A fresh `reviewer` then grades the task's diff against each of its checks, with evidence. It
-  ends with a JSON verdict, and a pass with an open finding is not allowed.
-- A failed task goes back for a fix: three rounds on the same `implementer`, then two on a fresh
-  one on a stronger model. A sixth failed review stops the build.
-- Small, alike tasks can form a bundle: one `implementer` run and one review, with a verdict per
-  task.
-- Claude stops to ask you only for a short list, such as a destructive action, a push or a task
+- Use it for a story that is big or unclear, or one you want built with few questions.
+- You approve its requirements, then its design, then its tasks. Before you approve the design,
+  and again the tasks, `spec-checker` reads the spec alone and lists what it could not build.
+- Then Claude builds the tasks in order. `implementer` builds each one test-first when it has
+  something to test, and a fresh `reviewer` reviews it right away. The review grades each check
+  and ends with a JSON verdict.
+- A failed task goes back for a fix, in a capped number of rounds.
+- Once the build has started, Claude asks you only for a short list, such as a push or a task
   that is stuck. It settles any other question itself and records the ruling in the story.
-- Progress is kept in `build.json` next to the story, so a new session picks the build up where
-  it stopped.
-- When every task passes, Claude runs the build-wide checks, tries the branch as a user would and
-  reviews the whole branch. Then it offers to merge it, open a pull request or keep it.
+- Progress is kept in `build.json`, so a new session picks the build up where it stopped.
+- At the end, Claude offers to merge the branch, open a pull request or keep it.
 
 The whole flow is under `## Spec-driven delivery` in `docs/guide.md`, and the build's steps are
 in `skills/spec/build.md`.
@@ -121,8 +115,8 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
   what is missing.
 - `repo <project>`: add a repository to a project.
 - `subproject <project>`: split a project's repos into subprojects.
-- `validation <project>`: draft a repo's `validation.md` for you to confirm. Its shape is under
-  `### Validation` in `docs/contract.md`.
+- `validation <project>`: draft each repo's validation steps for you to confirm. Their shape is
+  under `### Validation` in `docs/contract.md`.
 - `link`: link the skills and agents kept in your vault into Claude Code.
 
 ```
@@ -132,7 +126,9 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
 
 ### `/odsb:vault-doctor`
 
-Checks the vault, its projects and the plugin's links against the standard.
+Checks the vault, its projects and their registration in Claude Code against the standard.
+
+- Use it after you set up or update the plugin, or when a note or link looks wrong.
 
 - `check [project]`, the default: one row per check, `ok`, `warn` or `fail`, with the fix. What
   each check finds is in `skills/vault-doctor/checks.md`.
@@ -148,14 +144,14 @@ Check my vault for problems.
 
 ## Agents
 
-The skills start these agents, and you can ask for one by name.
+Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
-| `reviewer` | Runs the repo's checks and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`, after each task and at the end of a build. |
+| `reviewer` | Runs the repo's checks on the branch before the first task, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: before the first task, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
 
 ## Examples
@@ -166,10 +162,10 @@ The skills start these agents, and you can ask for one by name.
 Start EX-123: the invoice export drops the tax column.
 ```
 
-Claude finds no story for EX-123 and checks the repo's branch. It writes
-`<project>/tasks/EX-123/README.md` with a summary, a description and up to four acceptance
-criteria, checked against the code. It asks you for anything it cannot tell. Then it says whether
-the story is built direct or from a spec.
+Claude finds no story for EX-123 and checks the repo's branch. It asks you for anything it cannot
+tell. Then it writes `<project>/tasks/EX-123/README.md` with a summary, a description and up to
+four acceptance criteria, checked against the code. A simple story is built direct. For one a
+spec would help, Claude asks you.
 
 ### Ask where things stand
 
@@ -184,7 +180,6 @@ Topics: billing/invoices
 Status: in-progress
 Branch: feature/EX-123-tax-column
 Current step: Review the fix on the branch
-----------------------------------------
 1 active, 0 done/abandoned.
 ```
 
@@ -212,13 +207,17 @@ T2 goes back to its `implementer` with the issue. T3 starts once T2 passes.
 Check my vault for problems.
 ```
 
+Claude runs `second-brain doctor`, which prints one row per check, such as:
+
 ```
-ok | links | vault | 0 | - | -
+ok | pointer | vault | 0 | - | -
 ok | conventions | vault | 0 | - | -
+ok | links | vault | 0 | - | -
 warn | descriptions | vault | 1 | example-skill:227 | give each one a description of one sentence under 200 characters
 ```
 
-Claude explains each `warn` and `fail` row, and `/odsb:vault-doctor fix` repairs what it can.
+Claude shows you the rows that are not `ok`, the `fail` rows first, and counts the `ok` ones. It
+says what each one means and how to fix it. `/odsb:vault-doctor fix` repairs what it can.
 
 ## How it works
 
@@ -235,7 +234,8 @@ Claude explains each `warn` and `fail` row, and `/odsb:vault-doctor fix` repairs
 
 ## Update
 
-1. Refresh the marketplace: `/plugin marketplace update second-brain` in Claude Code.
+1. Refresh the marketplace: `claude plugin marketplace update second-brain` in your shell, or
+   `/plugin marketplace update second-brain` in Claude Code.
 2. Update the plugin: `claude plugin update obsidian-dev-second-brain@second-brain` in your shell.
    Or run `/plugin` in Claude Code, open the Installed tab, pick the plugin and choose Update now.
 3. Restart Claude Code, so the new hook and `second-brain` command load.
@@ -263,8 +263,8 @@ A project's own `<project>/claude/pull-request.md` wins over it.
 
 ## More
 
-- [docs/guide.md](docs/guide.md): what to say to load each skill, the vault layout, spec-driven
-  delivery, Windows, the tests and releases.
+- [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,
+  spec-driven delivery, Windows, the tests and releases.
 - [docs/contract.md](docs/contract.md): every helper command and note format.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

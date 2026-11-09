@@ -3501,7 +3501,7 @@ rc_is "validation new --json: exit 5" 5
 RM="$here/README.md"
 line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
 for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Validation' \
-  'skills/vault-doctor/SKILL.md|## fix' 'docs/guide.md|## Other ways to install' 'docs/guide.md|## Updating' \
+  'skills/vault-doctor/SKILL.md|## fix' 'docs/guide.md|## Other ways to install' 'docs/guide.md|## Updating' 'docs/guide.md|## What to say' \
   'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
@@ -3530,9 +3530,12 @@ done
 for h in "### Start a ticket" "### Ask where things stand" "### Build a story from a spec" "### Check the vault"; do
   line_is "README: the example $h" "$RM" "$h"
 done
-file_has "README: the build is test-first" "$RM" '`implementer` writes a failing test for the task, makes'
-file_has "README: a pass with an open finding is not allowed" "$RM" 'ends with a JSON verdict, and a pass with an open finding is not allowed.'
-file_has "README: the fix rounds" "$RM" 'three rounds on the same `implementer`, then two on a fresh'
+file_has "README: the build is test-first" "$RM" '`implementer` builds each one test-first when it has'
+file_has "README: the review ends with a JSON verdict" "$RM" 'and ends with a JSON verdict.'
+file_has "README: the fix rounds are capped" "$RM" '- A failed task goes back for a fix, in a capped number of rounds.'
+file_has "README: the stop list holds once the build has started" "$RM" '- Once the build has started, Claude asks you only for a short list'
+file_has "README: the shell form of the marketplace refresh" "$RM" '`claude plugin marketplace update second-brain` in your shell'
+file_has "README: the reviewer row names the baseline" "$RM" 'on the branch before the first task'
 file_lacks "README: no note on an early 0.2.0 copy" "$RM" 'An early copy of 0.2.0'
 file_lacks "README: no feature bullet ends in a pointer" "$RM" 'runs none, as `### Profile frontmatter`'
 line_is "guide: has ## Updating" "$here/docs/guide.md" "## Updating"

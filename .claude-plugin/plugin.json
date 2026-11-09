@@ -1,7 +1,7 @@
 {
   "name": "odsb",
   "displayName": "Obsidian Dev Second Brain",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Stories, sprints and project docs kept in an Obsidian vault, with a health check.",
   "author": { "name": "Jesus Lemus Leal" },
   "license": "MIT",

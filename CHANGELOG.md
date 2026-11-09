@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 - unreleased
+## 0.8.0 - 2026-11-08
 
 - The README has a quick start, a section for each `/odsb:` command and a table of the agents, each
   with what it does and when to use it.

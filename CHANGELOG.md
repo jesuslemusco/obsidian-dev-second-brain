@@ -27,7 +27,7 @@
   `title` and `issues`.
 - Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
   The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
-  README.
+  README, whose line endings it keeps, on Windows too.
 - The skill shows you `spec status <ID>` after each task's review, when the build stops or
   finishes, and when a session resumes a build. The build started, stopped and why, and
   finished, and each ruling, stay in the README as status notes.

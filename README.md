@@ -49,8 +49,8 @@ Other ways to install are under `## Other ways to install` in `docs/guide.md`.
 
 ## Commands
 
-Claude loads a skill when your request matches it, so you seldom type one. You can also type its
-name, as in the headings below. Which requests load which skill is under
+Claude loads most skills when your request matches one, so you seldom type them. You can also
+type a skill's name, as in the headings below. Which requests load which skill is under
 `## What to say` in `docs/guide.md`.
 
 ### `/odsb:story-tracker`
@@ -86,11 +86,13 @@ Open a new sprint for the Example project.
 Writes a story's spec with you, then builds and reviews it in your session.
 
 - Use it for a story that is big or unclear, or one you want built with few questions.
-- You approve its requirements, then its design, then its tasks. Before you approve the design,
-  and again the tasks, `spec-checker` reads the spec alone and lists what it could not build.
+- You approve its requirements, then its design, then its tasks.
+- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
+  lists what it could not build.
 - Then Claude builds the tasks in order. `implementer` builds each one test-first when it has
-  something to test, and a fresh `reviewer` reviews it right away. The review grades each check
-  and ends with a JSON verdict.
+  something to test.
+- A fresh `reviewer` reviews each task right away. It grades each check and ends with a JSON
+  verdict.
 - A failed task goes back for a fix, in a capped number of rounds.
 - Once the build has started, Claude asks you only for a short list, such as a push or a task
   that is stuck. It settles any other question itself and records the ruling in the story.
@@ -109,6 +111,8 @@ Implement EX-2 spec-driven, starting with its requirements.
 
 Sets up the vault and its projects, and links your own skills and agents into Claude Code.
 
+- Use it to set up the vault, add a project or a repo, or link your own skills and agents.
+- It runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
 - `init`: set up a vault in a folder, and link it to Claude Code.
 - `project <name>`: add a project, with its profile, hubs and task board.
 - `adopt <path>`: bring a folder of notes you already have up to the standard. It writes only
@@ -129,7 +133,6 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
 Checks the vault, its projects and their registration in Claude Code against the standard.
 
 - Use it after you set up or update the plugin, or when a note or link looks wrong.
-
 - `check [project]`, the default: one row per check, `ok`, `warn` or `fail`, with the fix. What
   each check finds is in `skills/vault-doctor/checks.md`.
 - `fix`: repairs what is safe, and proposes the rest one check at a time. What it changes without
@@ -151,7 +154,7 @@ Most are started by a skill, and you can ask for any of them by name.
 | `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
-| `reviewer` | Runs the repo's checks on the branch before the first task, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: before the first task, after each task and at the end of a build. |
+| `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
 
 ## Examples
@@ -186,7 +189,7 @@ Current step: Review the fix on the branch
 ### Build a story from a spec
 
 ```
-/odsb:spec EX-2
+/odsb:spec EX-123
 ```
 
 Claude writes the requirements with you and waits for your approval, then the design, then the

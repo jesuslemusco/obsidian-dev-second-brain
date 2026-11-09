@@ -4057,7 +4057,9 @@ file_has "reviewer: logs each finding on its own task" "$RV" 'and log each findi
 file_has "reviewer: one verdict per task of a bundle" "$RV" '3. A bundle: one block, with one entry per task of its `Tasks:` line, in order. Each entry is the'
 for a in implementer reviewer; do
   d="$(sed -n 's/^description: //p' "$here/agents/$a.md")"
-  is "$a: the description names a bundle, under 200 characters" "$(case "$d" in *bundle*) [ "${#d}" -lt 200 ] && echo ok ;; esac)" "ok"
+  ok=""
+  case "$d" in *bundle*) [ "${#d}" -lt 200 ] && ok="ok" ;; esac
+  is "$a: the description names a bundle, under 200 characters" "$ok" "ok"
 done
 file_has "contract: a task item may name its bundle" "$CT" '- A task item may add `- Bundle: <n>`, a whole number. The tasks with the same number are one'
 file_has "contract: spec tasks prints the bundle" "$CT" 'title (`-` when none), bundle (`-` when none).'

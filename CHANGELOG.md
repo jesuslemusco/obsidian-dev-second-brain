@@ -5,6 +5,7 @@
 - The vault-doctor skill's `validation` row says it also warns on a placeholder an earlier
   validation template had, as the doctor has done since 0.6.0.
 - The 0.6.0 note on the Windows doctor tests gives their time as 25 minutes, not 17.
+- `scripts/test.sh` checks the agents' descriptions in a form the bash 3.2 of macOS can parse.
 - The `spec` skill runs the build in your session. It launches `implementer` and `reviewer`
   itself with the Agent tool, one at a time, and takes each report from the agent's result, so
   no report is relayed by hand.

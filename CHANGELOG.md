@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0 - unreleased
+
+- The README has a quick start, a section for each `/odsb:` command and a table of the agents, each
+  with what it does and when to use it.
+- Its new examples show what you type and what Claude does: a ticket, a standup, a spec build and
+  a vault check.
+- Its overview says what each feature does in place, and describes the spec build: test-first
+  tasks, a review of each, the fix rounds and the JSON verdict.
+- The README's update steps are four lines. What to do when an update does not take, and
+  auto-update, moved to `## Updating` in `docs/guide.md`. The note on an early 0.2.0 copy is gone.
+- `## What you get` in `docs/guide.md` links to the README's commands and agents, in place of its
+  own table.
+
 ## 0.7.0 - 2026-11-08
 
 - The vault-doctor skill's `validation` row says it also warns on a placeholder an earlier

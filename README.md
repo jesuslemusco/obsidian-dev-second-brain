@@ -2,29 +2,223 @@
 
 A Claude Code plugin that keeps a developer's work in an [Obsidian](https://obsidian.md) vault:
 tickets, sprints and project docs, as plain markdown notes that Claude reads and updates for you.
+It can also build a story from a spec you approve, one task at a time, each tested and reviewed.
 
-## What it is for
+## Overview
 
-- **Tickets.** Ask Claude to draft a ticket's text, start one, update it, or say where things
-  stand. Each ticket is one note, `<project>/tasks/<ID>/README.md`.
-- **Sprints.** Ask Claude to open a sprint, plan it, show its status, or close it and carry work
-  over. A project whose profile sets `uses_sprints: false` runs none, as
-  `### Profile frontmatter` in `docs/contract.md` says.
-- **Docs.** A ticket that reaches production starts `docs-keeper`, which brings the project's
-  docs in step with its code. The hand-off is under
-  `## Edit an existing story` in `skills/story-tracker/SKILL.md`.
-- **Spec-driven stories.** A story is built from a spec when you ask, or when Claude thinks it
-  needs one and you agree, as `## Spec-driven delivery` in `docs/guide.md` says. You approve its
-  requirements, then its design, then its tasks. Then the `spec` skill builds and reviews each
-  task in your session, as `skills/spec/build.md` says.
-- **Validation.** Each repo's steps to run and check it are in a `validation.md`, in the vault or
-  in the repo, as `### Validation` in `docs/contract.md` says.
-  `/odsb:vault-setup validation <project>` drafts them for you to confirm.
-- **Several repos.** `/odsb:vault-setup subproject <project>` splits a
-  project's repos into subprojects, each with its own branches, docs folder and rules, under one
-  ticket key and one board.
+- **Tickets.** Claude drafts a ticket's text, starts its story, updates it and says where it
+  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`.
+- **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
+  carried over.
+- **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
+  with its code.
+- **Spec-driven builds.** You approve a story's requirements, design and tasks. Claude then builds
+  each task test-first and has it reviewed before the next one starts.
+- **Validation.** Each repo keeps the commands that check it, and the steps to try it as a user
+  would, in a `validation.md`.
+- **Several repos.** A project's repos can split into subprojects, each with its own branches and
+  docs, under one ticket key and one board.
+- **A health check.** The doctor checks the vault, its projects and the plugin's links, and fixes
+  what it safely can.
 
 The plugin keeps no project data and needs no credentials: your notes stay in your vault.
+
+## What you need
+
+- [Claude Code](https://claude.com/claude-code), version 2.1.295 or later.
+- [Obsidian](https://obsidian.md/download), version 1.9 or later, to read the vault and its task
+  boards. It need not be running.
+- macOS, Linux, or Windows with [Git for Windows](https://gitforwindows.org).
+
+## Quick start
+
+1. Install the plugin in Claude Code:
+
+   ```
+   /plugin marketplace add jesuslemusco/obsidian-dev-second-brain
+   /plugin install obsidian-dev-second-brain@second-brain
+   ```
+
+2. Open the folder you want as your vault in Obsidian.
+3. Run `/odsb:vault-setup init` and give it that folder.
+4. Run `/odsb:vault-setup project Example` to add a project.
+5. Start a ticket: `Start EX-1: add a dark mode toggle to the settings page.`
+
+To check the setup at any time, ask Claude to check your vault, or run `/odsb:vault-doctor`.
+Other ways to install are under `## Other ways to install` in `docs/guide.md`.
+
+## Commands
+
+Claude loads a skill when your request matches it, so you seldom type one. Each also runs by
+name, as `/odsb:<skill>`. `vault-setup` runs only by name.
+
+### `/odsb:story-tracker`
+
+Drafts, starts, updates and recalls tickets, and gives a standup.
+
+- Use it for any question or change on a ticket.
+- Starting a ticket writes its story: a summary, a description and up to four acceptance
+  criteria, checked against the code.
+- An update adds a dated status note, ticks the criteria that are met and keeps the branch line
+  current.
+- When work starts, it weighs how the story is built: direct, or from a spec when one helps.
+
+```
+Where does EX-2 stand?
+Update EX-2: the sort is merged, move it to in review.
+```
+
+### `/odsb:sprint`
+
+Opens, plans, shows and closes a project's sprint, and carries open work over.
+
+- Use it to start a sprint, pick its stories, see its status or close it.
+- A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md` says.
+
+```
+Open a new sprint for the Example project.
+/odsb:sprint close Example
+```
+
+### `/odsb:spec`
+
+Writes a story's spec with you, then builds and reviews it in your session.
+
+- The spec has three phases: requirements, design and tasks. You approve each before the next.
+- Claude asks one question at a time and shows each draft in short chunks.
+- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
+  lists what it could not build from it.
+- Then Claude builds the tasks in order. `implementer` writes a failing test for the task, makes
+  it pass, runs the task's checks and commits.
+- A fresh `reviewer` then grades the task's diff against each of its checks, with evidence. It
+  ends with a JSON verdict, and a pass with an open finding is not allowed.
+- A failed task goes back for a fix: three rounds on the same `implementer`, then two on a fresh
+  one on a stronger model. A sixth failed review stops the build.
+- Small, alike tasks can form a bundle: one `implementer` run and one review, with a verdict per
+  task.
+- Claude stops to ask you only for a short list, such as a destructive action, a push or a task
+  that is stuck. It settles any other question itself and records the ruling in the story.
+- Progress is kept in `build.json` next to the story, so a new session picks the build up where
+  it stopped.
+- When every task passes, Claude runs the build-wide checks, tries the branch as a user would and
+  reviews the whole branch. Then it offers to merge it, open a pull request or keep it.
+
+The whole flow is under `## Spec-driven delivery` in `docs/guide.md`, and the build's steps are
+in `skills/spec/build.md`.
+
+```
+/odsb:spec EX-2
+Implement EX-2 spec-driven, starting with its requirements.
+```
+
+### `/odsb:vault-setup`
+
+Sets up the vault and its projects, and links your own skills and agents into Claude Code.
+
+- `init`: set up a vault in a folder, and link it to Claude Code.
+- `project <name>`: add a project, with its profile, hubs and task board.
+- `adopt <path>`: bring a folder of notes you already have up to the standard. It writes only
+  what is missing.
+- `repo <project>`: add a repository to a project.
+- `subproject <project>`: split a project's repos into subprojects.
+- `validation <project>`: draft a repo's `validation.md` for you to confirm. Its shape is under
+  `### Validation` in `docs/contract.md`.
+- `link`: link the skills and agents kept in your vault into Claude Code.
+
+```
+/odsb:vault-setup project Example
+/odsb:vault-setup validation Example
+```
+
+### `/odsb:vault-doctor`
+
+Checks the vault, its projects and the plugin's links against the standard.
+
+- `check [project]`, the default: one row per check, `ok`, `warn` or `fail`, with the fix. What
+  each check finds is in `skills/vault-doctor/checks.md`.
+- `fix`: repairs what is safe, and proposes the rest one check at a time. What it changes without
+  asking is under `## fix` in `skills/vault-doctor/SKILL.md`.
+- `snapshot` and `compare`: save the vault's links, aliases and task statuses before a bulk
+  change, and compare them after it.
+
+```
+Check my vault for problems.
+/odsb:vault-doctor fix
+```
+
+## Agents
+
+The skills start these agents, and you can ask for one by name.
+
+| Agent | Does | Started by |
+|---|---|---|
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, or you. |
+| `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
+| `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
+| `reviewer` | Runs the repo's checks and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`, after each task and at the end of a build. |
+| `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
+
+## Examples
+
+### Start a ticket
+
+```
+Start EX-123: the invoice export drops the tax column.
+```
+
+Claude finds no story for EX-123 and checks the repo's branch. It writes
+`<project>/tasks/EX-123/README.md` with a summary, a description and up to four acceptance
+criteria, checked against the code. It asks you for anything it cannot tell. Then it says whether
+the story is built direct or from a spec.
+
+### Ask where things stand
+
+```
+Standup for the Example project.
+```
+
+```
+ID: EX-123
+Summary: The invoice export keeps the tax column
+Topics: billing/invoices
+Status: in-progress
+Branch: feature/EX-123-tax-column
+Current step: Review the fix on the branch
+----------------------------------------
+1 active, 0 done/abandoned.
+```
+
+### Build a story from a spec
+
+```
+/odsb:spec EX-2
+```
+
+Claude writes the requirements with you and waits for your approval, then the design, then the
+tasks. Then it builds the tasks one by one. After each review it shows where the build stands:
+
+```
+T1 - build: built - review: passed - fails 0 - commits 3f2a9c1 - fix - - Add the tax column
+T2 - build: built - review: failed - fails 1 - commits 8b41d07 - fix - - Total the tax column
+  - Issue 2026-10-08: The total skips credit notes. Fix: Add the credit notes to the total.
+T3 - build: todo - review: - - fails 0 - commits - - fix - - Document the column
+```
+
+T2 goes back to its `implementer` with the issue. T3 starts once T2 passes.
+
+### Check the vault
+
+```
+Check my vault for problems.
+```
+
+```
+ok | links | vault | 0 | - | -
+ok | conventions | vault | 0 | - | -
+warn | descriptions | vault | 1 | example-skill:227 | give each one a description of one sentence under 200 characters
+```
+
+Claude explains each `warn` and `fail` row, and `/odsb:vault-doctor fix` repairs what it can.
 
 ## How it works
 
@@ -39,71 +233,17 @@ The plugin keeps no project data and needs no credentials: your notes stay in yo
 - You read the notes, their links and each project's task board, `<project>/tasks/tasks.base`, in
   Obsidian.
 
-## What you need
-
-- [Claude Code](https://claude.com/claude-code), version 2.1.295 or later.
-- [Obsidian](https://obsidian.md/download), version 1.9 or later, to read the vault and its task
-  boards. It need not be running.
-- macOS, Linux, or Windows with [Git for Windows](https://gitforwindows.org).
-
-## Install
-
-In Claude Code:
-
-```
-/plugin marketplace add jesuslemusco/obsidian-dev-second-brain
-/plugin install obsidian-dev-second-brain@second-brain
-```
-
-Then set it up:
-
-1. Open the folder you want as your vault in Obsidian.
-2. Run `/odsb:vault-setup init` and give it that folder.
-3. Run `/odsb:vault-setup project <name>` to add a project.
-4. Ask Claude to start tracking a ticket.
-
-To check the setup at any time, ask Claude to check your vault, or run
-`/odsb:vault-doctor`.
-
 ## Update
 
-To get a new release:
+1. Refresh the marketplace: `/plugin marketplace update second-brain` in Claude Code.
+2. Update the plugin: `claude plugin update obsidian-dev-second-brain@second-brain` in your shell.
+   Or run `/plugin` in Claude Code, open the Installed tab, pick the plugin and choose Update now.
+3. Restart Claude Code, so the new hook and `second-brain` command load.
+4. Bring the vault up to the new version: run `/odsb:vault-doctor check`, then
+   `/odsb:vault-doctor fix`.
 
-1. Refresh the marketplace: `claude plugin marketplace update second-brain` in your shell, or
-   `/plugin marketplace update second-brain` in Claude Code.
-2. Update the plugin: `claude plugin update obsidian-dev-second-brain@second-brain` in your
-   shell. In Claude Code, run `/plugin`, open the Installed tab, pick the plugin and choose
-   Update now.
-3. Restart Claude Code. `/reload-plugins` loads the new skills and agents into an open session,
-   but only a restart is sure to load the new session-start hook and `second-brain` command.
-4. Bring the vault up to the new version: run `/odsb:vault-doctor check`,
-   then `/odsb:vault-doctor fix`. What each check finds is in
-   `skills/vault-doctor/checks.md`, and what `fix` changes without asking is under
-   `## fix` in `skills/vault-doctor/SKILL.md`.
-
-`claude plugin list` shows your version: compare it with the newest section of
-[CHANGELOG.md](CHANGELOG.md). When nothing is newer, step 2 prints `already at the latest version`.
-
-### When the update does not take
-
-If `claude plugin list` still shows the old version after steps 1 and 2, uninstall the plugin and
-install it again:
-
-```
-claude plugin uninstall obsidian-dev-second-brain@second-brain
-claude plugin install obsidian-dev-second-brain@second-brain
-```
-
-Your vault and notes are not touched. Then restart Claude Code and run the doctor as in step 4.
-
-An early copy of 0.2.0 never moves to the final 0.2.0, because both say `0.2.0`.
-
-### Update by itself
-
-Auto-update is off for a marketplace you added yourself. To turn it on, run `/plugin` in Claude
-Code, open the Marketplaces tab, pick `second-brain` and choose Enable auto-update. From then on
-Claude Code updates the plugin in the background, and the next session starts on the new version.
-It runs no doctor: do step 4 after a release that changes the vault.
+What changed in each version, and what to do after it, is in [CHANGELOG.md](CHANGELOG.md). An
+update that does not take, and auto-update, are under `## Updating` in `docs/guide.md`.
 
 ## Your own skills and agents
 
@@ -112,9 +252,8 @@ Keep skills and agents of your own in the vault: in `claude/` at its root for ev
 
 - Add one by the steps under `## Adding a skill or agent` in `templates/vault-claude-hub.md.tmpl`,
   the template of your vault's `claude/README.md`.
-- After you add, rename or remove one, run `/odsb:vault-setup link`. What it
-  links into `~/.claude`, and what it leaves alone, is under
-  `## link` in `skills/vault-setup/SKILL.md`.
+- After you add, rename or remove one, run `/odsb:vault-setup link`. What it links into
+  `~/.claude`, and what it leaves alone, is under `## link` in `skills/vault-setup/SKILL.md`.
 
 ## Pull request descriptions
 
@@ -124,8 +263,8 @@ A project's own `<project>/claude/pull-request.md` wins over it.
 
 ## More
 
-- [docs/guide.md](docs/guide.md): what the plugin ships, the vault layout, Windows, the tests and
-  releases.
+- [docs/guide.md](docs/guide.md): what to say to load each skill, the vault layout, spec-driven
+  delivery, Windows, the tests and releases.
 - [docs/contract.md](docs/contract.md): every helper command and note format.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

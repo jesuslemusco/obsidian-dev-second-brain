@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 - unreleased
+## 0.7.0 - 2026-11-08
 
 - The vault-doctor skill's `validation` row says it also warns on a placeholder an earlier
   validation template had, as the doctor has done since 0.6.0.

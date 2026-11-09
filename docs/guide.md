@@ -5,19 +5,9 @@ Start with the [README](../README.md). Every helper command and note format is i
 
 ## What you get
 
-| Piece | Kind | Does |
-|---|---|---|
-| `story-tracker` | skill | Drafts ticket text, and starts, updates, recalls and lists your tickets. |
-| `sprint` | skill | Opens, plans, shows and closes a sprint, and carries work over. |
-| `vault-setup` | skill | Sets up a vault, adds or adopts a project, and registers your own skills. |
-| `vault-doctor` | skill | Checks the vault and the registration against the standard. |
-| `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
-| `docs-keeper` | agent | Keeps a project's docs in step with its code. |
-| `spec` | skill | Writes a story's spec with you, one approved phase at a time, then builds and reviews each task in your session. |
-| `implementer` | agent | Builds one task, or each task of a bundle in turn, test-first from the packet it fetches, runs its checks and commits it. |
-| `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
-| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
-| `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
+- The skills are under [Commands](../README.md#commands) in the README, and the agents under
+  [Agents](../README.md#agents).
+- `bin/second-brain` is the helper the skills call. `second-brain help` lists its commands.
 
 ## What to say
 
@@ -47,6 +37,38 @@ From a local clone:
 ```
 
 For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-second-brain`.
+
+## Updating
+
+The steps are under [Update](../README.md#update) in the README.
+
+- `claude plugin list` shows your version. Compare it with the newest section of
+  [CHANGELOG.md](../CHANGELOG.md).
+- When nothing is newer, `claude plugin update` prints `already at the latest version`.
+- `/reload-plugins` loads new skills and agents into an open session. Only a restart is sure to
+  load a new session-start hook and `second-brain` command.
+
+### When an update does not take
+
+If `claude plugin list` still shows the old version after the refresh and the update, uninstall
+the plugin and install it again:
+
+```
+claude plugin uninstall obsidian-dev-second-brain@second-brain
+claude plugin install obsidian-dev-second-brain@second-brain
+```
+
+Your vault and notes are not touched. Then restart Claude Code and run the doctor's `check` and
+`fix`.
+
+### Auto-update
+
+- Auto-update is off for a marketplace you added yourself.
+- To turn it on, run `/plugin` in Claude Code, open the Marketplaces tab, pick `second-brain` and
+  choose Enable auto-update.
+- Claude Code then updates the plugin in the background, and the next session starts on the new
+  version.
+- It runs no doctor. After a release that changes the vault, run the doctor's `check` and `fix`.
 
 ## How it is laid out
 

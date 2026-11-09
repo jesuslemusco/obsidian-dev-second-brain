@@ -2585,8 +2585,8 @@ line_is "contract: spec-checker and its tools" "$here/docs/contract.md" \
   '| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |'
 line_is "contract: a task check names its expected result" "$here/docs/contract.md" \
   '  `- Check: <command or step> - expected: <what it prints or shows>`.'
-line_is "guide: lists spec-checker" "$here/docs/guide.md" \
-  '| `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |'
+file_has "README: lists spec-checker" "$here/README.md" \
+  '| `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. |'
 file_has "changelog: names spec-checker" "$here/CHANGELOG.md" \
   'the new `spec-checker` agent reads the spec'
 file_has "validation template: each user step names its tool" "$here/templates/validation-repo.md.tmpl" \
@@ -3501,7 +3501,7 @@ rc_is "validation new --json: exit 5" 5
 RM="$here/README.md"
 line_is "README: keeps the Update heading that docs/guide.md links to" "$RM" "## Update"
 for ptr in 'docs/contract.md|### Profile frontmatter' 'docs/contract.md|### Validation' \
-  'skills/story-tracker/SKILL.md|## Edit an existing story' 'skills/vault-doctor/SKILL.md|## fix' \
+  'skills/vault-doctor/SKILL.md|## fix' 'docs/guide.md|## Other ways to install' 'docs/guide.md|## Updating' 'docs/guide.md|## What to say' 'docs/contract.md|## 9. Skills and agents' \
   'skills/vault-setup/SKILL.md|## link' 'templates/vault-claude-hub.md.tmpl|## Adding a skill or agent'; do
   pf="${ptr%%|*}" ph="${ptr#*|}"
   file_has "README: points to $ph in $pf" "$RM" "\`$ph\` in \`$pf\`"
@@ -3515,6 +3515,33 @@ for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-requ
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
 done
+# The README is the home of the commands and the agents, in the shape of the official plugin READMEs.
+for h in "## Overview" "## Quick start" "## Commands" "## Agents" "## Examples"; do
+  line_is "README: has $h" "$RM" "$h"
+done
+for d in "$here"/skills/*/; do
+  sk="$(basename "$d")"
+  line_is "README: a section for /odsb:$sk" "$RM" "### \`/odsb:$sk\`"
+done
+for f in "$here"/agents/*.md; do
+  ag="$(basename "$f" .md)"
+  is "README: the agents table has $ag" "$(grep -c "^| \`$ag\` | " "$RM")" "1"
+done
+for h in "### Start a ticket" "### Ask where things stand" "### Build a story from a spec" "### Check the vault"; do
+  line_is "README: the example $h" "$RM" "$h"
+done
+file_has "README: the build is test-first" "$RM" '`implementer` builds each one test-first when it has'
+file_has "README: the review ends with a JSON verdict" "$RM" 'It grades each check and ends with a JSON'
+file_has "README: the fix rounds are capped" "$RM" '- A failed task goes back for a fix, in a capped number of rounds.'
+file_has "README: the stop list holds once the build has started" "$RM" '- Once the build has started, Claude asks you only for a short list'
+file_has "README: the shell form of the marketplace refresh" "$RM" '`claude plugin marketplace update second-brain` in your shell'
+file_has "README: the reviewer row names the baseline" "$RM" 'on the branch as a baseline when a build needs one'
+file_lacks "README: no note on an early 0.2.0 copy" "$RM" 'An early copy of 0.2.0'
+file_lacks "README: no feature bullet ends in a pointer" "$RM" 'runs none, as `### Profile frontmatter`'
+line_is "guide: has ## Updating" "$here/docs/guide.md" "## Updating"
+file_has "guide: an update that does not take" "$here/docs/guide.md" 'claude plugin uninstall obsidian-dev-second-brain@second-brain'
+file_has "guide: auto-update" "$here/docs/guide.md" 'choose Enable auto-update.'
+file_has "guide: What you get links to the README's commands" "$here/docs/guide.md" '[Commands](../README.md#commands)'
 file_has "README: the hand-off to docs-keeper is in story-tracker" "$here/skills/story-tracker/SKILL.md" \
   'The story reaches production: start the `docs-keeper` agent'
 file_has "README: vault-setup link leaves a foreign entry alone" "$here/skills/vault-setup/SKILL.md" \

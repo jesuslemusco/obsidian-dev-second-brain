@@ -1,8 +1,8 @@
 # Finishing a passed build
 
-Read this file only when `spec-lead` finished with every task passed.
+Read this file only when the build finished with every task passed, as `build.md` says.
 
-- `<path>` is the repo's path and `<branch>` the story's branch, as in Step 3 of `SKILL.md`.
+- `<path>` is the repo's path and `<branch>` the story's branch, as in `build.md`.
 - Every `task note` takes `--session <session id>`, the session id for notes in `SKILL.md`.
 - The story's `branch` stays `<branch>` whatever the owner picks: review fixes go on it.
 
@@ -35,6 +35,11 @@ Read this file only when `spec-lead` finished with every task passed.
 - Say in the question that typing `discard` deletes the branch.
 - The owner names another target in the free-text answer: ask again, with the three options for
   that target.
+- Say too that the owner can reverse a ruling of the build, or reopen the phase one touched, in
+  the free-text answer, as `### The list of rulings` in `build.md` says.
+  - The owner does: first
+    `second-brain task set <ID> status=in-progress next="The spec skill builds the approved tasks"`.
+    Then take the answer as item 3 of `## 7. When the build stops` in `build.md` says.
 - Do only what the owner picks. Any other answer is `## 5. Keep`.
 
 ## 3. Merge

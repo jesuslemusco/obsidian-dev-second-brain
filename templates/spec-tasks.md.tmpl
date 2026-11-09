@@ -1,10 +1,13 @@
 # {{ID}} - Tasks
 
-The build plan for {{TITLE}}. All tasks are built, then reviewed, in order. A task is ticked only
-when its review passes.
+The build plan for {{TITLE}}. Each task is built, then reviewed right after, before the next one
+starts. A task is ticked only when its review passes.
+
+Tasks next to each other with the same `- Bundle: <n>` line are one bundle: built in one
+`implementer` run, one commit per task, then reviewed together, before the next task starts.
 
 - [ ] T1 - <What the task builds.>
   - Requirements: <R1, R2>
   - Design: <The design sections it follows.>
   - Files: <The files it adds or changes.>
-  - Check: <The command or step the reviewer runs.> - expected: <What it prints or shows.>
+  - Check: <The command or step the implementer and the reviewer run.> - expected: <What it prints or shows.>

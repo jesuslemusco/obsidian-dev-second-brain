@@ -169,7 +169,7 @@ of `## 0. Before you start` applies.
      round, until it names no vault line.
    - Any other name: `second-brain search <project> "<old name>"` in each project.
 3. A reference is the old name followed by the whole name of a skill or agent, as in
-   `obsidian-dev-second-brain:spec-lead`. A cut name, as in a quote of
+   `obsidian-dev-second-brain:reviewer`. A cut name, as in a quote of
    `obsidian-dev-second-brain:s`, is none: leave it.
 4. In each note named, rewrite every live reference, not only the line named. Change the name
    alone; the rest of the line stays.

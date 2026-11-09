@@ -262,6 +262,19 @@ tags:
   `### Set up and start`, `### Checks`, `### Check as a user would` and `### A pass`.
 - Each step under `### Check as a user would` is one line that starts with the tool that runs it:
   a skill by its name, a command, an API call or a query.
+- Under `### Checks` a bullet's first inline code span is its command:
+  `` - `npm test` - the unit tests - when: each task ``.
+- Each bullet under `### Checks` and `### Check as a user would` ends with when it runs:
+  `when: each task`, `when: each build` or `when: release`.
+- `each task` runs in each task's review. `each build` runs once every task of a build has passed.
+  `release` runs only before a release or when the owner asks, such as an end-to-end suite.
+- A bullet with no `when:` is `each build`.
+- The `when:` is the last one in the bullet outside code spans. Its value is read without letter
+  case, with a hyphen as a blank and a final period dropped.
+- Any other value is unknown and counts as `each build`, so a typo never drops a check.
+  `validation run` names it as a warning in every run.
+- A bullet is its first line and the indented lines under it, up to a blank line, a nested item
+  or the next bullet. A nested item is part of no check.
 - A section is written when something is under its heading. One with nothing is `empty`.
 
 ## 4. A task
@@ -320,13 +333,40 @@ tags:
 - In `tasks.md` each task is one item, `- [ ] T<n> - <what it builds>`, with four indented lines:
   `- Requirements: R1, R2`, `- Design: <design.md headings>`, `- Files: <paths>` and
   `- Check: <command or step> - expected: <what it prints or shows>`.
-- A spec story's README gets a `## Build` section, before `## Status notes`. `spec status` and
-  `spec issue` write it; it is never edited by hand.
-- `## Build` has one line per task of `tasks.md`, in its order:
-  `- T<n> - <state> - commits <hashes or -> - <title>`. Each issue is a line under it:
-  `  - Issue <date>: <issue> Fix: <fix>`.
-- A task first written starts `todo`, or `passed` when ticked. A row whose task left `tasks.md`
-  stays at the end.
+- A task item may add `- Provides: <signatures>` lines: what later tasks call. A task that calls
+  them names those tasks on one line, `- Uses: T1, T2`.
+- A task item may add `- Bundle: <n>`, a whole number. The tasks with the same number are one
+  bundle, and stand next to each other in `tasks.md`.
+- A task of a bundle uses no other task of its bundle on its `- Uses:` line.
+- `none`, `n/a`, `-`, an empty value or one that starts with `<` names no bundle.
+- A spec story's build progress is `build.json` in its task folder in the vault, whatever its
+  `spec_home`, so a build never dirties the repo's tree. The README holds none of it.
+- `spec status` and `spec issue` write `build.json`. It is never edited by hand.
+- `build.json` is one object: `story`, the task's id, and `tasks`, an array of one object per task,
+  in the order of `tasks.md`. A task whose item left `tasks.md` stays at the end.
+- A task object holds `id`, `title`, `build`, `review`, `commits`, `issues` and `history`.
+- `build` is `todo`, `building`, `built` or `blocked`. `review` is `-`, `in-review`, `passed`,
+  `failed` or `blocked`.
+- A task first written starts `todo` and `-`, or `built` and `passed` when it is ticked.
+- `commits` is an array of hashes. Each issue is an object: `at`, `session`, `issue`, `fix` and
+  `round`.
+- `round` is the number of `in-review` states in the task's history when the issue was logged.
+  An issue with none, such as a moved one, reads as `0`.
+- `history` holds one object per state set, oldest first: `at`, `session`, `field` (`build` or
+  `review`) and `state`, and `commit` when `--commit` named one.
+- A task's `fails` is the number of `failed` review states in its history, from every session.
+- After a failed review, the findings a fix answers are the issues whose `round` is the number of
+  `in-review` states before the task's last `failed` one.
+- The fix's commits are the `commit` of each history entry after that `failed` one.
+- `at` is the local time, as `YYYY-MM-DDTHH:MM:SS+HH:MM`. `session` is `-` when none was given.
+- A README's `## Build` section, which versions before 0.7.0 wrote, is read as its task rows. The
+  next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
+  README.
+- Its rows move as: `todo` to `todo` and `-`; `built` to `built` and `-`; `in-review`, `passed` and
+  `failed` to `built` and that review state; `blocked` to `built` and `blocked` when the row has a
+  commit, else to `blocked` and `-`.
+- A moved row has no `history`. A moved issue's `at` is the date it was written with.
+- A task that `build.json` holds too is taken from `build.json`.
 - Environment sets add an `envs:` mapping (`<env>: { id: <ID>, status: <status> }`) and list every
   id in `aliases`.
 - Strings are double-quoted when they contain `: ` or `#`, start with `-` or `[`, or look like a
@@ -404,7 +444,10 @@ Rules that hold for every command:
   `repo_paths` entry) may be in that form, written with backslashes, or in Git Bash's own form,
   `/c/...`.
 - Environment overrides: `SECOND_BRAIN_VAULT` (vault root), `SECOND_BRAIN_CLAUDE_HOME` (link
-  directory), `SECOND_BRAIN_TODAY` (today's date, for tests).
+  directory), `SECOND_BRAIN_TODAY` (today's date, for tests), `SECOND_BRAIN_NOW` (the time
+  `build.json` records, for tests).
+- With `SECOND_BRAIN_TODAY` set and `SECOND_BRAIN_NOW` unset, the time is that day at
+  `00:00:00+00:00`.
 - `--json` prints the same fields as the text, as one JSON value and nothing else on stdout.
 - With `--json`, exit codes and stderr do not change.
 - Only a form whose row below names `--json` takes it.
@@ -442,15 +485,16 @@ Rules that hold for every command:
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task. With `repo`, also exit 1 when the project lists no repo, or the repo has no recorded location or no folder; the message says which. The lines are then still printed, with `dir` and the three files as `-`, so `delivery` can be read |
 | `spec new <ID> [--project P]` | the files it created, as `spec` names them | writes the three spec files from their templates, with the task's title. Never overwrites (`exists: <path>` on stderr). Exits as `spec` does |
-| `spec tasks <ID> [--project P] [--json]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | exit 1 when `tasks.md` is missing; otherwise exits as `spec` does. `--json` prints the rows with the keys `id`, `state` and `title` |
+| `spec tasks <ID> [--project P] [--json]` | one TSV row per task item of `tasks.md`, in order: id, `todo` or `done`, title (`-` when none), bundle (`-` when none). An item is `- [ ] T<n> - <title>`, or `T<n>:`; fenced code is not read | the bundle is the item's `- Bundle:` line, read as section 4 says, with `Bundle` in any letter case, and printed as a number. Exit 1 with no row when a bundle is not a whole number, when a bundle's tasks are not next to each other, or when a task's `- Uses:` line names a task of its own bundle; the message names the task. Exit 1 when `tasks.md` is missing; otherwise exits as `spec` does. `--json` prints the rows with the keys `id`, `state`, `title` and `bundle` |
 | `spec tick <ID> <task> [--project P]` | `ticked: <task>` | ticks the item, `- [ ]` to `- [x]`, in the file's line endings. The task id is matched without letter case; fenced code is not read. Exit 1 when no item or two items have it, or `tasks.md` is missing or cannot be written; exit 6 when it is ticked already |
-| `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch` and `validation` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none) and `## Validation` (the repo's section) | `validation` is the repo's `validation.md` path, or `none (<state>)` with no `## Validation` part. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` names no section. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), or the project has no repo to build in |
+| `spec packet <ID> <task> [--project P]` | the context packet of one task: `story`, `task`, `title`, `repo`, `repo_path`, `branch`, `validation`, `commits`, `fails` and `diff` lines, then `## Task` (the item as written), `## Requirements` (each requirement it names, as `### <heading>` and its body), `## Design` (each design heading it names, likewise; left out when it names none), `## Uses` (for each task its `- Uses:` line names, `### <task> - <title>` and that item's `- Provides:` lines, as written; left out when it names none), `## Issues` (the task's issues in `build.json`, as `spec status` prints them; left out when there is none), `## Checks` (the checks `implementer` runs before it commits: `- task: <the item's Check, as written>`, then `- each task: <command>` for each command `validation run <project> <repo> --when each-task` runs, in order) and `## Validation` (the repo's section) | `validation` is the repo's `validation.md` path, or `none (<state>)` with no `## Validation` part and no `each task` line. A task with no `Check`, or one that is `none`, `n/a` or `-` or starts with `<` as the template's does, has `- task: none`. A check with no command is not in `## Checks`. `commits` is the task's commits in `build.json`, comma separated, or `-`. `fails` is the task's `fails` (section 4). With `fails: 0`, `diff` is a temp file outside the repo and the vault that the command writes with `git show` of each of those commits, in order, and `## Issues` holds every issue. With more, the packet is a fix's: `diff` holds only the fix's commits, and `## Issues` only the findings the fix answers (section 4). `diff` is `none (no commit)` with no commit, `none (no fix commit)` for a fix with none yet, and `none (git show failed)` when git shows none of them; a commit git cannot show is named on stderr as `note: git show <hash> failed in <repo>`. Each field of a task is one line, and a design heading holds no comma. `none`, `n/a` or `-` in `Design` or `Uses` names nothing. Exit 1 when a spec file is missing, no item or two items have the task, the task names no requirement, a field ends in a comma, a requirement id or design heading it names has no section or two (the message names it), a task it uses is not in `tasks.md`, is not an earlier task or has no `- Provides:` line, `build.json` is not a JSON object with a `tasks` array, or the project has no repo to build in |
 | `spec link <ID> [--project P]` | `linked: <heading>` for each section it changed, or `no change` | for a story whose `delivery` that holds is `spec`: writes `See [[<dir>/design\|<ID> Design]].` as the first line of `## Approach / Key decisions`, and `See [[<dir>/tasks\|<ID> Tasks]].` as the first line of `## Changes` and `## Verification`. With `spec_home: repo` the line names `` `spec/<ID>/design.md` `` or `` `tasks.md` `` and the repo instead. A section that holds only `None yet.` or the task template's text gets the link alone; any other keeps its text under the link; one that has its link is left alone. Line endings and the final newline are kept; frontmatter and fenced code are not read. A missing heading is named on stderr as `note: no ## <heading> in <path>`. A `direct` story prints `no change: <ID> is not built from a spec (delivery: direct)` and writes nothing. Exit 1 when `design.md` or `tasks.md` is missing, or as `spec` does about the repo |
-| `spec status <ID> [--project P] [--json]` | the body of the README's `## Build` section, or nothing when it has none | `--json` prints the task rows, with the keys `id`, `state`, `commits`, `title` and `issues`. `commits` holds the hashes without their backticks. `issues` holds the row's issue lines, each as written from `Issue` on. Other lines are not read |
-| `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the task's row in `## Build`. `state` is `todo`, `built`, `in-review`, `passed`, `failed` or `blocked`. `--commit` adds a hash to its commits once. Adds the status note `Build: <task> <state> at <hash>.` Exit 5 for another state or a `--commit` that is not hex; exit 1 when `tasks.md` is missing or has no such task |
-| `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue line (section 4) under the task's row, and a status note. Exit 5 without both texts; exit 1 as `spec status` does |
+| `spec status <ID> [--project P] [--json]` | one line per task, `T<n> - build: <build> - review: <review> - fails <n> - commits <hashes or -> - fix <hashes or -> - <title>`, each of its issues under it as `  - Issue <date>: <issue> Fix: <fix>`; nothing when the story has no `build.json` and no `## Build` section | the tasks of `build.json`, read as section 4 says, with each task of `tasks.md` it lacks as a task first written. The hashes are comma separated. `<date>` is the issue's `at` up to the day. Writes nothing. `fails` is the task's `fails` (section 4). `fix` is the fix's commits (section 4), each once, `-` with none: a fix built since the last failed review. `--json` prints the rows with the keys `id`, `build`, `review`, `fails`, `commits`, `fix`, `title` and `issues`; `fails` is a count, and `commits` and `fix` are lists. `issues` holds the issue lines, each as written from `Issue` on. A line break in an issue, its fix or a title prints as a blank. Exit 1 when `build.json` is not a JSON object with a `tasks` array, blank text included |
+| `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the field of `build.json` that `state` belongs to, and adds the state to the task's `history`, with its commit when `--commit` names one. `todo`, `building` and `built` are build states; `in-review`, `passed` and `failed` are review states. `blocked` sets the review when it is `in-review`, else the build. `--commit` adds a hash to the task's commits once. Adds no status note. A README `## Build` section moves into `build.json`, as section 4 says, with `note: moved ## Build of <README path> into <build.json path>` on stderr. Exit 5 for another state or a `--commit` that is not hex. The new `build.json` is written next to the old one, then moved in its place. Exit 1 when `tasks.md` is missing, neither it nor `build.json` has the task, or `build.json` is not a JSON object with a `tasks` array |
+| `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue to the task in `build.json`, with its time, session and `round` (section 4). Adds no status note, and moves a README `## Build` section as `spec status` does. Exit 5 without both texts; exit 1 as `spec status` does |
 | `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
 | `validation <project> <repo> [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
+| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-task` takes `each task`, `each-build` takes `each task` and `each build`, and `release` takes all three. `--when` is `each-build` by default. The repo and its section are found as `validation <project> <repo>` finds them. Each command runs through bash, one at a time, from the repo's root, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each build`, and every run names it on stderr as `note: unknown when: <value>, read as each build: <the bullet's text>`. A skipped row's command is the bullet's text, on one line, and its exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing. Exit 5 for another `--when`, or a `--timeout` that is not a whole number above 0. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
@@ -823,53 +867,250 @@ text.
 - `spec-checker` reads and never writes. Its reply lists what it could not build from the files.
 - The skill shows the owner the gaps and closes each one with the owner before it asks for the
   approval.
-- Once the tasks are approved, the skill launches `spec-lead`. With `spec_home: repo` the skill
-  first commits the spec files on the story's branch.
-- `spec-lead` checks the approval note itself, and keeps track of the build in the story's
-  `## Build` section.
-- `spec-lead` launches `reviewer` on the untouched branch first. Then it builds every task, one
-  `implementer` run per task, then reviews them in order, one `reviewer` run per task.
-- `implementer` runs no check: `reviewer` runs them all.
+- Once the tasks are approved, the skill runs the build in the owner's session, as
+  `skills/spec/build.md` says. `SKILL.md` reads that file only when a build starts. With
+  `spec_home: repo` the skill first commits the spec files on the story's branch.
+- The skill checks the approval notes itself, and keeps the build's progress in `build.json`
+  through `spec status` and `spec issue`.
+- **The baseline.** A new build first launches `reviewer` on the untouched branch, in baseline
+  mode, unless the branch starts on the base branch.
+- The branch starts on the base branch when `git merge-base --is-ancestor HEAD <base>` exits 0.
+  With `spec_home: repo`, HEAD is taken before the skill commits the spec.
+- The base branch is the subproject's `base_branch`, or the profile's. `<base>` is
+  `origin/<base branch>` when the repo has it, else `<base branch>`.
+- When it does, the skill skips the baseline and writes the status note
+  `Build: baseline skipped: the branch starts at <short hash> on <base>.`
+- Any other result runs the baseline, such as on a branch cut from `release/<version>` or with
+  commits the base lacks.
+- A resumed build skips the baseline, whatever the start. The final validation always runs.
+- **Each task in turn.** The skill builds each task with one `implementer` run, and has a fresh
+  `reviewer` review it right after, before the next task starts.
+- **Bundles.** In the tasks phase the skill may mark small, alike tasks with `- Bundle: <n>`. The
+  owner approves the bundles with the task list.
+- A bundle's tasks go to one fresh `implementer` run. It builds them in order, one commit per
+  task, and fetches each task's packet as it starts that task.
+- Inside a bundle, each task is built test-first and runs its own packet's `## Checks` before its
+  commit.
+- Then one fresh `reviewer` reads each task's packet and diff. It judges each task against its own
+  requirements, logs each finding on its task, and gives one verdict per task.
+- It runs each task's `Check`, and the `each task` checks and user steps once for the bundle.
+- The next task or bundle starts only once every task of the bundle has passed.
+- Before the run, the skill sets each task it builds `building`. Before the review, it sets each
+  task it reviews `in-review`. It sets each task's result from the agent's report on that task.
+- The run stops at the first task it cannot commit. The tasks after it go back to `todo`, and the
+  build stops at that task.
+- A task of a bundle that fails its review takes the fix loop alone, in order, with a review of
+  its own fix. Its own `fails` picks each round, so the cap counts per task.
+- A bundle resumes in a new session from `build.json`. A task cut off while `building` takes its
+  commit as a task alone does. Then the tasks left to build go to one fresh run, and the tasks
+  left to review to one review, a fix found built among them.
+- A task the run gives no report on, or no commit line, is looked for by its commit first, in the
+  same way.
+- One task or bundle at a time, never in parallel.
+- No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
+  one at a time, and names each launch's model by role and round.
+- `implementer` runs on `opus`, and on `fable`, the stronger model, from the fourth fix round on.
+- `reviewer` runs on `opus`, and on `fable`, the most capable model, for the review of the whole
+  branch.
+- Each `implementer` launch is named, `<ID>-<task>-implementer`, and from the fourth fix round on
+  `<ID>-<task>-implementer-2`. A fix reaches the agent of that name again with SendMessage.
+- A bundle's run is named `<ID>-bundle-<n>-implementer`. Fix rounds 1 to 3 of its tasks go to it.
+- In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
+  place, with the same name and model. For a task of a bundle, it is given that task alone.
+- The skill takes each report from the agent's result. Nothing is relayed by hand.
+- It sets a task `building` before each `implementer` launch or fix message, and `in-review`
+  before each `reviewer` launch on it. It sets each result as the agent reports it.
+- It shows the owner `spec status <ID>` after each task's review, when the build stops or
+  finishes, and when a session resumes a build.
+- A build resumes in a new session from `build.json`. A task cut off while `building` takes a
+  commit of its own that `build.json` does not list yet, compared by full hash, or is built
+  again.
+- The tick commit of a `spec_home: repo` spec, `<ID> <task>: passed review`, is never a task's own
+  commit.
+- A task whose reply names no commit, and that did not stop, is looked for by its commit in the
+  same way before it is set `blocked`.
+- A task whose review is `failed`, with a `fix` in `spec status`, had its fix built before the
+  session ended. It goes to the review of its fix, not to a new fix round.
+- A `blocked` task is launched again with the owner's ruling on it, when that ruling is newer than
+  the note the build stopped at it with. Otherwise the owner is asked first.
+- A task stopped past the fix loop's cap gets one more round in the same way: only with a ruling
+  newer than its stop note.
+- A resumed `failed` task below the cap looks for that ruling too, and goes on in the fix loop with
+  its ruling lines.
+- A resumed `failed` task whose newest stop note has no newer owner's ruling stopped the build
+  there. The owner is asked first, whatever its `fails`.
+- A `Spec: <phase> reopened.` note newer than a task's stop note answers that stop too, for a
+  `blocked` task and a `failed` one: the owner changed the spec, and the phases were approved
+  again.
+- A block writes its `Build: stopped at <task>` note before it sets `blocked`.
+- **The stop list.** Once the build has started, the skill stops and asks the owner with
+  AskUserQuestion only for: a destructive action, a security-sensitive one, an outside effect
+  such as a push, a merge or a publish, a spec too broken to follow, a task blocked or past its
+  last fix round, and a failed baseline. `skills/spec/build.md` holds the list.
+- A `BLOCKED` from the user check or the branch review is a block too. So is a review that still
+  gives no verdict from one fresh `reviewer` in its place.
+- A spec is too broken to follow when going on would change, add or drop a requirement, a design
+  decision, a task or a check.
+- The phases, and the steps before the build's `Build: started` or `Build: resumed` note, ask as
+  they say: the owner has just run the skill. Each question of `skills/spec/finish.md` is an
+  outside effect or a destructive action.
+- **Rulings.** Any other question, such as an ambiguous requirement or two agents that disagree,
+  the skill decides itself. It records each with
+  `second-brain task note <ID> "Ruling: <task>: <the question> - <the decision and why>"`, before
+  the next launch.
+- `<task>` is the task the question touches. A question on several tasks gets one note per task.
+  One that touches no task names `build`, and goes in no prompt.
+- A ruling never changes, adds or drops a requirement, a design decision, a task or a check. It
+  never lifts a stop: only the owner's ruling does.
+- An `implementer` reply `BLOCKED:` on a question a ruling settles, such as a requirement it reads
+  two ways, is no stop. The skill rules on it and goes on from the task's state. The same
+  question again is a stop.
+- A failing build-wide check in files no task holds, and a user or branch finding no task covers,
+  go to the last task, with a ruling.
+- **The rulings of a build** are the status notes newer than its newest
+  `Build: started on <branch> at <short hash>.` note: the skill's `Ruling:` notes and the owner's
+  `Build: the owner ruled on <task>:` notes. A note below it is from an earlier build of the
+  story. A new session reads them from `## Status notes`.
+- They are newer too than the build's newest `Spec: <phase> reopened.` note. A reopen retires the
+  rulings before it: the changed phase holds what the owner kept of them.
+- Every ruling of the build on a task goes, as written and oldest first, into each later
+  `implementer` prompt and fix message for that task, and each later `reviewer` prompt on it.
+- The owner's is the line `Owner: <the ruling, as written>.`, the skill's
+  `Ruling: <the question> - <the decision and why>.`. A bundle's prompts name the task:
+  `Owner on <task>:` and `Ruling on <task>:`.
+- The user and branch reviews get every ruling of the build on a task, as `Owner on <task>:` and
+  `Ruling on <task>:` lines.
+- `implementer` and `reviewer` follow both. Where they differ, the `Owner:` line wins. What a
+  ruling decided is never a finding.
+- When the build finishes or stops, the skill lists every ruling of the build, as written, oldest
+  first, each with the phase it touched.
+- The owner can then reopen that phase, or reverse a ruling with one of their own on its task. A
+  task that passed takes the owner's ruling as a fix: the skill logs it with `spec issue`, then
+  sets the task `failed`. At the finish, the owner says so in the free-text answer of its
+  question.
+- Each story-level update is a status note in the README: each phase approval, the build
+  started, stopped and why, and finished, and each ruling, the owner's and the skill's. A task's
+  progress is in `build.json` alone.
+- **Who runs which check.** `implementer` runs its task's checks before it commits. `reviewer`
+  runs them again in the task's review. The skill runs the `each build` checks once, at the end.
+- `implementer` writes a test that fails for its task's requirement first, then makes it pass.
+- A task with nothing to test, such as a doc change, gets no test, and the reply says why.
+- Its checks are the ones under its packet's `## Checks`: the task's `Check`, and the repo's
+  `each task` checks through `validation run <project> <repo> --when each-task`.
+- It commits only when they all pass, and names each result in its reply.
+- A task `Check` that is a step its tools cannot take, such as a browser or a skill step, is
+  reported as `Check: <step> - skipped - needs <tool>`. It still commits, and the review takes
+  the step.
+- It runs its own test the narrowest way the repo allows, such as the one suite that holds it,
+  even an `each build` one.
+- It runs no other `each build` check, no `release` check and no user step.
 - `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
   skill through the Skill tool, anything else through Bash.
 - A line that names no tool runs through Bash when Bash can do what it says. One that needs a
-  browser and names no tool is BLOCKED: the verdict names the step and asks for its tool.
+  browser and names no tool is BLOCKED: its issue names the step and asks for its tool.
 - A step whose tool `reviewer` cannot run, such as a skill that is not installed, is BLOCKED, and
-  the verdict names the tool.
+  its issue names the tool.
 - Plugin agents cannot set `mcpServers`, so a browser comes from a skill or a command, never from
   an MCP server.
 - The plugin ships no browser. A repo's `validation.md` names the one it uses.
 - A browser step saves its screenshots in a temp folder outside the repo, and `reviewer` names
-  the folder in its findings.
+  the folder in its reply.
 - `reviewer` keeps the `git status --porcelain` output of its first step. After the user steps it
   removes only an untracked (`??`) path that output did not list, and names it.
 - A tracked file a user step changed is a finding, never deleted.
 - `reviewer` never runs `git checkout`, `restore`, `reset`, `clean` or `stash`. Any other change
   to the tree is a finding.
-- `reviewer` logs each issue with its proposed fix through `spec issue`. `spec-lead` gives the
-  issues to `implementer` again.
-- The output of `spec packet`, and the commit line, are all `implementer` is given.
+- `implementer` and `reviewer` are given the story, the task and the session id, and run
+  `spec packet <ID> <task>` themselves. The skill never prints a packet into the owner's session.
+- For a bundle, they are given its number and its tasks in place of the task, and run
+  `spec packet` once per task.
+- The packet, the rulings on its task and the commit line are all `implementer` is given. On a
+  fix the packet holds the findings of the last failed review.
+- In a bundle, each task's packet and commit line are all it is given, and no other task's.
+- `reviewer` is given its mode's lines and the rulings on its tasks, and nothing else. The skill
+  never gives it a view of its own on the result, and never the implementer's report.
+- `reviewer` reads the task's diff from the file the packet's `diff:` line names.
+- A task's review reads only its diff, first against the task's requirements and acceptance
+  checks, then for code quality.
+- It runs the task's `Check` and the `each task` checks again, through
+  `validation run <project> <repo> --when each-task`, and the `each task` user steps. It runs no
+  other check.
+- A re-review reads only the fix's commits and the findings they answer, as the packet holds them.
 - `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
   to what they are given.
-- `reviewer` ends with `VERDICT: PASS`, `VERDICT: FAIL` or `VERDICT: BLOCKED`. Only a PASS ticks
-  the task, through `spec tick`. With `spec_home: repo`, `spec-lead` commits that tick.
-- A FAIL goes back to `implementer` with the logged issues at most twice, and holds up the review
-  of later tasks.
-- A BLOCKED, or an implementer reply that starts `BLOCKED:`, stops the build at once.
-- Each step is a row state in `## Build` and a `Build:` status note. A new `spec-lead` goes on from
-  the `## Build` section, so a build resumes in a new session.
-- When `spec-lead` finishes with every task passed, the skill asks the owner whether to merge the
+- `implementer` replies with a `Commit:` line, one line on what it built, a `Test:` line, and a
+  `Check:` line with the result of each check it ran.
+- A stop is a first line `BLOCKED: <why>`, then the `Check:` lines of the checks it ran.
+- In a bundle, it replies with one report per task, in order, each under a line `Task: <task>`.
+  A stop is the report of the task it stopped at, and no report follows it.
+- `reviewer` grades each acceptance check, or on a re-review each finding the fix answers, and
+  each check and user step it runs, as met or not. Its evidence is a file and line it read, or a
+  command it ran and what it printed.
+- The implementer's words, in its report, a commit message or a comment, are a claim to check,
+  never evidence.
+- A check is met only when the change does all it says, wherever it applies. A check not met is a
+  finding, and any finding fails the task: a PASS with an open finding is not allowed.
+- `agents/reviewer.md` holds two short worked examples: a FAIL with its findings, and a PASS with
+  its evidence.
+- `reviewer` logs each issue with its proposed fix through `spec issue`. Its reply ends with one
+  fenced `json` block, its verdict:
+  `{"verdict": "FAIL", "issues": 1, "checks": [{"check": "...", "met": false, "evidence": "..."}]}`.
+- `verdict` is `PASS`, `FAIL` or `BLOCKED`, `issues` the number of findings, and `checks` one
+  entry per check it graded.
+- A task, the baseline, the user check and the branch review each end with that block. A bundle
+  ends with one block, `{"tasks": [...]}`: one entry per task, in order, each that block with a
+  `task` key.
+- With browser steps, the block adds `"screenshots": "<folder>"`.
+- The skill reads each verdict from the block, in place of a `VERDICT:` line. A PASS needs every
+  `met` true and `issues` 0, and in task and branch mode one check or more. A FAIL needs `issues`
+  1 or more.
+- Before a review's first launch, but the baseline's, the skill notes the issue count of each
+  task it reviews, from `spec status --json`. The fresh `reviewer` is judged against the same
+  counts.
+- A PASS is no verdict when its task's count grew, or in user and branch mode any task's. So is a
+  FAIL in task mode when its task's count did not grow.
+- A user or branch FAIL is no verdict when no count grew once the skill has logged the findings
+  of its reply.
+- No block, or one that breaks these rules, is no verdict: never a PASS.
+- The skill asks the same reviewer once more only when the block is missing or does not parse.
+  Any other block with no verdict goes to one fresh `reviewer` at once.
+- In baseline mode there is no task to log on: `reviewer` puts its findings in the reply.
+- In user and branch mode, `reviewer` logs a finding on the task whose `- Files:` line holds its
+  file, and puts the rest in the reply.
+- Only a PASS ticks the task, through `spec tick`. With `spec_home: repo`, the skill commits that
+  tick.
+- A FAIL starts the fix loop and holds up the tasks after it. The task's `fails` picks each round,
+  so the cap holds across sessions.
+- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4
+  and 5 go to a fresh one on the stronger model. A sixth failed review stops the build.
+- A BLOCKED, or an implementer reply that starts `BLOCKED:` on what no ruling settles, stops the
+  build at once.
+- When every task has passed, the skill runs `validation run <project> <repo> --when each-build`
+  once, with no agent.
+- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and
+  its task's `Check`, with the Bash tool's `run_in_background` and wait for its notice. A run can
+  outlast a Bash call's timeout, and a helper that a timeout kills leaves its check running.
+- A failing check is logged with `spec issue` on the task whose files it covers. That task is set
+  `failed` and takes the fix loop, and the run goes again once every task has passed.
+- Then one `reviewer` runs the user steps on the finished branch, in user mode. Then one
+  `reviewer` on the most capable model reviews the whole branch, in branch mode. A BLOCKED from
+  either stops the build.
+- A FAIL from either sends each task it logged a finding on to the fix loop, as a failing check
+  does, and the run goes again once every task has passed.
+- The baseline runs the checks through `validation run --when each-build`, and every user step but
+  the `release` ones.
+- A `release` check runs only when the owner asks.
+- When the build finishes with every task passed, the skill asks the owner whether to merge the
   story's branch, open a pull request, or keep the branch, as `skills/spec/finish.md` says.
 - A merge or a pull request runs only on the owner's pick.
 - Each push or pull request is named before it runs.
 - The story's branch is deleted only when the owner types `discard`.
-- The four agents and their tools:
+- The three agents and their tools. None has the Agent tool:
 
 | Agent | Tools | Job |
 |---|---|---|
-| `spec-lead` | Agent, Bash, Read, Glob, Grep | the only one with the Agent tool. It writes no file itself: `spec tick`, `task note` and `task set` do |
-| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds and commits one task on the story's branch; reads and writes nothing outside the repo |
-| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff and runs each user step with its tool; edits no file |
+| `implementer` | Bash, Read, Glob, Grep, Edit, Write | builds one task test-first, or each task of a bundle in turn, runs its packet's checks and commits it on the story's branch; reads and writes nothing outside the repo but its packets |
+| `reviewer` | Bash, Read, Glob, Grep, Skill | reads the diff of a task, or of each task of a bundle, and runs each user step with its tool; edits no file; logs its issues with `spec issue` |
 | `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |
 
 - **Docs follow production.** A doc is updated only after the change is confirmed deployed to

@@ -23,7 +23,7 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
 3. Draft the four parts from them:
    - `### Set up and start`: the commands that install, build and start it from a fresh clone.
    - `### Checks`: each command that must pass, such as the tests, the linter and the build, and
-     what it proves.
+     what it proves. The command is the line's first inline code span: the helper runs it.
    - `### Check as a user would`: the steps that use a change as a user does, such as opening the
      page, calling the endpoint or running the command, and what to look for.
    - Each user step is one line that starts with its tool, as `### Validation` in
@@ -31,6 +31,10 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
      call from its routes, a query from its database config.
    - A step on a page needs a browser, and the plugin ships none. Offer a browser skill this
      session lists, else ask which skill or command the repo uses.
+   - End each check and each user step with when it runs, as `### Validation` in
+     `docs/contract.md` says. Draft `when: each task` for a quick one, such as a linter or a
+     single test file, `when: each build` for a full suite, and `when: release` for one that costs
+     money or takes long, such as an end-to-end suite.
    - `### A pass`: what must be true for a change to pass.
 4. Show the draft and ask the user to confirm or correct each part.
 5. Write only what they confirm, in place of the `<...>` lines, with the Edit tool.

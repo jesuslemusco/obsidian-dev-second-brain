@@ -1,9 +1,181 @@
 # Changelog
 
+## 0.7.0 - unreleased
+
+- The vault-doctor skill's `validation` row says it also warns on a placeholder an earlier
+  validation template had, as the doctor has done since 0.6.0.
+- The 0.6.0 note on the Windows doctor tests gives their time as 25 minutes, not 17.
+- `scripts/test.sh` checks the agents' descriptions in a form the bash 3.2 of macOS can parse.
+- The `spec` skill runs the build in your session. It launches `implementer` and `reviewer`
+  itself with the Agent tool, one at a time, and takes each report from the agent's result, so
+  no report is relayed by hand.
+- The `spec-lead` agent is gone. The skill took over its build.
+- The skill's build part is in the new `skills/spec/build.md`, read only when a build starts.
+  `skills/spec/SKILL.md` stays a short router.
+- Each launch names its model by role and round: `opus` for `implementer` and `reviewer`, and
+  `fable` for the last two fix rounds and for the review of the whole branch.
+- A spec story's build progress is in `build.json` in its task folder in the vault, whatever its
+  `spec_home`, never in its README. Per task it holds a build state, a review state, the commits,
+  each issue with its proposed fix, and the time each state was set.
+- The new `building` state is set before each `implementer` launch, a retry included.
+  `in-review` is set before each `reviewer` launch.
+- `second-brain spec status <ID> <task> <state>` sets the field its state belongs to, and adds no
+  status note. `spec issue` adds the issue to `build.json`.
+- `second-brain spec status <ID>` prints one line per task:
+  `T1 - build: built - review: failed - fails 1 - commits <hashes> - fix <hashes> - <title>`, its
+  issues under it. `--json` has the keys `id`, `build`, `review`, `fails`, `commits`, `fix`,
+  `title` and `issues`.
+- Upgrading: a README `## Build` section, such as one an earlier build wrote, is read as it is.
+  The next `spec status` or `spec issue` write moves it into `build.json` and removes it from the
+  README, whose line endings it keeps, on Windows too.
+- The skill shows you `spec status <ID>` after each task's review, when the build stops or
+  finishes, and when a session resumes a build. The build started, stopped and why, and
+  finished, and each ruling, stay in the README as status notes.
+- `implementer` and `reviewer` get the story, the task and the session id, and run
+  `second-brain spec packet` themselves. The skill never prints a packet into your session.
+- The packet has `commits` and `diff` lines. `diff` names a temp file the helper writes with each
+  of the task's commits, and `reviewer` reads the change from it.
+- A task may name `- Provides: <signatures>`. A task that names `- Uses: T<n>` gets those lines
+  in its packet, under `## Uses`. On a retry the packet holds the task's logged issues, under
+  `## Issues`.
+- `reviewer` logs its findings with `spec issue` and replies with its verdict and the number of
+  issues.
+- The tasks phase checks every task's packet without printing it.
+- A resumed build takes a cut-off task's commit only when `build.json` does not list it yet,
+  compared by full hash. It launches a `blocked` task again only with a ruling newer than the
+  stop, and asks the owner otherwise.
+- A block writes its stop note before it sets `blocked`, so a new session never takes an older
+  ruling for it.
+- A `build.json` that is blank, or not an object with a `tasks` array, makes `spec status`,
+  `spec issue` and `spec packet` exit 1. It never reads as a build that has not started.
+- `build.json` is written next to itself, then moved in place, so a write cut off leaves the old
+  file.
+- A line break in an issue prints as a blank in `spec status` and the packet, so each issue stays
+  one line.
+- `SECOND_BRAIN_NOW` sets the time `build.json` records, for tests.
+- Each task is reviewed right after it is built, before the next one starts. A fresh `reviewer`
+  reads only its diff, against its requirements first, then for code quality, and runs only its
+  `each task` checks.
+- A failed task goes back to the same `implementer` with its findings, which the skill reaches
+  again with SendMessage by the name it launched it with. A fresh one takes over when it cannot.
+- The fix loop has five rounds: three on the same `implementer`, then two on a fresh one on the
+  stronger model. A sixth failed review stops the build.
+- The rounds are a task's `fails`, its failed reviews in `build.json`, so the cap holds across
+  sessions. A task stopped at the cap waits for a ruling newer than its stop, as a blocked one
+  does.
+- A re-review reads only the fix's commits and the findings it answers. The packet's new `fails`
+  line says which it is: its `diff` and `## Issues` then hold only those.
+- `build.json` records the commit of each state set with `--commit`, and the review round of each
+  issue.
+- When every task has passed, the skill runs `second-brain validation run <project> <repo>
+  --when each-build` once, with no agent. A failing check is logged on the task whose files it
+  covers and takes the fix loop.
+- Then `reviewer` runs the user steps on the finished branch, in the new user mode. One review of
+  the whole branch, in the new branch mode, ends the build.
+- Each check and user step in `validation.md` ends with `when: each task`, `when: each build` or
+  `when: release`. None means `each build`, and so does any other value, which every run names
+  as a warning. A `release` check runs only when you ask.
+- The new `second-brain validation run <project> <repo> [--when each-task|each-build|release]
+  [--timeout <seconds>] [--json]` runs the matching checks from the repo's root, one at a time,
+  each stopped after 1800 seconds by default. It prints one row per check and exits 0 only when
+  all pass.
+- `validation run` stops what a command leaves running when it exits, before the next check
+  starts. On Windows a timeout also stops the command's Windows processes with `taskkill`.
+- `validation run --json` gives `exit` and `seconds` as numbers, `null` on a skipped row.
+- The skill and `reviewer` run `validation run` in the background and wait for its notice, since a
+  build-wide run can outlast a Bash call's timeout.
+- The skill shows `spec status` once a review's state is set. A resumed failed task looks for the
+  owner's ruling as a blocked one does, and the cap writes one stop note.
+- The validation template asks for each check's command in backticks and for when it runs.
+  `/odsb:vault-setup validation` drafts both. The doctor still flags the template's earlier
+  lines.
+- Upgrading: in a `validation.md` with no `when:`, every check runs once, at the end of each
+  build, and none in a task's review. Add `when: each task` to a quick check to run it in each
+  review, and `when: release` to a costly one.
+- `implementer` builds each task test-first. It writes a test that fails for the task's
+  requirement, makes it pass, and runs the checks its packet names before it commits. A task with
+  nothing to test, such as a doc change, says why.
+- The packet's new `## Checks` part names those checks: the task's `Check`, then each command
+  `validation run --when each-task` runs. The `each build` checks still run once, when every task
+  has passed.
+- `implementer` commits only when its checks pass. Its reply adds a `Test:` line and a `Check:`
+  line per check with its result. It runs them in the background, so a long suite is never cut
+  off.
+- A task's `- Check:` step that `implementer` has no tool for, such as a browser or a skill step,
+  is reported as skipped and left to the review. The build goes on.
+- A task's `- Check:` now runs before its commit and again in its review. Write it as the
+  narrowest command that runs the task's test, not every suite.
+- A new build skips the baseline when the story's branch starts on the base branch, which is
+  tested already. The test is `git merge-base --is-ancestor`, against `origin/<base>` when the
+  repo has it, else `<base>`. The base is the subproject's `base_branch`, or the profile's.
+- A skipped baseline writes the status note
+  `Build: baseline skipped: the branch starts at <short hash> on <base>.` A branch cut from a
+  release branch, or with commits the base lacks, still gets the baseline. The final validation
+  always runs.
+- In the tasks phase the `spec` skill may mark small, alike tasks with `- Bundle: <n>`, for you
+  to approve with the task list.
+- A bundle's tasks go to one `implementer` run, one commit per task, each built test-first with
+  its own checks. Then one `reviewer` judges each task against its own requirements and gives one
+  verdict per task, before the next task or bundle starts. Nothing builds in parallel.
+- A task of a bundle that fails its review takes the fix loop alone, with its own cap. A bundle
+  cut off part way resumes from `build.json`.
+- A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`
+  spec, `<ID> <task>: passed review`, for its own.
+- `spec status` names each task's `fix`: the commits built since its last failed review. A
+  resumed failed task with a fix goes to the review of that fix, not to a new fix round.
+- A task whose reply names no commit is looked for by its commit before it is set `blocked`.
+- `second-brain spec tasks` prints each task's bundle in a fourth column, `-` for none, and
+  `--json` adds the key `bundle`. A bundle that is not a whole number, whose tasks are not next to
+  each other, or whose task uses another of its tasks, exits 1.
+- Once the build has started, the `spec` skill stops and asks you only for a short list: a
+  destructive action, a security-sensitive one, an outside effect such as a push, a merge or a
+  publish, a spec too broken to follow, a task blocked or past its last fix round, and a failed
+  baseline. `## 8. When to ask the owner` in `skills/spec/build.md` holds it.
+- Any other question, such as an ambiguous requirement or two agents that disagree, the skill
+  decides itself and records as a status note,
+  `Ruling: <task>: <the question> - <the decision and why>`.
+- A ruling never changes, adds or drops a requirement, a design decision, a task or a check. One
+  that would is a spec too broken to follow, and stops the build.
+- An `implementer` `BLOCKED:` on such a question, such as a requirement it reads two ways, gets a
+  ruling and the task goes on. The same question again stops the build.
+- Every ruling of the build on a task, the skill's and yours, goes as written into that task's
+  next `implementer` and `reviewer` prompts, as `Ruling:` and `Owner:` lines. The user and branch
+  reviews get them all. Where the two differ, yours wins.
+- The rulings of a build are the status notes newer than its newest `Build: started` note, so a
+  new session finds them and never takes those of an earlier build. A `Spec: <phase> reopened`
+  note retires the rulings before it: the changed phase holds what you kept of them.
+- When the build finishes or stops, the skill lists every ruling of the build, with the phase
+  each touched. You can reopen that phase, or reverse a ruling with your own. A task that passed
+  then takes your ruling as an issue to fix.
+- A resumed failed task whose stop you have not answered asks you first, whatever its fix round.
+  A `Spec: <phase> reopened` note newer than the stop answers it, for a blocked task too.
+- A FAIL of the user check or the branch review no longer stops the build. Each task it logged a
+  finding on takes the fix loop, as a failing build-wide check does.
+- A failing build-wide check, or a user or branch finding, that no task covers goes to the last
+  task, with a ruling. A review that still gives no verdict, asked again and then from a fresh
+  `reviewer`, is taken as BLOCKED.
+- `reviewer` grades each acceptance check, and each check and user step it runs, as met or not,
+  with its evidence. A check not met fails the task, and so does any other finding: a PASS with
+  an open finding is not allowed.
+- `reviewer` takes the implementer's report, commit messages and comments as claims to check,
+  never as evidence. The `spec` skill gives it no view of its own on the result.
+- `reviewer` ends its reply with a JSON block, `{"verdict": ..., "issues": <n>, "checks": [...]}`,
+  in place of the `VERDICT:` line. A bundle's block holds one entry per task. The `spec` skill
+  reads each verdict from it, as `### Reading a verdict` in `skills/spec/build.md` says.
+- No block, or one that breaks its rules, is no verdict and never a PASS. So is a PASS with a
+  check not met or an issue logged in its review, and a FAIL that adds no issue. The skill
+  asks once more only when the block is missing or does not parse. Otherwise it launches one
+  fresh `reviewer`, judged against the issue counts taken before the first, then takes it as
+  BLOCKED.
+- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its
+  evidence. Its grading is tuned on the reviews of an earlier build: a check on every item of a
+  kind is met only when each item meets it, a defect it sees is a finding even when no check
+  names it, and a check a ruling settles is met.
+
 ## 0.6.0 - 2026-11-08
 
 - The test workflow runs the doctor tests in a job of their own on each runner, in parallel with
-  the leak check and the other suites. On Windows they took 17 of the run's 40 minutes.
+  the leak check and the other suites. On Windows they took 25 of the run's 40 minutes.
 - `--json` on `task head`, `spec tasks`, `spec status <ID>` and `validation <project> [repo]`
   prints the same fields as one JSON value, as `doctor --json` does, so an agent never misreads a
   field. `docs/contract.md` section 7 gives each shape.

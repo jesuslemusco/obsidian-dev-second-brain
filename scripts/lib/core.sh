@@ -38,6 +38,7 @@ specs:    spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)
           spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>
           spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"
           validation <project> [repo] | validation new <project> <repo>
+          validation run <project> <repo> [--when each-task|each-build|release] [--timeout S]
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]
           sprint set <project> goal=<text> committed=<n>
@@ -49,7 +50,7 @@ setup:    scaffold vault [DIR]
           pointer | pointer set <DIR> [--replace]
           link [--check | --apply] | doctor [project] [--json] [--fix]
           snapshot [name] | compare [name] | session-check
-json:     task head, spec tasks, spec status <ID> and validation <project> [repo] take --json
+json:     task head, spec tasks, spec status <ID>, validation <project> [repo] and validation run take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
             6 already exists
 EOF
@@ -90,6 +91,21 @@ sb_today() {
     printf '%s\n' "$SECOND_BRAIN_TODAY"
   else
     date +%Y-%m-%d
+  fi
+}
+
+# Print the time build.json records, as YYYY-MM-DDTHH:MM:SS+HH:MM. SECOND_BRAIN_NOW overrides it;
+# with SECOND_BRAIN_TODAY alone it is that day at midnight.
+sb_now() {
+  local t z
+  if [ -n "${SECOND_BRAIN_NOW:-}" ]; then
+    printf '%s\n' "$SECOND_BRAIN_NOW"
+  elif [ -n "${SECOND_BRAIN_TODAY:-}" ]; then
+    printf '%sT00:00:00+00:00\n' "$SECOND_BRAIN_TODAY"
+  else
+    t="$(date +%Y-%m-%dT%H:%M:%S%z)"
+    z="${t#"${t%?????}"}"
+    printf '%s%s:%s\n' "${t%?????}" "${z%??}" "${z#???}"
   fi
 }
 

@@ -15,8 +15,8 @@ tickets, sprints and project docs, as plain markdown notes that Claude reads and
   `## Edit an existing story` in `skills/story-tracker/SKILL.md`.
 - **Spec-driven stories.** A story is built from a spec when you ask, or when Claude thinks it
   needs one and you agree, as `## Spec-driven delivery` in `docs/guide.md` says. You approve its
-  requirements, then its design, then its tasks. Then `spec-lead` builds and reviews each task, as
-  `agents/spec-lead.md` says.
+  requirements, then its design, then its tasks. Then the `spec` skill builds and reviews each
+  task in your session, as `skills/spec/build.md` says.
 - **Validation.** Each repo's steps to run and check it are in a `validation.md`, in the vault or
   in the repo, as `### Validation` in `docs/contract.md` says.
   `/odsb:vault-setup validation <project>` drafts them for you to confirm.

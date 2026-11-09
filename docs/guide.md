@@ -13,9 +13,8 @@ Start with the [README](../README.md). Every helper command and note format is i
 | `vault-doctor` | skill | Checks the vault and the registration against the standard. |
 | `scrum-master` | agent | Runs the sprint cadence across projects through `sprint` and `story-tracker`. |
 | `docs-keeper` | agent | Keeps a project's docs in step with its code. |
-| `spec` | skill | Writes a story's spec with you, one approved phase at a time, then starts `spec-lead`. |
-| `spec-lead` | agent | Builds the approved tasks through `implementer` and `reviewer`. |
-| `implementer` | agent | Builds and commits one task from its context packet alone. |
+| `spec` | skill | Writes a story's spec with you, one approved phase at a time, then builds and reviews each task in your session. |
+| `implementer` | agent | Builds one task, or each task of a bundle in turn, test-first from the packet it fetches, runs its checks and commits it. |
 | `reviewer` | agent | Runs the repo's validation steps on a change and reads its diff. Edits no file. |
 | `spec-checker` | agent | Reads a spec alone and lists what it could not build from it. Writes no file. |
 | `bin/second-brain` | command | The helper the skills call. `second-brain help` lists its commands. |
@@ -113,11 +112,56 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
   `- Check: <command or step> - expected: <what it prints or shows>` line.
 - The doctor's `spec-trace` check names an acceptance criterion that no requirement serves.
 - Once you approve the tasks, the story's Approach, Changes and Verification link to the spec.
-- The build runs in agents, which cannot ask you anything. Every question comes through your
-  session.
-- When the build stops, your session shows where it stands and asks you what to do. The cases
-  that stop it are in `agents/spec-lead.md`.
-- `second-brain spec status EX-2` prints where the build stands, one line per task.
+- The build runs in your session. The `spec` skill launches `implementer` and `reviewer` one at a
+  time, and each agent's report comes back to it, so you relay nothing.
+- The agents cannot ask you anything. Every question comes through your session.
+- Each agent fetches its own packet and replies in a few short lines, so your session stays small
+  through a long build. `reviewer` reads the task's diff from a file the helper writes.
+- Each task is reviewed right after it is built, before the next one starts, so no task builds on
+  an unreviewed one. The review reads the task's diff, against its requirements first, then for
+  code quality.
+- Before the first task, the baseline runs the repo's checks on the branch as it is, so a break
+  already there is not taken for a task's. It is skipped when the branch starts on the base
+  branch, which is tested already, and when a build resumes, as `## 4. The baseline` in
+  `skills/spec/build.md` says.
+- Small, alike tasks may form a bundle, which you approve with the task list. A bundle's tasks go
+  to one `implementer` run, one commit per task, then one review, before the next task starts, as
+  `### A bundle` in `skills/spec/build.md` says.
+- `second-brain spec tasks EX-2` prints each task's bundle in its last column.
+- `implementer` builds each task test-first. It writes a test that fails for the task's
+  requirement, then makes it pass. A task with nothing to test, such as a doc change, says why.
+- Who runs which check: `implementer` runs the task's `Check` and the repo's `each task` checks
+  before it commits, as its packet's `## Checks` names them. It commits only when they pass, and
+  its reply names each result. A step it has no tool for, such as a browser step, is left to the
+  review.
+- `reviewer` runs those checks again in the task's review, with the `each task` user steps.
+- `reviewer` grades each check as met or not, with its evidence, and ends its reply with a JSON
+  verdict. The skill reads that verdict, and a PASS with an open finding never counts, as
+  `### Reading a verdict` in `skills/spec/build.md` says.
+- A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
+  rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
+  session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.
+- When every task has passed, the helper runs the repo's checks once, with no agent. Then one
+  review runs the user steps and one, on the most capable model, reads the whole branch, as
+  `## 6. When every task passed` in `skills/spec/build.md` says.
+- A task may name what it provides on `- Provides:` lines. A task that names it on `- Uses:` gets
+  those lines in its packet, as `## 4. A task` in `docs/contract.md` says.
+- Once the build has started, it stops and asks you only for a short list: a destructive action,
+  a security-sensitive one, an outside effect such as a push, a merge or a publish, a spec too
+  broken to follow, a task blocked or past its last fix round, and a failed baseline. The list is
+  under `## 8. When to ask the owner` in `skills/spec/build.md`.
+- Any other question, such as an ambiguous requirement or two agents that disagree, the skill
+  decides itself. It records each as a status note,
+  `Ruling: <task>: <the question> - <the decision and why>`.
+- Each ruling, and each answer you give on a task, goes as written into that task's next
+  `implementer` and `reviewer` prompts, so no review flags what was decided.
+- When the build stops, your session shows where it stands, lists the build's rulings and asks
+  you what to do. When it finishes, it lists them too. You can reopen the phase a ruling touched,
+  or reverse the ruling.
+- `second-brain spec status EX-2` prints where the build stands, one line per task, from
+  `build.json` in the story's folder. A new session goes on from there.
+- Each task's build and review state, commits, issues and times are in `build.json`, never in the
+  story's README. The README keeps the story-level notes, such as the build started or stopped.
 - When the last task passes, the story moves to `in-review`.
 - Then Claude asks whether to merge the branch into the release branch, open a pull request into
   it, or keep it, as `skills/spec/finish.md` says.
@@ -127,10 +171,16 @@ For one session without installing: `claude --plugin-dir /path/to/obsidian-dev-s
 - The agents read a repo's validation steps before they build or review a change, as
   `### Validation` in `docs/contract.md` says.
 - A build does not start on a repo whose steps are missing, as
-  `## Step 3 - Ready to build` in `skills/spec/SKILL.md` says.
+  `## 2. Ready to build` in `skills/spec/build.md` says.
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
+- Each check and user step ends with when it runs: `when: each task`, `when: each build` or
+  `when: release`, as `### Validation` in `docs/contract.md` says. A `release` one runs only when
+  you ask.
+- `second-brain validation run <project> <repo> --when each-task` runs the matching checks one at a
+  time, each stopped after `--timeout` seconds, and prints a row per check. Its form is under
+  `## 7. The helper` in `docs/contract.md`.
 - Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
   in `docs/contract.md` says.
 - The plugin ships no browser. Name the browser skill or command your repo uses.

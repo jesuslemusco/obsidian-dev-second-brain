@@ -946,17 +946,19 @@ END {
 }
 
 # Run sb_spec_build_awk on the story; the arguments are environment settings, such as SB_MODE=text.
-# build.json is SB_SP_BJ, from sb_spec_resolve; tasks.md is read when it is there.
-sb_spec_build_run() {
+# build.json is SB_SP_BJ, from sb_spec_resolve; tasks.md is read when it is there. It runs in a
+# subshell that exports the settings, so awk is the plain name: on Windows, the binary-mode one.
+sb_spec_build_run() (
   local rows="" jf=0
   [ -f "$SB_SP_BJ" ] && jf=1
   if [ -n "${SB_SP_DIR:-}" ] && [ -f "$SB_SP_DIR/tasks.md" ]; then rows="$(sb_spec_task_rows "$SB_SP_DIR/tasks.md")"; fi
+  [ $# -eq 0 ] || export "$@"
   if [ "$jf" -eq 1 ]; then
-    env "$@" SB_JF=1 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_SP_BJ" "$SB_T_FILE"
+    SB_JF=1 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_SP_BJ" "$SB_T_FILE"
   else
-    env "$@" SB_JF=0 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_T_FILE"
+    SB_JF=0 SB_ROWS="$rows" SB_STORY="$SB_T_ID" LC_ALL=C awk "$(sb_spec_build_awk)" "$SB_T_FILE"
   fi
-}
+)
 
 # Print the build as spec status does: one line per task (text), or the rows as JSON (json).
 sb_spec_build_show() {

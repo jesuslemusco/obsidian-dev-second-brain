@@ -3028,6 +3028,9 @@ awk '/^## Status notes/ { printf "## Build\r\n\r\n- T1 - built - commits `abc123
 sb spec issue SP-3 T1 "CRLF." --fix "Keep it."
 file_lacks "spec issue: the section leaves a CRLF README" "$L3" "## Build"
 is "spec issue: and every line keeps its CRLF" "$(grep -vc "$CR\$" "$L3" || true)" "0"
+# On Windows awk, grep and sed are shell functions that read in binary mode; env or command skips them.
+is "libraries: awk, grep and sed are never run through env or command" \
+  "$(grep -nE '(^|[^a-zA-Z_])(env|command) +[^-]' "$here"/scripts/lib/*.sh | grep -v '/platform\.sh:' | grep -E '(awk|grep|sed)' || true)" ""
 # build.json sits in the vault even for a repo spec, so the repo's tree stays clean.
 edit "$SPF" 's/^spec_home: vault$/spec_home: repo/'
 printf '%s\n' '# SP-6 - Tasks' '' '- [ ] T1 - Repo task' '  - Requirements: R1' >"$tmp/scode/spec-app/spec/SP-6/tasks.md"

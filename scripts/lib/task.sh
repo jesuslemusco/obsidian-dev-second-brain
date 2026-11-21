@@ -411,18 +411,33 @@ sb_task_tag() {
   sb_task_topics "$SB_T_FILE"
 }
 
-# Return 0 when a name, lowercased, is archive or one of the five status folders, so no task id and
-# no alias in any layout: a file system that ignores letter case would take it for that folder.
+# Return 0 when a name, lowercased, is archive or one of the five status folders, and print that
+# folder; such a name is no task id and no alias in any layout, since a file system that ignores
+# letter case would take it for that folder.
 sb_task_reserved() {
   local name s
   name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  for s in archive $SB_TASK_STATUSES; do [ "$name" != "$s" ] || return 0; done
+  for s in archive $SB_TASK_STATUSES; do
+    if [ "$name" = "$s" ]; then
+      printf '%s\n' "$s"
+      return 0
+    fi
+  done
   return 1
+}
+
+# sb_task_refuse_reserved <name> <task id|task alias>: exit 5 when the name is reserved, naming its
+# folder: the name as typed, the status lowercased. Archive keeps its own message.
+sb_task_refuse_reserved() {
+  local folder
+  folder="$(sb_task_reserved "$1")" || return 0
+  [ "$folder" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a $2"
+  sb_die 5 "$1 is the folder of the $folder tasks, not a $2"
 }
 
 # Add an alias to a task, after the ones it has; print the aliases that result.
 sb_task_alias() {
-  local id="" action="" alias="" project="" other lc
+  local id="" action="" alias="" project="" other
   local usage="usage: second-brain task alias <ID> add <alias> [--project P]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -446,11 +461,7 @@ sb_task_alias() {
   [ "$action" = "add" ] || sb_die 5 "$usage"
   alias="$(printf '%s' "$alias" | tr '\n\r\t' '   ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [ -n "$alias" ] || sb_die 5 "$usage"
-  if sb_task_reserved "$alias"; then
-    lc="$(printf '%s' "$alias" | tr '[:upper:]' '[:lower:]')"
-    [ "$lc" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a task alias"
-    sb_die 5 "$alias is the folder of the $lc tasks, not a task alias"
-  fi
+  sb_task_refuse_reserved "$alias" "task alias"
   sb_need_task "$id" "$project"
   # An alias names one task: refuse one that another task of the project already answers to.
   other=""
@@ -541,7 +552,7 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir lc
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -572,11 +583,7 @@ sb_task_new() {
   case "$id" in
     *[!A-Za-z0-9._-]* | .* | -*) sb_die 5 "a task id holds letters, digits, dots, hyphens and underscores: $id" ;;
   esac
-  if sb_task_reserved "$id"; then
-    lc="$(printf '%s' "$id" | tr '[:upper:]' '[:lower:]')"
-    [ "$lc" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a task id"
-    sb_die 5 "$id is the folder of the $lc tasks, not a task id"
-  fi
+  sb_task_refuse_reserved "$id" "task id"
   sb_need_root
   if [ -z "$project" ]; then
     rows="$(sb_project_rows_by_key "$id")"

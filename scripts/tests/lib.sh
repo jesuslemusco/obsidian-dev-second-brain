@@ -8,6 +8,9 @@ SB="$here/bin/second-brain"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-test.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
+# A TERM, as the runner sends on Ctrl-C, ends the area once its current command is done, so the
+# temp dir goes and nothing of it is left running.
+trap 'exit 143' TERM
 
 # The suite compares bytes. On Windows, in Git Bash, the platform library gives it the awk, grep
 # and sed that keep every CR, as the helper has them.

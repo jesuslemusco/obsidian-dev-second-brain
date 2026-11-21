@@ -40,26 +40,47 @@ if [ -z "$max_jobs" ]; then
   fi
   case "$max_jobs" in "" | *[!0-9]* | 0) max_jobs=2 ;; esac
 fi
-case "$max_jobs" in
-  "" | *[!0-9]* | 0)
-    printf 'SECOND_BRAIN_TEST_JOBS is a whole number above 0, not %s\n' "$max_jobs" >&2
-    exit 2
-    ;;
-esac
-# start_area <area>: run it in the background; its output, errors and exit code go to files.
+# A count too large for the shell to compare is refused too.
+case "$max_jobs" in "" | *[!0-9]* | 0) max_jobs=x ;; esac
+if ! [ "$max_jobs" -ge 1 ] 2>/dev/null; then
+  printf 'SECOND_BRAIN_TEST_JOBS takes a count of jobs, such as 4, not %s\n' \
+    "${SECOND_BRAIN_TEST_JOBS:-}" >&2
+  exit 2
+fi
+# Each area's files are named for its place in the list, so an area named twice runs twice.
+list=($areas)
+mkdir -p "$tmp/areas"
+# start_area <n>: run area n in the background; its output, errors and exit code go to files.
+# On a TERM it passes the TERM on and waits for the area, which stops after its current command
+# and removes its temp dir.
 start_area() {
-  ( "$BASH" "$here/scripts/tests/$1.sh" </dev/null >"$tmp/areas/$1.out" 2>"$tmp/areas/$1.err"
+  ( trap 'kill -TERM $! 2>/dev/null; wait $! 2>/dev/null; exit 143' TERM
+    "$BASH" "$here/scripts/tests/${list[$1]}.sh" </dev/null >"$tmp/areas/$1.out" \
+      2>"$tmp/areas/$1.err" &
+    wait $!
     printf '%s\n' "$?" >"$tmp/areas/$1.rc.part" && mv "$tmp/areas/$1.rc.part" "$tmp/areas/$1.rc" ) &
+  pids="$pids $!"
 }
-# show_area <area>: print its output, add its total to this one, and count a crash as a failure.
+# stop_areas <exit code>: on Ctrl-C or a TERM, stop every area and wait for them, then exit.
+# Bash runs a background job with SIGINT ignored, so the areas never see the Ctrl-C themselves.
+stop_areas() {
+  trap - INT TERM
+  [ -z "$pids" ] || kill -TERM $pids 2>/dev/null
+  wait
+  exit "$1"
+}
+pids=""
+trap 'stop_areas 130' INT
+trap 'stop_areas 143' TERM
+# show_area <n>: print area n's output, add its total to this one, and count a crash as a failure.
 # Its own total line is left out of the output.
 show_area() {
-  local a="$1" out="$tmp/areas/$1.out" rc counts
-  rc="$(cat "$tmp/areas/$a.rc")"
+  local a="${list[$1]}" out="$tmp/areas/$1.out" rc counts
+  rc="$(cat "$tmp/areas/$1.rc")"
   printf '== %s\n' "$a"
   awk '/^$/ { blank++; next } /^[0-9]+ passed, [0-9]+ failed$/ { blank = 0; next }
     { for (; blank > 0; blank--) print ""; print }' "$out"
-  cat "$tmp/areas/$a.err" >&2
+  cat "$tmp/areas/$1.err" >&2
   counts="$(tail -1 "$out" | sed -n 's/^\([0-9][0-9]*\) passed, \([0-9][0-9]*\) failed$/\1 \2/p')"
   if [ -z "$counts" ]; then
     # It stopped before its total: count the checks it printed, and the stop as one more failure.
@@ -70,27 +91,28 @@ show_area() {
   fi
   n_pass=$((n_pass + ${counts% *}))
   n_fail=$((n_fail + ${counts#* }))
-  if [ "$rc" -ne 0 ] && [ "${counts#* }" -eq 0 ]; then fail "area $a: exit $rc with no check failed"; fi
+  if [ "$rc" -ne 0 ] && [ "${counts#* }" -eq 0 ]; then
+    fail "area $a: exit $rc with no check failed"
+  fi
 }
 # Start an area while fewer than max_jobs run, and print each one, in area order, once it is done.
-mkdir -p "$tmp/areas"
-list=($areas)
 started=0
 printed=0
 while [ "$printed" -lt "${#list[@]}" ]; do
   done_n=0
-  for ((i = 0; i < started; i++)); do [ -f "$tmp/areas/${list[$i]}.rc" ] && done_n=$((done_n + 1)); done
+  for ((i = 0; i < started; i++)); do [ -f "$tmp/areas/$i.rc" ] && done_n=$((done_n + 1)); done
   if [ "$started" -lt "${#list[@]}" ] && [ $((started - done_n)) -lt "$max_jobs" ]; then
-    start_area "${list[$started]}"
+    start_area "$started"
     started=$((started + 1))
-  elif [ "$printed" -lt "$started" ] && [ -f "$tmp/areas/${list[$printed]}.rc" ]; then
-    show_area "${list[$printed]}"
+  elif [ "$printed" -lt "$started" ] && [ -f "$tmp/areas/$printed.rc" ]; then
+    show_area "$printed"
     printed=$((printed + 1))
   else
     sleep 0.1 2>/dev/null || sleep 1
   fi
 done
 wait
+trap - INT TERM
 
 # ---------------------------------------------------------------- result
 result

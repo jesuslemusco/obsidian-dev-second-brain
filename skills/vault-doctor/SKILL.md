@@ -83,4 +83,5 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
   that fix.
 - Run `second-brain move` with `--dry-run` first.
 - The helper prints `-` for an empty cell. Read it as empty.
-- A template named in `checks.md` is under the plugin root, in `templates/`.
+- A template named in `checks.md` is under the plugin root, in `templates/`, unless the entry says
+  it is in the project, in `claude/templates/`.

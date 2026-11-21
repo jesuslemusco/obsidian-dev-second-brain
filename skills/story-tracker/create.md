@@ -87,5 +87,6 @@ commits, the files already in the task folder.
    - The `**Branch:**` line follows the branch check.
    - Code verification holds what section 2 confirmed, with the ref.
    - Approach / Key decisions, Changes and Verification fill in as the work proceeds.
+   - Add no section the README lacks: a project's own template may leave some out.
 5. `second-brain task note EX-123 "<where the story stands>" --session <session id from SKILL.md>`.
 6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.

@@ -101,6 +101,12 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Why: every session reads the hub and `claude/README.md` before it works on the project, so an unwritten rule gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
 - Fix: ask the user, then write the rule or the fact the line asks for in its place, or delete the line when there is none. Never invent one. Keep the headings: the `profile` check needs the seven sections.
 
+### task-template
+
+- Means: the project's own task README template, `claude/templates/task-readme.md.tmpl` in the project, lacks a frontmatter key the helper writes (`aliases`, `title`, `status`, `next`, `branch`, `epic`, `type`) or a section the helper or story-tracker writes under (`## Status notes`, `## Discovery log`). Each offender is the key or the heading. A heading in fenced code does not count. A project with no such template is ok.
+- Why: `second-brain task new` fills that template in place of the plugin's, so each new story starts without the key or the section: a story with no `aliases` fails `task-frontmatter`, the board and `task head` show another key as empty, and `task note` and story-tracker add the section where the project did not plan it.
+- Fix: ask the user, then add each to the project's template, shaped as the plugin's `templates/task-readme.md.tmpl`. A story already made from it: add `aliases` with `second-brain task alias <ID> add <ID>`, another key with `second-brain task set <ID> <key>=<value>`, and a section's heading by hand.
+
 ### task-frontmatter
 
 - Means: a task README's first alias is not its folder name, or it lacks `type: task` or the `type/task` tag.

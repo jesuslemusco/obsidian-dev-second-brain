@@ -803,6 +803,41 @@ doc Example
 chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
 reset
 
+# ---------------------------------------------------------------- task-template
+TT="$vault/$P/claude/templates/task-readme.md.tmpl"
+doc Example
+chk "task-template: ok for a project with no template of its own" task-template Example "ok | 0 | -"
+mkdir -p "$vault/$P/claude/templates"
+printf '%s\n' 'No frontmatter and no section.' >"$vault/$P/claude/templates/ticket-description.md.tmpl"
+doc Example
+chk "task-template: the ticket text template is not read" task-template Example "ok | 0 | -"
+cp "$here/templates/task-readme.md.tmpl" "$TT"
+doc Example
+chk "task-template: ok for a copy of the plugin's" task-template Example "ok | 0 | -"
+edit "$TT" '/^next: /d; /^epic: /d; /^## Status notes$/d'
+doc Example
+rc_is "task-template: a warning leaves exit 0" 0
+chk "task-template: each key, then each section, it lacks" task-template Example "warn | 3 | next, epic, ## Status notes"
+is "task-template: the fix names the file and the plugin's template" "$(fix_of task-template)" \
+  "add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
+printf '%s\n' '```' '## Status notes' '```' 'next: "Frame the story"' 'epic: "-"' >>"$TT"
+doc Example
+chk "task-template: a heading in fenced code and a key in the body do not count" task-template Example "warn | 3 | next, epic, ## Status notes"
+printf '%s\n' '## status NOTES  ' >>"$TT"
+doc Example
+chk "task-template: a heading matches without letter case and trailing blanks, as task note finds it" task-template Example "warn | 2 | next, epic"
+grep -v '^---$' "$here/templates/task-readme.md.tmpl" >"$TT"
+doc Example
+chk "task-template: with no frontmatter every key is missing" task-template Example "warn | 7 | aliases, title, status, next, branch"
+grep -v '^aliases:$\|^  - {{ID}}$' "$here/templates/task-readme.md.tmpl" >"$TT"
+doc Example
+chk "task-template: a template with no aliases warns, as each story made from it fails task-frontmatter" task-template Example \
+  "warn | 1 | aliases"
+{ printf '\357\273\277'; awk '{ printf "%s\r\n", $0 }' "$here/templates/task-readme.md.tmpl"; } >"$TT"
+doc Example
+chk "task-template: a BOM and CRLF line endings are read" task-template Example "ok | 0 | -"
+reset
+
 # ---------------------------------------------------------------- task frontmatter and status
 doc Example
 chk "task-frontmatter: ok on new tasks" task-frontmatter Example "ok | 0 | -"
@@ -1227,7 +1262,7 @@ subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty-three rows" "$(scope_rows Example)" "23"
+is "subprojects: a project with no subproject keeps twenty-four rows" "$(scope_rows Example)" "24"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
 chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
@@ -1237,7 +1272,7 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "25"
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "26"
 is "subprojects: its rows sit between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects task-subproject sprints "
@@ -1443,7 +1478,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "35"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "36"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1481,8 +1516,8 @@ names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("spec-trace") - names.index("validation"), by["spec-trace"]["result"], by["spec-trace"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 35 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
-    "35 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 36 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
+    "36 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1497,16 +1532,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: twenty-three rows for each" "$(scope_rows Example)/$(scope_rows Two)" "23/23"
+is "two projects: twenty-four rows for each" "$(scope_rows Example)/$(scope_rows Two)" "24/24"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -12 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size old-namespace "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-template task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "12/23/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "12/24/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

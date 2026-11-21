@@ -464,11 +464,12 @@ EOF
 
 # Write the spec links into a spec story's README: design.md as the first line of
 # "## Approach / Key decisions", tasks.md as the first line of "## Changes" and "## Verification".
-# A section that holds only "None yet." or the task template's text gets the link alone; any other
-# keeps its text under the link; one with its link is left alone. Line endings, the final newline,
-# frontmatter and fenced code are kept. Prints "linked: <heading>" per change, or "no change".
+# A section that holds only "None yet.", or the text of that section in the plugin's task template
+# or the project's own, gets the link alone; any other keeps its text under the link; one with its
+# link is left alone. Line endings, the final newline, frontmatter and fenced code are kept.
+# Prints "linked: <heading>" per change, or "no change".
 sb_spec_link() {
-  local dl tl tmpl tmp out miss nofinal=0 rc=0 line
+  local dl tl tmpl ptmpl tmp out miss nofinal=0 rc=0 line
   if [ "$SB_SP_DELIVERY" != "spec" ]; then
     printf 'no change: %s is not built from a spec (delivery: %s)\n' "$SB_T_ID" "$SB_SP_DELIVERY"
     return 0
@@ -483,13 +484,18 @@ sb_spec_link() {
     dl="See \`spec/$SB_T_ID/design.md\` in the \`$SB_SP_REPO\` repo."
     tl="See \`spec/$SB_T_ID/tasks.md\` in the \`$SB_SP_REPO\` repo."
   fi
-  tmpl="$(sb_plugin_root)/templates/task-readme.md.tmpl"
+  # A story made before the project had its own template holds the plugin's text.
+  tmpl="$(sb_template task-readme.md.tmpl)"
+  ptmpl="$(sb_plugin_root)/templates/task-readme.md.tmpl"
   [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-link.XXXXXX")" || sb_die 1 "cannot write a temp file"
   out="$(SB_OUT="$tmp" SB_DL="$dl" SB_TL="$tl" SB_NOFINAL="$nofinal" \
     SB_T1="$(sb_section "$tmpl" "Approach / Key decisions" 2>/dev/null)" \
     SB_T2="$(sb_section "$tmpl" "Changes" 2>/dev/null)" \
-    SB_T3="$(sb_section "$tmpl" "Verification" 2>/dev/null)" LC_ALL=C awk "$(sb_awk_lib)"'
+    SB_T3="$(sb_section "$tmpl" "Verification" 2>/dev/null)" \
+    SB_P1="$(sb_section "$ptmpl" "Approach / Key decisions" 2>/dev/null)" \
+    SB_P2="$(sb_section "$ptmpl" "Changes" 2>/dev/null)" \
+    SB_P3="$(sb_section "$ptmpl" "Verification" 2>/dev/null)" LC_ALL=C awk "$(sb_awk_lib)"'
     function norm(s,   n, i, a, o) {
       n = split(s, a, "\n"); o = ""
       for (i = 1; i <= n; i++) { sub(/\r$/, "", a[i]); a[i] = trim(a[i]); if (a[i] != "") o = o (o == "" ? "" : "\n") a[i] }
@@ -500,6 +506,7 @@ sb_spec_link() {
       name[1] = "Approach / Key decisions"; name[2] = "Changes"; name[3] = "Verification"
       link[1] = ENVIRON["SB_DL"]; link[2] = ENVIRON["SB_TL"]; link[3] = ENVIRON["SB_TL"]
       tm[1] = norm(ENVIRON["SB_T1"]); tm[2] = norm(ENVIRON["SB_T2"]); tm[3] = norm(ENVIRON["SB_T3"])
+      pm[1] = norm(ENVIRON["SB_P1"]); pm[2] = norm(ENVIRON["SB_P2"]); pm[3] = norm(ENVIRON["SB_P3"])
     }
     {
       if (NR == 1) eol = ($0 ~ /\r$/ ? "\r" : "")
@@ -527,7 +534,7 @@ sb_spec_link() {
         last[k] = i - 1
         if (has) continue
         b = norm(body)
-        mode[k] = ((b == "None yet." || (tm[k] != "" && b == tm[k])) ? "replace" : "insert")
+        mode[k] = ((b == "None yet." || (tm[k] != "" && b == tm[k]) || (pm[k] != "" && b == pm[k])) ? "replace" : "insert")
         print "linked\t" name[k]
       }
       o = ENVIRON["SB_OUT"]

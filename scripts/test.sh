@@ -243,6 +243,20 @@ is "sb_date_add: back over a year end" "$(sb_date_add 2027-01-03 -5)" "2026-12-2
 is "sb_date_diff: across years" "$(sb_date_diff 2028-03-05 2027-12-25)" "71"
 sb_date_ok 2026-02-30
 is "sb_date_ok: rejects an impossible date" "$?" "1"
+# A vault inside the plugin's folder: the template named in a refusal is the one filled.
+mkdir -p "$tmp/plug/templates" "$tmp/plug/vault/proj/claude/templates"
+printf '%s\n' '{{TEAM}}' >"$tmp/plug/templates/task-readme.md.tmpl"
+cp "$tmp/plug/templates/task-readme.md.tmpl" "$tmp/plug/vault/proj/claude/templates/"
+(SB_PLUGIN_ROOT="$tmp/plug" SB_ROOT="$tmp/plug/vault" SB_P_DIR="$tmp/plug/vault/proj" &&
+  sb_fill task-readme.md.tmpl "$tmp/plug/one.md") 2>"$tmp/stderr"
+ERR="$(cat "$tmp/stderr")"
+err_has "sb_fill: a project's own template is named by its vault path, wherever the vault is" \
+  "unfilled in proj/claude/templates/task-readme.md.tmpl"
+rm "$tmp/plug/vault/proj/claude/templates/task-readme.md.tmpl"
+(SB_PLUGIN_ROOT="$tmp/plug" SB_ROOT="$tmp/plug/vault" SB_P_DIR="$tmp/plug/vault/proj" &&
+  sb_fill task-readme.md.tmpl "$tmp/plug/two.md") 2>"$tmp/stderr"
+ERR="$(cat "$tmp/stderr")"
+err_has "sb_fill: the plugin's template is named by its name" "unfilled in task-readme.md.tmpl,"
 SB_ROOT=""
 
 # ---------------------------------------------------------------- root
@@ -2090,6 +2104,18 @@ case "$draft_row" in
   *"with or without an id"*ticket-description.md.tmpl*"reply with the text"*"Write no file until the id arrives"*) pass "story-tracker: a draft mode row fills the template and writes no file" ;;
   *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
 esac
+case "$draft_row" in
+  *"as the ticket text rules below say"*) pass "story-tracker: draft mode finds its template as ticket text does" ;;
+  *) fail "story-tracker: draft mode finds its template as ticket text does" "got: $draft_row" ;;
+esac
+line_is "story-tracker: ticket text fills the project's own template first" "$ST" \
+  "- Fill the project's own template when it has one:"
+line_is "story-tracker: the project's template is in its claude/templates folder" "$ST" \
+  '  `<vault>/<project path>/claude/templates/ticket-description.md.tmpl`, with the `vault:` line'
+line_is "story-tracker: else the plugin's template" "$ST" \
+  '- Else fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.'
+line_is "story-tracker: a new story keeps the shape of the project's README template" "$here/skills/story-tracker/create.md" \
+  "   - Add no section the README lacks: a project's own template may leave some out."
 file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
 file_lacks "vault-doctor: a request to check the vault may load it" "$here/skills/vault-doctor/SKILL.md" "disable-model-invocation"
 line_is "vault-setup: it runs only by name" "$here/skills/vault-setup/SKILL.md" "disable-model-invocation: true"
@@ -2862,6 +2888,127 @@ file_has "spec phases: each requirement opens with its Serves line" "$here/skill
 file_has "spec phases: every criterion is served" "$here/skills/spec/phases.md" 'Every criterion of the story is named on a `- Serves:` line'
 file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md" 'its `spec-trace` row must name'
 
+# ---------------------------------------------------------------- a project's own templates
+OT="$vault/$S/claude/templates"
+# A story made from the plugin's template before the project has its own.
+sb task new SP-24 --project Specs --title "Made before"
+O24="$vault/$S/tasks/SP-24/README.md"
+mkdir -p "$OT"
+cat >"$OT/task-readme.md.tmpl" <<'TMPL'
+---
+aliases:
+  - {{ID}}
+title: "{{TITLE}}"
+status: planned
+next: "Frame the story"
+branch: "none yet"
+epic: "-"
+type: task
+tags:
+{{TOPIC_TAGS}}
+  - type/task
+  - status/active
+---
+
+> Up: {{UP_LINK}}
+
+# {{ID}} - {{TITLE}}
+
+## Ticket markup
+
+<The markup this project's tracker keeps.>
+
+## Approach / Key decisions
+
+- <A decision of this project, and its reason.>
+
+## Changes
+
+## Verification
+
+## Status notes
+
+## Discovery log
+TMPL
+sb task new SP-21 --project Specs --title "Own shape"
+rc_is "own template: task new exits 0" 0
+O21="$vault/$S/tasks/SP-21/README.md"
+is "own template: task new fills the project's template" "$(grep '^## ' "$O21" | tr '\n' '|')" \
+  "## Ticket markup|## Approach / Key decisions|## Changes|## Verification|## Status notes|## Discovery log|"
+line_is "own template: its placeholders are filled" "$O21" "# SP-21 - Own shape"
+line_is "own template: the up link is the tasks hub's" "$O21" "> Up: [[$S/tasks/README|Specs Tasks Hub]]"
+line_is "own template: the title is quoted as task new writes it" "$O21" 'title: "Own shape"'
+sb task note SP-21 "Shaped by the project" --session own
+line_is "own template: task note writes under its Status notes" "$O21" '**2026-10-08 (session `own`) - Shaped by the project**'
+sb task set SP-21 delivery=spec
+sb spec new SP-21
+sb spec link SP-21
+is "own template: spec link reads the project's template text, so the link stands alone" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$O21")" "
+See [[$S/tasks/SP-21/spec/design|SP-21 Design]]."
+sb task set SP-24 delivery=spec
+sb spec new SP-24
+sb spec link SP-24
+is "own template: spec link still reads the plugin's template text in a story made before the project's" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$O24")" "
+See [[$S/tasks/SP-24/spec/design|SP-24 Design]]."
+is "own template: and in its Changes section" \
+  "$(awk '/^## Changes/ { on = 1; next } on && /^## / { exit } on' "$O24")" "
+See [[$S/tasks/SP-24/spec/tasks|SP-24 Tasks]]."
+printf '%s\n' '{{TEAM}}' >>"$OT/task-readme.md.tmpl"
+sb task new SP-22 --project Specs --title "Unknown placeholder"
+rc_is "own template: a placeholder the plugin's lacks exits 5" 5
+err_has "own template: the message names the project's template" "$S/claude/templates/task-readme.md.tmpl"
+absent "own template: nothing is written on refusal" "$vault/$S/tasks/SP-22/README.md"
+: >"$OT/task-readme.md.tmpl"
+sb task new SP-26 --project Specs --title "Empty template"
+rc_is "own template: an empty template exits 5" 5
+err_has "own template: and the message names it" "$S/claude/templates/task-readme.md.tmpl"
+absent "own template: an empty template leaves no task folder" "$vault/$S/tasks/SP-26"
+printf '%s\n' '# {{ID}} - {{TITLE}}' '' '## Status notes' '' '## Discovery log' >"$OT/task-readme.md.tmpl"
+mkdir -p "$vault/$S/tasks/SP-27"
+sb task new SP-27 --project Specs --title "No frontmatter"
+rc_is "own template: a template with no frontmatter exits 5" 5
+err_has "own template: the message says the README has no frontmatter" "no frontmatter"
+absent "own template: a template with no frontmatter leaves no README" "$vault/$S/tasks/SP-27/README.md"
+exists "own template: a folder that was there before stays" "$vault/$S/tasks/SP-27"
+rmdir "$vault/$S/tasks/SP-27"
+rm "$OT/task-readme.md.tmpl"
+printf '%s\n' 'The project shape of a ticket.' >"$OT/ticket-description.md.tmpl"
+sb task new SP-23 --project Specs --title "Plugin shape"
+rc_is "own template: with none, task new exits 0" 0
+is "own template: with none in the folder, task new fills the plugin's" "$(grep '^## ' "$vault/$S/tasks/SP-23/README.md" | tr '\n' '|')" \
+  "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+awk '/^## Status notes$/ { print "```"; print; print "```"; print "" } { print }' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
+sb doctor Specs
+is "own template: a fenced heading before the real one passes the doctor" "$(printf '%s\n' "$OUT" | grep ' | task-template | Specs | ' | cut -d'|' -f1-4)" \
+  "ok | task-template | Specs | 0 "
+sb task new SP-25 --project Specs --title "Fenced example"
+O25="$vault/$S/tasks/SP-25/README.md"
+sb task note SP-25 "Under the real heading" --session own
+is "own template: task note leaves the fenced heading alone" "$(awk '/^```$/ { f = !f; print; next } f' "$O25")" \
+  "$(printf '%s\n' '```' '## Status notes' '```')"
+n25="$(grep -n '^## Status notes$' "$O25" | sed -n 2p | cut -d: -f1)"
+is "own template: task note writes under the real heading, as the doctor finds it" "$(sed -n "$((n25 + 2))p" "$O25")" \
+  '**2026-10-08 (session `own`) - Under the real heading**'
+sb task head SP-25
+out_has "own template: task head reads the newest note under the real heading, not in fenced code" \
+  'last_note: **2026-10-08 (session `own`) - Under the real heading**'
+# The index row writer still reads its table as written, so the rule names the commands that keep it.
+line_is "contract: the commands that take no fenced heading are named" "$here/docs/contract.md" \
+  '- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and'
+file_lacks "contract: no rule for every command that the index writer breaks" "$here/docs/contract.md" \
+  'No command takes a line in fenced code'
+file_has "changelog: names the commands that take no fenced heading" "$here/CHANGELOG.md" \
+  '- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and'
+file_lacks "changelog: no rule for every command" "$here/CHANGELOG.md" 'is never the one a command writes under'
+grep -v '^next: \|^## Discovery log$' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
+sb doctor Specs
+is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \
+  "$(printf '%s\n' "$OUT" | grep ' | task-template | Specs | ')" \
+  "warn | task-template | Specs | 2 | next, ## Discovery log | add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
+case "$OT" in "$vault"/?*/claude/templates) rm -r "$OT" ;; esac
+
 # ---------------------------------------------------------------- spec status and spec issue
 sb help
 out_has "help: lists spec status and spec issue" 'spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"'
@@ -3511,7 +3658,15 @@ file_has "README: points to the guide's Spec-driven delivery" "$RM" \
   '`## Spec-driven delivery` in `docs/guide.md`'
 line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
   "## Spec-driven delivery"
-for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
+line_is "README: has ## Story templates" "$RM" "## Story templates"
+file_has "README: a project's own templates go in its claude/templates folder" "$RM" '`<project>/claude/templates/` in your vault'
+file_has "README: points to the contract's rules for a project's own templates" "$RM" \
+  "\`### A project's own templates\` in"
+line_is "README: docs/contract.md has the heading ### A project's own templates" "$here/docs/contract.md" \
+  "### A project's own templates"
+file_has "README: names the doctor's task-template check" "$RM" "The doctor's \`task-template\` check warns"
+for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl \
+  templates/task-readme.md.tmpl templates/ticket-description.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
 done

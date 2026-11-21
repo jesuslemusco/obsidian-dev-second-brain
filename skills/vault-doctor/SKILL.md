@@ -57,11 +57,27 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      `archive/<YYYY>/`, and nothing else.
    - An `unresolved added:` line, or a `tasks added:`, `tasks removed:` or `tasks changed:` line,
      is a link or a task the move broke. Report it.
-7. Every other check: propose the fix from its `checks.md` entry, one check at a time.
+7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at
+   a time.
+   - Ask the user with AskUserQuestion where it goes. Name it, its kind, and what it is: a folder,
+     a file, or a link and where it leads.
+   - Options: the vault's general `claude/`, the one or two projects of `second-brain projects`
+     that fit it best, and `Stays where it is`. The free-text answer names another project.
+   - Nothing moves without that answer. `Stays where it is`: leave it, and go on to the next.
+   - Otherwise run `second-brain link move <skill or agent> <name>`, with `--project "<project>"`
+     for a project's `claude/`.
+   - A link into the vault: the move rewrites the links to what it leads to. Snapshot before it
+     and compare after it, as `## snapshot and compare` says.
+   - It prints `moved:` or `copied:`, then `listed:` with the `README.md` it added the row to,
+     then the item's row, `linked`. Report them.
+   - Exit 5 on its frontmatter `name`, missing or not the folder or file name: ask which one to
+     change, change it after a yes, then run the move again.
+   - Exit 6: the destination exists. Show it, and ask again.
+8. Every other check: propose the fix from its `checks.md` entry, one check at a time.
    - Do it only after the user agrees to that one.
    - A fix that touches more than one note is a bulk change: snapshot before it and compare after
      it, as `## snapshot and compare` says.
-8. Run check again. Report what is left.
+9. Run check again. Report what is left.
 
 ## snapshot and compare
 

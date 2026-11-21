@@ -2169,6 +2169,18 @@ file_has "vault-doctor checks: names the archive repair" "$here/skills/vault-doc
 file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'Then run `second-brain snapshot` before it.'
 file_has "vault-doctor fix: compare proves the archive" "$VD" 'After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.'
 file_has "vault-doctor fix: an archive by --fix is a bulk change" "$VD" 'offenders makes the `--fix` run a bulk change: it moves'
+file_has "vault-doctor fix: a foreign row lists every item, then takes one at a time" "$VD" \
+  '7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at'
+file_has "vault-doctor fix: a foreign item is asked about with AskUserQuestion" "$VD" '- Ask the user with AskUserQuestion where it goes.'
+file_has "vault-doctor fix: the answers are the vault, a project, or it stays" "$VD" \
+  '- Options: the vault'"'"'s general `claude/`, the one or two projects of `second-brain projects`'
+file_has "vault-doctor fix: nothing moves without the answer" "$VD" '- Nothing moves without that answer.'
+file_has "vault-doctor fix: the move is link move, with --project for a project" "$VD" \
+  '- Otherwise run `second-brain link move <skill or agent> <name>`, with `--project "<project>"`'
+file_has "vault-doctor checks: the foreign fix points to the skill's fix steps" "$here/skills/vault-doctor/checks.md" \
+  'as `## fix` in `skills/vault-doctor/SKILL.md` says. Nothing moves without the answer.'
+file_has "vault-setup link: points to the doctor's foreign check" "$here/skills/vault-setup/SKILL.md" \
+  '- The doctor'"'"'s `foreign` check warns on each skill or agent among them.'
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help

@@ -13,6 +13,10 @@
 - The doctor's new `foreign` check warns on each of them, named with what it is:
   `skills/<name>:folder`, `agents/<name>.md:file` or `skills/<name>:link to <target>`. A folder
   with no `SKILL.md` and a link into the plugin are not read.
+- `/odsb:vault-doctor fix` asks with AskUserQuestion, one at a time, whether each goes to the
+  vault's `claude/`, to a project's `claude/`, or stays. Only on that answer does it run
+  `second-brain link move`.
+- The vault-setup skill's link mode points to that check: it still leaves a foreign entry alone.
 
 ## 0.8.0 - 2026-11-08
 

@@ -4,14 +4,20 @@
 
 - A project can keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl` in
   `<project>/claude/templates/`. Each wins over the plugin's template of that name.
-- `second-brain task new` fills the project's README template, and `spec link` reads its section
-  text. story-tracker fills the project's ticket text template for a draft or ticket text.
+- `second-brain task new` fills the project's README template. story-tracker fills the project's
+  ticket text template for a draft or ticket text.
+- `spec link` takes a section that holds the text of the project's README template or of the
+  plugin's as template text, so a story made before the project had its own gets its link alone.
 - A placeholder left unfilled in a project's template makes `task new` exit 5 and name the
   template by its vault path.
+- A README filled from a project's template with no frontmatter, such as an empty one, makes
+  `task new` exit 5 and write nothing.
 - The doctor's new `task-template` check warns when a project's README template lacks a
-  frontmatter key or a section the helper or story-tracker writes. Each project gets one more
-  doctor row.
+  frontmatter key, `aliases` included, or a section the helper or story-tracker writes. Each
+  project gets one more doctor row.
 - story-tracker adds no section to a new story that the project's README template leaves out.
+- A heading in fenced code is never the one a command writes under. `task note` once wrote into
+  a fenced `## Status notes` example that came before the real heading.
 
 ## 0.8.0 - 2026-11-08
 

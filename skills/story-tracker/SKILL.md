@@ -37,7 +37,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 | Mode | When | Do |
 |---|---|---|
-| draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`, reply with the text. Write no file until the id arrives, then go to start |
+| draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
 | start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
@@ -46,7 +46,10 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 Ticket text, in draft mode or when the user asks for text to paste into the tracker:
 
-- Fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.
+- Fill the project's own template when it has one:
+  `<vault>/<project path>/claude/templates/ticket-description.md.tmpl`, with the `vault:` line
+  and the project's path from Step 0.
+- Else fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.
 - A story exists: fill it from the story, with the README's Description and acceptance criteria.
 - Reply with plain text in the tracker's markup.
 - Keep it to one screen, about 40 lines.

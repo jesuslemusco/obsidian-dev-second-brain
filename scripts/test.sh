@@ -2090,6 +2090,18 @@ case "$draft_row" in
   *"with or without an id"*ticket-description.md.tmpl*"reply with the text"*"Write no file until the id arrives"*) pass "story-tracker: a draft mode row fills the template and writes no file" ;;
   *) fail "story-tracker: a draft mode row fills the template and writes no file" "got: $draft_row" ;;
 esac
+case "$draft_row" in
+  *"as the ticket text rules below say"*) pass "story-tracker: draft mode finds its template as ticket text does" ;;
+  *) fail "story-tracker: draft mode finds its template as ticket text does" "got: $draft_row" ;;
+esac
+line_is "story-tracker: ticket text fills the project's own template first" "$ST" \
+  "- Fill the project's own template when it has one:"
+line_is "story-tracker: the project's template is in its claude/templates folder" "$ST" \
+  '  `<vault>/<project path>/claude/templates/ticket-description.md.tmpl`, with the `vault:` line'
+line_is "story-tracker: else the plugin's template" "$ST" \
+  '- Else fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.'
+line_is "story-tracker: a new story keeps the shape of the project's README template" "$here/skills/story-tracker/create.md" \
+  "   - Add no section the README lacks: a project's own template may leave some out."
 file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
 file_lacks "vault-doctor: a request to check the vault may load it" "$here/skills/vault-doctor/SKILL.md" "disable-model-invocation"
 line_is "vault-setup: it runs only by name" "$here/skills/vault-setup/SKILL.md" "disable-model-invocation: true"

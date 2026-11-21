@@ -39,6 +39,9 @@
   vault's `claude/`, to a project's `claude/`, or stays. Only on that answer does it run
   `second-brain link move`.
 - The vault-setup skill's link mode points to that check: it still leaves a foreign entry alone.
+- `implementer` and `reviewer` run each test and check in the foreground, with a timeout of 10
+  minutes, since a background notice may never reach an agent that runs with a name. `reviewer`
+  still runs its baseline's `--when each-build` run in the background.
 
 ## 0.8.0 - 2026-11-08
 

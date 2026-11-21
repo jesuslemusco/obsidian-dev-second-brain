@@ -638,8 +638,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - `<description>` is the frontmatter's `description` on one line, with `\|` for each `|`, or `-`.
 - The row goes after the table's last row. With no table under the heading, a new table ends the
   section. With no heading, the heading and the table end the file.
-- A table row whose first cell names the item already is kept, with a `note:`. A missing
-  `README.md` gets a `note:` and no row. `listed:` names the `README.md` only when a row was added.
+- A table row whose first cell names the item already is kept, with a `note:`. The cell names it
+  by its text, or by a link whose alias is its name or whose path, `.md` or not, is the row's
+  path. A missing `README.md` gets a `note:` and no row. `listed:` names the `README.md` only when a row was added.
 - A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn` or
   `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
   or `-`.

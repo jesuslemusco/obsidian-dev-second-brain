@@ -296,9 +296,10 @@ EOF
 # Add a row to the table under the heading of a skill (## Skills) or an agent (## Agents) in a
 # README.md, after its last row; keeps line endings. With no table under the heading, a new table
 # ends the section; with no heading, the heading and the table end the file. Return 1 when a row
-# names the item already, 2 when the file is missing, 3 when it cannot be written.
+# names the item, by its name or the vault path its link has, already; 2 when the file is
+# missing; 3 when it cannot be written.
 sb_link_list() {
-  local file="$1" kind="$2" name="$3" row="$4" head="## Skills" top="| Skill | Use when |" tmp eofnl=1 rc=0
+  local file="$1" kind="$2" name="$3" path="$4" row="$5" head="## Skills" top="| Skill | Use when |" tmp eofnl=1 rc=0
   [ -f "$file" ] || return 2
   if [ "$kind" = "agent" ]; then
     head="## Agents"
@@ -306,15 +307,19 @@ sb_link_list() {
   fi
   if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then eofnl=0; fi
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-list.XXXXXX")" || return 3
-  LC_ALL=C SB_H="$head" SB_TOP="$top" SB_ROW="$row" SB_N="$name" SB_EOFNL="$eofnl" awk '
-    # The name in the first cell of a table row: the alias of a link, with no backticks.
-    function first(s,   c, i) {
+  LC_ALL=C SB_H="$head" SB_TOP="$top" SB_ROW="$row" SB_N="$name" SB_P="$path" SB_EOFNL="$eofnl" awk '
+    # Return 1 when the first cell of a table row names the item: by its text, with no backticks,
+    # or by a link whose alias is its name or whose path, .md or not, is its vault path.
+    function names(s,   c, i, p, a) {
       gsub(/\\\|/, "\001", s)
       sub(/^[ \t]*\|/, "", s)
       c = s; sub(/\|.*/, "", c)
-      if ((i = index(c, "\001")) > 0) c = substr(c, i + 1)
-      gsub(/\[\[|\]\]|`/, "", c); sub(/^[ \t]+/, "", c); sub(/[ \t]+$/, "", c)
-      return c
+      gsub(/`/, "", c); sub(/^[ \t]+/, "", c); sub(/[ \t]+$/, "", c)
+      if (substr(c, 1, 2) != "[[" || substr(c, length(c) - 1) != "]]") return c == ENVIRON["SB_N"]
+      c = substr(c, 3, length(c) - 4); p = c; a = ""
+      if ((i = index(c, "\001")) > 0) { p = substr(c, 1, i - 1); a = substr(c, i + 1) }
+      sub(/^[ \t]+/, "", a); sub(/[ \t]+$/, "", a); sub(/[ \t]+$/, "", p); sub(/\.md$/, "", p)
+      return a == ENVIRON["SB_N"] || p == ENVIRON["SB_P"]
     }
     { raw[NR] = $0; t = $0; sub(/\r$/, "", t); line[NR] = t; if (NR == 1 && t != $0) eol = "\r" }
     END {
@@ -330,7 +335,7 @@ sb_link_list() {
       for (i = s + 1; s && i < e; i++) {
         if (line[i] ~ /^[ \t]*\|/) { if (!ta) ta = i; tb = i } else if (ta) break
       }
-      for (i = ta + 1; ta && i <= tb; i++) if (first(line[i]) == ENVIRON["SB_N"]) exit 1
+      for (i = ta + 1; ta && i <= tb; i++) if (names(line[i])) exit 1
       na = 0
       if (ta) {
         at = tb
@@ -454,7 +459,7 @@ EOF
   desc="$(printf '%s' "$desc" | tr '\t\r\n' '   ')"
   desc="${desc//|/\\|}"
   readme="$rel/README.md"
-  sb_link_list "$SB_ROOT/$readme" "$kind" "$name" "| [[$file\\|$name]] | ${desc:--} |" || rc=$?
+  sb_link_list "$SB_ROOT/$readme" "$kind" "$name" "$file" "| [[$file\\|$name]] | ${desc:--} |" || rc=$?
   case "$rc" in
     0) printf 'listed: %s\n' "$readme" ;;
     1) sb_note "$readme lists $name already" ;;

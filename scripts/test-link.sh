@@ -683,6 +683,18 @@ out_lacks "link move: no listed line for an item the table names already" "liste
 case "$ERR" in *"lists far already"*) pass "link move: a note says the table names it already" ;; *) fail "link move: a note says the table names it already" "$ERR" ;; esac
 is "link move: the table keeps one row for it" "$(grep -c 'claude/agents/far' "$VR")" "1"
 row_is "link move: the agent link out of the vault is linked" "far | agent | linked | $ofv/claude/agents/far.md"
+piece "$fh/skills/listed/SKILL.md" listed "Listed by its path."
+piece "$fh/skills/aka/SKILL.md" aka "Listed under another alias."
+printf '%s\n' '| [[claude/skills/listed/SKILL]] | By path. |' '| [[claude/skills/aka/SKILL.md\|Also known]] | By path, with an alias. |' >"$tmp/rows"
+SB_ROWS="$(cat "$tmp/rows")" awk '{ print } /^\|---\|---\|$/ && !seen++ { print ENVIRON["SB_ROWS"] }' "$VR" >"$tmp/readme" && cat "$tmp/readme" >"$VR"
+fl link move skill listed
+rc_is "link move: a skill a row links with no alias" 0
+case "$ERR" in *"lists listed already"*) pass "link move: a link with no alias names the item by its path" ;; *) fail "link move: a link with no alias names the item by its path" "$ERR" ;; esac
+is "link move: no second row for a link with no alias" "$(grep -c 'claude/skills/listed/SKILL' "$VR")" "1"
+fl link move skill aka
+rc_is "link move: a skill a row links under another alias" 0
+case "$ERR" in *"lists aka already"*) pass "link move: a link with another alias names the item by its path" ;; *) fail "link move: a link with another alias names the item by its path" "$ERR" ;; esac
+is "link move: no second row for a link with another alias" "$(grep -c 'claude/skills/aka/SKILL' "$VR")" "1"
 
 # The original of a copy is removed only on its own command, and only when it matches the copy.
 fl link drop-original skill outer

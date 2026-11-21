@@ -710,7 +710,11 @@ EOF
 cat >"$tmp/shims/mv" <<EOF
 #!/usr/bin/env bash
 for a in "\$@"; do last="\$a"; done
-case "\${last:-}" in */claude/agents/racer.md) printf 'theirs\n' >"\$last" ;; esac
+case "\${last:-}" in
+  */claude/agents/racer.md) printf 'theirs\n' >"\$last" ;;
+  */claude/skills/rival) "$real_mkdir" -p "\$last" && printf 'theirs\n' >"\$last/keep.md" ;;
+  */claude/agents/nested.md) "$real_mkdir" -p "\$last" ;;
+esac
 exec "$real_mv" "\$@"
 EOF
 chmod +x "$tmp/shims/mkdir" "$tmp/shims/mv"
@@ -725,9 +729,27 @@ run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOM
 rc_is "link move: a destination file that appears after the check gives exit 6" 6
 is "link move: the file that appeared is not overwritten" "$(cat "$fv/claude/agents/racer.md" 2>/dev/null)" "theirs"
 is "link move: the agent stays where it was" "$(sed -n 2p "$fh/agents/racer.md")" "name: racer"
+piece "$fh/skills/rival/SKILL.md" rival "Moved while a folder takes its place."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill rival
+rc_is "link move: a destination folder that appears before a real folder moves gives exit 6" 6
+out_lacks "link move: no listed line when a folder took its place" "listed:"
+is "link move: the folder that took its place is left as it was" "$(ls -A "$fv/claude/skills/rival" 2>/dev/null)" "keep.md"
+is "link move: the skill is back where it was" "$(sed -n 2p "$fh/skills/rival/SKILL.md" 2>/dev/null)" "name: rival"
+is "link move: the skill carries no mark of the move" "$(ls -A "$fh/skills/rival" 2>/dev/null)" "SKILL.md"
+is "link move: no row for a skill that did not move" "$(grep -c 'skills/rival' "$VR")" "0"
+is "link move: a real folder that moved carries no mark of the move" "$(ls -A "$fv/claude/skills/kept")" "SKILL.md"
+piece "$fh/agents/nested.md" nested "Moved while a folder takes its place."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move agent nested
+rc_is "link move: a folder that takes an agent file's place gives exit 6" 6
+is "link move: the agent file is back where it was" "$(sed -n 2p "$fh/agents/nested.md" 2>/dev/null)" "name: nested"
+is "link move: the folder that took the agent's place is left empty" "$(ls -A "$fv/claude/agents/nested.md" 2>/dev/null)" ""
+rm -f "$fh/agents/nested.md"
+case "$fv/claude/agents/nested.md" in "$tmp"/*/claude/agents/nested.md) rmdir "$fv/claude/agents/nested.md" ;; esac
 rm -f "$fh/skills/race" "$fh/agents/racer.md" "$fv/claude/agents/racer.md"
 case "$fv/claude/skills/race" in "$tmp"/*/claude/skills/race) rm -r "$fv/claude/skills/race" ;; esac
 case "$fo/race" in "$tmp"/*/race) rm -r "$fo/race" ;; esac
+case "$fv/claude/skills/rival" in "$tmp"/*/claude/skills/rival) rm -r "$fv/claude/skills/rival" ;; esac
+case "$fh/skills/rival" in "$tmp"/*/skills/rival) rm -r "$fh/skills/rival" ;; esac
 
 # The original of a copy is removed only on its own command, and only when it matches the copy.
 fl link drop-original skill outer

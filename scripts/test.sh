@@ -2876,6 +2876,9 @@ file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md
 
 # ---------------------------------------------------------------- a project's own templates
 OT="$vault/$S/claude/templates"
+# A story made from the plugin's template before the project has its own.
+sb task new SP-24 --project Specs --title "Made before"
+O24="$vault/$S/tasks/SP-24/README.md"
 mkdir -p "$OT"
 cat >"$OT/task-readme.md.tmpl" <<'TMPL'
 ---
@@ -2929,6 +2932,15 @@ sb spec link SP-21
 is "own template: spec link reads the project's template text, so the link stands alone" \
   "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$O21")" "
 See [[$S/tasks/SP-21/spec/design|SP-21 Design]]."
+sb task set SP-24 delivery=spec
+sb spec new SP-24
+sb spec link SP-24
+is "own template: spec link still reads the plugin's template text in a story made before the project's" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$O24")" "
+See [[$S/tasks/SP-24/spec/design|SP-24 Design]]."
+is "own template: and in its Changes section" \
+  "$(awk '/^## Changes/ { on = 1; next } on && /^## / { exit } on' "$O24")" "
+See [[$S/tasks/SP-24/spec/tasks|SP-24 Tasks]]."
 printf '%s\n' '{{TEAM}}' >>"$OT/task-readme.md.tmpl"
 sb task new SP-22 --project Specs --title "Unknown placeholder"
 rc_is "own template: a placeholder the plugin's lacks exits 5" 5
@@ -2945,7 +2957,7 @@ sb doctor Specs
 is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \
   "$(printf '%s\n' "$OUT" | grep ' | task-template | Specs | ')" \
   "warn | task-template | Specs | 2 | next, ## Discovery log | add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
-rm -r "$OT"
+case "$OT" in "$vault"/?*/claude/templates) rm -r "$OT" ;; esac
 
 # ---------------------------------------------------------------- spec status and spec issue
 sb help

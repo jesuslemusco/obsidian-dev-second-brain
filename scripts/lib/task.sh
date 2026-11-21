@@ -165,13 +165,15 @@ sb_task_head() {
         }
         next
       }
+      # A heading in fenced code is no heading, as sb_body_insert reads it for task note.
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
       if (h1 == "" && line ~ /^# /) { h1 = trim(substr(line, 3)); next }
       if (!gotsum && line ~ /^\*\*Summary:\*\*/) { summary = trim(substr(line, 13)); gotsum = 1; insum = 1; next }
       if (insum) {
         if (line ~ /^[ \t]*$/ || line ~ /^#/ || line ~ /^\*\*[A-Za-z]/) insum = 0
         else { summary = summary " " trim(line); next }
       }
-      if (line ~ /^## /) { innotes = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); next }
+      if (!fence && line ~ /^## /) { innotes = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); next }
       if (innotes && note == "" && line !~ /^[ \t]*$/ && line !~ /^[ \t]*</) note = trim(line)
     }
     END {

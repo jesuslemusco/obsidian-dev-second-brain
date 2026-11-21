@@ -2991,6 +2991,9 @@ is "own template: task note leaves the fenced heading alone" "$(awk '/^```$/ { f
 n25="$(grep -n '^## Status notes$' "$O25" | sed -n 2p | cut -d: -f1)"
 is "own template: task note writes under the real heading, as the doctor finds it" "$(sed -n "$((n25 + 2))p" "$O25")" \
   '**2026-10-08 (session `own`) - Under the real heading**'
+sb task head SP-25
+out_has "own template: task head reads the newest note under the real heading, not in fenced code" \
+  'last_note: **2026-10-08 (session `own`) - Under the real heading**'
 grep -v '^next: \|^## Discovery log$' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
 sb doctor Specs
 is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \

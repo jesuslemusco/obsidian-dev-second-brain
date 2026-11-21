@@ -243,6 +243,20 @@ is "sb_date_add: back over a year end" "$(sb_date_add 2027-01-03 -5)" "2026-12-2
 is "sb_date_diff: across years" "$(sb_date_diff 2028-03-05 2027-12-25)" "71"
 sb_date_ok 2026-02-30
 is "sb_date_ok: rejects an impossible date" "$?" "1"
+# A vault inside the plugin's folder: the template named in a refusal is the one filled.
+mkdir -p "$tmp/plug/templates" "$tmp/plug/vault/proj/claude/templates"
+printf '%s\n' '{{TEAM}}' >"$tmp/plug/templates/task-readme.md.tmpl"
+cp "$tmp/plug/templates/task-readme.md.tmpl" "$tmp/plug/vault/proj/claude/templates/"
+(SB_PLUGIN_ROOT="$tmp/plug" SB_ROOT="$tmp/plug/vault" SB_P_DIR="$tmp/plug/vault/proj" &&
+  sb_fill task-readme.md.tmpl "$tmp/plug/one.md") 2>"$tmp/stderr"
+ERR="$(cat "$tmp/stderr")"
+err_has "sb_fill: a project's own template is named by its vault path, wherever the vault is" \
+  "unfilled in proj/claude/templates/task-readme.md.tmpl"
+rm "$tmp/plug/vault/proj/claude/templates/task-readme.md.tmpl"
+(SB_PLUGIN_ROOT="$tmp/plug" SB_ROOT="$tmp/plug/vault" SB_P_DIR="$tmp/plug/vault/proj" &&
+  sb_fill task-readme.md.tmpl "$tmp/plug/two.md") 2>"$tmp/stderr"
+ERR="$(cat "$tmp/stderr")"
+err_has "sb_fill: the plugin's template is named by its name" "unfilled in task-readme.md.tmpl,"
 SB_ROOT=""
 
 # ---------------------------------------------------------------- root

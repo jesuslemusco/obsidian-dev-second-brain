@@ -776,6 +776,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `sb_root` | prints the vault root or exits 2 |
 | `sb_plugin_root` | prints the repo root |
 | `sb_template <name>` | prints the path of a template: the current project's own (section 8) when it has one, else the plugin's |
+| `sb_template_shown <name>` | prints how a message names the template `sb_template` finds: the plugin's by its name, a project's own by its vault path, whatever folder the vault is in |
 | `sb_fm_get <file> <key>` | prints a scalar frontmatter value, unquoted |
 | `sb_fm_list <file> <key>` | prints a list value, one item per line (block or inline form) |
 | `sb_fm_set <file> <key> <value>` | sets or removes (empty value) a scalar key, keeping line endings |

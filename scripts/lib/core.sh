@@ -600,6 +600,18 @@ sb_template() {
   printf '%s\n' "$(sb_plugin_root)/templates/$1"
 }
 
+# Print how a message names the template sb_template finds: the plugin's by its name, a project's
+# own by its vault path.
+sb_template_shown() {
+  local path
+  path="$(sb_template "$1")"
+  if [ "$path" = "$(sb_plugin_root)/templates/$1" ]; then
+    printf '%s\n' "$1"
+  else
+    sb_rel "$path"
+  fi
+}
+
 # Print a template with its placeholders filled from KEY=VALUE pairs.
 sb_fill_text() {
   local tmpl kv
@@ -637,17 +649,14 @@ sb_fill_text() {
 
 # Fill a template into a new file. Returns 6 when the file exists; never overwrites.
 sb_fill() {
-  local name="$1" dest="$2" tmp shown
+  local name="$1" dest="$2" tmp
   shift 2
   if [ -e "$dest" ]; then return 6; fi
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-fill.XXXXXX")" || return 1
   sb_fill_text "$name" "$@" >"$tmp" || { rm -f "$tmp"; exit 2; }
   if grep -q '{{' "$tmp"; then
     rm -f "$tmp"
-    # A project's own template is named by its vault path.
-    shown="$(sb_template "$name")"
-    case "$shown" in "$(sb_plugin_root)"/*) ;; *) name="$(sb_rel "$shown")" ;; esac
-    sb_die 5 "a placeholder was left unfilled in $name, or a value contains {{"
+    sb_die 5 "a placeholder was left unfilled in $(sb_template_shown "$name"), or a value contains {{"
   fi
   mkdir -p "$(dirname "$dest")" || { rm -f "$tmp"; return 1; }
   cat "$tmp" >"$dest"

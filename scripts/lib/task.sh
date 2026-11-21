@@ -526,7 +526,7 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir tmpl
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -618,9 +618,7 @@ EOF
     END { exit(found ? 0 : 1) }' "$file"; then
     rm -f "$file"
     [ "$had_dir" -eq 1 ] || rmdir "$dir" 2>/dev/null
-    tmpl="$(sb_template task-readme.md.tmpl)"
-    case "$tmpl" in "$(sb_plugin_root)/templates/task-readme.md.tmpl") tmpl=task-readme.md.tmpl ;; *) tmpl="$(sb_rel "$tmpl")" ;; esac
-    sb_die 5 "the README filled from $tmpl has no frontmatter: start the template with it, as the plugin's has"
+    sb_die 5 "the README filled from $(sb_template_shown task-readme.md.tmpl) has no frontmatter: start the template with it, as the plugin's has"
   fi
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
   [ "$(sb_yaml_quote "$id")" = "$id" ] || sb_fm_edit "$file" listswap aliases "$id" "$id"

@@ -39,6 +39,11 @@
   vault's `claude/`, to a project's `claude/`, or stays. Only on that answer does it run
   `second-brain link move`.
 - The vault-setup skill's link mode points to that check: it still leaves a foreign entry alone.
+- Notes follow `claude/writing-style.md`, which `scaffold vault` creates; a project's own wins.
+- The plugin's index template is now at `index_version: 5`, so the doctor's `index` check warns.
+  Run `second-brain scaffold vault`, which creates `claude/writing-style.md` and overwrites
+  nothing. Then add the template's new line under `## In every session` and set
+  `index_version: 5`. The doctor's new `writing-style` check warns while the note is missing.
 
 ## 0.8.0 - 2026-11-08
 

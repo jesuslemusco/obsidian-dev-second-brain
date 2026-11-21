@@ -292,10 +292,11 @@ out_has "context: vault none" "vault: none"
 # ---------------------------------------------------------------- scaffold vault
 sb scaffold vault
 rc_is "scaffold vault: exit 0" 0
-out_is "scaffold vault: lists the four files" "CLAUDE.md
+out_is "scaffold vault: lists the five files" "CLAUDE.md
 obsidian-conventions.md
 claude/README.md
-claude/pull-request.md"
+claude/pull-request.md
+claude/writing-style.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
@@ -326,6 +327,31 @@ line_is "index: the pull request rule names the vault note through the pointer" 
   "  \`~/.claude/second-brain-vault/claude/pull-request.md\`; a project's own"
 line_is "index: the pull request rule opens its bullet" "$vault/CLAUDE.md" \
   "- Write a pull request description in the format of"
+WS="$vault/claude/writing-style.md"
+exists "scaffold vault: writing style" "$WS"
+is "writing style: the starter is the plugin's template" "$(cmp -s "$here/templates/writing-style.md.tmpl" "$WS" && printf same)" "same"
+is "writing style: frontmatter with an alias, the type and its tag" \
+  "$(awk 'NR == 1 && /^---$/ { on = 1; next } on && /^---$/ { exit } on' "$WS")" "aliases:
+  - Writing Style
+type: onboarding
+tags:
+  - type/onboarding"
+line_is "writing style: up link to the conventions" "$WS" "> Conventions: [[obsidian-conventions|Obsidian Conventions]]"
+is "writing style: a title and one section" "$(grep '^#' "$WS" | tr '\n' '|')" "# Writing style|## Lists|"
+line_is "writing style: one line says a project's own note wins" "$WS" \
+  "Claude writes notes in this style. A project's own \`<project>/claude/writing-style.md\` wins."
+is "writing style: the list rule, word for word" "$(section_of "$WS" Lists)" \
+  "- Indent a nested list item in a note's body with one tab per level, never spaces, so Obsidian
+  shows the nesting. The YAML frontmatter keeps spaces, as YAML allows no tabs."
+is "writing style: no tab in the starter, so its frontmatter stays YAML" "$(grep -c "$TAB" "$WS")" "0"
+line_is "index: the writing style rule names the vault note through the pointer" "$vault/CLAUDE.md" \
+  "- Write notes in the style of \`~/.claude/second-brain-vault/claude/writing-style.md\`; a"
+line_is "index: a project's own writing style wins" "$vault/CLAUDE.md" \
+  "  project's own \`<Path>/claude/writing-style.md\` wins."
+is "index: the writing style rule is in the section for every session" \
+  "$(($(lineno "$vault/CLAUDE.md" 'writing-style.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
+line_is "vault Claude hub: names the writing style note" "$vault/claude/README.md" \
+  '`writing-style.md` here is the style of every note Claude writes. Edit it to change the style.'
 file_has "vault Claude hub: names the pull request format note" "$vault/claude/README.md" \
   '`pull-request.md` here is the format of every pull request'
 line_is "vault Claude hub: what it holds" "$vault/claude/README.md" \
@@ -351,7 +377,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 4"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 5"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -419,6 +445,23 @@ printf -- '- my own pull request rule\n' >>"$vault/claude/pull-request.md"
 sb scaffold vault
 err_has "scaffold vault again: names the pull request note that exists" "exists: claude/pull-request.md"
 file_has "scaffold vault again: does not overwrite the pull request note" "$vault/claude/pull-request.md" "my own pull request rule"
+printf -- '- my own writing rule\n\t- a nested item\n' >>"$WS"
+cp "$WS" "$tmp/ws.before"
+sb scaffold vault
+rc_is "scaffold vault again: exit 0 with a writing style note" 0
+out_is "scaffold vault again: writes no writing style note" ""
+err_has "scaffold vault again: names the writing style note that exists" "exists: claude/writing-style.md"
+is "scaffold vault again: keeps the writing style note byte for byte" "$(cmp -s "$tmp/ws.before" "$WS" && printf same)" "same"
+rm "$WS"
+others="CLAUDE.md obsidian-conventions.md claude/README.md claude/pull-request.md"
+before="$(cd "$vault" && cksum $others)"
+sb scaffold vault
+rc_is "scaffold vault, a vault without the writing style: exit 0" 0
+out_is "scaffold vault, a vault without the writing style: writes only that note" "claude/writing-style.md"
+is "scaffold vault, a vault without the writing style: writes the template" "$(cmp -s "$here/templates/writing-style.md.tmpl" "$WS" && printf same)" "same"
+is "scaffold vault, a vault without the writing style: names each other file as one that exists" \
+  "$(printf '%s\n' "$ERR" | tr '\n' '|')" "exists: CLAUDE.md|exists: obsidian-conventions.md|exists: claude/README.md|exists: claude/pull-request.md|"
+is "scaffold vault, a vault without the writing style: leaves the other files as they were" "$(cd "$vault" && cksum $others)" "$before"
 mkdir -p "$tmp/vault2/.obsidian"
 sb scaffold vault "$tmp/vault2"
 exists "scaffold vault DIR: writes into that vault" "$tmp/vault2/CLAUDE.md"

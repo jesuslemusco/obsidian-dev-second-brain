@@ -74,6 +74,8 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 
 - The vault's files are under `## 1. Words and paths` in `docs/contract.md`.
 - A project's files are under `## 3. The project` in `docs/contract.md`.
+- Claude writes notes in the style of the vault's `claude/writing-style.md`. A project's own
+  `<project>/claude/writing-style.md` wins.
 - A task names what it is about with topic tags, and never sits in the topic's folder, as
   `## The short version` in `templates/obsidian-conventions.md.tmpl` says.
 - An existing project keeps its folders. `/odsb:vault-setup adopt <path>`

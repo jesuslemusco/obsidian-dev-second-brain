@@ -12,6 +12,7 @@ The interfaces every part of this plugin agrees on. Change this file first, then
 | index | `<vault>/CLAUDE.md`, the only list of projects. Claude always loads it through an import in `~/.claude/CLAUDE.md`. |
 | conventions | `<vault>/obsidian-conventions.md`. Its first section is `The short version`. |
 | pull request format | `<vault>/claude/pull-request.md`: the headings and style of every pull request description Claude writes. A project's own `<project>/claude/pull-request.md` wins over it. The index points to it in one line. Its frontmatter holds `pull_request_version`, the version of `templates/pull-request.md.tmpl` it follows. |
+| writing style | `<vault>/claude/writing-style.md`: how Claude writes notes. A project's own `<project>/claude/writing-style.md` wins over it. The index points to it in one line. |
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
 | profile | `<vault>/<project path>/claude/profile.md`, the project's one settings note. |
 | subproject | A part of a project with its own repos, branches and docs folder. It shares the project's ticket keys, tasks and board. |
@@ -47,7 +48,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 4
+index_version: 5
 ---
 ```
 
@@ -78,6 +79,7 @@ index_version: 4
   claude/profile.md
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
+  claude/writing-style.md       optional; the project's own writing style, which wins
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -511,7 +513,7 @@ Rules that hold for every command:
 | `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | exit 6 while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal. It moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
 | `sprint set <project> key=value...` | the changed keys | sets `goal` or `committed` on the sprint in progress; exit 1 when there is none, exit 5 for any other key |
 | `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at |
-| `scaffold vault [DIR]` | the files it created | never overwrites; creates the index, the conventions note, `claude/README.md` and `claude/pull-request.md`. A file that exists is named on stderr as `exists: <path>` |
+| `scaffold vault [DIR]` | the files it created | never overwrites; creates the index, the conventions note, `claude/README.md`, `claude/pull-request.md` and `claude/writing-style.md`. A file that exists is named on stderr as `exists: <path>` |
 | `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags are written into a new profile, and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile's `uses_sprints` wins over the flag |
 | `scaffold subproject <project> <name> [--repos R1,R2]` | the files it created: the subproject note and the `README.md` of its docs folder | never overwrites (`exists: <path>` on stderr). Adds a link to the new docs hub under `## Topics` in the topics hub, once. A repo named twice in `--repos`, in any letter case, is written once. Exit 5 for a name that is not a folder name, or a repo name that holds a character outside letters, digits, `.`, `_` and `-`. Exit 6 when another subproject has that name in another letter case, or already lists one of the repos. Exit 1 for an unknown project or a missing profile. Writes no Code to doc map row: the user names the docs |
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
@@ -687,6 +689,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `index` | the index is missing, has no Projects table, has a row whose path is not a folder in the vault (`<Project>:no-folder`; a path that names no project folder is never one and is not looked for on disk), or has a name, a key or a path on two rows (`<value>:twice`, compared as `## 2. The index` says) (fail); or its `index_version` is missing or lower than the template's (warn, `CLAUDE.md:<version or none>`) |
 | vault | `conventions` | the conventions note is missing (fail), or its `conventions_version` is lower than the template's (warn) |
 | vault | `pull-request` | `claude/pull-request.md` is missing from the vault (warn), or its `pull_request_version` is missing or lower than the template's (warn, `claude/pull-request.md:<version or none>`). A note was never edited when, CRs dropped, it holds a text the plugin wrote: the helper knows each by its `cksum`. The fix of an edited one says to bring it in line with the template by hand |
+| vault | `writing-style` | `claude/writing-style.md` is missing from the vault (warn) |
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `global-rules` | a line of the link directory's `CLAUDE.md` names an index project: its name as a whole word, as written, or its path in any letter case (`<project>:<line number>`, or `<project>:@<line number>` for an `@` import line, whose fix is to remove it) (warn). A whole word has no letter, digit, `_` or `-` on either side. The import line of the index and the table rows under a `## Projects` heading are not read, nor the files the `CLAUDE.md` imports |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
@@ -876,6 +879,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `obsidian-conventions.md.tmpl` | `<vault>/obsidian-conventions.md` | none |
 | `vault-claude-hub.md.tmpl` | `<vault>/claude/README.md` | none |
 | `pull-request.md.tmpl` | `<vault>/claude/pull-request.md` | none |
+| `writing-style.md.tmpl` | `<vault>/claude/writing-style.md` | none |
 | `project-readme.md.tmpl` | `<project>/README.md` | `PROJECT`, `PROJECT_PATH`, `TASKS_HUB_LINE`, `TOPICS_HUB_LINE`, `SPRINTS_HUB_LINE` |
 | `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH`, `VALIDATION_LINE` (empty when the profile's `validation_home` is `repo`) |
 | `profile.md.tmpl` | `<project>/claude/profile.md` | `PROJECT`, `PROJECT_PATH`, `TICKET_KEYS`, `TASKS_ROOT`, `TOPICS_ROOT`, `SPRINTS_ROOT` |

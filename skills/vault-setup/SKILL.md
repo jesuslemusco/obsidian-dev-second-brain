@@ -46,7 +46,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - `second-brain pointer` prints where the pointer leads, at any time.
 3. Run `second-brain root`. It must print the vault's path. Exit 2: show the message and stop.
 4. Run `second-brain scaffold vault`. It prints each file it created: `CLAUDE.md`,
-   `obsidian-conventions.md`, `claude/README.md` and `claude/pull-request.md`.
+   `obsidian-conventions.md`, `claude/README.md`, `claude/pull-request.md` and
+   `claude/writing-style.md`.
    - `exists: <path>`: that file was there and is kept.
 5. Read `~/.claude/CLAUDE.md`. The import line is `@~/.claude/second-brain-vault/CLAUDE.md`.
    - It already imports this vault's `CLAUDE.md`, in that form or by the vault's own path: say so

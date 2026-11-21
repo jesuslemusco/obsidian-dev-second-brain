@@ -278,6 +278,12 @@ same name, and edit it there.
 - What a project's template must keep is under `### A project's own templates` in
   `docs/contract.md`.
 
+## Writing style
+
+Claude writes notes in the style of the note `claude/writing-style.md` in your vault, written from
+`templates/writing-style.md.tmpl`. Edit that note to change the style. A project's own
+`<project>/claude/writing-style.md` wins over it.
+
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,

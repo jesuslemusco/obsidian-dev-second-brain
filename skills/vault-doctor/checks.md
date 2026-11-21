@@ -29,6 +29,12 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Why: the index has every session write pull request descriptions in that format, so with no note each takes its own shape, and with an old one the old format.
 - Fix: missing: `second-brain scaffold vault`, which overwrites nothing. Older and, as the row's fix says, never edited: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first, then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the user's added rules, and set `pull_request_version` to the template's.
 
+### writing-style
+
+- Means: the vault's `claude/writing-style.md`, the style Claude writes notes in, is missing (warn).
+- Why: the index has every session write notes in that style, so with no note each takes its own.
+- Fix: `second-brain scaffold vault`, which creates it and overwrites nothing.
+
 ### import
 
 - Means: `~/.claude/CLAUDE.md` holds no `@` import of the vault's `CLAUDE.md`.

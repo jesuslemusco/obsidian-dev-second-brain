@@ -38,6 +38,7 @@ Each bullet under `### Checks` and `### Check as a user would` ends with when it
   and prints a row per command. A `fail` row is a finding, with the lines under it.
 - Run it in the foreground, with the Bash tool's `timeout: 600000`, 10 minutes. Never wait on a
   background notice: it may never reach an agent that runs with a name.
+  - A run the timeout stops: the verdict is BLOCKED, naming the command.
   - The one exception is baseline mode's `--when each-build` run, which runs every suite. Run it
     with the Bash tool's `run_in_background: true`, and wait for its notice before you go on. A
     run that long can take longer than a Bash call's timeout, and a helper that a timeout kills

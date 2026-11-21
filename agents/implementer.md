@@ -63,6 +63,7 @@ for the files it names, and the repo's `each task` checks, which are quick and r
   Each row it prints is one result.
 - Run each test and check in the foreground, with the Bash tool's `timeout: 600000`, 10 minutes.
   Never wait on a background notice: it may never reach an agent that runs with a name.
+  - A run the timeout stops: commit nothing, and stop with `BLOCKED:`, naming the command.
 - A check fails: fix the cause in your change, then run it again. Never change a test or a check
   only so that it passes.
 - A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,

@@ -558,6 +558,7 @@ mkdir -p "$fh/skills/synced/notes"
 printf 'x\n' >"$fh/skills/stray.txt"
 piece "$fh/agents/solo.md" solo "A real agent file."
 printf 'x\n' >"$fh/agents/notes.txt"
+piece "$fh/agents/README.md" README "Not an agent: no claude folder links a README.md."
 piece "$fo/outer/SKILL.md" outer "A skill kept outside."
 piece "$fo/far.md" far
 mkdir -p "$fo/no-skill"

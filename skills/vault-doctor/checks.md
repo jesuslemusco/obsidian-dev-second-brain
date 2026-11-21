@@ -49,7 +49,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 ### foreign
 
-- Means: a skill or agent sits in `~/.claude/skills` or `~/.claude/agents` and no vault `claude/` folder provides it: a real folder (`skills/<name>:folder`), a real file (`agents/<name>.md:file`), or a link and where it leads (`skills/<name>:link to <target>`). Not read: a folder with no `SKILL.md`, a file that is not `.md`, and a link into the plugin, which `double-registration` names.
+- Means: a skill or agent sits in `~/.claude/skills` or `~/.claude/agents` and no vault `claude/` folder provides it: a real folder (`skills/<name>:folder`), a real file (`agents/<name>.md:file`), or a link and where it leads (`skills/<name>:link to <target>`). Not read: a folder with no `SKILL.md`, an `agents/README.md`, a file that is not `.md`, and a link into the plugin, which `double-registration` names.
 - Why: it lives on this host alone, so it is not versioned with the vault, no `claude/README.md` lists it, and the vault's checks of skills and agents never read it.
 - Fix: one at a time, ask whether it goes to the vault's `claude/`, to a project's `claude/`, or stays, then move it with `second-brain link move <skill or agent> <name> [--project <name>]`, as `## fix` in `skills/vault-doctor/SKILL.md` says. Nothing moves without the answer. One that stays warns again on the next check.
 

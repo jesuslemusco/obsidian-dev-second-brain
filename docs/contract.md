@@ -613,8 +613,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A foreign skill is a `foreign` row of kind `skill` whose entry is a folder that holds
   `SKILL.md`, or a link to one. A foreign agent is a `foreign` row of kind `agent` whose entry is
   a `.md` file, or a link to one.
-- Not foreign skills or agents: a folder with no `SKILL.md`, any other file, and a link that leads
-  inside the plugin, which `double-registration` names.
+- Not foreign skills or agents: a folder with no `SKILL.md`, a `README.md` in `agents/` in any
+  letter case, as no claude folder links one, any other file, and a link that leads inside the
+  plugin, which `double-registration` names.
 - Nor is a place in the link directory that another row of `sb_link_rows` names, such as the
   place of a vault item that is `name-mismatch` or `duplicate`. The vault provides it, and the
   `links` check names it.

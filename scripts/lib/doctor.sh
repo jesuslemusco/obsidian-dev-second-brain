@@ -833,6 +833,35 @@ sb_doc_check_placeholders() {
     "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 }
 
+# Check that the project's own task README template keeps each frontmatter key the helper writes
+# and each section the helper or story-tracker writes under. A key is read from frontmatter that
+# opens on the first line; a heading is a line equal to it without letter case and trailing
+# blanks, as task note finds it, outside frontmatter and fenced code. No template is ok.
+sb_doc_check_task_template() {
+  local f="$SB_P_DIR/claude/templates/task-readme.md.tmpl" bad=""
+  [ ! -f "$f" ] || bad="$(LC_ALL=C awk '
+    BEGIN {
+      nk = split("title status next branch epic type", keys, " ")
+      ns = split("## Status notes|## Discovery log", secs, "|")
+    }
+    { sub(/\r$/, "") }
+    NR == 1 { sub(/^\357\273\277/, ""); if ($0 == "---") { st = 1; next } }
+    st == 1 {
+      if ($0 == "---") st = 0
+      else if ($0 ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) { k = $0; sub(/:.*$/, "", k); has[k] = 1 }
+      next
+    }
+    /^[ \t]*(```|~~~)/ { fence = !fence; next }
+    fence { next }
+    { h = $0; sub(/[ \t]+$/, "", h); sec[tolower(h)] = 1 }
+    END {
+      for (i = 1; i <= nk; i++) if (!(keys[i] in has)) print keys[i]
+      for (i = 1; i <= ns; i++) if (!(tolower(secs[i]) in sec)) print secs[i]
+    }' "$f")"
+  sb_doc_report warn task-template "$SB_P_NAME" "$bad" \
+    "add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
+}
+
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
 sb_doc_feed() {
   printf '%s\n%s\n' "$SB_DOC_FACTS" "$SB_DOC_SCAN"
@@ -1467,7 +1496,7 @@ sb_doc_rows() {
     # A row whose path leaves the vault gets no rows, and nothing under it is opened.
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
-    for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
+    for c in profile board hubs placeholders task_template task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
       delivery validation spec_trace sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"

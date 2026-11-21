@@ -2928,6 +2928,11 @@ sb task new SP-23 --project Specs --title "Plugin shape"
 rc_is "own template: with none, task new exits 0" 0
 is "own template: with none in the folder, task new fills the plugin's" "$(grep '^## ' "$vault/$S/tasks/SP-23/README.md" | tr '\n' '|')" \
   "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+grep -v '^next: \|^## Discovery log$' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
+sb doctor Specs
+is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \
+  "$(printf '%s\n' "$OUT" | grep ' | task-template | Specs | ')" \
+  "warn | task-template | Specs | 2 | next, ## Discovery log | add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
 rm -r "$OT"
 
 # ---------------------------------------------------------------- spec status and spec issue

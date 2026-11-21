@@ -636,6 +636,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - It adds the item's row to the table under `## Skills` or `## Agents` in that folder's
   `README.md`: `| [[<vault path of SKILL.md or the agent file, without .md>\|<name>]] | <description> |`.
 - `<description>` is the frontmatter's `description` on one line, with `\|` for each `|`, or `-`.
+- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.
 - The row goes after the table's last row. With no table under the heading, a new table ends the
   section. With no heading, the heading and the table end the file.
 - A table row whose first cell names the item already is kept, with a `note:`. The cell names it

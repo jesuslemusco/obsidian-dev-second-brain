@@ -769,6 +769,11 @@ is "link move: the heading and the table end the file" "$(tail -n 5 "$VR")" "## 
 | Skill | Use when |
 |---|---|
 | [[claude/skills/headless/SKILL\\|headless]] | No heading for it. |"
+mkdir -p "$fh/skills/folded"
+printf -- '---\nname: folded\ndescription: >-\n  A description on the lines below its key.\n---\n\nBody.\n' >"$fh/skills/folded/SKILL.md"
+fl link move skill folded
+rc_is "link move: a skill whose description is a block scalar" 0
+is "link move: a block scalar description is written as -" "$(tail -n 1 "$VR")" "| [[claude/skills/folded/SKILL\\|folded]] | - |"
 piece "$fh/agents/crlf.md" crlf "Ends lines with CRLF."
 while IFS= read -r line; do printf '%s\r\n' "$line"; done <"$PR" >"$tmp/readme" && cat "$tmp/readme" >"$PR"
 fl link move agent crlf --project Example

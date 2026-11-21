@@ -2187,6 +2187,8 @@ file_has "vault-doctor fix: a yes runs link drop-original" "$VD" \
   '- On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes'
 file_has "vault-doctor fix: a no keeps the original and names it" "$VD" \
   'On a no, the original stays: name its path in the'
+file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
+  '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help

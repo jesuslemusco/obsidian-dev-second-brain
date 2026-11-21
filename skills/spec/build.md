@@ -61,7 +61,6 @@ to you as its result.
   - A bundle's build, and fix rounds 1 to 3 of its tasks: `name: "<ID>-bundle-<n>-implementer"`,
     with `<n>` its bundle.
   - From fix round 4 on: `name: "<ID>-<task>-implementer-2"`.
-- Launch `reviewer` with no name, since its baseline waits on a background notice.
 - An agent fetches its own packet. Never run `spec packet` here, and never put a packet, a diff or
   the spec in a prompt.
 - `implementer`'s prompt, one line each:

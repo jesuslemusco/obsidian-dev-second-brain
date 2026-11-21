@@ -61,9 +61,8 @@ for the files it names, and the repo's `each task` checks, which are quick and r
 - `- each task:` lines: run them all at once with
   `second-brain validation run "<project>" <repo> --when each-task`, with the packet's `repo`.
   Each row it prints is one result.
-- Run each test and check in the foreground, with the Bash tool's `timeout: 600000`, 10 minutes.
-  Never wait on a background notice: it may never reach an agent that runs with a name.
-  - A run the timeout stops: commit nothing, and stop with `BLOCKED:`, naming the command.
+- Run each test and check with the Bash tool's `run_in_background: true`, and wait for its notice
+  before you go on. A suite can take longer than a Bash call's timeout of 2 minutes.
 - A check fails: fix the cause in your change, then run it again. Never change a test or a check
   only so that it passes.
 - A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,

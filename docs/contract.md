@@ -1170,11 +1170,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   build at once.
 - When every task has passed, the skill runs `validation run <project> <repo> --when each-build`
   once, with no agent.
-- The skill runs its build-wide `validation run` with the Bash tool's `run_in_background` and
-  waits for its notice, and `reviewer` its baseline's `--when each-build` run too. A run that long
-  can outlast a Bash call's timeout, and a helper that a timeout kills leaves its check running.
-- `implementer` and `reviewer` run every other test and check in the foreground, with a timeout
-  of 10 minutes, since a background notice may never reach an agent that runs with a name.
+- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and
+  its task's `Check`, with the Bash tool's `run_in_background` and wait for its notice. A run can
+  outlast a Bash call's timeout, and a helper that a timeout kills leaves its check running.
 - A failing check is logged with `spec issue` on the task whose files it covers. That task is set
   `failed` and takes the fix loop, and the run goes again once every task has passed.
 - Then one `reviewer` runs the user steps on the finished branch, in user mode. Then one

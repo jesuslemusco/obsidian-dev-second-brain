@@ -696,6 +696,39 @@ rc_is "link move: a skill a row links under another alias" 0
 case "$ERR" in *"lists aka already"*) pass "link move: a link with another alias names the item by its path" ;; *) fail "link move: a link with another alias names the item by its path" "$ERR" ;; esac
 is "link move: no second row for a link with another alias" "$(grep -c 'claude/skills/aka/SKILL' "$VR")" "1"
 
+# A destination that appears after the check is never removed or overwritten. Stand-ins for mkdir
+# and mv put one there just before the real tool runs.
+real_mkdir="$(command -v mkdir)"
+real_mv="$(command -v mv)"
+mkdir -p "$tmp/shims"
+cat >"$tmp/shims/mkdir" <<EOF
+#!/usr/bin/env bash
+for a in "\$@"; do last="\$a"; done
+case "\${last:-}" in */claude/skills/race) "$real_mkdir" -p "\$last" && printf 'theirs\n' >"\$last/keep.md" ;; esac
+exec "$real_mkdir" "\$@"
+EOF
+cat >"$tmp/shims/mv" <<EOF
+#!/usr/bin/env bash
+for a in "\$@"; do last="\$a"; done
+case "\${last:-}" in */claude/agents/racer.md) printf 'theirs\n' >"\$last" ;; esac
+exec "$real_mv" "\$@"
+EOF
+chmod +x "$tmp/shims/mkdir" "$tmp/shims/mv"
+piece "$fo/race/SKILL.md" race "Copied while its place appears."
+symlink "$fo/race" "$fh/skills/race"
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill race
+rc_is "link move: a destination folder that appears after the check gives exit 6" 6
+is "link move: the folder that appeared is not removed" "$(cat "$fv/claude/skills/race/keep.md" 2>/dev/null)" "theirs"
+leads_to "link move: the link stays when its copy cannot be made" "$fh/skills/race" "$fo/race"
+piece "$fh/agents/racer.md" racer "Moved while its place appears."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move agent racer
+rc_is "link move: a destination file that appears after the check gives exit 6" 6
+is "link move: the file that appeared is not overwritten" "$(cat "$fv/claude/agents/racer.md" 2>/dev/null)" "theirs"
+is "link move: the agent stays where it was" "$(sed -n 2p "$fh/agents/racer.md")" "name: racer"
+rm -f "$fh/skills/race" "$fh/agents/racer.md" "$fv/claude/agents/racer.md"
+case "$fv/claude/skills/race" in "$tmp"/*/claude/skills/race) rm -r "$fv/claude/skills/race" ;; esac
+case "$fo/race" in "$tmp"/*/race) rm -r "$fo/race" ;; esac
+
 # The original of a copy is removed only on its own command, and only when it matches the copy.
 fl link drop-original skill outer
 rc_is "drop-original: no path gives exit 5" 5

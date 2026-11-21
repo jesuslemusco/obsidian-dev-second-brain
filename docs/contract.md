@@ -627,6 +627,10 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
   rewritten. The link, then dangling, is removed.
 - What a link out of the vault leads to is copied there and stays where it was, named in a
   `note:`. The link is removed.
+- A destination that appears after the check is never removed or overwritten: exit 6, and the
+  item stays where it was. The copy makes its folder or file only where none is, and removes only
+  what it made. The move runs `mv -n`, then checks that the item left its place and the
+  destination is there, as `move` does.
 - `link drop-original` removes that original. The vault-doctor fix runs it only after the owner's
   yes.
 - It removes it only when the item's link leads into a claude folder of the vault, and the

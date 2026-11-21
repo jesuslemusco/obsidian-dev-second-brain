@@ -362,6 +362,12 @@ sb_link_list() {
   return "$rc"
 }
 
+# Exit 6 when a vault path is taken, as when it appeared after it was looked at; else exit 1.
+sb_link_taken() {
+  if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then sb_die 6 "the destination exists: $1; nothing was changed"; fi
+  sb_die 1 "cannot create $1; nothing was changed"
+}
+
 # Move one foreign skill or agent into the vault's claude folder, or a project's, then link it
 # and list it there: link move <skill|agent> <name> [--project P].
 sb_link_move() {
@@ -429,10 +435,13 @@ EOF
   else
     mkdir -p "$SB_ROOT/${dest%/*}" || sb_die 1 "cannot create the folder $(sb_path_out "$SB_ROOT/${dest%/*}")"
     if [ "$what" = "link" ]; then
-      # Out of the vault it is copied, so whatever else uses it there keeps it.
+      # Out of the vault it is copied, so whatever else uses it there keeps it. The copy makes its
+      # folder or file only where none is, so it removes only what it made.
       if [ "$kind" = "skill" ]; then
-        mkdir "$SB_ROOT/$dest" && cp -R "$from/." "$SB_ROOT/$dest/"
+        mkdir "$SB_ROOT/$dest" 2>/dev/null || sb_link_taken "$dest"
+        cp -R "$from/." "$SB_ROOT/$dest/"
       else
+        (set -C && : >"$SB_ROOT/$dest") 2>/dev/null || sb_link_taken "$dest"
         cp "$from" "$SB_ROOT/$dest"
       fi || {
         rm -rf "$SB_ROOT/$dest"
@@ -442,7 +451,13 @@ EOF
       printf 'copied: %s -> %s\n' "$(sb_path_out "$from")" "$dest"
       sb_note "the original stays where it was: $(sb_path_out "$from")"
     else
-      mv "$slot" "$SB_ROOT/$dest" || sb_die 1 "cannot move $(sb_path_out "$slot") to $dest"
+      # The vault was read since the destination was looked at: look again, and never overwrite.
+      if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_link_taken "$dest"; fi
+      mv -n "$slot" "$SB_ROOT/$dest" 2>/dev/null
+      if [ -e "$slot" ] || [ -L "$slot" ] || { [ ! -e "$SB_ROOT/$dest" ] && [ ! -L "$SB_ROOT/$dest" ]; }; then
+        if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_link_taken "$dest"; fi
+        sb_die 1 "cannot move $(sb_path_out "$slot") to $dest; nothing was changed"
+      fi
       printf 'moved: %s -> %s\n' "$(sb_path_out "$slot")" "$dest"
     fi
   fi

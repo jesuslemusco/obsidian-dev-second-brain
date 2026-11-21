@@ -372,7 +372,7 @@ sb_link_taken() {
 # and list it there: link move <skill|agent> <name> [--project P].
 sb_link_move() {
   local usage="usage: second-brain link move <skill|agent> <name> [--project P]"
-  local kind="" name="" project="" row rname rkind what target slot rel dest file fm from desc readme rows mark inside rc=0
+  local kind="" name="" project="" row rname rkind what target slot rel dest file fm from desc readme rows mark inside stale rc=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --project)
@@ -456,26 +456,35 @@ EOF
       # A folder carries a mark while it moves, so it is found when mv puts it inside a folder
       # that took its place.
       mark=""
+      inside="$SB_ROOT/$dest/${slot##*/}"
       if [ "$kind" = "skill" ]; then
+        # A mark left by a move that was cut off is stale: it never goes into the vault.
+        for stale in "$slot"/.sb-move.*; do
+          if [ -f "$stale" ] && [ ! -L "$stale" ]; then rm -f "$stale"; fi
+        done
         mark="$(mktemp "$slot/.sb-move.XXXXXX" 2>/dev/null)" || sb_die 1 "cannot write in $(sb_path_out "$slot"); nothing was changed"
         mark="${mark##*/}"
+        # A kill while the mark exists takes it away, wherever the folder is.
+        trap 'rm -f "$slot/$mark" "$SB_ROOT/$dest/$mark" "$inside/$mark"; exit 1' INT TERM HUP
       fi
       mv -n "$slot" "$SB_ROOT/$dest" 2>/dev/null
-      inside="$SB_ROOT/$dest/${slot##*/}"
       if [ ! -e "$slot" ] && [ ! -L "$slot" ] && [ -d "$SB_ROOT/$dest" ] && [ ! -L "$SB_ROOT/$dest" ] &&
         { { [ -n "$mark" ] && [ ! -e "$SB_ROOT/$dest/$mark" ] && [ -e "$inside/$mark" ]; } ||
           { [ -z "$mark" ] && [ -f "$inside" ]; }; }; then
         mv -n "$inside" "$slot" 2>/dev/null
-        [ -z "$mark" ] || rm -f "$slot/$mark"
+        [ -z "$mark" ] || rm -f "$slot/$mark" "$inside/$mark"
+        trap - INT TERM HUP
         if [ -e "$slot" ]; then sb_link_taken "$dest"; fi
         sb_die 1 "a folder took the place of $dest, and the item is left inside it: $(sb_path_out "$inside")"
       fi
       if [ -e "$slot" ] || [ -L "$slot" ] || { [ ! -e "$SB_ROOT/$dest" ] && [ ! -L "$SB_ROOT/$dest" ]; }; then
         [ -z "$mark" ] || rm -f "$slot/$mark"
+        trap - INT TERM HUP
         if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_link_taken "$dest"; fi
         sb_die 1 "cannot move $(sb_path_out "$slot") to $dest; nothing was changed"
       fi
       [ -z "$mark" ] || rm -f "$SB_ROOT/$dest/$mark"
+      trap - INT TERM HUP
       printf 'moved: %s -> %s\n' "$(sb_path_out "$slot")" "$dest"
     fi
   fi

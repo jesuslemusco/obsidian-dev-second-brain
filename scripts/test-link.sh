@@ -714,6 +714,10 @@ case "\${last:-}" in
   */claude/agents/racer.md) printf 'theirs\n' >"\$last" ;;
   */claude/skills/rival) "$real_mkdir" -p "\$last" && printf 'theirs\n' >"\$last/keep.md" ;;
   */claude/agents/nested.md) "$real_mkdir" -p "\$last" ;;
+  */claude/skills/stuck) "$real_mkdir" -p "\$last" ;;
+  *"/foreign home/skills/stuck") exit 1 ;;
+  */claude/skills/cutbefore) kill -TERM "\$PPID"; exit 1 ;;
+  */claude/skills/cutafter) "$real_mv" "\$@"; rc=\$?; kill -TERM "\$PPID"; exit "\$rc" ;;
 esac
 exec "$real_mv" "\$@"
 EOF
@@ -750,6 +754,33 @@ case "$fv/claude/skills/race" in "$tmp"/*/claude/skills/race) rm -r "$fv/claude/
 case "$fo/race" in "$tmp"/*/race) rm -r "$fo/race" ;; esac
 case "$fv/claude/skills/rival" in "$tmp"/*/claude/skills/rival) rm -r "$fv/claude/skills/rival" ;; esac
 case "$fh/skills/rival" in "$tmp"/*/skills/rival) rm -r "$fh/skills/rival" ;; esac
+# The mark never stays behind: not when the move is stopped, not when it cannot move back, and a
+# stale one is never carried into the vault.
+# marks <folder>: print the mark files directly in a folder, or nothing.
+marks() { (cd "$1" 2>/dev/null && find . -name '.sb-move.*' -print); }
+piece "$fh/skills/cutbefore/SKILL.md" cutbefore "Stopped before it moves."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill cutbefore
+rc_is "link move: stopped by TERM before mv, it exits 1" 1
+is "link move: stopped before mv, the folder is where it was" "$(sed -n 2p "$fh/skills/cutbefore/SKILL.md" 2>/dev/null)" "name: cutbefore"
+is "link move: stopped before mv, the folder carries no mark" "$(marks "$fh/skills/cutbefore")" ""
+piece "$fh/skills/cutafter/SKILL.md" cutafter "Stopped after it moves."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill cutafter
+rc_is "link move: stopped by TERM after mv, it exits 1" 1
+is "link move: stopped after mv, the folder is in the vault" "$(sed -n 2p "$fv/claude/skills/cutafter/SKILL.md" 2>/dev/null)" "name: cutafter"
+is "link move: stopped after mv, the copy in the vault carries no mark" "$(marks "$fv/claude/skills/cutafter")" ""
+piece "$fh/skills/stuck/SKILL.md" stuck "Cannot move back out."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill stuck
+rc_is "link move: a folder that cannot move back out of the one that took its place gives exit 1" 1
+is "link move: it is left inside that folder" "$(sed -n 2p "$fv/claude/skills/stuck/stuck/SKILL.md" 2>/dev/null)" "name: stuck"
+is "link move: left inside, it carries no mark" "$(marks "$fv/claude/skills/stuck/stuck")" ""
+piece "$fh/skills/stale/SKILL.md" stale "Carries a mark from a move that was cut off."
+: >"$fh/skills/stale/.sb-move.old123"
+fl link move skill stale
+rc_is "link move: a folder with a stale mark moves" 0
+is "link move: the stale mark is not carried into the vault" "$(marks "$fv/claude/skills/stale")" ""
+case "$fv/claude/skills/cutafter" in "$tmp"/*/claude/skills/cutafter) rm -r "$fv/claude/skills/cutafter" ;; esac
+case "$fv/claude/skills/stuck" in "$tmp"/*/claude/skills/stuck) rm -r "$fv/claude/skills/stuck" ;; esac
+case "$fh/skills/cutbefore" in "$tmp"/*/skills/cutbefore) rm -r "$fh/skills/cutbefore" ;; esac
 
 # The original of a copy is removed only on its own command, and only when it matches the copy.
 fl link drop-original skill outer

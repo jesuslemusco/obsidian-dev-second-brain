@@ -634,7 +634,10 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - A real folder carries an empty mark file, `.sb-move.<random>`, while it moves. When `mv` put it
   inside a folder that took its place, the mark shows it there: it goes back where it was, with
   no row and no link, and the command exits 6. An agent file put inside such a folder goes back
-  the same way. The mark is removed in either case.
+  the same way. The mark is removed in either case, and when the folder cannot move back.
+- Any `.sb-move.*` file directly in the folder is a stale mark, and is removed before the move.
+- Stopped by INT, TERM or HUP while the mark exists, the command removes it from the folder's
+  place, the destination and a folder that took its place, then exits 1.
 - `link drop-original` removes that original. The vault-doctor fix runs it only after the owner's
   yes.
 - It removes it only when the item's link leads into a claude folder of the vault, and the

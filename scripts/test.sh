@@ -3314,10 +3314,14 @@ file_has "spec build: keeps track of the build" "$BM" "You keep track of the bui
 file_has "spec build: a release check runs only when the owner asks" "$BM" '- Run a `release` check only when the owner asks:'
 file_has "spec build: the build-wide run runs in the background" "$BM" \
   '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice. A run can'
-file_has "reviewer: runs validation run in the background" "$here/agents/reviewer.md" \
-  '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice before you go'
-file_has "contract: validation run runs in the background, and implementer's tests too" "$here/docs/contract.md" \
-  '- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and'
+file_has "reviewer: runs validation run in the foreground with a 10 minute timeout" "$here/agents/reviewer.md" \
+  '- Run it in the foreground, with the Bash tool'"'"'s `timeout: 600000`, 10 minutes. Never wait on a'
+file_has "reviewer: but its baseline's each-build run in the background" "$here/agents/reviewer.md" \
+  '  - The one exception is baseline mode'"'"'s `--when each-build` run, which runs every suite. Run it'
+file_has "contract: the skill's build-wide run and the reviewer's baseline run in the background" "$here/docs/contract.md" \
+  '- The skill runs its build-wide `validation run` with the Bash tool'"'"'s `run_in_background` and'
+file_has "contract: implementer and reviewer run every other test and check in the foreground" "$here/docs/contract.md" \
+  '- `implementer` and `reviewer` run every other test and check in the foreground, with a timeout'
 IM="$here/agents/implementer.md"
 file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
 line_is "implementer: replies with its commit first" "$IM" '1. `Commit: <short hash>`.'
@@ -3345,8 +3349,8 @@ file_has "implementer: runs every check the packet names" "$IM" \
   "Before you commit, run every check under the packet's \`## Checks\`."
 file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
-file_has "implementer: runs its tests and checks in the background" "$IM" \
-  '- Run each test and check with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice'
+file_has "implementer: runs its tests and checks in the foreground with a 10 minute timeout" "$IM" \
+  '- Run each test and check in the foreground, with the Bash tool'"'"'s `timeout: 600000`, 10 minutes.'
 line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
   '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \

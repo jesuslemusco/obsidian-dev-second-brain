@@ -3,7 +3,8 @@
 ## 0.9.0 - unreleased
 
 - `implementer` and `reviewer` run each test and check in the foreground, with a timeout of 10
-  minutes, since a background notice may never reach an agent that runs with a name.
+  minutes, since a background notice may never reach an agent that runs with a name. `reviewer`
+  still runs its baseline's `--when each-build` run in the background.
 
 ## 0.8.0 - 2026-11-08
 

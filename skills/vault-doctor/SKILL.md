@@ -70,6 +70,11 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      and compare after it, as `## snapshot and compare` says.
    - It prints `moved:` or `copied:`, then `listed:` with the `README.md` it added the row to,
      then the item's row, `linked`. Report them.
+   - A `copied:` line: the original stays where it was. Once the item's row is `linked`, ask with
+     AskUserQuestion whether to delete the original, named by its path.
+   - On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes
+     the original only when it matches the copy. On a no, the original stays: name its path in the
+     report.
    - Exit 5 on its frontmatter `name`, missing or not the folder or file name: ask which one to
      change, change it after a yes, then run the move again.
    - Exit 6: the destination exists. Show it, and ask again.

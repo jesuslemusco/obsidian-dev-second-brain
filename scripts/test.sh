@@ -174,7 +174,7 @@ rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
 for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] [--subproject S] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
-  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply | --foreign]" "link move <skill|agent> <name> [--project P]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
+  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply | --foreign]" "link move <skill|agent> <name> [--project P]" "link drop-original <skill|agent> <name> <path>" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
 done
@@ -2181,6 +2181,12 @@ file_has "vault-doctor checks: the foreign fix points to the skill's fix steps" 
   'as `## fix` in `skills/vault-doctor/SKILL.md` says. Nothing moves without the answer.'
 file_has "vault-setup link: points to the doctor's foreign check" "$here/skills/vault-setup/SKILL.md" \
   '- The doctor'"'"'s `foreign` check warns on each skill or agent among them.'
+file_has "vault-doctor fix: after a copy, asks whether to delete the original" "$VD" \
+  '- A `copied:` line: the original stays where it was. Once the item'"'"'s row is `linked`, ask with'
+file_has "vault-doctor fix: a yes runs link drop-original" "$VD" \
+  '- On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes'
+file_has "vault-doctor fix: a no keeps the original and names it" "$VD" \
+  'On a no, the original stays: name its path in the'
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help

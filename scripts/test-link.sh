@@ -75,6 +75,9 @@ out_lacks() {
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
 }
+err_has() {
+  case "$ERR" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in stderr: $ERR" ;; esac
+}
 # points_at <desc> <link> <target>: the entry is a link holding exactly that target.
 points_at() {
   if [ -L "$2" ]; then is "$1" "$(readlink "$2")" "$3"; else fail "$1" "not a link: $2"; fi
@@ -679,6 +682,54 @@ out_lacks "link move: no listed line for an item the table names already" "liste
 case "$ERR" in *"lists far already"*) pass "link move: a note says the table names it already" ;; *) fail "link move: a note says the table names it already" "$ERR" ;; esac
 is "link move: the table keeps one row for it" "$(grep -c 'claude/agents/far' "$VR")" "1"
 row_is "link move: the agent link out of the vault is linked" "far | agent | linked | $ofv/claude/agents/far.md"
+
+# The original of a copy is removed only on its own command, and only when it matches the copy.
+fl link drop-original skill outer
+rc_is "drop-original: no path gives exit 5" 5
+fl link drop-original tool outer "$fo/outer"
+rc_is "drop-original: another kind gives exit 5" 5
+fl link drop-original skill outer "foreign outside/outer"
+rc_is "drop-original: a path that is not absolute gives exit 5" 5
+fl link drop-original skill outer "$fv/claude/skills/outer"
+rc_is "drop-original: a path inside the vault gives exit 5" 5
+err_has "drop-original: the message says it is inside the vault" "the vault or inside it"
+exists_dir "drop-original: the copy in the vault stays" "$fv/claude/skills/outer"
+fl link drop-original skill outer "$fv"
+rc_is "drop-original: the vault itself gives exit 5" 5
+err_has "drop-original: the message says it is the vault" "the vault or inside it"
+piece "$tmp/SKILL.md" outer "A skill kept outside."
+fl link drop-original skill outer "$tmp"
+rc_is "drop-original: a folder that holds the vault gives exit 5" 5
+err_has "drop-original: the message says the vault is inside it" "the vault is inside it"
+rm -f "$tmp/SKILL.md"
+symlink "$fo/outer" "$fo/outer-link"
+fl link drop-original skill outer "$fo/outer-link"
+rc_is "drop-original: a link gives exit 5" 5
+err_has "drop-original: the message says it is a link" "is a link"
+fl link drop-original agent far "$fo/outer"
+rc_is "drop-original: a folder given for an agent gives exit 5" 5
+err_has "drop-original: the message says it is no agent file" "not an agent .md file"
+fl link drop-original skill outer "$fo/missing"
+rc_is "drop-original: a missing path gives exit 1" 1
+fl link drop-original skill synced "$fo/outer"
+rc_is "drop-original: an item no vault claude folder links gives exit 1" 1
+fl link drop-original skill kept "$fo/outer"
+rc_is "drop-original: a path that is not the item's original gives exit 1" 1
+printf 'Edited.\n' >>"$fo/outer/SKILL.md"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: an original that differs from the copy gives exit 1" 1
+is "drop-original: an original that differs is kept" "$(tail -n 1 "$fo/outer/SKILL.md")" "Edited."
+piece "$fo/outer/SKILL.md" outer "A skill kept outside."
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: the original of a copied skill is removed" 0
+out_is "drop-original: says what it removed" "removed: $ofo/outer"
+absent "drop-original: the original folder is gone" "$fo/outer"
+is "drop-original: the copy in the vault stays" "$(sed -n 2p "$fv/claude/skills/outer/SKILL.md")" "name: outer"
+leads_to "drop-original: the link still leads to the copy" "$fh/skills/outer" "$fv/claude/skills/outer"
+fl link drop-original agent far "$fo/far.md"
+rc_is "drop-original: the original of a copied agent is removed" 0
+absent "drop-original: the original file is gone" "$fo/far.md"
+is "drop-original: the agent's copy stays" "$(sed -n 2p "$fv/claude/agents/far.md")" "name: far"
 
 fl link --foreign
 rc_is "link --foreign: exit 0 with nothing left" 0

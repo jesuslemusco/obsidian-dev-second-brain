@@ -466,16 +466,80 @@ EOF
   printf '%s\n' "$rows" | awk -F'\t' '$1 != "" { n++; if ($3 != "linked") bad = 1 } END { exit (bad || !n) }'
 }
 
+# Return 0 when two folders hold the same files and links, by path, with the same bytes.
+sb_link_same_tree() {
+  local a b f
+  a="$(cd "$1" 2>/dev/null && find . \( -type f -o -type l \) -print | LC_ALL=C sort)" || return 1
+  b="$(cd "$2" 2>/dev/null && find . \( -type f -o -type l \) -print | LC_ALL=C sort)" || return 1
+  [ "$a" = "$b" ] || return 1
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    sb_same_file "$1/$f" "$2/$f" || return 1
+  done <<EOF
+$a
+EOF
+  return 0
+}
+
+# Remove the original of a skill or agent that link move copied in from out of the vault, when it
+# matches the copy: link drop-original <skill|agent> <name> <path>.
+sb_link_drop() {
+  local usage="usage: second-brain link drop-original <skill|agent> <name> <path>"
+  local kind="${1:-}" name="${2:-}" path="${3:-}" shown phys home rows copy
+  [ $# -eq 3 ] && [ -n "$name" ] && [ -n "$path" ] || sb_die 5 "$usage"
+  case "$kind" in skill | agent) ;; *) sb_die 5 "$usage" ;; esac
+  path="$(sb_path_in "$path")"
+  case "$path" in /?*) ;; *) sb_die 5 "give the original as an absolute path: $path" ;; esac
+  while [ "${path%/}" != "$path" ]; do path="${path%/}"; done
+  sb_need_root
+  shown="$(sb_path_out "$path")"
+  [ ! -L "$path" ] || sb_die 5 "the original is a link, which this command never removes: $shown"
+  [ -e "$path" ] || sb_die 1 "nothing at $shown"
+  phys="$(sb_link_abs "$path")"
+  [ ! -d "$path" ] || phys="$(cd -P "$path" 2>/dev/null && pwd -P)" || sb_die 1 "cannot open $shown"
+  if sb_link_in_vault "$phys"; then sb_die 5 "the original is the vault or inside it, which this command never removes: $shown"; fi
+  case "$SB_ROOT/" in "$phys"/*) sb_die 5 "the vault is inside it, so it is never removed: $shown" ;; esac
+  home="$(cd -P "$(sb_link_home)" 2>/dev/null && pwd -P)" || home=""
+  if [ -n "$home" ]; then
+    case "$home/" in "$phys"/*) sb_die 5 "the link directory is inside it, so it is never removed: $shown" ;; esac
+  fi
+  if [ "$kind" = "skill" ]; then
+    [ -d "$path" ] && [ -f "$path/SKILL.md" ] || sb_die 5 "not a skill folder with a SKILL.md: $shown"
+  else
+    case "$path" in *.md) ;; *) sb_die 5 "not an agent .md file: $shown" ;; esac
+    [ -f "$path" ] || sb_die 5 "not an agent .md file: $shown"
+  fi
+  rows="$(sb_link_rows | SB_K="$kind" SB_N="$name" awk -F'\t' '$1 == ENVIRON["SB_N"] && $2 == ENVIRON["SB_K"]')"
+  copy="$(printf '%s\n' "$rows" | awk -F'\t' '$3 == "linked" { n++; t = $4 } END { if (n == 1) print t }')"
+  [ -n "$copy" ] || sb_die 1 "no claude folder of the vault links the $kind $name, so its original is kept: $shown"
+  if [ "$kind" = "skill" ]; then
+    sb_link_same_tree "$path" "$copy" || sb_die 1 "the original differs from the copy at $(sb_path_out "$copy"), so it is kept: $shown"
+    rm -rf "$path" || sb_die 1 "cannot remove all of $shown"
+  else
+    sb_same_file "$path" "$copy" || sb_die 1 "the original differs from the copy at $(sb_path_out "$copy"), so it is kept: $shown"
+    rm -f "$path" || sb_die 1 "cannot remove $shown"
+  fi
+  printf 'removed: %s\n' "$shown"
+}
+
 # Report the links, create and repair them with --apply, list the foreign skills and agents with
-# --foreign, or move one into the vault with move.
+# --foreign, move one into the vault with move, or remove the original of a copy with
+# drop-original.
 cmd_link() {
   local mode="check" rows
-  local usage="usage: second-brain link [--check | --apply | --foreign] | link move <skill|agent> <name> [--project P]"
-  if [ "${1:-}" = "move" ]; then
-    shift
-    sb_link_move "$@"
-    return $?
-  fi
+  local usage="usage: second-brain link [--check | --apply | --foreign] | link move <skill|agent> <name> [--project P] | link drop-original <skill|agent> <name> <path>"
+  case "${1:-}" in
+    move)
+      shift
+      sb_link_move "$@"
+      return $?
+      ;;
+    drop-original)
+      shift
+      sb_link_drop "$@"
+      return $?
+      ;;
+  esac
   [ $# -le 1 ] || sb_die 5 "$usage"
   case "${1:-}" in
     '' | --check) mode="check" ;;

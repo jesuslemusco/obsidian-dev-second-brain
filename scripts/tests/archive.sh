@@ -184,5 +184,42 @@ sb task head SK-4
 rc_is "status folders: the same id at the root and in a status folder is ambiguous, exit 4" 4
 rm -r "$KT/SK-4"
 
+# ---------------------------------------------------------------- status folders: reserved names
+# The five status names, in any letter case, are no task id and no alias in any layout, as archive
+# is not. The message names the folder as typed and the status lowercased.
+stack_tree() { find "$vault/$K" | sort; find "$vault/$K" -type f -exec cksum {} + | sort; }
+for layout in flat archive Status; do
+  edit "$vault/$K/claude/profile.md" "s/^task_layout: .*\$/task_layout: $layout/"
+  stack_tree >"$tmp/stack.before"
+  sb task new done --project Stack
+  rc_is "reserved: task new done gives exit 5 ($layout)" 5
+  err_has "reserved: the message names the done folder ($layout)" "done is the folder of the done tasks, not a task id"
+  sb task new In-Review --project Stack
+  rc_is "reserved: task new In-Review gives exit 5 ($layout)" 5
+  err_has "reserved: the name as typed, the status lowercased ($layout)" "In-Review is the folder of the in-review tasks, not a task id"
+  for s in PLANNED In-Progress abandoned; do
+    sb task new "$s" --project Stack
+    rc_is "reserved: task new $s gives exit 5 ($layout)" 5
+  done
+  sb task alias SK-3 add planned
+  rc_is "reserved: task alias add planned gives exit 5 ($layout)" 5
+  err_has "reserved: the alias message names the planned folder ($layout)" "planned is the folder of the planned tasks, not a task alias"
+  for s in Done in-review IN-PROGRESS Abandoned; do
+    sb task alias SK-3 add "$s"
+    rc_is "reserved: task alias add $s gives exit 5 ($layout)" 5
+  done
+  stack_tree >"$tmp/stack.after"
+  is "reserved: nothing written ($layout)" "$(cmp -s "$tmp/stack.before" "$tmp/stack.after" && printf same)" "same"
+done
+sb task new done
+rc_is "reserved: task new done, with no project, gives exit 5" 5
+err_has "reserved: it is refused before the project is looked for" "done is the folder of the done tasks, not a task id"
+sb task new Archive --project Stack
+rc_is "reserved: archive is still no task id, exit 5" 5
+err_has "reserved: archive keeps its message" "archive is the folder of the archived tasks, not a task id"
+sb task alias SK-3 add ARCHIVE
+rc_is "reserved: archive is still no task alias, exit 5" 5
+err_has "reserved: archive keeps its alias message" "archive is the folder of the archived tasks, not a task alias"
+
 # ---------------------------------------------------------------- result
 result

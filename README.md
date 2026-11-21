@@ -264,6 +264,12 @@ Claude writes every pull request description in the format of the note `claude/p
 in your vault, written from `templates/pull-request.md.tmpl`. Edit that note to change the format.
 A project's own `<project>/claude/pull-request.md` wins over it.
 
+## Writing style
+
+Claude writes notes in the style of the note `claude/writing-style.md` in your vault, written from
+`templates/writing-style.md.tmpl`. Edit that note to change the style. A project's own
+`<project>/claude/writing-style.md` wins over it.
+
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,

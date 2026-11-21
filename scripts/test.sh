@@ -438,6 +438,16 @@ rc_is "scaffold vault again: exit 0 with a writing style note" 0
 out_is "scaffold vault again: writes no writing style note" ""
 err_has "scaffold vault again: names the writing style note that exists" "exists: claude/writing-style.md"
 is "scaffold vault again: keeps the writing style note byte for byte" "$(cmp -s "$tmp/ws.before" "$WS" && printf same)" "same"
+rm "$WS"
+others="CLAUDE.md obsidian-conventions.md claude/README.md claude/pull-request.md"
+before="$(cd "$vault" && cksum $others)"
+sb scaffold vault
+rc_is "scaffold vault, a vault without the writing style: exit 0" 0
+out_is "scaffold vault, a vault without the writing style: writes only that note" "claude/writing-style.md"
+is "scaffold vault, a vault without the writing style: writes the template" "$(cmp -s "$here/templates/writing-style.md.tmpl" "$WS" && printf same)" "same"
+is "scaffold vault, a vault without the writing style: names each other file as one that exists" \
+  "$(printf '%s\n' "$ERR" | tr '\n' '|')" "exists: CLAUDE.md|exists: obsidian-conventions.md|exists: claude/README.md|exists: claude/pull-request.md|"
+is "scaffold vault, a vault without the writing style: leaves the other files as they were" "$(cd "$vault" && cksum $others)" "$before"
 mkdir -p "$tmp/vault2/.obsidian"
 sb scaffold vault "$tmp/vault2"
 exists "scaffold vault DIR: writes into that vault" "$tmp/vault2/CLAUDE.md"

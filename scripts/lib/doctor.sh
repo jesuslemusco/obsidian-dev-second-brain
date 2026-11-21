@@ -213,6 +213,15 @@ sb_doc_check_pull_request() {
   fi
 }
 
+# Check that the vault's writing style note exists.
+sb_doc_check_writing_style() {
+  if [ ! -f "$SB_ROOT/claude/writing-style.md" ]; then
+    sb_doc_row warn writing-style vault "claude/writing-style.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  sb_doc_row ok writing-style vault "" "-"
+}
+
 # Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
 sb_doc_imports_index() {
   local line="$1" home="$2" p
@@ -1459,8 +1468,8 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions pull_request import global_rules links double_registration \
-    always_loaded_size descriptions skill_size old_namespace; do
+  for c in pointer index conventions pull_request writing_style import global_rules links \
+    double_registration always_loaded_size descriptions skill_size old_namespace; do
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do

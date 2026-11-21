@@ -3,6 +3,10 @@
 ## 0.9.0 - unreleased
 
 - Notes follow `claude/writing-style.md`, which `scaffold vault` creates; a project's own wins.
+- The plugin's index template is now at `index_version: 5`, so the doctor's `index` check warns.
+  Run `second-brain scaffold vault`, which creates `claude/writing-style.md` and overwrites
+  nothing. Then add the template's new line under `## In every session` and set
+  `index_version: 5`. The doctor's new `writing-style` check warns while the note is missing.
 
 ## 0.8.0 - 2026-11-08
 

@@ -51,25 +51,34 @@ fi
 list=($areas)
 mkdir -p "$tmp/areas"
 # start_area <n>: run area n in the background; its output, errors and exit code go to files.
-# On a TERM it passes the TERM on and waits for the area, which stops after its current command
-# and removes its temp dir.
+# On a TERM it passes the TERM on to its own area alone, even one it is just starting, and waits
+# for it: the area stops after its current command and removes its temp dir.
 start_area() {
-  ( trap 'kill -TERM $! 2>/dev/null; wait $! 2>/dev/null; exit 143' TERM
+  ( child="" stop=""
+    stop_child() { kill -TERM "$child" 2>/dev/null; wait "$child"; exit 143; }
+    trap 'stop=1; [ -z "$child" ] || stop_child' TERM
+    [ -z "$stop" ] || exit 143
     "$BASH" "$here/scripts/tests/${list[$1]}.sh" </dev/null >"$tmp/areas/$1.out" \
       2>"$tmp/areas/$1.err" &
-    wait $!
+    child=$!
+    [ -z "$stop" ] || stop_child
+    wait "$child"
     printf '%s\n' "$?" >"$tmp/areas/$1.rc.part" && mv "$tmp/areas/$1.rc.part" "$tmp/areas/$1.rc" ) &
-  pids="$pids $!"
+  pid_at[$1]=$!
 }
-# stop_areas <exit code>: on Ctrl-C or a TERM, stop every area and wait for them, then exit.
-# Bash runs a background job with SIGINT ignored, so the areas never see the Ctrl-C themselves.
+# stop_areas <exit code>: on Ctrl-C or a TERM, stop the areas still running and wait for them,
+# then exit. Bash runs a background job with SIGINT ignored, so no area sees the Ctrl-C itself.
+# An area with its .rc file is done, and its PID may belong to another process by now.
 stop_areas() {
   trap - INT TERM
-  [ -z "$pids" ] || kill -TERM $pids 2>/dev/null
+  for ((i = 0; i < started; i++)); do
+    [ -f "$tmp/areas/$i.rc" ] || kill -TERM "${pid_at[$i]}" 2>/dev/null
+  done
   wait
   exit "$1"
 }
-pids=""
+pid_at=()
+started=0
 trap 'stop_areas 130' INT
 trap 'stop_areas 143' TERM
 # show_area <n>: print area n's output, add its total to this one, and count a crash as a failure.
@@ -96,7 +105,6 @@ show_area() {
   fi
 }
 # Start an area while fewer than max_jobs run, and print each one, in area order, once it is done.
-started=0
 printed=0
 while [ "$printed" -lt "${#list[@]}" ]; do
   done_n=0

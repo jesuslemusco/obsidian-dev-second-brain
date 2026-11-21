@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 - unreleased
+
+- `implementer` and `reviewer` run each test and check in the foreground, with a timeout of 10
+  minutes, since a background notice may never reach an agent that runs with a name.
+
 ## 0.8.0 - 2026-11-08
 
 - The README has a quick start, a section for each `/odsb:` command and a table of the agents, each

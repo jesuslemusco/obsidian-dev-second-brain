@@ -799,6 +799,17 @@ fl link drop-original skill outer "$fo/outer"
 rc_is "drop-original: an original that differs from the copy gives exit 1" 1
 is "drop-original: an original that differs is kept" "$(tail -n 1 "$fo/outer/SKILL.md")" "Edited."
 piece "$fo/outer/SKILL.md" outer "A skill kept outside."
+mkdir "$fo/outer/empty"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: an original with a folder the copy lacks gives exit 1" 1
+exists_dir "drop-original: an original with an extra folder is kept" "$fo/outer/empty"
+rmdir "$fo/outer/empty"
+cp "$fo/outer/SKILL.md" "$fo/outer/extra.md"
+symlink "$fv/claude/skills/outer/SKILL.md" "$fv/claude/skills/outer/extra.md"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: a file in the original that is a link in the copy gives exit 1" 1
+is "drop-original: an original whose entry differs in type is kept" "$(sed -n 2p "$fo/outer/extra.md" 2>/dev/null)" "name: outer"
+rm -f "$fo/outer/extra.md" "$fv/claude/skills/outer/extra.md"
 fl link drop-original skill outer "$fo/outer"
 rc_is "drop-original: the original of a copied skill is removed" 0
 out_is "drop-original: says what it removed" "removed: $ofo/outer"

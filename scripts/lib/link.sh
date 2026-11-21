@@ -504,15 +504,29 @@ EOF
   printf '%s\n' "$rows" | awk -F'\t' '$1 != "" { n++; if ($3 != "linked") bad = 1 } END { exit (bad || !n) }'
 }
 
-# Return 0 when two folders hold the same files and links, by path, with the same bytes.
+# Print every entry under a folder, one per line, as its type (d, f, l or o) and its path.
+sb_link_entries() {
+  (cd "$1" 2>/dev/null && {
+    find . -type d -print | sed 's/^/d /'
+    find . -type f -print | sed 's/^/f /'
+    find . -type l -print | sed 's/^/l /'
+    find . ! -type d ! -type f ! -type l -print | sed 's/^/o /'
+  } | LC_ALL=C sort)
+}
+
+# Return 0 when two folders hold the same entries by path and type, each file with the same bytes
+# and each link with the same target.
 sb_link_same_tree() {
-  local a b f
-  a="$(cd "$1" 2>/dev/null && find . \( -type f -o -type l \) -print | LC_ALL=C sort)" || return 1
-  b="$(cd "$2" 2>/dev/null && find . \( -type f -o -type l \) -print | LC_ALL=C sort)" || return 1
+  local a b line f
+  a="$(sb_link_entries "$1")" && [ -n "$a" ] || return 1
+  b="$(sb_link_entries "$2")" && [ -n "$b" ] || return 1
   [ "$a" = "$b" ] || return 1
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    sb_same_file "$1/$f" "$2/$f" || return 1
+  while IFS= read -r line; do
+    f="${line#? }"
+    case "$line" in
+      'f '*) sb_same_file "$1/$f" "$2/$f" || return 1 ;;
+      'l '*) [ "$(readlink "$1/$f")" = "$(readlink "$2/$f")" ] || return 1 ;;
+    esac
   done <<EOF
 $a
 EOF

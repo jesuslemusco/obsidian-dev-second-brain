@@ -772,6 +772,11 @@ err_has "drop-original: the message says the vault is inside it" "the vault is i
 fl link drop-original skill outer /
 rc_is "drop-original: the root folder gives exit 5" 5
 err_has "drop-original: the root folder holds the vault" "the vault is inside it"
+mkdir -p "$fo/held home"
+run env SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fo/held home" "$SB" link drop-original skill outer "$fo"
+rc_is "drop-original: a folder that holds the link directory gives exit 5" 5
+err_has "drop-original: the message says the link directory is inside it" "the link directory is inside it"
+rmdir "$fo/held home"
 rm -f "$tmp/SKILL.md"
 symlink "$fo/outer" "$fo/outer-link"
 fl link drop-original skill outer "$fo/outer-link"

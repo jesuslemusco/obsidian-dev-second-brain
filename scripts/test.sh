@@ -2194,6 +2194,10 @@ file_has "vault-doctor fix: any other exit 5, and exit 1, show the message and s
   '- Any other exit 5, and exit 1: show the message and stop.'
 file_has "vault-doctor fix: drop-original refusing keeps the original" "$VD" \
   '- `link drop-original` exits 1 or 5: show the message. The original stays: name its path.'
+file_has "contract: the drop-original row names a path that holds the link directory" "$here/docs/contract.md" \
+  'a path inside the vault or one that holds it, a path that holds the link directory, and a path'
+file_has "contract: drop-original never removes a folder that holds the link directory" "$here/docs/contract.md" \
+  '  included, or a folder that holds the link directory: each exits 5.'
 file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
   '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
 

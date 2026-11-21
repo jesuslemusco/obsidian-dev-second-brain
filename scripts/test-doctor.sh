@@ -525,6 +525,16 @@ chk "foreign: the next doctor run no longer names it" foreign vault "warn | 2 | 
 chk "foreign: the next doctor run has it linked" links vault "ok | 0 | -"
 sb link --check
 out_has "foreign: link --check shows it linked" "kept | skill | linked | $(sb_path_out "$vault")/claude/skills/kept"
+mkdir -p "$vault/claude/skills/odd" "$vault/claude/skills/twin" "$vault/$P/claude/skills/twin"
+printf '%s\n' '---' 'name: other' '---' >"$vault/claude/skills/odd/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/claude/skills/twin/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/$P/claude/skills/twin/SKILL.md"
+symlink "$vault/claude/skills/odd" "$home/skills/odd"
+symlink "$vault/claude/skills/twin" "$home/skills/twin"
+doc
+chk "foreign: a link to a vault item that is name-mismatch or duplicate is left to links" foreign vault \
+  "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
+chk "foreign: links names the name-mismatch and the duplicates" links vault "fail | 3 | odd:name-mismatch, twin:duplicate, twin:duplicate"
 reset
 
 # ---------------------------------------------------------------- sizes

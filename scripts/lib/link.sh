@@ -266,11 +266,15 @@ sb_link_in_plugin() {
 
 # Print TSV rows for the foreign skills and agents: name, kind, what (folder, file or link),
 # target (where a link leads, else -), place in the link directory. A skill is a folder that
-# holds SKILL.md, an agent a .md file, or a link to one. A link into the plugin is left out.
+# holds SKILL.md, an agent a .md file, or a link to one. A link into the plugin is left out, and
+# so is a place that another row names, such as a vault item's that is name-mismatch.
 sb_link_foreign() {
-  local name kind state target src slot what
+  local rows named name kind state target src slot what nl=$'\n'
+  rows="$(sb_link_rows)"
+  named="$nl$(printf '%s\n' "$rows" | awk -F'\t' '$1 != "" && $3 != "foreign" { print $6 }')$nl"
   while IFS=$'\t' read -r name kind state target src slot; do
     [ "$state" = "foreign" ] || continue
+    case "$named" in *"$nl$slot$nl"*) continue ;; esac
     if [ "$kind" = "skill" ]; then
       [ -d "$slot" ] && [ -f "$slot/SKILL.md" ] || continue
       what="folder"
@@ -285,7 +289,7 @@ sb_link_foreign() {
     fi
     printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$what" "${target:--}" "$slot"
   done <<EOF
-$(sb_link_rows)
+$rows
 EOF
 }
 

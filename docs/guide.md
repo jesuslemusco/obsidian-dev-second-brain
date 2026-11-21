@@ -257,8 +257,12 @@ claude plugin validate . --strict
 
 - `scripts/test.sh` runs each area file in `scripts/tests/` and prints one total. Each area builds
   its own scratch vault, so one runs alone: `bash scripts/test.sh tasks` runs `tasks.sh`.
+- The areas run in parallel, one per processor, and print in area order.
+  `SECOND_BRAIN_TEST_JOBS=1 bash scripts/test.sh` runs them one at a time.
 - A new check goes in the area of the command it tests. The helpers and fixtures the areas share
   are in `scripts/tests/lib.sh`.
+- The fixtures in `scripts/tests/lib.sh` and `scripts/tests/generated.sh` copy the commands of the
+  sections that write the vault. A change to what such a section writes goes into those copies too.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
   to `main`.

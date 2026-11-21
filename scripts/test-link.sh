@@ -769,6 +769,9 @@ piece "$tmp/SKILL.md" outer "A skill kept outside."
 fl link drop-original skill outer "$tmp"
 rc_is "drop-original: a folder that holds the vault gives exit 5" 5
 err_has "drop-original: the message says the vault is inside it" "the vault is inside it"
+fl link drop-original skill outer /
+rc_is "drop-original: the root folder gives exit 5" 5
+err_has "drop-original: the root folder holds the vault" "the vault is inside it"
 rm -f "$tmp/SKILL.md"
 symlink "$fo/outer" "$fo/outer-link"
 fl link drop-original skill outer "$fo/outer-link"

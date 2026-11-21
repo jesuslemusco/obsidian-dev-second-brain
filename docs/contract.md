@@ -640,7 +640,8 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - It removes it only when the item's link leads into a claude folder of the vault, and the
   original matches that copy: the same entries by path, each of the same type (folder, file,
   link or other), each file with the same bytes and each link with the same target.
-- It never removes a link, the vault, anything inside the vault or a folder that holds it.
+- It never removes a link, the vault, anything inside the vault or a folder that holds it, `/`
+  included.
 - It reads `<path>` as the system does: its folder is resolved with `cd -P`, links and `..`
   included, and its last part is added as it is. A last part `.` or `..` exits 5.
 - That one resolved path is the one every check reads, and the one it removes.

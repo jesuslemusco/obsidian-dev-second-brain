@@ -541,21 +541,24 @@ sb_link_drop() {
   [ $# -eq 3 ] && [ -n "$name" ] && [ -n "$path" ] || sb_die 5 "$usage"
   case "$kind" in skill | agent) ;; *) sb_die 5 "$usage" ;; esac
   path="$(sb_path_in "$path")"
-  case "$path" in /?*) ;; *) sb_die 5 "give the original as an absolute path: $path" ;; esac
-  while [ "${path%/}" != "$path" ]; do path="${path%/}"; done
+  case "$path" in /*) ;; *) sb_die 5 "give the original as an absolute path: $path" ;; esac
+  while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do path="${path%/}"; done
   sb_need_root
   # The folder is resolved as the system resolves it, links and .. included, and the last part is
   # added as it is. Every check reads this one path, and it is the one removed.
-  base="${path##*/}"
-  case "$base" in '' | . | ..) sb_die 5 "give the original with no . or .. as its last part: $(sb_path_out "$path")" ;; esac
-  dir="${path%/*}"
-  dir="$(cd -P "${dir:-/}" 2>/dev/null && pwd -P)" || sb_die 1 "nothing at $(sb_path_out "$path")"
-  path="${dir%/}/$base"
+  if [ "$path" != "/" ]; then
+    base="${path##*/}"
+    case "$base" in . | ..) sb_die 5 "give the original with no . or .. as its last part: $(sb_path_out "$path")" ;; esac
+    dir="${path%/*}"
+    dir="$(cd -P "${dir:-/}" 2>/dev/null && pwd -P)" || sb_die 1 "nothing at $(sb_path_out "$path")"
+    path="${dir%/}/$base"
+  fi
   shown="$(sb_path_out "$path")"
   [ ! -L "$path" ] || sb_die 5 "the original is a link, which this command never removes: $shown"
   [ -e "$path" ] || sb_die 1 "nothing at $shown"
-  phys="$path"
-  if sb_link_in_vault "$phys"; then sb_die 5 "the original is the vault or inside it, which this command never removes: $shown"; fi
+  # With its trailing slash taken off, the root folder is the empty string, and holds every path.
+  phys="${path%/}"
+  if sb_link_in_vault "$path"; then sb_die 5 "the original is the vault or inside it, which this command never removes: $shown"; fi
   case "$SB_ROOT/" in "$phys"/*) sb_die 5 "the vault is inside it, so it is never removed: $shown" ;; esac
   home="$(cd -P "$(sb_link_home)" 2>/dev/null && pwd -P)" || home=""
   if [ -n "$home" ]; then

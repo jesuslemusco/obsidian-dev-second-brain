@@ -636,6 +636,9 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - It removes it only when the item's link leads into a claude folder of the vault, and the
   original holds the same files with the same bytes as that copy.
 - It never removes a link, the vault, anything inside the vault or a folder that holds it.
+- It reads `<path>` as the system does: its folder is resolved with `cd -P`, links and `..`
+  included, and its last part is added as it is. A last part `.` or `..` exits 5.
+- That one resolved path is the one every check reads, and the one it removes.
 - Then `link move` makes that item's link as `--apply` does, and no other.
 - It adds the item's row to the table under `## Skills` or `## Agents` in that folder's
   `README.md`: `| [[<vault path of SKILL.md or the agent file, without .md>\|<name>]] | <description> |`.

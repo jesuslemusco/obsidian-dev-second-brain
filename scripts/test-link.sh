@@ -761,6 +761,17 @@ fl link drop-original skill synced "$fo/outer"
 rc_is "drop-original: an item no vault claude folder links gives exit 1" 1
 fl link drop-original skill kept "$fo/outer"
 rc_is "drop-original: a path that is not the item's original gives exit 1" 1
+# A .. after a link leads where the link leads, not back up the path as it is written.
+symlink "$fv/claude/skills" "$fo/lnk"
+fl link drop-original agent far "$fo/lnk/../agents/far.md"
+rc_is "drop-original: an agent path whose .. leads into the vault through a link gives exit 5" 5
+is "drop-original: the vault's agent file stays" "$(sed -n 2p "$fv/claude/agents/far.md" 2>/dev/null)" "name: far"
+fl link drop-original skill outer "$fo/lnk/../skills/outer"
+rc_is "drop-original: a skill path whose .. leads into the vault through a link gives exit 5" 5
+is "drop-original: the vault's skill folder stays" "$(sed -n 2p "$fv/claude/skills/outer/SKILL.md" 2>/dev/null)" "name: outer"
+rm -f "$fo/lnk"
+fl link drop-original skill outer "$fo/outer/.."
+rc_is "drop-original: a path whose last part is .. gives exit 5" 5
 printf 'Edited.\n' >>"$fo/outer/SKILL.md"
 fl link drop-original skill outer "$fo/outer"
 rc_is "drop-original: an original that differs from the copy gives exit 1" 1

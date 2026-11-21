@@ -3596,7 +3596,15 @@ file_has "README: points to the guide's Spec-driven delivery" "$RM" \
   '`## Spec-driven delivery` in `docs/guide.md`'
 line_is "README: docs/guide.md has the heading ## Spec-driven delivery" "$here/docs/guide.md" \
   "## Spec-driven delivery"
-for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl; do
+line_is "README: has ## Story templates" "$RM" "## Story templates"
+file_has "README: a project's own templates go in its claude/templates folder" "$RM" '`<project>/claude/templates/` in your vault'
+file_has "README: points to the contract's rules for a project's own templates" "$RM" \
+  "\`### A project's own templates\` in"
+line_is "README: docs/contract.md has the heading ### A project's own templates" "$here/docs/contract.md" \
+  "### A project's own templates"
+file_has "README: names the doctor's task-template check" "$RM" "The doctor's \`task-template\` check warns"
+for pf in skills/spec/build.md skills/vault-doctor/checks.md templates/pull-request.md.tmpl \
+  templates/task-readme.md.tmpl templates/ticket-description.md.tmpl; do
   file_has "README: points to $pf" "$RM" "\`$pf\`"
   exists "README: $pf exists" "$here/$pf"
 done

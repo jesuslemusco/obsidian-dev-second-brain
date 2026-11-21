@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0 - unreleased
+
+- A project can keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl` in
+  `<project>/claude/templates/`. Each wins over the plugin's template of that name.
+- `second-brain task new` fills the project's README template, and `spec link` reads its section
+  text. story-tracker fills the project's ticket text template for a draft or ticket text.
+- A placeholder left unfilled in a project's template makes `task new` exit 5 and name the
+  template by its vault path.
+- The doctor's new `task-template` check warns when a project's README template lacks a
+  frontmatter key or a section the helper or story-tracker writes. Each project gets one more
+  doctor row.
+- story-tracker adds no section to a new story that the project's README template leaves out.
+
 ## 0.8.0 - 2026-11-08
 
 - The README has a quick start, a section for each `/odsb:` command and a table of the agents, each

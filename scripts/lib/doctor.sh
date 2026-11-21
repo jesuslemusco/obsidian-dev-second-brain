@@ -836,7 +836,8 @@ sb_doc_check_placeholders() {
 # Check that the project's own task README template keeps each frontmatter key the helper writes
 # and each section the helper or story-tracker writes under. A key is read from frontmatter that
 # opens on the first line; a heading is a line equal to it without letter case and trailing
-# blanks, as task note finds it, outside frontmatter and fenced code. No template is ok.
+# blanks, outside fenced code, as sb_body_insert finds it for task note. Frontmatter is not read
+# for one. No template is ok.
 sb_doc_check_task_template() {
   local f="$SB_P_DIR/claude/templates/task-readme.md.tmpl" bad=""
   [ ! -f "$f" ] || bad="$(LC_ALL=C awk '

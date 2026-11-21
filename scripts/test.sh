@@ -2952,6 +2952,18 @@ sb task new SP-23 --project Specs --title "Plugin shape"
 rc_is "own template: with none, task new exits 0" 0
 is "own template: with none in the folder, task new fills the plugin's" "$(grep '^## ' "$vault/$S/tasks/SP-23/README.md" | tr '\n' '|')" \
   "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+awk '/^## Status notes$/ { print "```"; print; print "```"; print "" } { print }' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
+sb doctor Specs
+is "own template: a fenced heading before the real one passes the doctor" "$(printf '%s\n' "$OUT" | grep ' | task-template | Specs | ' | cut -d'|' -f1-4)" \
+  "ok | task-template | Specs | 0 "
+sb task new SP-25 --project Specs --title "Fenced example"
+O25="$vault/$S/tasks/SP-25/README.md"
+sb task note SP-25 "Under the real heading" --session own
+is "own template: task note leaves the fenced heading alone" "$(awk '/^```$/ { f = !f; print; next } f' "$O25")" \
+  "$(printf '%s\n' '```' '## Status notes' '```')"
+n25="$(grep -n '^## Status notes$' "$O25" | sed -n 2p | cut -d: -f1)"
+is "own template: task note writes under the real heading, as the doctor finds it" "$(sed -n "$((n25 + 2))p" "$O25")" \
+  '**2026-10-08 (session `own`) - Under the real heading**'
 grep -v '^next: \|^## Discovery log$' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
 sb doctor Specs
 is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \

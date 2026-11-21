@@ -655,8 +655,8 @@ sb_fill() {
   return 0
 }
 
-# Insert text before or after the first line equal to a heading; keeps line endings.
-# Modes: before, after, list (after, with no blank line before a following list item).
+# Insert text before or after the first line equal to a heading, outside fenced code; keeps line
+# endings. Modes: before, after, list (after, with no blank line before a following list item).
 # Returns 1, and writes nothing, when the heading is absent.
 sb_body_insert() {
   local file="$1" heading="$2" mode="$3" text="$4" tmp eofnl=1 rc=0
@@ -668,7 +668,7 @@ sb_body_insert() {
     function puttext(   i) { for (i = 1; i <= nt; i++) put(tl[i] eol) }
     BEGIN {
       want = tolower(ENVIRON["SB_H"]); mode = ENVIRON["SB_MODE"]; eofnl = ENVIRON["SB_EOFNL"] + 0
-      nt = split(ENVIRON["SB_TEXT"], tl, "\n"); sep = ""; done = 0; skipping = 0; eol = ""
+      nt = split(ENVIRON["SB_TEXT"], tl, "\n"); sep = ""; done = 0; skipping = 0; eol = ""; fence = 0
     }
     {
       raw = $0; line = raw; sub(/\r$/, "", line)
@@ -678,8 +678,9 @@ sb_body_insert() {
         skipping = 0
         if (!(mode == "list" && line ~ /^[-*] /)) put(eol)
       }
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
       t = line; sub(/[ \t]+$/, "", t)
-      if (!done && tolower(t) == want) {
+      if (!done && !fence && tolower(t) == want) {
         done = 1
         if (mode == "before") { puttext(); put(eol); put(raw); next }
         put(raw); put(eol); puttext(); skipping = 1; next

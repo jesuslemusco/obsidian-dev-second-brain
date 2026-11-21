@@ -301,21 +301,29 @@ sb_doc_check_links() {
   sb_doc_report fail links vault "$bad" "run second-brain link --apply, then repair by hand what it leaves"
 }
 
+# Check for skills and agents in the link directory that no claude folder of the vault provides.
+sb_doc_check_foreign() {
+  local home name kind what target slot bad="" nl=$'\n'
+  home="$(sb_link_home)"
+  while IFS=$'\t' read -r name kind what target slot; do
+    [ -n "$name" ] || continue
+    bad="$bad${slot#"$home"/}:$what"
+    [ "$what" != "link" ] || bad="$bad to $(sb_path_out "$target")"
+    bad="$bad$nl"
+  done <<EOF
+$(sb_link_foreign 2>/dev/null)
+EOF
+  sb_doc_report warn foreign vault "$bad" \
+    "ask where each one belongs, then run second-brain link move <skill or agent> <name> [--project P]" 120
+}
+
 # Check that no link in the link directory points inside the plugin.
 sb_doc_check_double_registration() {
-  local home root slot t bad="" nl=$'\n'
+  local home slot bad="" nl=$'\n'
   home="$(sb_link_home)"
-  root="$(cd -P "$(sb_plugin_root)" 2>/dev/null && pwd -P)" || root=""
   for slot in "$home"/skills/* "$home"/agents/*; do
-    [ -L "$slot" ] && [ -n "$root" ] || continue
-    t="$(readlink "$slot")" || continue
-    case "$t" in /*) ;; *) t="${slot%/*}/$t" ;; esac
-    if [ -d "$t" ]; then
-      t="$(cd -P "$t" 2>/dev/null && pwd -P)" || continue
-    elif [ -d "${t%/*}" ]; then
-      t="$(cd -P "${t%/*}" 2>/dev/null && pwd -P)/${t##*/}"
-    fi
-    case "$t/" in "$root"/*) bad="$bad${slot#"$home"/}$nl" ;; esac
+    sb_link_in_plugin "$slot" || continue
+    bad="$bad${slot#"$home"/}$nl"
   done
   sb_doc_report warn double-registration vault "$bad" "remove the link: the enabled plugin registers it already"
 }
@@ -1489,7 +1497,7 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions pull_request import global_rules links double_registration \
+  for c in pointer index conventions pull_request import global_rules links foreign double_registration \
     always_loaded_size descriptions skill_size old_namespace; do
     "sb_doc_check_$c"
   done

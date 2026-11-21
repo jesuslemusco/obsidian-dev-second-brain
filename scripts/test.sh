@@ -174,7 +174,7 @@ rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
 for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] [--subproject S] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
-  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply]" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
+  "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply | --foreign]" "link move <skill|agent> <name> [--project P]" "link drop-original <skill|agent> <name> <path>" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"
 done
@@ -2195,6 +2195,37 @@ file_has "vault-doctor checks: names the archive repair" "$here/skills/vault-doc
 file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'Then run `second-brain snapshot` before it.'
 file_has "vault-doctor fix: compare proves the archive" "$VD" 'After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.'
 file_has "vault-doctor fix: an archive by --fix is a bulk change" "$VD" 'offenders makes the `--fix` run a bulk change: it moves'
+file_has "vault-doctor fix: a foreign row lists every item, then takes one at a time" "$VD" \
+  '7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at'
+file_has "vault-doctor fix: a foreign item is asked about with AskUserQuestion" "$VD" '- Ask the user with AskUserQuestion where it goes.'
+file_has "vault-doctor fix: the answers are the vault, a project, or it stays" "$VD" \
+  '- Options: the vault'"'"'s general `claude/`, the one or two projects of `second-brain projects`'
+file_has "vault-doctor fix: nothing moves without the answer" "$VD" '- Nothing moves without that answer.'
+file_has "vault-doctor fix: the move is link move, with --project for a project" "$VD" \
+  '- Otherwise run `second-brain link move <skill or agent> <name>`, with `--project "<project>"`'
+file_has "vault-doctor checks: the foreign fix points to the skill's fix steps" "$here/skills/vault-doctor/checks.md" \
+  'as `## fix` in `skills/vault-doctor/SKILL.md` says. Nothing moves without the answer.'
+file_has "vault-setup link: points to the doctor's foreign check" "$here/skills/vault-setup/SKILL.md" \
+  '- The doctor'"'"'s `foreign` check warns on each skill or agent among them.'
+file_has "vault-doctor fix: after a copy, asks whether to delete the original" "$VD" \
+  '- A `copied:` line: the original stays where it was. Once the item'"'"'s row is `linked`, ask with'
+file_has "vault-doctor fix: a yes runs link drop-original" "$VD" \
+  '- On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes'
+file_has "vault-doctor fix: a no keeps the original and names it" "$VD" \
+  'On a no, the original stays: name its path in the'
+file_has "vault-doctor fix: an exit 5 is read for a message on the frontmatter name" "$VD" \
+  '- Exit 5: read the message. Only one on the `name in its frontmatter`, missing or not the folder'
+file_lacks "vault-doctor fix: not every exit 5 is read as a name problem" "$VD" '- Exit 5 on its frontmatter `name`'
+file_has "vault-doctor fix: any other exit 5, and exit 1, show the message and stop" "$VD" \
+  '- Any other exit 5, and exit 1: show the message and stop.'
+file_has "vault-doctor fix: drop-original refusing keeps the original" "$VD" \
+  '- `link drop-original` exits 1 or 5: show the message. The original stays: name its path.'
+file_has "contract: the drop-original row names a path that holds the link directory" "$here/docs/contract.md" \
+  'a path inside the vault or one that holds it, a path that holds the link directory, and a path'
+file_has "contract: drop-original never removes a folder that holds the link directory" "$here/docs/contract.md" \
+  '  included, or a folder that holds the link directory: each exits 5.'
+file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
+  '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
 
 # ---------------------------------------------------------------- spec-driven delivery
 sb help

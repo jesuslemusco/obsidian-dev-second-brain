@@ -20,6 +20,25 @@
   `scaffold subproject` take no line in fenced code for the heading they write under or read.
   `task note` once wrote into a fenced `## Status notes` example that came before the real
   heading, and `task head` showed that example as the newest note.
+- `second-brain link --foreign` lists each skill and agent in `~/.claude/skills` and
+  `~/.claude/agents` that no vault `claude/` folder provides: a real folder or file, or a link and
+  where it leads.
+- `second-brain link move <skill|agent> <name> [--project P]` moves one of them into the vault's
+  `claude/` or a project's, links it as `link --apply` does, and adds its row to the Skills or
+  Agents table of that folder's `README.md`.
+- What a link into the vault leads to is moved as `second-brain move` moves it, and the links to
+  it are rewritten. What a link out of the vault leads to is copied, and the original stays.
+- `second-brain link drop-original <skill|agent> <name> <path>` removes that original, only when
+  the item is linked from the vault and the original matches the copy byte for byte.
+- After a copy, `/odsb:vault-doctor fix` asks whether to delete the original. On a yes it runs
+  `link drop-original`. On a no the original stays, and the report names it.
+- The doctor's new `foreign` check warns on each of them, named with what it is:
+  `skills/<name>:folder`, `agents/<name>.md:file` or `skills/<name>:link to <target>`. A folder
+  with no `SKILL.md` and a link into the plugin are not read.
+- `/odsb:vault-doctor fix` asks with AskUserQuestion, one at a time, whether each goes to the
+  vault's `claude/`, to a project's `claude/`, or stays. Only on that answer does it run
+  `second-brain link move`.
+- The vault-setup skill's link mode points to that check: it still leaves a foreign entry alone.
 
 ## 0.8.0 - 2026-11-08
 

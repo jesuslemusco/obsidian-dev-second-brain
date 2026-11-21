@@ -48,7 +48,9 @@ setup:    scaffold vault [DIR]
               [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
           scaffold subproject <project> <name> [--repos R1,R2]
           pointer | pointer set <DIR> [--replace]
-          link [--check | --apply] | doctor [project] [--json] [--fix]
+          link [--check | --apply | --foreign] | doctor [project] [--json] [--fix]
+          link move <skill|agent> <name> [--project P]   (a foreign one into the vault)
+          link drop-original <skill|agent> <name> <path>   (the original of a copy)
           snapshot [name] | compare [name] | session-check
 json:     task head, spec tasks, spec status <ID>, validation <project> [repo] and validation run take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,

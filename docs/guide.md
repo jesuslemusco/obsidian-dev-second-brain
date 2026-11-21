@@ -88,6 +88,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `## 2. The index` in `docs/contract.md` says.
 - The doctor's `global-rules` check warns about a line of `~/.claude/CLAUDE.md` that names a
   project.
+- The doctor's `foreign` check warns about a skill or agent in `~/.claude/skills` or
+  `~/.claude/agents` that no vault `claude/` folder provides.
+- `/odsb:vault-doctor fix` asks where each one goes, the vault's `claude/` or a project's, and
+  moves it there, as `## fix` in `skills/vault-doctor/SKILL.md` says.
 - To run a project without sprints, say so when `vault-setup` sets it up, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says.
 - Tell Claude a story waits on another task, and it runs `second-brain task dep EX-2 add EX-1`.

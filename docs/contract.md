@@ -517,6 +517,9 @@ Rules that hold for every command:
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
 | `link [--check \| --apply]` | one row per skill or agent: `name \| kind \| state \| target` | scans `<vault>/claude/` and each index project's `claude/`, but not that of a row whose path holds a `..` part or a backslash; never touches links it did not make. Exit 1 when a row is neither `linked` nor `foreign`. `--apply` reports what it did as `note:` lines on stderr |
+| `link --foreign` | one row per foreign skill or agent: `name \| kind \| what \| target` | the foreign skills and agents of `### link, doctor, snapshot`. `what` is `folder`, `file` or `link`; `target` is where a link leads, else `-`. Exit 0, with no rows when there is none |
+| `link move <skill\|agent> <name> [--project P]` | `moved: <from> -> <to>`, or `copied:` for a link that leads out of the vault; for a link into the vault, then the `links:` lines of `move`; then `listed: <path>`; then the item's row as `link --check` prints it | takes one foreign skill or agent, as `link --foreign` lists it, into the vault's `claude/`, or into the `claude/` of the project `--project` names, as `### link, doctor, snapshot` says. Exit 1 when no foreign item has that kind and name, for an unknown project, or when the row is not `linked` at the end. Exit 5 for another kind, a name that holds a slash or a backslash, starts with a dot or cannot be written in a link (as `move` says), a project path that leaves the vault, a frontmatter `name` that is missing or not `<name>`, and, for a link into the vault, a symlink on the way that `move` does not look behind. Exit 6 when the destination exists. Nothing is moved before these checks pass |
+| `link drop-original <skill\|agent> <name> <path>` | `removed: <path>` | removes the original that `link move` copied in from out of the vault, the path of its `copied:` line, as `### link, doctor, snapshot` says. Exit 1, removing nothing, when no claude folder of the vault links the item, `<path>` is missing, or it differs from the copy. Exit 5 for another kind, a path that is not absolute, a link, the vault, a path inside the vault or one that holds it, a path that holds the link directory, and a path that is not a skill folder with `SKILL.md` or an agent `.md` file |
 | `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`. It makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`. Then it archives each task that `task-layout` names `to-archive` through `task archive`, `fixed: <ID> -> <new README path> (<project>)`, and prints the table. It never moves an open task, and archives nothing in a project whose tasks root leaves it. A task that `task archive` refuses stays where it is, with the reason on stderr |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check [--cwd DIR]` | with no vault, one line; in a directory of a project of the index, the session block; else nothing | for the SessionStart hook, see session-check below; always exits 0. `--cwd` reads another directory than the working one |
@@ -610,11 +613,61 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 - `sb_link_scan` prints one row per item, no header: `name | kind | state | target`. `kind` is
   `skill` or `agent`. `state` is one of `linked`, `missing`, `wrong-target`, `name-mismatch`,
   `duplicate`, `dangling`, `foreign`. `cmd_link --check` prints the same rows.
+- A foreign skill is a `foreign` row of kind `skill` whose entry is a folder that holds
+  `SKILL.md`, or a link to one. A foreign agent is a `foreign` row of kind `agent` whose entry is
+  a `.md` file, or a link to one.
+- Not foreign skills or agents: a folder with no `SKILL.md`, a `README.md` in `agents/` in any
+  letter case, as no claude folder links one, any other file, and a link that leads inside the
+  plugin, which `double-registration` names.
+- Nor is a place in the link directory that another row of `sb_link_rows` names, such as the
+  place of a vault item that is `name-mismatch` or `duplicate`. The vault provides it, and the
+  `links` check names it.
+- `link --foreign` lists them, and the doctor's `foreign` check warns on each.
+- `link move` puts a skill at `claude/skills/<name>/` and an agent at `claude/agents/<name>.md` of
+  the chosen folder.
+- A real folder or file is moved there.
+- What a link into the vault leads to is moved as `move` moves it, and the links to it are
+  rewritten. The link, then dangling, is removed.
+- What a link out of the vault leads to is copied there and stays where it was, named in a
+  `note:`. The link is removed.
+- A destination that appears after the check is never removed or overwritten: exit 6, and the
+  item stays where it was. The copy makes its folder or file only where none is, and removes only
+  what it made. The move runs `mv -n`, then checks that the item left its place and the
+  destination is there, as `move` does.
+- A real folder carries an empty mark file, `.sb-move.<random>`, while it moves. When `mv` put it
+  inside a folder that took its place, the mark shows it there: it goes back where it was, with
+  no row and no link, and the command exits 6. An agent file put inside such a folder goes back
+  the same way. The mark is removed in either case, and when the folder cannot move back.
+- Any `.sb-move.*` file directly in the folder is a stale mark, and is removed before the move.
+- Stopped by INT, TERM or HUP while the mark exists, the command removes it from the folder's
+  place, the destination and a folder that took its place, then exits 1.
+- `link drop-original` removes that original. The vault-doctor fix runs it only after the owner's
+  yes.
+- It removes it only when the item's link leads into a claude folder of the vault, and the
+  original matches that copy: the same entries by path, each of the same type (folder, file,
+  link or other), each file with the same bytes and each link with the same target.
+- It never removes a link, the vault, anything inside the vault or a folder that holds it, `/`
+  included, or a folder that holds the link directory: each exits 5.
+- It reads `<path>` as the system does: its folder is resolved with `cd -P`, links and `..`
+  included, and its last part is added as it is. A last part `.` or `..` exits 5.
+- That one resolved path is the one every check reads, and the one it removes.
+- It exits 5 when the copy in the vault is the original itself, as `-ef` finds it, or when the
+  copy is a link or lies behind one inside the vault.
+- Then `link move` makes that item's link as `--apply` does, and no other.
+- It adds the item's row to the table under `## Skills` or `## Agents` in that folder's
+  `README.md`: `| [[<vault path of SKILL.md or the agent file, without .md>\|<name>]] | <description> |`.
+- `<description>` is the frontmatter's `description` on one line, with `\|` for each `|`, or `-`.
+- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.
+- The row goes after the table's last row. With no table under the heading, a new table ends the
+  section. With no heading, the heading and the table end the file.
+- A table row whose first cell names the item already is kept, with a `note:`. The cell names it
+  by its text, or by a link whose alias is its name or whose path, `.md` or not, is the row's
+  path. A missing `README.md` gets a `note:` and no row. `listed:` names the `README.md` only when a row was added.
 - A doctor row is `result | check | scope | count | offenders | fix`. `result` is `ok`, `warn` or
   `fail`. `scope` is `vault` or a project name. `offenders` holds at most five, comma separated,
   or `-`.
-- A long offender is cut and ends with `...`: at 48 bytes, or at 120 for the paths of `hubs`,
-  `task-location` and `old-namespace`. A short tag after its last colon, such as `:no-folder`, is
+- A long offender is cut and ends with `...`: at 48 bytes, or at 120 for the paths of `foreign`,
+  `hubs`, `task-location` and `old-namespace`. A short tag after its last colon, such as `:no-folder`, is
   kept whole: the cut falls in the value before it.
 - A check prints one row. Where it has a fail case and a warn case, a fail wins: the row is the
   fail row, with the fail offenders only.
@@ -637,6 +690,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `import` | no import line for the index in the link directory's `CLAUDE.md` (warn) |
 | vault | `global-rules` | a line of the link directory's `CLAUDE.md` names an index project: its name as a whole word, as written, or its path in any letter case (`<project>:<line number>`, or `<project>:@<line number>` for an `@` import line, whose fix is to remove it) (warn). A whole word has no letter, digit, `_` or `-` on either side. The import line of the index and the table rows under a `## Projects` heading are not read, nor the files the `CLAUDE.md` imports |
 | vault | `links` | a vault-owned skill or agent is missing, wrong-target, dangling, name-mismatch or duplicate (fail) |
+| vault | `foreign` | a foreign skill or agent sits in the link directory (warn): a real folder (`skills/<name>:folder`), a real file (`agents/<name>.md:file`), or a link and where it leads (`skills/<name>:link to <target>`) |
 | vault | `double-registration` | a link in the link directory points inside the plugin (warn) |
 | vault | `always-loaded-size` | the index is over 60 lines or the link directory's `CLAUDE.md` over 40 (warn) |
 | vault | `descriptions` | a scanned skill or agent has no description (`<name>:none`), or one over 200 characters (`<name>:<length>`) (warn) |
@@ -752,7 +806,9 @@ the function `cmd_<command>` (dashes become underscores) with the remaining argu
 - An unknown command prints usage and exits 5.
 - A library file only defines functions.
 - `scripts/lib/graph.sh` holds `cmd_outline`, `cmd_backlinks`, `cmd_unresolved`, `cmd_move` and
-  `cmd_rename`. Its private helpers are `sb_graph_*`.
+  `cmd_rename`. Its private helpers are `sb_graph_*`. `link move` calls `sb_graph_path`,
+  `sb_graph_spell`, `sb_graph_link` and `sb_graph_move` for a link into the vault.
+- The doctor calls `sb_link_foreign` and `sb_link_in_plugin` of `scripts/lib/link.sh`.
 - `scripts/lib/platform.sh` holds what differs between systems. Its private helpers are
   `sb_plat_*`.
 - `scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and

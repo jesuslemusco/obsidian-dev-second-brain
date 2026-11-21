@@ -140,8 +140,10 @@ or docs.
    - Exit 1: at least one row is neither `linked` nor `foreign`.
 2. Show only the rows that are neither `linked` nor `foreign`.
    - `foreign` is an entry in `~/.claude` that no vault skill or agent claims, such as the user's
-     own global skills or a folder a plugin manages. It is normal and never touched: do not show
-     it as a problem.
+     own global skills or a folder a plugin manages. It is normal and never touched here: do not
+     show it as a problem.
+   - The doctor's `foreign` check warns on each skill or agent among them. vault-doctor fix asks
+     where each one goes and moves it, as `## fix` in `skills/vault-doctor/SKILL.md` says.
 3. Explain each row shown:
    - `missing`: not linked yet. `--apply` links it.
    - `wrong-target` or `dangling`, with a target: a link by that name leads elsewhere, or

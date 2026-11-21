@@ -500,6 +500,41 @@ symlink "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
 symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
 chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/scrum-master.md"
+
+# ---------------------------------------------------------------- foreign
+chk "foreign: a vault link, links into the plugin and a link to a folder with no SKILL.md do not warn" foreign vault "ok | 0 | -"
+mkdir -p "$home/skills/kept" "$home/skills/synced/notes" "$tmp/out/outer"
+printf '%s\n' '---' 'name: kept' 'description: A real folder.' '---' >"$home/skills/kept/SKILL.md"
+printf '%s\n' '---' 'name: outer' '---' >"$tmp/out/outer/SKILL.md"
+printf '%s\n' '---' 'name: solo' '---' >"$home/agents/solo.md"
+printf 'x\n' >"$home/agents/notes.txt"
+printf 'x\n' >"$home/skills/stray.txt"
+symlink "$tmp/out/outer" "$home/skills/outer"
+oOuter="$(sb_path_out "$tmp/out/outer")"
+doc
+rc_is "foreign: a warning leaves exit 0" 0
+chk "foreign: a real folder, a link and where it leads, and a real file warn; a folder with no SKILL.md and other files do not" foreign vault \
+  "warn | 3 | skills/kept:folder, skills/outer:link to $oOuter, agents/solo.md:file"
+is "foreign: the fix names link move" "$(fix_of foreign vault)" \
+  "ask where each one belongs, then run second-brain link move <skill or agent> <name> [--project P]"
+chk "foreign: links stays ok" links vault "ok | 0 | -"
+sb link move skill kept
+rc_is "foreign: link move takes the real folder into the vault" 0
+doc
+chk "foreign: the next doctor run no longer names it" foreign vault "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
+chk "foreign: the next doctor run has it linked" links vault "ok | 0 | -"
+sb link --check
+out_has "foreign: link --check shows it linked" "kept | skill | linked | $(sb_path_out "$vault")/claude/skills/kept"
+mkdir -p "$vault/claude/skills/odd" "$vault/claude/skills/twin" "$vault/$P/claude/skills/twin"
+printf '%s\n' '---' 'name: other' '---' >"$vault/claude/skills/odd/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/claude/skills/twin/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/$P/claude/skills/twin/SKILL.md"
+symlink "$vault/claude/skills/odd" "$home/skills/odd"
+symlink "$vault/claude/skills/twin" "$home/skills/twin"
+doc
+chk "foreign: a link to a vault item that is name-mismatch or duplicate is left to links" foreign vault \
+  "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
+chk "foreign: links names the name-mismatch and the duplicates" links vault "fail | 3 | odd:name-mismatch, twin:duplicate, twin:duplicate"
 reset
 
 # ---------------------------------------------------------------- sizes
@@ -686,7 +721,7 @@ is "outside: it gets no project rows, and nothing under it is read" "$(scope_row
 chk "outside: the skill in its claude folder is not scanned" descriptions vault "ok | 0 | -"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
-is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "12/0/0"
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "13/0/0"
 doc --fix
 is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 index_back
@@ -1533,15 +1568,15 @@ sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
 is "two projects: twenty-four rows for each" "$(scope_rows Example)/$(scope_rows Two)" "24/24"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -12 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size old-namespace "
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -13 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions pull-request import global-rules links foreign double-registration always-loaded-size descriptions skill-size old-namespace "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "profile board hubs placeholders task-template task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "12/24/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "13/24/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

@@ -849,8 +849,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   `skills/story-tracker/SKILL.md` says.
 - A project's template takes the placeholders of the plugin's. Any other is left unfilled, so
   `task new` exits 5 and names the template.
-- A project's `task-readme.md.tmpl` keeps the frontmatter keys the helper writes: `title`,
-  `status`, `next`, `branch`, `epic` and `type`.
+- A project's `task-readme.md.tmpl` keeps the frontmatter keys the helper writes: `aliases`,
+  `title`, `status`, `next`, `branch`, `epic` and `type`.
 - It keeps the sections the helper or story-tracker writes under: `## Status notes` and
   `## Discovery log`.
 - The doctor's `task-template` check warns about a key or a section it lacks.

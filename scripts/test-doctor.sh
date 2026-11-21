@@ -828,7 +828,11 @@ doc Example
 chk "task-template: a heading matches without letter case and trailing blanks, as task note finds it" task-template Example "warn | 2 | next, epic"
 grep -v '^---$' "$here/templates/task-readme.md.tmpl" >"$TT"
 doc Example
-chk "task-template: with no frontmatter every key is missing" task-template Example "warn | 6 | title, status, next, branch, epic"
+chk "task-template: with no frontmatter every key is missing" task-template Example "warn | 7 | aliases, title, status, next, branch"
+grep -v '^aliases:$\|^  - {{ID}}$' "$here/templates/task-readme.md.tmpl" >"$TT"
+doc Example
+chk "task-template: a template with no aliases warns, as each story made from it fails task-frontmatter" task-template Example \
+  "warn | 1 | aliases"
 { printf '\357\273\277'; awk '{ printf "%s\r\n", $0 }' "$here/templates/task-readme.md.tmpl"; } >"$TT"
 doc Example
 chk "task-template: a BOM and CRLF line endings are read" task-template Example "ok | 0 | -"

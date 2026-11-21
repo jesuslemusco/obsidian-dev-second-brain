@@ -842,7 +842,7 @@ sb_doc_check_task_template() {
   local f="$SB_P_DIR/claude/templates/task-readme.md.tmpl" bad=""
   [ ! -f "$f" ] || bad="$(LC_ALL=C awk '
     BEGIN {
-      nk = split("title status next branch epic type", keys, " ")
+      nk = split("aliases title status next branch epic type", keys, " ")
       ns = split("## Status notes|## Discovery log", secs, "|")
     }
     { sub(/\r$/, "") }

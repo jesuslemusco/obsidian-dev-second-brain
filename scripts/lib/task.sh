@@ -526,7 +526,7 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub=""
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir tmpl
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -605,9 +605,23 @@ EOF
   alias="$(sb_fm_list "$hub" aliases 2>/dev/null | head -1)"
   [ -n "$alias" ] || alias="$SB_P_NAME Tasks Hub"
   uplink="[[$SB_P_PATH/$SB_TASKS_ROOT/README|$alias]]"
+  had_dir=0
+  [ ! -d "$dir" ] || had_dir=1
   sb_fill task-readme.md.tmpl "$file" "ID=$id" "TITLE=$title" "TOPIC_TAGS=$taglines" "UP_LINK=$uplink" || rc=$?
   [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
   [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
+  # A project's own template may give no frontmatter, which every task command needs: write nothing.
+  if ! LC_ALL=C awk '
+    { sub(/\r$/, "") }
+    NR == 1 { sub(/^\357\273\277/, ""); if ($0 != "---") exit 1; next }
+    $0 == "---" { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$file"; then
+    rm -f "$file"
+    [ "$had_dir" -eq 1 ] || rmdir "$dir" 2>/dev/null
+    tmpl="$(sb_template task-readme.md.tmpl)"
+    case "$tmpl" in "$(sb_plugin_root)/templates/task-readme.md.tmpl") tmpl=task-readme.md.tmpl ;; *) tmpl="$(sb_rel "$tmpl")" ;; esac
+    sb_die 5 "the README filled from $tmpl has no frontmatter: start the template with it, as the plugin's has"
+  fi
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
   [ "$(sb_yaml_quote "$id")" = "$id" ] || sb_fm_edit "$file" listswap aliases "$id" "$id"
   [ -z "$sub" ] || sb_fm_set "$file" subproject "$SB_S_NAME"

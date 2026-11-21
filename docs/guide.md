@@ -255,6 +255,10 @@ bash scripts/leak-check.sh
 claude plugin validate . --strict
 ```
 
+- `scripts/test.sh` runs each area file in `scripts/tests/` and prints one total. Each area builds
+  its own scratch vault, so one runs alone: `bash scripts/test.sh tasks` runs `tasks.sh`.
+- A new check goes in the area of the command it tests. The helpers and fixtures the areas share
+  are in `scripts/tests/lib.sh`.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
   to `main`.

@@ -199,14 +199,18 @@ sb_link_clean() {
   awk -F'\t' '$1 != "" && $3 != "linked" && $3 != "foreign" { bad = 1 } END { exit bad }'
 }
 
-# Create missing links; repoint or remove only links that lead into the vault.
+# Create missing links; repoint or remove only links that lead into the vault. With a kind and a
+# name, only the rows of that skill or agent.
 sb_link_apply() {
-  local home name kind state target src slot did nl=$'\n'
+  local only_kind="${1:-}" only_name="${2:-}" home name kind state target src slot did nl=$'\n'
   local made="$nl"
   home="$(sb_link_home)"
   mkdir -p "$home/skills" "$home/agents" || sb_die 1 "cannot create the skills and agents folders in $(sb_path_out "$home")"
   while IFS=$'\t' read -r name kind state target src slot; do
     [ -n "$name" ] || continue
+    if [ -n "$only_kind" ]; then
+      [ "$kind" = "$only_kind" ] && [ "$name" = "$only_name" ] || continue
+    fi
     did="linked"
     case "$state" in
       missing) ;;
@@ -235,17 +239,251 @@ $(sb_link_rows)
 EOF
 }
 
-# Report the links, or create and repair them with --apply.
+# Print where a link leads, its folders made physical: the whole path when it leads to a folder.
+# Return 1 when the path is no link or cannot be read.
+sb_link_leads() {
+  local t
+  [ -L "$1" ] || return 1
+  t="$(readlink "$1")" || return 1
+  case "$t" in /*) ;; *) t="${1%/*}/$t" ;; esac
+  if [ -d "$t" ]; then
+    t="$(cd -P "$t" 2>/dev/null && pwd -P)" || return 1
+  elif [ -d "${t%/*}" ]; then
+    t="$(cd -P "${t%/*}" 2>/dev/null && pwd -P)/${t##*/}"
+  fi
+  printf '%s\n' "$t"
+}
+
+# Return 0 when a link leads inside the plugin.
+sb_link_in_plugin() {
+  local root t
+  root="$(cd -P "$(sb_plugin_root)" 2>/dev/null && pwd -P)" || return 1
+  [ -n "$root" ] || return 1
+  t="$(sb_link_leads "$1")" || return 1
+  case "$t/" in "$root"/*) return 0 ;; esac
+  return 1
+}
+
+# Print TSV rows for the foreign skills and agents: name, kind, what (folder, file or link),
+# target (where a link leads, else -), place in the link directory. A skill is a folder that
+# holds SKILL.md, an agent a .md file, or a link to one. A link into the plugin is left out.
+sb_link_foreign() {
+  local name kind state target src slot what
+  while IFS=$'\t' read -r name kind state target src slot; do
+    [ "$state" = "foreign" ] || continue
+    if [ "$kind" = "skill" ]; then
+      [ -d "$slot" ] && [ -f "$slot/SKILL.md" ] || continue
+      what="folder"
+    else
+      case "$slot" in *.md) ;; *) continue ;; esac
+      [ -f "$slot" ] || continue
+      what="file"
+    fi
+    if [ -L "$slot" ]; then
+      ! sb_link_in_plugin "$slot" || continue
+      what="link"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$what" "${target:--}" "$slot"
+  done <<EOF
+$(sb_link_rows)
+EOF
+}
+
+# Add a row to the table under the heading of a skill (## Skills) or an agent (## Agents) in a
+# README.md, after its last row; keeps line endings. With no table under the heading, a new table
+# ends the section; with no heading, the heading and the table end the file. Return 1 when a row
+# names the item already, 2 when the file is missing, 3 when it cannot be written.
+sb_link_list() {
+  local file="$1" kind="$2" name="$3" row="$4" head="## Skills" top="| Skill | Use when |" tmp eofnl=1 rc=0
+  [ -f "$file" ] || return 2
+  if [ "$kind" = "agent" ]; then
+    head="## Agents"
+    top="| Agent | Use when |"
+  fi
+  if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then eofnl=0; fi
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-list.XXXXXX")" || return 3
+  LC_ALL=C SB_H="$head" SB_TOP="$top" SB_ROW="$row" SB_N="$name" SB_EOFNL="$eofnl" awk '
+    # The name in the first cell of a table row: the alias of a link, with no backticks.
+    function first(s,   c, i) {
+      gsub(/\\\|/, "\001", s)
+      sub(/^[ \t]*\|/, "", s)
+      c = s; sub(/\|.*/, "", c)
+      if ((i = index(c, "\001")) > 0) c = substr(c, i + 1)
+      gsub(/\[\[|\]\]|`/, "", c); sub(/^[ \t]+/, "", c); sub(/[ \t]+$/, "", c)
+      return c
+    }
+    { raw[NR] = $0; t = $0; sub(/\r$/, "", t); line[NR] = t; if (NR == 1 && t != $0) eol = "\r" }
+    END {
+      n = NR; want = tolower(ENVIRON["SB_H"]); s = 0; e = n + 1; fence = 0
+      for (i = 1; i <= n; i++) {
+        t = line[i]
+        if (t ~ /^[ \t]*(```|~~~)/) { fence = !fence; continue }
+        if (fence) continue
+        if (!s) { h = tolower(t); sub(/[ \t]+$/, "", h); if (h == want) s = i; continue }
+        if (t ~ /^##?[ \t]/) { e = i; break }
+      }
+      ta = 0; tb = 0
+      for (i = s + 1; s && i < e; i++) {
+        if (line[i] ~ /^[ \t]*\|/) { if (!ta) ta = i; tb = i } else if (ta) break
+      }
+      for (i = ta + 1; ta && i <= tb; i++) if (first(line[i]) == ENVIRON["SB_N"]) exit 1
+      na = 0
+      if (ta) {
+        at = tb
+      } else if (s) {
+        at = s
+        for (i = s + 1; i < e; i++) if (line[i] !~ /^[ \t]*$/) at = i
+        add[++na] = ""
+      } else {
+        at = n
+        if (n > 0 && line[n] !~ /^[ \t]*$/) add[++na] = ""
+        add[++na] = ENVIRON["SB_H"]; add[++na] = ""
+      }
+      if (!ta) { add[++na] = ENVIRON["SB_TOP"]; add[++na] = "|---|---|" }
+      add[++na] = ENVIRON["SB_ROW"]
+      sep = ""
+      for (i = 0; i <= n; i++) {
+        if (i > 0) { printf "%s%s", sep, raw[i]; sep = "\n" }
+        if (i == at) for (j = 1; j <= na; j++) { printf "%s%s", sep, add[j] eol; sep = "\n" }
+      }
+      if (ENVIRON["SB_EOFNL"] + 0 || at == n) printf "\n"
+    }' "$file" >"$tmp" || rc=$?
+  if [ "$rc" -eq 0 ]; then cat "$tmp" >"$file" || rc=3; fi
+  rm -f "$tmp"
+  return "$rc"
+}
+
+# Move one foreign skill or agent into the vault's claude folder, or a project's, then link it
+# and list it there: link move <skill|agent> <name> [--project P].
+sb_link_move() {
+  local usage="usage: second-brain link move <skill|agent> <name> [--project P]"
+  local kind="" name="" project="" row rname rkind what target slot rel dest file fm from desc readme rows rc=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project)
+        [ $# -ge 2 ] && [ -n "$2" ] || sb_die 5 "$usage"
+        project="$2"
+        shift
+        ;;
+      -*) sb_die 5 "$usage" ;;
+      *)
+        if [ -z "$kind" ]; then
+          kind="$1"
+        elif [ -z "$name" ]; then
+          name="$1"
+        else
+          sb_die 5 "$usage"
+        fi
+        ;;
+    esac
+    shift
+  done
+  if [ -z "$kind" ] || [ -z "$name" ]; then sb_die 5 "$usage"; fi
+  case "$kind" in skill | agent) ;; *) sb_die 5 "$usage" ;; esac
+  case "$name" in */* | .* | *\\*) sb_die 5 "not a skill or agent name: $name" ;; esac
+  sb_need_root
+  rel="claude"
+  if [ -n "$project" ]; then
+    sb_need_project "$project"
+    sb_graph_path "$SB_P_PATH/claude"
+    rel="$SB_GRAPH_PATH"
+  fi
+  row="$(sb_link_foreign | SB_K="$kind" SB_N="$name" awk -F'\t' '$1 == ENVIRON["SB_N"] && $2 == ENVIRON["SB_K"]')"
+  [ -n "$row" ] || sb_die 1 "no foreign $kind named $name in $(sb_path_out "$(sb_link_home)/${kind}s") (list them with: second-brain link --foreign)"
+  IFS=$'\t' read -r rname rkind what target slot <<EOF
+$row
+EOF
+  # What moves: the entry itself, or what a link leads to.
+  from="$slot"
+  [ "$what" != "link" ] || from="$target"
+  if [ "$kind" = "skill" ]; then
+    file="$from/SKILL.md"
+    dest="$rel/skills/$name"
+  else
+    file="$from"
+    dest="$rel/agents/$name.md"
+  fi
+  fm="$(sb_fm_get "$file" name 2>/dev/null)"
+  [ -n "$fm" ] || sb_die 5 "$rname has no name in its frontmatter: add name: $name first"
+  [ "$fm" = "$name" ] || sb_die 5 "the name in its frontmatter is $fm, not $name: make them the same first"
+  sb_graph_spell "$dest" ""
+  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
+  if [ "$what" = "link" ] && sb_link_in_vault "$target"; then
+    # Inside the vault it moves as move moves it, so the links to it are rewritten. The link left
+    # behind leads into the vault, and linking the item replaces it.
+    sb_graph_path "${target#"$SB_ROOT"/}"
+    from="$SB_GRAPH_PATH"
+    if sb_graph_link "$from" itself || sb_graph_link "$dest"; then
+      sb_die 5 "$SB_GRAPH_LINK is a symlink, and the helper does not look behind one"
+    fi
+    sb_graph_move "$from" "$dest" 0
+  else
+    mkdir -p "$SB_ROOT/${dest%/*}" || sb_die 1 "cannot create the folder $(sb_path_out "$SB_ROOT/${dest%/*}")"
+    if [ "$what" = "link" ]; then
+      # Out of the vault it is copied, so whatever else uses it there keeps it.
+      if [ "$kind" = "skill" ]; then
+        mkdir "$SB_ROOT/$dest" && cp -R "$from/." "$SB_ROOT/$dest/"
+      else
+        cp "$from" "$SB_ROOT/$dest"
+      fi || {
+        rm -rf "$SB_ROOT/$dest"
+        sb_die 1 "cannot copy $(sb_path_out "$from") to $dest; nothing was changed"
+      }
+      sb_rmlink "$slot" || sb_die 1 "copied to $dest, but cannot remove the link $(sb_path_out "$slot")"
+      printf 'copied: %s -> %s\n' "$(sb_path_out "$from")" "$dest"
+      sb_note "the original stays where it was: $(sb_path_out "$from")"
+    else
+      mv "$slot" "$SB_ROOT/$dest" || sb_die 1 "cannot move $(sb_path_out "$slot") to $dest"
+      printf 'moved: %s -> %s\n' "$(sb_path_out "$slot")" "$dest"
+    fi
+  fi
+  sb_link_apply "$kind" "$name"
+  if [ "$kind" = "skill" ]; then
+    desc="$(sb_fm_get "$SB_ROOT/$dest/SKILL.md" description 2>/dev/null)"
+    file="$dest/SKILL"
+  else
+    desc="$(sb_fm_get "$SB_ROOT/$dest" description 2>/dev/null)"
+    file="${dest%.md}"
+  fi
+  # A block scalar's text is on the lines below the key, which a table cell cannot hold.
+  case "$desc" in '>'* | '|'*) desc="" ;; esac
+  desc="$(printf '%s' "$desc" | tr '\t\r\n' '   ')"
+  desc="${desc//|/\\|}"
+  readme="$rel/README.md"
+  sb_link_list "$SB_ROOT/$readme" "$kind" "$name" "| [[$file\\|$name]] | ${desc:--} |" || rc=$?
+  case "$rc" in
+    0) printf 'listed: %s\n' "$readme" ;;
+    1) sb_note "$readme lists $name already" ;;
+    2) sb_note "no $readme, so $name is not listed: add its row by hand" ;;
+    *) sb_note "cannot write $readme, so $name is not listed: add its row by hand" ;;
+  esac
+  rows="$(sb_link_rows | SB_K="$kind" SB_N="$name" awk -F'\t' '$1 == ENVIRON["SB_N"] && $2 == ENVIRON["SB_K"]')"
+  printf '%s\n' "$rows" | sb_link_format
+  printf '%s\n' "$rows" | awk -F'\t' '$1 != "" { n++; if ($3 != "linked") bad = 1 } END { exit (bad || !n) }'
+}
+
+# Report the links, create and repair them with --apply, list the foreign skills and agents with
+# --foreign, or move one into the vault with move.
 cmd_link() {
   local mode="check" rows
-  local usage="usage: second-brain link [--check | --apply]"
+  local usage="usage: second-brain link [--check | --apply | --foreign] | link move <skill|agent> <name> [--project P]"
+  if [ "${1:-}" = "move" ]; then
+    shift
+    sb_link_move "$@"
+    return $?
+  fi
   [ $# -le 1 ] || sb_die 5 "$usage"
   case "${1:-}" in
     '' | --check) mode="check" ;;
     --apply) mode="apply" ;;
+    --foreign) mode="foreign" ;;
     *) sb_die 5 "$usage" ;;
   esac
   sb_need_root
+  if [ "$mode" = "foreign" ]; then
+    sb_link_foreign | sb_link_format
+    return 0
+  fi
   [ "$mode" = "check" ] || sb_link_apply
   rows="$(sb_link_rows)"
   printf '%s\n' "$rows" | sb_link_format

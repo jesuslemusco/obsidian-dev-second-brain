@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0 - unreleased
+
+- `second-brain link --foreign` lists each skill and agent in `~/.claude/skills` and
+  `~/.claude/agents` that no vault `claude/` folder provides: a real folder or file, or a link and
+  where it leads.
+- `second-brain link move <skill|agent> <name> [--project P]` moves one of them into the vault's
+  `claude/` or a project's, links it as `link --apply` does, and adds its row to the Skills or
+  Agents table of that folder's `README.md`.
+- What a link into the vault leads to is moved as `second-brain move` moves it, and the links to
+  it are rewritten. What a link out of the vault leads to is copied, and the original stays.
+
 ## 0.8.0 - 2026-11-08
 
 - The README has a quick start, a section for each `/odsb:` command and a table of the agents, each

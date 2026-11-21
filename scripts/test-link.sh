@@ -787,6 +787,18 @@ fl link drop-original agent far "$fo/far.md"
 rc_is "drop-original: the original of a copied agent is removed" 0
 absent "drop-original: the original file is gone" "$fo/far.md"
 is "drop-original: the agent's copy stays" "$(sed -n 2p "$fv/claude/agents/far.md")" "name: far"
+# A vault item that is itself a link to the original is no copy of it.
+piece "$fo/shared/SKILL.md" shared "Shared through a link."
+symlink "$fo/shared" "$fv/claude/skills/shared"
+piece "$fo/sharer.md" sharer "An agent shared through a link."
+symlink "$fo/sharer.md" "$fv/claude/agents/sharer.md"
+fl link --apply
+fl link drop-original skill shared "$fo/shared"
+rc_is "drop-original: a vault skill that is a link to the original gives exit 5" 5
+is "drop-original: the skill the vault links to stays" "$(sed -n 2p "$fo/shared/SKILL.md" 2>/dev/null)" "name: shared"
+fl link drop-original agent sharer "$fo/sharer.md"
+rc_is "drop-original: a vault agent that is a link to the original gives exit 5" 5
+is "drop-original: the agent the vault links to stays" "$(sed -n 2p "$fo/sharer.md" 2>/dev/null)" "name: sharer"
 
 fl link --foreign
 rc_is "link --foreign: exit 0 with nothing left" 0

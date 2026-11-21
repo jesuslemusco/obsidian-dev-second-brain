@@ -538,6 +538,15 @@ sb_link_drop() {
   rows="$(sb_link_rows | SB_K="$kind" SB_N="$name" awk -F'\t' '$1 == ENVIRON["SB_N"] && $2 == ENVIRON["SB_K"]')"
   copy="$(printf '%s\n' "$rows" | awk -F'\t' '$3 == "linked" { n++; t = $4 } END { if (n == 1) print t }')"
   [ -n "$copy" ] || sb_die 1 "no claude folder of the vault links the $kind $name, so its original is kept: $shown"
+  # A copy that is the original, or a link in the vault to it or elsewhere, is no copy.
+  [ ! "$path" -ef "$copy" ] || sb_die 5 "the vault's $kind $name is the original itself, so it is kept: $shown"
+  case "$copy" in
+    "$SB_ROOT"/*) ;;
+    *) sb_die 5 "the vault's $kind $name is not inside the vault, so its original is kept: $shown" ;;
+  esac
+  if sb_graph_link "${copy#"$SB_ROOT"/}" itself; then
+    sb_die 5 "the vault's $kind $name is a link or lies behind one, $SB_GRAPH_LINK, so its original is kept: $shown"
+  fi
   if [ "$kind" = "skill" ]; then
     sb_link_same_tree "$path" "$copy" || sb_die 1 "the original differs from the copy at $(sb_path_out "$copy"), so it is kept: $shown"
     rm -rf "$path" || sb_die 1 "cannot remove all of $shown"

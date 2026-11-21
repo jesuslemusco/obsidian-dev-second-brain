@@ -641,7 +641,8 @@ EOF
 
 # Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
 # the year being today's, and date it in archived. Print its new path, then the move's links: lines.
-# A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat project.
+# A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat or status
+# project.
 sb_task_archive() {
   local id="" project="" layout status today from dest out rc=0
   local usage="usage: second-brain task archive <ID> [--project P]"
@@ -662,7 +663,7 @@ sb_task_archive() {
   done
   [ -n "$id" ] || sb_die 5 "$usage"
   sb_need_task "$id" "$project"
-  layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
+  layout="$(sb_task_layout)"
   [ "$layout" = "archive" ] || sb_die 5 "$SB_P_NAME does not archive tasks (task_layout: $layout in its profile)"
   case "$SB_T_FILE" in "$SB_P_DIR/$SB_TASKS_ROOT/archive/"*) sb_die 6 "the task is archived already: $SB_T_REL" ;; esac
   status="$(sb_fm_get "$SB_T_FILE" status)"

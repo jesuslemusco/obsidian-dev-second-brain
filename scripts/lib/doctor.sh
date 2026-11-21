@@ -769,7 +769,7 @@ sb_doc_check_board() {
     fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
   fi
   # A board scaffolded before the archive layout shows no archived task in Obsidian.
-  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
+  if [ "$(sb_task_layout)" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
     bad="${bad:+$bad$nl}tasks.base:no-archive-filter"
     fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
   fi
@@ -1015,7 +1015,7 @@ sb_doc_check_task_location() {
 # Nothing in a flat project.
 sb_doc_layout_drift() {
   local days
-  [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] || return 0
+  [ "$(sb_task_layout)" = "archive" ] || return 0
   days="$(sb_setting "$SB_P_PATH" archive_after_days 14)"
   case "$days" in *[!0-9]*) days=14 ;; esac
   printf '%s\n' "$SB_DOC_SCAN" | SB_A="$SB_P_DIR/$SB_TASKS_ROOT/archive/" SB_NOW="$(sb_today)" SB_DAYS="$days" \
@@ -1049,7 +1049,7 @@ sb_doc_layout_drift() {
 # archive project, no open task in the archive and no done one left out of it too long.
 sb_doc_check_task_layout() {
   local days bad="" to="$SB_P_PATH/$SB_TASKS_ROOT"
-  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" != "archive" ]; then
+  if [ "$(sb_task_layout)" != "archive" ]; then
     [ ! -d "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || bad="archive:flat"
     sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
       "set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"

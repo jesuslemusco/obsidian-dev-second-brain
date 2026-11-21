@@ -121,5 +121,68 @@ if ! sb_is_windows; then
   rm "$AT/archive/2026/SH-5"
 fi
 
+# ---------------------------------------------------------------- status folders: the lookup
+# The tasks are written while the project is flat, then put by hand in the folder of their status.
+# Their aliases lose the id, so find reaches them by their folder, not by the aliases of every note.
+K="work/stack"
+KT="$vault/$K/tasks"
+sb scaffold project Stack --path "$K" --keys SK
+i=0
+for s in planned in-progress in-review done abandoned; do
+  i=$((i + 1))
+  sb task new "SK-$i" --project Stack --title "Stack SK-$i"
+  sb task set "SK-$i" status="$s"
+  edit "$KT/SK-$i/README.md" "/^  - SK-$i\$/d"
+  mkdir -p "$KT/$s"
+  mv "$KT/SK-$i" "$KT/$s/SK-$i"
+done
+sb task new SK-6 --project Stack --title "Stack SK-6"
+printf '# Done\n\nThe done tasks.\n' >"$KT/done/README.md"
+sb find SK-3
+out_is "status folders: find sees a task in in-review/ of a flat project" "$K/tasks/in-review/SK-3/README.md"
+sb task head SK-3
+out_has "status folders: task head reads it in a flat project" "path: $K/tasks/in-review/SK-3/README.md"
+sb board Stack All
+out_has "status folders: the board of a flat project lists it" "SK-3 | Stack SK-3 | in-review |"
+edit "$vault/$K/claude/profile.md" 's/^task_layout: flat$/task_layout: archive/'
+sb find SK-3
+out_is "status folders: find sees it in an archive project too" "$K/tasks/in-review/SK-3/README.md"
+edit "$vault/$K/claude/profile.md" 's/^task_layout: archive$/task_layout: Status/'
+i=0
+for s in planned in-progress in-review done abandoned; do
+  i=$((i + 1))
+  sb find "SK-$i"
+  out_is "status folders: find sees a task in $s/" "$K/tasks/$s/SK-$i/README.md"
+  sb task head "SK-$i"
+  out_has "status folders: task head reads a task in $s/" "path: $K/tasks/$s/SK-$i/README.md"
+done
+sb board Stack All
+i=0
+for s in planned in-progress in-review done abandoned; do
+  i=$((i + 1))
+  out_has "status folders: board All lists the task in $s/" "SK-$i | Stack SK-$i | $s |"
+done
+out_has "status folders: board All lists the task at the root too" "SK-6 | Stack SK-6 | planned |"
+is "status folders: the README of a status folder is no task on the board" "$(lines "$OUT")" "6"
+sb find done --project Stack
+rc_is "status folders: a status folder is no task, exit 1" 1
+sb task tag SK-4 add stacking
+sb topic Stack stacking
+out_is "status folders: topic lists a tagged task in done/" "$K/tasks/done/SK-4/README.md"
+sb task alias SK-3 add stack-review
+sb task head stack-review
+out_has "status folders: an alias finds a task in a status folder" "path: $K/tasks/in-review/SK-3/README.md"
+sb task set SK-2 next="Finish the stack"
+out_is "status folders: task set edits a task in a status folder" "next: Finish the stack"
+sb task archive SK-4
+rc_is "status folders: task archive in a status project gives exit 5" 5
+err_has "status folders: the message names the layout" "task_layout: status"
+exists "status folders: nothing moved then" "$KT/done/SK-4/README.md"
+mkdir -p "$KT/SK-4"
+cp "$KT/done/SK-4/README.md" "$KT/SK-4/README.md"
+sb task head SK-4
+rc_is "status folders: the same id at the root and in a status folder is ambiguous, exit 4" 4
+rm -r "$KT/SK-4"
+
 # ---------------------------------------------------------------- result
 result

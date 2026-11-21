@@ -2994,6 +2994,14 @@ is "own template: task note writes under the real heading, as the doctor finds i
 sb task head SP-25
 out_has "own template: task head reads the newest note under the real heading, not in fenced code" \
   'last_note: **2026-10-08 (session `own`) - Under the real heading**'
+# The index row writer still reads its table as written, so the rule names the commands that keep it.
+line_is "contract: the commands that take no fenced heading are named" "$here/docs/contract.md" \
+  '- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and'
+file_lacks "contract: no rule for every command that the index writer breaks" "$here/docs/contract.md" \
+  'No command takes a line in fenced code'
+file_has "changelog: names the commands that take no fenced heading" "$here/CHANGELOG.md" \
+  '- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and'
+file_lacks "changelog: no rule for every command" "$here/CHANGELOG.md" 'is never the one a command writes under'
 grep -v '^next: \|^## Discovery log$' "$here/templates/task-readme.md.tmpl" >"$OT/task-readme.md.tmpl"
 sb doctor Specs
 is "own template: the doctor warns on a template that lacks a key or a section the helper writes" \

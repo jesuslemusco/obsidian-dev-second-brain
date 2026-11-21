@@ -16,8 +16,10 @@
   frontmatter key, `aliases` included, or a section the helper or story-tracker writes. Each
   project gets one more doctor row.
 - story-tracker adds no section to a new story that the project's README template leaves out.
-- A heading in fenced code is never the one a command writes under. `task note` once wrote into
-  a fenced `## Status notes` example that came before the real heading.
+- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and
+  `scaffold subproject` take no line in fenced code for the heading they write under or read.
+  `task note` once wrote into a fenced `## Status notes` example that came before the real
+  heading, and `task head` showed that example as the newest note.
 
 ## 0.8.0 - 2026-11-08
 

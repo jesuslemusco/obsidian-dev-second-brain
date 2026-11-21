@@ -438,8 +438,8 @@ Rules that hold for every command:
 - A lookup that finds nothing exits 1 (`find`, `topic`, `search`). A listing that finds nothing
   exits 0 with no rows (`board`, `projects`, `backlinks`, `unresolved`).
 - Writes change only the lines they must and keep the file's line endings.
-- No command takes a line in fenced code for a heading it writes under, and `task head` reads its
-  newest status note under no such line.
+- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and
+  `scaffold subproject` take no line in fenced code for the heading they write under or read.
 - Wherever a command takes `<path>`, it is a vault path. A path that leaves the vault, enters a
   dot folder, holds a backslash or is absolute exits 5.
 - An absolute path is printed with forward slashes; on Windows in the drive form, `C:/...`.

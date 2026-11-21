@@ -2187,6 +2187,13 @@ file_has "vault-doctor fix: a yes runs link drop-original" "$VD" \
   '- On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes'
 file_has "vault-doctor fix: a no keeps the original and names it" "$VD" \
   'On a no, the original stays: name its path in the'
+file_has "vault-doctor fix: an exit 5 is read for a message on the frontmatter name" "$VD" \
+  '- Exit 5: read the message. Only one on the `name in its frontmatter`, missing or not the folder'
+file_lacks "vault-doctor fix: not every exit 5 is read as a name problem" "$VD" '- Exit 5 on its frontmatter `name`'
+file_has "vault-doctor fix: any other exit 5, and exit 1, show the message and stop" "$VD" \
+  '- Any other exit 5, and exit 1: show the message and stop.'
+file_has "vault-doctor fix: drop-original refusing keeps the original" "$VD" \
+  '- `link drop-original` exits 1 or 5: show the message. The original stays: name its path.'
 file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
   '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
 

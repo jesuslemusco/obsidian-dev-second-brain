@@ -75,9 +75,12 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    - On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes
      the original only when it matches the copy. On a no, the original stays: name its path in the
      report.
-   - Exit 5 on its frontmatter `name`, missing or not the folder or file name: ask which one to
-     change, change it after a yes, then run the move again.
+   - Exit 5: read the message. Only one on the `name in its frontmatter`, missing or not the folder
+     or file name, is fixed here: ask which one to change, change it after a yes, then run the
+     move again.
+   - Any other exit 5, and exit 1: show the message and stop.
    - Exit 6: the destination exists. Show it, and ask again.
+   - `link drop-original` exits 1 or 5: show the message. The original stays: name its path.
 8. Every other check: propose the fix from its `checks.md` entry, one check at a time.
    - Do it only after the user agrees to that one.
    - A fix that touches more than one note is a bulk change: snapshot before it and compare after

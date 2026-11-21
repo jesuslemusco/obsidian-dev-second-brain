@@ -586,10 +586,24 @@ sb_section() {
   ' "$1"
 }
 
+# Print the path of a template. A project may keep its own task-readme.md.tmpl and
+# ticket-description.md.tmpl in its claude/templates/: the current project's wins over the plugin's.
+sb_template() {
+  case "$1" in
+    task-readme.md.tmpl | ticket-description.md.tmpl)
+      if [ -n "${SB_P_DIR:-}" ] && [ -f "$SB_P_DIR/claude/templates/$1" ]; then
+        printf '%s\n' "$SB_P_DIR/claude/templates/$1"
+        return 0
+      fi
+      ;;
+  esac
+  printf '%s\n' "$(sb_plugin_root)/templates/$1"
+}
+
 # Print a template with its placeholders filled from KEY=VALUE pairs.
 sb_fill_text() {
   local tmpl kv
-  tmpl="$(sb_plugin_root)/templates/$1"
+  tmpl="$(sb_template "$1")"
   shift
   [ -f "$tmpl" ] || sb_die 2 "template missing: $(sb_path_out "$tmpl")"
   local assigns
@@ -623,13 +637,16 @@ sb_fill_text() {
 
 # Fill a template into a new file. Returns 6 when the file exists; never overwrites.
 sb_fill() {
-  local name="$1" dest="$2" tmp
+  local name="$1" dest="$2" tmp shown
   shift 2
   if [ -e "$dest" ]; then return 6; fi
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-fill.XXXXXX")" || return 1
   sb_fill_text "$name" "$@" >"$tmp" || { rm -f "$tmp"; exit 2; }
   if grep -q '{{' "$tmp"; then
     rm -f "$tmp"
+    # A project's own template is named by its vault path.
+    shown="$(sb_template "$name")"
+    case "$shown" in "$(sb_plugin_root)"/*) ;; *) name="$(sb_rel "$shown")" ;; esac
     sb_die 5 "a placeholder was left unfilled in $name, or a value contains {{"
   fi
   mkdir -p "$(dirname "$dest")" || { rm -f "$tmp"; return 1; }

@@ -2862,6 +2862,74 @@ file_has "spec phases: each requirement opens with its Serves line" "$here/skill
 file_has "spec phases: every criterion is served" "$here/skills/spec/phases.md" 'Every criterion of the story is named on a `- Serves:` line'
 file_has "spec phases: the doctor checks the trace" "$here/skills/spec/phases.md" 'its `spec-trace` row must name'
 
+# ---------------------------------------------------------------- a project's own templates
+OT="$vault/$S/claude/templates"
+mkdir -p "$OT"
+cat >"$OT/task-readme.md.tmpl" <<'TMPL'
+---
+aliases:
+  - {{ID}}
+title: "{{TITLE}}"
+status: planned
+next: "Frame the story"
+branch: "none yet"
+epic: "-"
+type: task
+tags:
+{{TOPIC_TAGS}}
+  - type/task
+  - status/active
+---
+
+> Up: {{UP_LINK}}
+
+# {{ID}} - {{TITLE}}
+
+## Ticket markup
+
+<The markup this project's tracker keeps.>
+
+## Approach / Key decisions
+
+- <A decision of this project, and its reason.>
+
+## Changes
+
+## Verification
+
+## Status notes
+
+## Discovery log
+TMPL
+sb task new SP-21 --project Specs --title "Own shape"
+rc_is "own template: task new exits 0" 0
+O21="$vault/$S/tasks/SP-21/README.md"
+is "own template: task new fills the project's template" "$(grep '^## ' "$O21" | tr '\n' '|')" \
+  "## Ticket markup|## Approach / Key decisions|## Changes|## Verification|## Status notes|## Discovery log|"
+line_is "own template: its placeholders are filled" "$O21" "# SP-21 - Own shape"
+line_is "own template: the up link is the tasks hub's" "$O21" "> Up: [[$S/tasks/README|Specs Tasks Hub]]"
+line_is "own template: the title is quoted as task new writes it" "$O21" 'title: "Own shape"'
+sb task note SP-21 "Shaped by the project" --session own
+line_is "own template: task note writes under its Status notes" "$O21" '**2026-10-08 (session `own`) - Shaped by the project**'
+sb task set SP-21 delivery=spec
+sb spec new SP-21
+sb spec link SP-21
+is "own template: spec link reads the project's template text, so the link stands alone" \
+  "$(awk '/^## Approach/ { on = 1; next } on && /^## / { exit } on' "$O21")" "
+See [[$S/tasks/SP-21/spec/design|SP-21 Design]]."
+printf '%s\n' '{{TEAM}}' >>"$OT/task-readme.md.tmpl"
+sb task new SP-22 --project Specs --title "Unknown placeholder"
+rc_is "own template: a placeholder the plugin's lacks exits 5" 5
+err_has "own template: the message names the project's template" "$S/claude/templates/task-readme.md.tmpl"
+absent "own template: nothing is written on refusal" "$vault/$S/tasks/SP-22/README.md"
+rm "$OT/task-readme.md.tmpl"
+printf '%s\n' 'The project shape of a ticket.' >"$OT/ticket-description.md.tmpl"
+sb task new SP-23 --project Specs --title "Plugin shape"
+rc_is "own template: with none, task new exits 0" 0
+is "own template: with none in the folder, task new fills the plugin's" "$(grep '^## ' "$vault/$S/tasks/SP-23/README.md" | tr '\n' '|')" \
+  "## Description|## Findings|## Acceptance criteria|## Approach / Key decisions|## Code verification (read-only)|## Changes|## Verification|## Status notes|## Discovery log|"
+rm -r "$OT"
+
 # ---------------------------------------------------------------- spec status and spec issue
 sb help
 out_has "help: lists spec status and spec issue" 'spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"'

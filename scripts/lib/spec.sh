@@ -483,7 +483,7 @@ sb_spec_link() {
     dl="See \`spec/$SB_T_ID/design.md\` in the \`$SB_SP_REPO\` repo."
     tl="See \`spec/$SB_T_ID/tasks.md\` in the \`$SB_SP_REPO\` repo."
   fi
-  tmpl="$(sb_plugin_root)/templates/task-readme.md.tmpl"
+  tmpl="$(sb_template task-readme.md.tmpl)"
   [ -n "$(tail -c 1 "$SB_T_FILE")" ] && nofinal=1
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-link.XXXXXX")" || sb_die 1 "cannot write a temp file"
   out="$(SB_OUT="$tmp" SB_DL="$dl" SB_TL="$tl" SB_NOFINAL="$nofinal" \

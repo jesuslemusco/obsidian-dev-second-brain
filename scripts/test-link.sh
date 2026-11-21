@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-link.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The README tests compare bytes. On Windows, in Git Bash, the platform library gives the suite
+# the awk, grep and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/my vault"
 home="$tmp/link home"
 mkdir -p "$vault/.obsidian" "$tmp/userdir"

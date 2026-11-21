@@ -44,6 +44,7 @@
   Run `second-brain scaffold vault`, which creates `claude/writing-style.md` and overwrites
   nothing. Then add the template's new line under `## In every session` and set
   `index_version: 5`. The doctor's new `writing-style` check warns while the note is missing.
+- `scripts/test.sh` runs the areas of `scripts/tests/` in parallel, or one: `scripts/test.sh tasks`.
 
 ## 0.8.0 - 2026-11-08
 

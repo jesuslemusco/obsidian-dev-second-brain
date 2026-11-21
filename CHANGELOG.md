@@ -10,6 +10,9 @@
   Agents table of that folder's `README.md`.
 - What a link into the vault leads to is moved as `second-brain move` moves it, and the links to
   it are rewritten. What a link out of the vault leads to is copied, and the original stays.
+- The doctor's new `foreign` check warns on each of them, named with what it is:
+  `skills/<name>:folder`, `agents/<name>.md:file` or `skills/<name>:link to <target>`. A folder
+  with no `SKILL.md` and a link into the plugin are not read.
 
 ## 0.8.0 - 2026-11-08
 

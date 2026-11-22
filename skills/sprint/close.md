@@ -21,7 +21,15 @@ Step 0 of `SKILL.md` has run.
    `second-brain sprint close <project> --carry EX-123,EX-124 --backlog EX-125 --abandon EX-126`
 5. Exit 5 names the problem: an open task in no list, or in two. Ask about it and run the call
    again.
+   - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is
+     taken, and nothing was written. Show that folder to the user: it is theirs to move away or
+     delete. Then run the call again.
 6. The same call closes the sprint note. Do not edit it, as `## Rules` in `SKILL.md` says.
+   - With `task_layout: status`, the call also moves each task in `--abandon` into `abandoned/`.
+     After the six summary lines it prints each moved task's new README path and its `links:` lines.
+   - A move that fails is named on stderr, and the call exits with its code. The sprint is closed
+     all the same: never run the call again. Tell the user the task and the reason:
+     `second-brain doctor --fix` moves it to `abandoned/` once the reason is handled.
 7. Add one status note per touched task, with the reason:
    `second-brain task note <ID> "<text>" --project <project> --session <session id>`
    - carry: `Carried from 2026-01-14 to 2026-01-28: <reason>`. The second id is the summary's

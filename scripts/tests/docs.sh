@@ -97,6 +97,38 @@ file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/arch
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
 file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
 file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
+line_is "sprint close: exit 6 is a taken abandoned folder in a status project" "$CL" \
+  '   - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is'
+line_is "sprint close: exit 6 wrote nothing, and the folder is the user's" "$CL" \
+  '     taken, and nothing was written. Show that folder to the user: it is theirs to move away or'
+line_is "sprint close: the call runs again once the folder is gone" "$CL" \
+  '     delete. Then run the call again.'
+line_is "sprint close: a status project's close moves each abandoned task" "$CL" \
+  '   - With `task_layout: status`, the call also moves each task in `--abandon` into `abandoned/`.'
+line_is "sprint close: the moved paths and links come after the summary" "$CL" \
+  '     After the six summary lines it prints each moved task'"'"'s new README path and its `links:` lines.'
+line_is "sprint close: a failed move is named on stderr" "$CL" \
+  '   - A move that fails is named on stderr, and the call exits with its code. The sprint is closed'
+line_is "sprint close: a closed sprint is never closed again" "$CL" \
+  '     all the same: never run the call again. Tell the user the task and the reason:'
+line_is "sprint close: the doctor moves the task later" "$CL" \
+  '     `second-brain doctor --fix` moves it to `abandoned/` once the reason is handled.'
+cl_e5="$(lineno "$CL" '5. Exit 5 names the problem')"
+cl_e6="$(lineno "$CL" '   - Exit 6, with `task_layout: status`')"
+cl_s6="$(lineno "$CL" '6. The same call closes the sprint note.')"
+cl_mv="$(lineno "$CL" '   - With `task_layout: status`, the call also moves')"
+cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
+is "sprint close: exit 6 is under step 5 and the move under step 6" \
+  "$((${cl_e5:-0} < ${cl_e6:-0} && ${cl_e6:-0} < ${cl_s6:-0} && ${cl_s6:-0} < ${cl_mv:-0} && ${cl_mv:-0} < ${cl_s7:-0}))" "1"
+SM="$here/agents/scrum-master.md"
+line_is "scrum-master: a status project's close moves the abandoned tasks" "$SM" \
+  '- With `task_layout: status`, the close moves each task it abandons into `abandoned/` and asks'
+line_is "scrum-master: a taken folder is the user's, and a closed sprint is not closed again" "$SM" \
+  '  nothing. A taken `abandoned/<ID>` folder is the user'"'"'s to clear, and a sprint that closed is'
+line_is "scrum-master: never closed twice" "$SM" \
+  '  never closed again.'
+line_is "contract: the search rule names a task note in a status folder" "$here/docs/contract.md" \
+  '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
 file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
@@ -320,6 +352,9 @@ is "changelog: the status layout is under 0.10.0" \
 vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
 is "changelog: the index's status line is under 0.10.0" \
   "$((${vi_line:-0} > ${st_top:-0} && ${vi_line:-0} < ${st_end:-0}))" "1"
+sr_line="$(lineno "$CG" '- The search rule warns on a whole Read of a task note in a status folder too.')"
+is "changelog: the search rule's status line is under 0.10.0" \
+  "$((${sr_line:-0} > ${st_top:-0} && ${sr_line:-0} < ${st_end:-0}))" "1"
 cv_line="$(lineno "$CG" '- The conventions note is at version 8: it names the status layout.')"
 is "changelog: the conventions note at version 8 is under 0.10.0" \
   "$((${cv_line:-0} > ${st_top:-0} && ${cv_line:-0} < ${st_end:-0}))" "1"

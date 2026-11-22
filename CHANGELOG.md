@@ -21,6 +21,8 @@
 - In a status project, `doctor --fix` moves each task to the folder of its status, then removes
   the archive's empty folders. To switch a project that has tasks, set the key, then run
   `doctor --fix` once.
+- The search rule warns on a whole Read of a task note in a status folder too. The sprint skill
+  and scrum-master say what a status project's close moves, and what to do when it cannot.
 - The conventions note is at version 8: it names the status layout. The doctor's `conventions`
   check warns about an older note.
 - The vault index and docs-keeper name `tasks/<status>/` as a task's place in a status project.

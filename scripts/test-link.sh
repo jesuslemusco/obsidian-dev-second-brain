@@ -1168,6 +1168,14 @@ guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md"}'
 warns "search rule: a Read of a whole archived task note"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/2026/EX-1/README.md","offset":1,"limit":20}'
 silent "search rule: a ranged Read of an archived task note"
+for st in planned in-progress in-review done abandoned; do
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$st"'/EX-1/README.md"}'
+  warns "search rule: a Read of a whole task note in $st/"
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$st"'/EX-1/README.md","offset":1,"limit":20}'
+  silent "search rule: a ranged Read of a task note in $st/"
+done
+guard Read '{"file_path":"'"$vault/$P"'/tasks/done/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in a status folder"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
 silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'

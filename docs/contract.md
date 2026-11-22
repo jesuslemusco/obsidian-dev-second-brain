@@ -1252,8 +1252,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - `search-rule.sh` warns and never blocks. It sets no `permissionDecision`, so the call goes on
   through the normal permission flow. It always exits 0.
 - It warns when one of these reaches into the vault: a Grep call; a Read of a whole task note, a
-  `tasks/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md` read with no `offset` and no
-  `limit`; a Bash command that runs grep, egrep, fgrep, rg, cat or sed.
+  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`
+  read with no `offset` and no `limit`; a Bash command that runs grep, egrep, fgrep, rg, cat or
+  sed.
 - The warning is one JSON object whose `hookSpecificOutput.additionalContext` says what the call
   does, then the search and read rule. Otherwise it prints nothing.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last

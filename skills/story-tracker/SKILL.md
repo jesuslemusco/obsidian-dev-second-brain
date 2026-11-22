@@ -28,7 +28,9 @@ Run these yourself, before anything else. Chain them in one Bash call where that
    - A subproject's settings win, from `second-brain subproject <project> <name>`. The subproject
      is the `subproject:` line, the task's `subproject` key, or the one the user names.
    - A new story names its subproject as `## 3. Create the story` in `create.md` says.
-   - `task_layout` is `flat` or `archive`. A profile with no such line is `flat`.
+   - `task_layout` is `flat`, `archive` or `status`. A profile with no such line is `flat`.
+   - With `status`, a story's folder follows its status, so there is nothing to archive and
+     nothing to ask: `second-brain task set` moves it to `<tasks_root>/<status>/<ID>/`.
 4. `second-brain profile <project> stories` prints what this project does differently.
    - Exit 1 here only means there is no Stories section. Carry on.
    - Read other sections only when a step names them.
@@ -167,6 +169,7 @@ move to `in-progress`.
   back.
   - On a yes, run `second-brain move "<its folder>" "<project path>/<tasks_root>/<ID>"`, then
     `second-brain task set <ID> archived=`.
+  - With `task_layout: status`, `task set` has moved it already: ask nothing.
 - The story reaches another topic: `second-brain task tag <ID> add <tag>`.
 - The story moves off a topic: `second-brain task tag <ID> remove <tag>`.
 - The story waits on another task: `second-brain task dep <ID> add <other ID>`.
@@ -193,7 +196,7 @@ it only on a yes.
 ## Links
 
 - Link a story by its path: `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`.
-  - An archived story's path is the one `find` prints.
+  - An archived story's path, or one in a `status` project, is the one `find` prints.
   - In a table cell, write the pipe as `\|`.
 - Run `second-brain move` or `second-brain rename` with `--dry-run` first.
 - Never rename a task folder.

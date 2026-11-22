@@ -194,9 +194,10 @@ sb_task_head() {
   ' "$SB_T_FILE"
 }
 
-# Set or remove scalar properties of a task; status and its tag change together.
+# Set or remove scalar properties of a task; status and its tag change together. In a status
+# project a status change then moves the task to the folder of its new status.
 sb_task_set() {
-  local id="" project="" kv key value out="" n=0 i=0
+  local id="" project="" kv key value out="" n=0 i=0 status="" dest=""
   local pairs
   pairs=()
   while [ $# -gt 0 ]; do
@@ -270,6 +271,24 @@ sb_task_set() {
     esac
     i=$((i + 1))
   done
+  # In a status project a new status moves the task to the folder of that status once the keys are
+  # written, so the destination is looked at first. The last status pair wins. The same status
+  # moves nothing, and a folder that already is the destination is not in its own way.
+  status=""
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    case "${pairs[$i]}" in status=*) status="${pairs[$i]#status=}" ;; esac
+    i=$((i + 1))
+  done
+  if [ -n "$status" ] && [ "$(sb_task_layout)" = "status" ] &&
+    [ "$status" != "$(sb_fm_get "$SB_T_FILE" status)" ]; then
+    dest="$(sb_task_status_dir "$status")"
+    if [ "$dest" = "${SB_T_REL%/*}" ]; then
+      dest=""
+    else
+      sb_task_dest_free "$dest"
+    fi
+  fi
   i=0
   while [ "$i" -lt "$n" ]; do
     kv="${pairs[$i]}"
@@ -299,6 +318,8 @@ sb_task_set() {
     i=$((i + 1))
   done
   if [ -n "$out" ]; then printf '%s' "$out"; else printf 'no change\n'; fi
+  [ -n "$dest" ] || return 0
+  sb_task_relocate "$dest"
 }
 
 # Print one status note line for today.
@@ -411,6 +432,30 @@ sb_task_tag() {
   sb_task_topics "$SB_T_FILE"
 }
 
+# Return 0 when a name, lowercased, is archive or one of the five status folders, and print that
+# folder; such a name is no task id and no alias in any layout, since a file system that ignores
+# letter case would take it for that folder.
+sb_task_reserved() {
+  local name s
+  name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  for s in archive $SB_TASK_STATUSES; do
+    if [ "$name" = "$s" ]; then
+      printf '%s\n' "$s"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# sb_task_refuse_reserved <name> <task id|task alias>: exit 5 when the name is reserved, naming its
+# folder: the name as typed, the status lowercased. Archive keeps its own message.
+sb_task_refuse_reserved() {
+  local folder
+  folder="$(sb_task_reserved "$1")" || return 0
+  [ "$folder" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a $2"
+  sb_die 5 "$1 is the folder of the $folder tasks, not a $2"
+}
+
 # Add an alias to a task, after the ones it has; print the aliases that result.
 sb_task_alias() {
   local id="" action="" alias="" project="" other
@@ -437,7 +482,7 @@ sb_task_alias() {
   [ "$action" = "add" ] || sb_die 5 "$usage"
   alias="$(printf '%s' "$alias" | tr '\n\r\t' '   ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [ -n "$alias" ] || sb_die 5 "$usage"
-  case "$alias" in [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task alias" ;; esac
+  sb_task_refuse_reserved "$alias" "task alias"
   sb_need_task "$id" "$project"
   # An alias names one task: refuse one that another task of the project already answers to.
   other=""
@@ -525,10 +570,11 @@ sb_topic_dir() {
   printf '%s\n' "$dir"
 }
 
-# Create a task folder and its README from the template; exit 6 when the folder exists.
+# Create a task folder and its README from the template, in planned/ in a status project; exit 6
+# when the folder exists or the id is a task in another folder.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" made d vdir
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -558,9 +604,8 @@ sb_task_new() {
   [ -n "$id" ] || sb_die 5 "$usage"
   case "$id" in
     *[!A-Za-z0-9._-]* | .* | -*) sb_die 5 "a task id holds letters, digits, dots, hyphens and underscores: $id" ;;
-    # A file system that ignores letter case would write it into the archive folder.
-    [Aa][Rr][Cc][Hh][Ii][Vv][Ee]) sb_die 5 "archive is the folder of the archived tasks, not a task id" ;;
   esac
+  sb_task_refuse_reserved "$id" "task id"
   sb_need_root
   if [ -z "$project" ]; then
     rows="$(sb_project_rows_by_key "$id")"
@@ -570,12 +615,20 @@ sb_task_new() {
   fi
   sb_need_project "$project"
   sb_need_profile
-  dir="$SB_P_DIR/$SB_TASKS_ROOT/$id"
+  # In a status project a new task starts in planned/; in any other layout at the tasks root.
+  vdir="$SB_P_PATH/$SB_TASKS_ROOT/$id"
+  [ "$(sb_task_layout)" != "status" ] || vdir="$(SB_T_ID="$id" sb_task_status_dir planned)"
+  dir="$SB_ROOT/$vdir"
   file="$dir/README.md"
-  [ ! -e "$file" ] || sb_die 6 "the task already has a README: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
-  if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $SB_P_PATH/$SB_TASKS_ROOT/$id"; fi
+  [ ! -e "$file" ] || sb_die 6 "the task already has a README: $vdir/README.md"
+  if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $vdir"; fi
+  # The id is a task elsewhere: at the root, in a status folder or in the archive.
   other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)"
-  [ -z "$other" ] || sb_die 6 "the task is archived: $(sb_rel "$other")"
+  case "$other" in
+    "") ;;
+    "$SB_P_DIR/$SB_TASKS_ROOT/archive/"*) sb_die 6 "the task is archived: $(sb_rel "$other")" ;;
+    *) sb_die 6 "the task exists: $(sb_rel "$other")" ;;
+  esac
   other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$id" | head -1)"
   [ -z "$other" ] || sb_die 6 "$id is already an alias of $(sb_rel "$other")"
   [ -z "$sub" ] || sb_need_sub "$sub"
@@ -607,11 +660,17 @@ EOF
   alias="$(sb_fm_list "$hub" aliases 2>/dev/null | head -1)"
   [ -n "$alias" ] || alias="$SB_P_NAME Tasks Hub"
   uplink="[[$SB_P_PATH/$SB_TASKS_ROOT/README|$alias]]"
-  had_dir=0
-  [ ! -d "$dir" ] || had_dir=1
+  # The fill makes each folder missing on the way to the task folder, such as planned/ in a status
+  # project or the tasks root itself: made is the outermost of them, empty when the folder exists.
+  made=""
+  d="$dir"
+  while [ -n "$d" ] && [ ! -d "$d" ]; do
+    made="$d"
+    d="${d%/*}"
+  done
   sb_fill task-readme.md.tmpl "$file" "ID=$id" "TITLE=$title" "TOPIC_TAGS=$taglines" "UP_LINK=$uplink" || rc=$?
-  [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
-  [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
+  [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $vdir/README.md"
+  [ "$rc" -eq 0 ] || sb_die 1 "cannot write $vdir/README.md"
   # A project's own template may give no frontmatter, which every task command needs: write nothing.
   if ! LC_ALL=C awk '
     { sub(/\r$/, "") }
@@ -619,7 +678,10 @@ EOF
     $0 == "---" { found = 1; exit }
     END { exit(found ? 0 : 1) }' "$file"; then
     rm -f "$file"
-    [ "$had_dir" -eq 1 ] || rmdir "$dir" 2>/dev/null
+    if [ -n "$made" ]; then
+      d="$dir"
+      while rmdir "$d" 2>/dev/null && [ "$d" != "$made" ]; do d="${d%/*}"; done
+    fi
     sb_die 5 "the README filled from $(sb_template_shown task-readme.md.tmpl) has no frontmatter: start the template with it, as the plugin's has"
   fi
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
@@ -639,11 +701,68 @@ EOF
   sb_rel "$file"
 }
 
+# Print the vault path of the folder of the task in SB_T_ID for a status, in the status layout:
+# <project>/<tasks_root>/<status>/<ID>.
+sb_task_status_dir() {
+  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/$SB_T_ID"
+}
+
+# sb_task_dest_free <dest>: exit 6 when anything is at the vault path dest, a link included, even a
+# dead one: move would put a task folder inside a folder that is there already, under its own name.
+sb_task_dest_free() {
+  if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then sb_die 6 "the destination exists: $1"; fi
+  return 0
+}
+
+# sb_task_relocate <dest>: move the folder of the task in SB_T_FILE to the vault path dest through
+# the move code, which rewrites every link into it. Exit 6 when anything is at dest. A move that
+# fails while the folder is still where it was returns its code, with nothing changed. Otherwise
+# SB_T_FILE and SB_T_REL name the README at dest, which is printed, then the move's links: lines;
+# a task that leaves the archive loses its archived key. Returns the move's code.
+sb_task_relocate() {
+  local dest="$1" from out rc=0 archive
+  from="${SB_T_REL%/*}"
+  sb_task_dest_free "$dest"
+  out="$(cmd_move -- "$from" "$dest")" || rc=$?
+  if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
+  SB_T_FILE="$SB_ROOT/$dest/README.md"
+  SB_T_REL="$dest/README.md"
+  printf '%s\n' "$SB_T_REL"
+  printf '%s\n' "$out" | grep '^links: ' || true
+  archive="$SB_P_PATH/$SB_TASKS_ROOT/archive/"
+  case "$from/" in
+    "$archive"*)
+      case "$dest/" in
+        "$archive"*) ;;
+        *) sb_fm_set "$SB_T_FILE" archived "" || sb_die 1 "moved the task, but cannot edit $SB_T_REL" ;;
+      esac
+      ;;
+  esac
+  return "$rc"
+}
+
+# sb_task_to_status <ID> <project>: for the doctor's fix, move a task of a status project to the
+# folder of its status through sb_task_relocate, and print what it prints. Nothing when the task
+# is there already. Exit 5 when its status is none of the five.
+sb_task_to_status() {
+  local status dest
+  sb_need_task "$1" "$2"
+  status="$(sb_fm_get "$SB_T_FILE" status)" || status=""
+  case "$status" in
+    planned | in-progress | in-review | done | abandoned) ;;
+    *) sb_die 5 "$SB_T_ID has no status of the five: ${status:-none}" ;;
+  esac
+  dest="$(sb_task_status_dir "$status")"
+  [ "$dest" != "${SB_T_REL%/*}" ] || return 0
+  sb_task_relocate "$dest"
+}
+
 # Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
 # the year being today's, and date it in archived. Print its new path, then the move's links: lines.
-# A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat project.
+# A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat or status
+# project.
 sb_task_archive() {
-  local id="" project="" layout status today from dest out rc=0
+  local id="" project="" layout status today from dest rc=0
   local usage="usage: second-brain task archive <ID> [--project P]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -662,7 +781,7 @@ sb_task_archive() {
   done
   [ -n "$id" ] || sb_die 5 "$usage"
   sb_need_task "$id" "$project"
-  layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
+  layout="$(sb_task_layout)"
   [ "$layout" = "archive" ] || sb_die 5 "$SB_P_NAME does not archive tasks (task_layout: $layout in its profile)"
   case "$SB_T_FILE" in "$SB_P_DIR/$SB_TASKS_ROOT/archive/"*) sb_die 6 "the task is archived already: $SB_T_REL" ;; esac
   status="$(sb_fm_get "$SB_T_FILE" status)"
@@ -673,14 +792,10 @@ sb_task_archive() {
   today="$(sb_today)"
   from="${SB_T_REL%/*}"
   dest="$SB_P_PATH/$SB_TASKS_ROOT/archive/${today%%-*}/$SB_T_ID"
-  # move would put the task inside a folder that is there already, under its own name.
-  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
-  out="$(cmd_move -- "$from" "$dest")" || rc=$?
+  sb_task_relocate "$dest" || rc=$?
   # A move that stopped before the folder left keeps the task as it was.
   if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
-  sb_fm_set "$SB_ROOT/$dest/README.md" archived "$today" || sb_die 1 "moved the task, but cannot edit $dest/README.md"
-  printf '%s\n' "$dest/README.md"
-  printf '%s\n' "$out" | grep '^links: ' || true
+  sb_fm_set "$SB_T_FILE" archived "$today" || sb_die 1 "moved the task, but cannot edit $SB_T_REL"
   return "$rc"
 }
 

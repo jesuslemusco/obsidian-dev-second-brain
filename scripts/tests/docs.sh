@@ -97,6 +97,38 @@ file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/arch
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
 file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
 file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
+line_is "sprint close: exit 6 is a taken abandoned folder in a status project" "$CL" \
+  '   - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is'
+line_is "sprint close: exit 6 wrote nothing, and the folder is the user's" "$CL" \
+  '     taken, and nothing was written. Show that folder to the user: it is theirs to move away or'
+line_is "sprint close: the call runs again once the folder is gone" "$CL" \
+  '     delete. Then run the call again.'
+line_is "sprint close: a status project's close moves each abandoned task" "$CL" \
+  '   - With `task_layout: status`, the call also moves each task in `--abandon` into `abandoned/`.'
+line_is "sprint close: the moved paths and links come after the summary" "$CL" \
+  '     After the six summary lines it prints each moved task'"'"'s new README path and its `links:` lines.'
+line_is "sprint close: a failed move is named on stderr" "$CL" \
+  '   - A move that fails is named on stderr, and the call exits with its code. The sprint is closed'
+line_is "sprint close: a closed sprint is never closed again" "$CL" \
+  '     all the same: never run the call again. Tell the user the task and the reason:'
+line_is "sprint close: the doctor moves the task later" "$CL" \
+  '     `second-brain doctor --fix` moves it to `abandoned/` once the reason is handled.'
+cl_e5="$(lineno "$CL" '5. Exit 5 names the problem')"
+cl_e6="$(lineno "$CL" '   - Exit 6, with `task_layout: status`')"
+cl_s6="$(lineno "$CL" '6. The same call closes the sprint note.')"
+cl_mv="$(lineno "$CL" '   - With `task_layout: status`, the call also moves')"
+cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
+is "sprint close: exit 6 is under step 5 and the move under step 6" \
+  "$((${cl_e5:-0} < ${cl_e6:-0} && ${cl_e6:-0} < ${cl_s6:-0} && ${cl_s6:-0} < ${cl_mv:-0} && ${cl_mv:-0} < ${cl_s7:-0}))" "1"
+SM="$here/agents/scrum-master.md"
+line_is "scrum-master: a status project's close moves the abandoned tasks" "$SM" \
+  '- With `task_layout: status`, the close moves each task it abandons into `abandoned/` and asks'
+line_is "scrum-master: a taken folder is the user's, and a closed sprint is not closed again" "$SM" \
+  '  nothing. A taken `abandoned/<ID>` folder is the user'"'"'s to clear, and a sprint that closed is'
+line_is "scrum-master: never closed twice" "$SM" \
+  '  never closed again.'
+line_is "contract: the search rule names a task note in a status folder" "$here/docs/contract.md" \
+  '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
 file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
@@ -140,6 +172,212 @@ file_has "contract: drop-original never removes a folder that holds the link dir
   '  included, or a folder that holds the link directory: each exits 5.'
 file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
   '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
+
+# ---------------------------------------------------------------- the status layout in the contract, the conventions and the guide
+CS="$here/docs/contract.md"
+file_has "contract: task_layout takes status" "$CS" '- `task_layout` is `flat`, `archive` or `status`, in any letter case.'
+file_lacks "contract: task_layout is no longer flat or archive alone" "$CS" '`task_layout` is `flat` or `archive`'
+file_has "contract: a status project keeps a task in the folder of its status" "$CS" \
+  '- `status`: each task sits in the folder of its status, `<tasks_root>/<status>/<ID>/`'
+file_has "contract: a project turned to status runs doctor --fix once" "$CS" 'then run `doctor --fix` once'
+file_has "contract: a status task's path" "$CS" 'a task is `<project>/<tasks_root>/<status>/<ID>/README.md`'
+file_has "contract: a status change moves the folder" "$CS" '- There, a status change moves the task'"'"'s folder with `move`'
+file_has "contract: the six folders are never a task, nor their names an id or alias" "$CS" 'None of the six is a task'
+file_has "contract: a task that leaves the archive loses archived" "$CS" 'into a status folder loses the key'
+file_has "contract: the board takes the status folders" "$CS" \
+  'filter takes `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` in each of the five status'
+file_has "contract: task set moves a status task" "$CS" \
+  'moves the task'"'"'s folder with `move` to `<tasks_root>/<status>/<ID>/` once the keys are written'
+file_has "contract: task new writes into planned" "$CS" 'In a status project the README is `<tasks_root>/planned/<ID>/README.md`'
+file_has "contract: task new finds the id in any folder" "$CS" 'at `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` or archived'
+file_has "contract: task new refuses a status folder's name" "$CS" '`In-Review is the folder of the in-review tasks, not a task id`'
+file_has "contract: task alias refuses a status folder's name" "$CS" \
+  'exit 5 for an alias that names the folder `archive` or a status folder, in any letter case'
+TN="$(grep '^| `task new ' "$CS")"
+TA="$(grep '^| `task alias ' "$CS")"
+for want in '`archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task id`' \
+  'a status folder'"'"'s name says `<ID> is the folder of the <status> tasks, not a task id`, with `<ID>` as typed and `<status>` lowercased'; do
+  case "$TN" in *"$want"*) pass "contract: the task new row gives the message: $want" ;; *) fail "contract: the task new row gives the message: $want" "in: $TN" ;; esac
+done
+case "$TN" in *'not a task id`, the id as typed'*) fail "contract: the task new row no longer gives archive the status message" "in: $TN" ;; *) pass "contract: the task new row no longer gives archive the status message" ;; esac
+for want in '`archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task alias`' \
+  'a status folder'"'"'s name says `<alias> is the folder of the <status> tasks, not a task alias`, with `<alias>` as typed and `<status>` lowercased'; do
+  case "$TA" in *"$want"*) pass "contract: the task alias row gives the message: $want" ;; *) fail "contract: the task alias row gives the message: $want" "in: $TA" ;; esac
+done
+file_has "contract: sprint close moves each abandoned task" "$CS" \
+  'moves each task named in `--abandon` to `<tasks_root>/<status>/<ID>/` for its new status, `abandoned`'
+file_has "contract: the board check names a board with no status filter" "$CS" '(`tasks.base:no-status-filter`)'
+file_has "contract: no-readme reads the status folders" "$CS" 'one directly under a status folder'
+file_has "contract: task-location takes a task in a status folder" "$CS" '`<tasks_root>/<status>/<ID>/README.md` in one of the five status folders'
+file_has "contract: task-layout names a task out of its status folder" "$CS" '(`<ID>:<status>`; `--fix` moves it)'
+file_has "contract: task-layout names a status folder in another layout" "$CS" '(`<status>:flat` or `<status>:archive`)'
+file_has "contract: doctor --fix removes the archive's empty folders" "$CS" '`fixed: <path> -> removed (<project>)`'
+file_has "contract: sb_task_files lists the status folders' tasks too" "$CS" \
+  'task READMEs directly under it, in each of the five status folders and in the archive, and'
+file_has "contract: sb_task_readme finds a task's README in any of them" "$CS" \
+  '`sb_task_readme`, which finds one task folder'"'"'s README in any of them.'
+file_lacks "contract: the lookup no longer names two depths alone" "$CS" 'task READMEs at both depths'
+line_is "contract: the board template's placeholders take STATUS_DEPTH" "$CS" \
+  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |'
+CV="$here/templates/obsidian-conventions.md.tmpl"
+file_has "conventions: task_layout takes status" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive` or `status`.'
+file_has "conventions: the short version names the status folders" "$CV" 'With `status`, each'
+file_has "conventions: the path of a task in a status project" "$CV" '<project>/tasks/<status>/<TICKET-ID>/README.md'
+file_has "conventions: task set moves a status task" "$CV" '`second-brain task set <ID> status=<status>` moves it to `tasks/<status>/<ID>/`'
+file_has "conventions: a status edited in the board moves nothing" "$CV" 'the folder stays too, until `second-brain doctor --fix` moves it'
+file_has "conventions: no task is named after a status folder" "$CV" '- No task is named `archive` or after a status folder.'
+GS="$here/docs/guide.md"
+line_is "guide: a section on the status folders" "$GS" '### Status folders'
+file_has "guide: status keeps a task in the folder of its status" "$GS" '`task_layout: status` in the profile keeps each task in the folder of its status'
+file_has "guide: task set moves the folder" "$GS" '`second-brain task set` moves the folder to `tasks/<status>/<ID>/`'
+file_has "guide: a sprint close moves the tasks it abandons" "$GS" 'each task it abandons moves to `tasks/abandoned/<ID>/`'
+file_has "guide: a project turned to status runs doctor --fix once" "$GS" 'then run `second-brain doctor --fix` once'
+
+# ---------------------------------------------------------------- the status layout in the skill text and the changelog
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: task_layout takes status" "$ST" \
+  '   - `task_layout` is `flat`, `archive` or `status`. A profile with no such line is `flat`.'
+file_lacks "story-tracker: task_layout is no longer flat or archive alone" "$ST" '`task_layout` is `flat` or `archive`'
+line_is "story-tracker: a status project's folder follows the status, with nothing to archive" "$ST" \
+  '   - With `status`, a story'"'"'s folder follows its status, so there is nothing to archive and'
+line_is "story-tracker: nothing to ask, as task set moves the folder" "$ST" \
+  '     nothing to ask: `second-brain task set` moves it to `<tasks_root>/<status>/<ID>/`.'
+line_is "story-tracker: an archived story set back in a status project is moved already" "$ST" \
+  '  - With `task_layout: status`, `task set` has moved it already: ask nothing.'
+line_is "story-tracker: a status project's story path is the one find prints" "$ST" \
+  '  - An archived story'"'"'s path, or one in a `status` project, is the one `find` prints.'
+# check_line <check> <field>: the Means, Why or Fix line of one entry of checks.md.
+check_line() {
+  awk -v h="### $1" -v f="- $2: " '/^### / { on = ($0 == h) } on && index($0, f) == 1 { print; exit }' \
+    "$here/skills/vault-doctor/checks.md"
+}
+OUT="$(check_line board Means)"
+out_has "checks board: names a status project's board with no status filter" \
+  'the project has `task_layout: status` and the board'"'"'s own `filters` block does not take each of the five status folders (`tasks.base:no-status-filter`)'
+OUT="$(check_line board Why)"
+out_has "checks board: says why the status filter matters" 'Without the status filter, Obsidian shows no task in a status folder'
+OUT="$(check_line board Fix)"
+out_has "checks board: the status filter's fix" '`no-status-filter`: replace the `filters` block as for `no-archive-filter`'
+out_has "checks board: STATUS_DEPTH is one more than TASK_DEPTH" '`{{STATUS_DEPTH}}` the `{{TASK_DEPTH}}` number plus 1'
+OUT="$(check_line no-readme Means)"
+out_has "checks no-readme: the status folders are no task folder" 'other than `archive` and the five status folders'
+out_has "checks no-readme: reads each folder under a status folder" 'one directly under a status folder'
+out_has "checks no-readme: a status folder needs no README" 'A status folder itself never needs a README, in every layout.'
+OUT="$(check_line no-readme Fix)"
+out_has "checks no-readme: a folder under a status folder is moved where task new writes" \
+  'A folder under a status folder: `task new` writes into `<tasks root>/<ID>/`, or `<tasks root>/planned/<ID>/` in a status project'
+out_has "checks no-readme: then task set moves it to the folder of its status" \
+  '`second-brain task set <ID> status=<status>` then moves it to the folder of its status'
+OUT="$(check_line task-location Means)"
+out_has "checks task-location: a task's place in a status folder" '`<tasks root>/<status>/<ID>/README.md` in one of the five status folders'
+OUT="$(check_line task-location Fix)"
+out_has "checks task-location: a status project's task goes to the folder of its status" \
+  'In a status project, move it to `<project path>/<tasks root>/<status>/<ID>/README.md`'
+OUT="$(check_line task-layout Means)"
+out_has "checks task-layout: a status folder in another layout" '(`<status>:flat` or `<status>:archive`'
+out_has "checks task-layout: a task out of the folder of its status" '(`<ID>:<status>`'
+out_has "checks task-layout: a task in a status project's archive" '(`archive:status`)'
+out_has "checks task-layout: no status of the five is needs-a-status's" 'is left to `needs-a-status`'
+OUT="$(check_line task-layout Why)"
+out_has "checks task-layout: says why a status project's folders matter" 'With `status`, the folder shows a task'"'"'s status'
+OUT="$(check_line task-layout Fix)"
+out_has "checks task-layout: doctor --fix moves a task to the folder of its status" \
+  '`<ID>:<status>` and `archive:status`: `second-brain doctor --fix` moves each task to the folder of its status'
+out_has "checks task-layout: and removes the archive's empty folders" 'then removes the archive'"'"'s empty folders'
+out_has "checks task-layout: a status folder in another layout asks first" '`<status>:flat` or `<status>:archive`: ask whether'
+out_has "checks task-layout: on a yes the profile takes status" 'set `task_layout: status` in the profile'
+AD="$here/skills/vault-setup/adopt.md"
+line_is "vault-setup adopt: a status project's tasks wait for doctor --fix" "$AD" \
+  '- With `task_layout: status`, the tasks already there stay where they are until'
+line_is "vault-setup adopt: doctor --fix runs once" "$AD" \
+  '  `second-brain doctor <project> --fix` runs once. The doctor'"'"'s `task-layout` row names each task'
+file_has "vault-setup adopt: the run is a bulk move, made on a yes" "$AD" '- Offer that run, as a bulk move, and make it only on a yes:'
+file_has "vault-setup adopt: a task's place in a status folder" "$AD" '`<tasks_root>/<status>/<ID>/README.md` in a status'
+VS="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: the task_layout row offers status" "$VS" \
+  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, or each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes | `archive`, `flat` or `status` |'
+file_lacks "vault-setup: task_layout is no longer archive or flat alone" "$VS" '| `archive` or `flat` |'
+VD="$here/skills/vault-doctor/SKILL.md"
+line_is "vault-doctor fix: a status move by --fix is a bulk change" "$VD" \
+  '   - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:'
+line_is "vault-doctor fix: --fix moves each task to the folder of its status" "$VD" \
+  '     `--fix` moves each task to the folder of its status.'
+line_is "vault-doctor fix: names the tasks it will archive or move" "$VD" \
+  '   - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or'
+line_is "vault-doctor fix: the tasks are the to-archive and status offenders" "$VD" '     `<ID>:<status>` offender.'
+file_lacks "vault-doctor fix: no longer counts the archive alone" "$VD" 'Say how many tasks it will archive, the row'"'"'s count'
+line_is "vault-doctor fix: the number is the row's count, less what is no task it moves" "$VD" \
+  '   - The number is the row'"'"'s count, less each offender that is not a task it moves:'
+line_is "vault-doctor fix: archive:status is no task, as its task is counted already" "$VD" \
+  '     `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive'
+line_is "vault-doctor fix: nor the archive project's offenders --fix leaves" "$VD" \
+  '     project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.'
+line_is "vault-doctor fix: over five, the doctor names only the first five" "$VD" \
+  '   - The count is above five: say that the doctor names only the first five, and name those. The'
+line_is "vault-doctor fix: over five, the count is the most it moves and fixed: names each" "$VD" \
+  '     count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.'
+vd_name="$(lineno "$VD" '- Say how many tasks it will archive or move')"
+vd_num="$(lineno "$VD" '- The number is the row'"'"'s count')"
+vd_five="$(lineno "$VD" '- The count is above five')"
+vd_snap="$(lineno "$VD" 'Then run `second-brain snapshot` before it.')"
+is "vault-doctor fix: the number and the five come after the names and before the snapshot" \
+  "$((${vd_name:-0} < ${vd_num:-0} && ${vd_num:-0} < ${vd_five:-0} && ${vd_five:-0} < ${vd_snap:-0}))" "1"
+line_is "vault-doctor fix: compare proves a status move too" "$VD" \
+  '   - After a move to the folders of their status, run it too. It lists the aliases of each moved'
+line_is "vault-doctor fix: the aliases go under the status folders" "$VD" \
+  '     task folder as removed at the old path and added under `<status>/`, and nothing else.'
+vd_arch="$(lineno "$VD" '`archive/<YYYY>/`, and nothing else.')"
+vd_move="$(lineno "$VD" '- After a move to the folders of their status')"
+vd_broke="$(lineno "$VD" '- An `unresolved added:` line')"
+is "vault-doctor fix: the status move's compare comes after the archive's and before the broken-link line" \
+  "$((${vd_arch:-0} < ${vd_move:-0} && ${vd_move:-0} < ${vd_broke:-0}))" "1"
+VI="$here/templates/vault-index.md.tmpl"
+line_is "index template: a task note's place names the status folders" "$VI" \
+  '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
+vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
+is "index template: the status folders raise index_version to 6" "$vi_version" "6"
+line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
+line_is "docs-keeper: a task's place names the status folders" "$DK" \
+  '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
+line_is "docs-keeper: in a status project, or archived" "$DK" \
+  '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
+CG="$here/CHANGELOG.md"
+file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
+is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
+st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
+st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
+st_end="$(lineno "$CG" '## 0.9.0 - ')"
+is "changelog: the status layout is under 0.10.0" \
+  "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
+vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
+is "changelog: the index's status line is under 0.10.0" \
+  "$((${vi_line:-0} > ${st_top:-0} && ${vi_line:-0} < ${st_end:-0}))" "1"
+sr_line="$(lineno "$CG" '- The search rule warns on a whole Read of a task note in a status folder too.')"
+is "changelog: the search rule's status line is under 0.10.0" \
+  "$((${sr_line:-0} > ${st_top:-0} && ${sr_line:-0} < ${st_end:-0}))" "1"
+cv_line="$(lineno "$CG" '- The conventions note is at version 8: it names the status layout.')"
+is "changelog: the conventions note at version 8 is under 0.10.0" \
+  "$((${cv_line:-0} > ${st_top:-0} && ${cv_line:-0} < ${st_end:-0}))" "1"
+cv_text="$(awk -v n="${cv_line:-0}" 'n && NR == n { t = $0; next } n && NR > n && !d && /^  / { t = t " " substr($0, 3); next } NR > n { d = 1 } END { print t }' "$CG")"
+case "$cv_text" in
+  *'The doctor'"'"'s `conventions` check warns about an older note.'*) pass "changelog: the version 8 line says the doctor warns on an older note" ;;
+  *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
+esac
+OUT="$(check_line unresolved-links Fix)"
+out_has "checks unresolved-links: a task's link takes the path find prints" \
+  'A task'"'"'s path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`'
+out_lacks "checks unresolved-links: the fix no longer builds the flat path" '/tasks/EX-123/README|'
+RM="$here/README.md"
+line_is "README: a ticket's note, in a flat project" "$RM" \
+  '  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`, or'
+line_is "README: a ticket's note, in a status project" "$RM" \
+  '  `<project>/tasks/<status>/<ID>/README.md` in a project that keeps each task in the folder of its'
+line_is "README: the first story's note, in a status project" "$RM" \
+  'tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`'
+line_is "contract: a depends_on link holds the README's vault path" "$here/docs/contract.md" \
+  '  - "[[<vault path of its README, no .md>|<other ID>]]"'
+file_lacks "contract: a depends_on link no longer builds the flat path" "$here/docs/contract.md" \
+  '[[<project>/<tasks_root>/<other ID>/README|'
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

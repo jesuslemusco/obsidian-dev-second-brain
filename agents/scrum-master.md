@@ -97,6 +97,9 @@ A story moves:
 - The user decides each task: carry over, backlog or abandon.
 - With `task_layout: archive` in the profile, the close asks once whether to
   archive the sprint's done tasks; that answer is the user's too.
+- With `task_layout: status`, the close moves each task it abandons into `abandoned/` and asks
+  nothing. A taken `abandoned/<ID>` folder is the user's to clear, and a sprint that closed is
+  never closed again.
 - The profile names an achievements skill: offer a sprint-end sweep, so every finished story has
   a matching achievement entry.
 - Then offer to open the next sprint.

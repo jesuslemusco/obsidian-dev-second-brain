@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.10.0 - unreleased
+
+- A project can keep each task in the folder of its status: `task_layout: status` in the profile
+  puts a task at `<tasks_root>/<status>/<ID>/README.md`, in `planned`, `in-progress`,
+  `in-review`, `done` or `abandoned`. Nothing is archived, and story-tracker asks nothing.
+- In a status project, `second-brain task new` writes a task into `planned/`. `task set` with a
+  new `status` moves the folder to the folder of that status and rewrites each link to it, and
+  exits 6, writing nothing, when something is there. `sprint close` moves each task named in
+  `--abandon` into `abandoned/`. A task that leaves the archive loses its `archived` key.
+- Commands find a task in a status folder, in every layout. `task new` and `task alias` exit 5
+  for a status folder's name, in any letter case, as they do for `archive`.
+- A new board's filters take the five status folders. An existing board is not rewritten: in a
+  status project, the doctor's `board` check warns on one without them,
+  `tasks.base:no-status-filter`.
+- The doctor's `no-readme` check reads each folder under a status folder, and `task-location`
+  takes a task in one. `task-layout` names a task of a status project outside the folder of its
+  status (`<ID>:<status>`) or in the archive (`archive:status`), and a status folder that holds a
+  task in another layout (`<status>:flat` or `<status>:archive`).
+- In a status project, `doctor --fix` moves each task to the folder of its status, then removes
+  the archive's empty folders. To switch a project that has tasks, set the key, then run
+  `doctor --fix` once.
+- The search rule warns on a whole Read of a task note in a status folder too. The sprint skill
+  and scrum-master say what a status project's close moves, and what to do when it cannot.
+- The conventions note is at version 8: it names the status layout. The doctor's `conventions`
+  check warns about an older note.
+- The vault index and docs-keeper name `tasks/<status>/` as a task's place in a status project.
+  The plugin's index template is now at `index_version: 6`, so the doctor's `index` check warns.
+  Copy the task line under `## Rules for notes that most often go wrong` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 6`.
+
 ## 0.9.0 - 2026-11-21
 
 - A project can keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl` in

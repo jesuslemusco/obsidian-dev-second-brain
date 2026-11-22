@@ -734,9 +734,23 @@ sb_doc_has_archive_filter() {
     END { exit(found ? 0 : 1) }' "$1"
 }
 
+# Return 0 when a board file's own filters take each of the five status folders, a quoted path
+# ending in /<status>.
+sb_doc_has_status_filter() {
+  SB_STATUSES="$SB_TASK_STATUSES" LC_ALL=C awk '
+    BEGIN { n = split(ENVIRON["SB_STATUSES"], st, " ") }
+    { sub(/\r$/, "") }
+    /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
+    top {
+      for (i = 1; i <= n; i++)
+        if ($0 ~ ("file\\.inFolder\\([\"\047][^\"\047]*/" st[i] "[\"\047]\\)")) has[st[i]] = 1
+    }
+    END { for (i = 1; i <= n; i++) if (!(st[i] in has)) exit 1; exit 0 }' "$1"
+}
+
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
-# that a project with a subproject has the By subproject view, and that an archive project's board
-# takes the archived tasks.
+# that a project with a subproject has the By subproject view, and that an archive or status
+# project's board takes the archived tasks or the status folders.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -769,8 +783,13 @@ sb_doc_check_board() {
     fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
   fi
   # A board scaffolded before the archive layout shows no archived task in Obsidian.
-  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
+  if [ "$(sb_task_layout)" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
     bad="${bad:+$bad$nl}tasks.base:no-archive-filter"
+    fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
+  fi
+  # A board scaffolded before the status layout shows no task in a status folder.
+  if [ "$(sb_task_layout)" = "status" ] && ! sb_doc_has_status_filter "$base"; then
+    bad="${bad:+$bad$nl}tasks.base:no-status-filter"
     fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
   fi
   sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"
@@ -960,13 +979,18 @@ EOF
 }
 
 # Check that every task folder holds a README with something in it: each folder directly under the
-# tasks root but the archive, and each one directly under a year of the archive.
+# tasks root but the archive and the five status folders, each one directly under a status folder,
+# and each one directly under a year of the archive. In every layout.
 sb_doc_check_no_readme() {
-  local d bad="" nl=$'\n'
-  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/ "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/*/; do
+  local d s rel bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT"
+  set -- "$root"/*/
+  for s in $SB_TASK_STATUSES; do set -- "$@" "$root/$s"/*/; done
+  set -- "$@" "$root"/archive/[0-9][0-9][0-9][0-9]/*/
+  for d in "$@"; do
     [ -d "$d" ] || continue
     d="${d%/}"
-    [ "$d" != "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || continue
+    rel="${d#"$root"/}"
+    case " archive $SB_TASK_STATUSES " in *" $rel "*) continue ;; esac
     [ -s "$d/README.md" ] || bad="$bad${d##*/}$nl"
   done
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
@@ -1004,18 +1028,35 @@ sb_doc_check_task_location() {
       close(file)
       if (closed && type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
+  # In a status project a task's place is the folder of its status.
+  if [ "$(sb_task_layout)" = "status" ]; then
+    to="${to%/.}/<status>/<ID>/README.md, with the task's status,"
+  else
+    to="${to%/.}/<ID>/README.md,"
+  fi
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
-    "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
+    "move it with second-brain move to $to and tie it to its topic with a tag" 120
 }
 
 # Print id, file and reason for each task out of the archive layout: open inside the archive, or
 # done or abandoned outside it for archive_after_days days or more. A done task's age counts from
 # the newest date it holds, of its status notes and its sprint id; with none it is never due, as
 # --fix moves no folder it cannot date.
+# In a status project: id, file and status for each task not at <root>/<status>/<ID>/README.md,
+# and id, file and no-status for a task with no status of the five.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
-  local days
-  [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "archive" ] || return 0
+  local days layout
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ]; then
+    printf '%s\n' "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_S="$SB_TASK_STATUSES" LC_ALL=C awk -F'\t' '
+      BEGIN { root = ENVIRON["SB_R"]; n = split(ENVIRON["SB_S"], s, " "); for (i = 1; i <= n; i++) five[s[i]] = 1 }
+      NF < 12 { next }
+      !($3 in five) { print $2 "\t" $1 "\tno-status"; next }
+      $1 != root $3 "/" $2 "/README.md" { print $2 "\t" $1 "\t" $3 }'
+    return 0
+  fi
+  [ "$layout" = "archive" ] || return 0
   days="$(sb_setting "$SB_P_PATH" archive_after_days 14)"
   case "$days" in *[!0-9]*) days=14 ;; esac
   printf '%s\n' "$SB_DOC_SCAN" | SB_A="$SB_P_DIR/$SB_TASKS_ROOT/archive/" SB_NOW="$(sb_today)" SB_DAYS="$days" \
@@ -1046,20 +1087,36 @@ sb_doc_layout_drift() {
 }
 
 # Check that the tasks follow the profile's task_layout: no archive folder in a flat project; in an
-# archive project, no open task in the archive and no done one left out of it too long.
+# archive project, no open task in the archive and no done one left out of it too long; in either,
+# no status folder that holds a task. In a status project, each task in the folder of its status,
+# and no task in the archive.
 sb_doc_check_task_layout() {
-  local days bad="" to="$SB_P_PATH/$SB_TASKS_ROOT"
-  if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" != "archive" ]; then
-    [ ! -d "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || bad="archive:flat"
+  local days layout s bad="" fix="" folders="" nl=$'\n' to="$SB_P_PATH/$SB_TASKS_ROOT" root="$SB_P_DIR/$SB_TASKS_ROOT"
+  local back
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ]; then
+    bad="$(sb_doc_layout_drift | awk -F'\t' '$3 != "no-status" { print $1 ":" $3 }')"
+    case "$nl$SB_DOC_FILES" in *"$nl$root/archive/"*) bad="$bad${nl}archive:status" ;; esac
     sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
-      "set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+      "run second-brain doctor --fix to move each task to the folder of its status"
     return 0
   fi
-  days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
-  case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number"$'\n' ;; esac
-  bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
-  sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
-    "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+  for s in $SB_TASK_STATUSES; do
+    case "$nl$SB_DOC_FILES" in *"$nl$root/$s/"*) folders="$folders$s:$layout$nl" ;; esac
+  done
+  back="set task_layout: status in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
+  if [ "$layout" != "archive" ]; then
+    [ ! -d "$root/archive" ] || bad="archive:flat$nl"
+    [ -z "$bad" ] || fix="set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+  else
+    days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
+    case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number$nl" ;; esac
+    bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
+    [ -z "$bad" ] || fix="run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+    bad="${bad:+$bad$nl}"
+  fi
+  [ -z "$folders" ] || fix="${fix:+$fix; }$back"
+  sb_doc_report warn task-layout "$SB_P_NAME" "$bad$folders" "$fix"
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
@@ -1564,10 +1621,12 @@ sb_doc_fix_pull_request() {
 }
 
 # Replace an old, never edited pull request note, make the status/ tag follow the status on each
-# task where they disagree, then archive each done or abandoned task the task-layout check names;
-# print each change. An open task is never moved.
+# task where they disagree, then fix each task the task-layout check names; print each change. In
+# an archive project each done or abandoned task is archived, and an open task is never moved. In
+# a status project each task goes to the folder of its status, then each empty year folder of the
+# archive is removed, and the archive when it is empty.
 sb_doc_fix() {
-  local name path keys id file status tag new reason n=0 nl=$'\n'
+  local name path keys id file status tag new reason layout d n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
@@ -1583,19 +1642,40 @@ sb_doc_fix() {
     done 4<<EOF
 $(sb_doc_status_drift)
 EOF
-    # task archive reads the tasks root as written, so it never runs where that root leaves the
-    # project. A task it refuses stays where it is, with the reason on stderr.
+    # task archive and the status move read the tasks root as written, so they never run where
+    # that root leaves the project. A task they refuse stays where it is, with the reason on stderr.
     case "$SB_DOC_LEAVES" in *tasks_root:*) continue ;; esac
+    layout="$(sb_task_layout)"
     while IFS=$'\t' read -r id file reason <&4; do
-      [ "$reason" = "to-archive" ] || continue
-      new="$( (sb_task_archive "$id" --project "$name") )"
+      [ -n "$file" ] || continue
+      if [ "$layout" = "status" ]; then
+        if [ "$reason" = "no-status" ]; then
+          printf '%s has no status of the five: left where it is\n' "$id" >&2
+          continue
+        fi
+        new="$( (sb_task_to_status "$id" "$name") )"
+      else
+        [ "$reason" = "to-archive" ] || continue
+        new="$( (sb_task_archive "$id" --project "$name") )"
+      fi
       new="${new%%"$nl"*}"
-      [ -n "$new" ] || continue
+      # A refused lookup, such as an id held by two folders, prints the paths it found and moves
+      # nothing: a task is fixed only when the file the row names has left its place.
+      [ -n "$new" ] && [ ! -e "$file" ] || continue
       n=$((n + 1))
       printf 'fixed: %s -> %s (%s)\n' "$id" "$new" "$name"
     done 4<<EOF
 $(sb_doc_layout_drift)
 EOF
+    [ "$layout" = "status" ] || continue
+    # A folder that holds anything, such as an archive README, stays.
+    for d in "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/ "$SB_P_DIR/$SB_TASKS_ROOT/archive/"; do
+      d="${d%/}"
+      [ -d "$d" ] && [ ! -L "$d" ] || continue
+      rmdir "$d" 2>/dev/null || continue
+      n=$((n + 1))
+      printf 'fixed: %s -> removed (%s)\n' "$(sb_rel "$d")" "$name"
+    done
   done 3<<EOF
 $1
 EOF

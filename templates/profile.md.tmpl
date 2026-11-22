@@ -40,9 +40,12 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - Persona: the role a story's description opens with (`*As a* <persona>,`). Set it in `persona:` above.
 - Tracker: <where tickets live, where epics usually sit, any ticket markup to keep>.
 - Extra frontmatter a task README needs here, and how to pick topic tags for a new ticket: <or "none">.
-- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or
-  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under
-  the tasks root.
+- `task_layout:` above is `flat`, the default, `archive` or `status`. A `flat` project never
+  moves a task.
+- `archive` moves a done or abandoned task, once, with `second-brain task archive <ID>`, to
+  `archive/<YYYY>/<ID>/` under the tasks root.
+- `status` keeps each task in the folder of its status under the tasks root, such as `done/<ID>/`.
+  `second-brain task set <ID> status=<status>` moves it there, and nothing is archived.
 - With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest
   status note or its sprint's end, before the doctor names it and `doctor --fix` archives it.
 - `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back to,

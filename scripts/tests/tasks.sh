@@ -432,6 +432,30 @@ for sprints in on off; do
     "> Up: [[$G/tasks/README|Steps $sprints Tasks Hub]]"
   line_is "status layout: the task is planned (sprints $sprints)" "$GT/planned/$key-1/README.md" "status: planned"
 done
+# A README refused after the fill, from a project template that is empty or has no frontmatter,
+# leaves no planned/ folder that was not there before.
+G="work/steps-bare"
+GT="$vault/$G/tasks"
+sb scaffold project "Steps bare" --path "$G" --keys SBARE
+edit "$vault/$G/claude/profile.md" 's/^task_layout: flat$/task_layout: status/'
+mkdir -p "$vault/$G/claude/templates"
+find "$GT" | sort >"$tmp/bare.before"
+: >"$vault/$G/claude/templates/task-readme.md.tmpl"
+sb task new SBARE-1 --project "Steps bare" --title "Empty template"
+rc_is "status layout: an empty template exits 5" 5
+absent "status layout: an empty template leaves no planned/ folder" "$GT/planned"
+printf '%s\n' '# {{ID}} - {{TITLE}}' '' '## Status notes' >"$vault/$G/claude/templates/task-readme.md.tmpl"
+sb task new SBARE-1 --project "Steps bare" --title "No frontmatter"
+rc_is "status layout: a template with no frontmatter exits 5" 5
+err_has "status layout: the message says the README has no frontmatter" "no frontmatter"
+absent "status layout: a template with no frontmatter leaves no planned/ folder" "$GT/planned"
+is "status layout: the tasks folder is as it was" "$(find "$GT" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
+mkdir -p "$GT/planned"
+sb task new SBARE-1 --project "Steps bare" --title "No frontmatter"
+rc_is "status layout: no frontmatter with planned/ there before exits 5" 5
+exists "status layout: a planned/ folder that was there before stays" "$GT/planned"
+absent "status layout: and no task folder is left in it" "$GT/planned/SBARE-1"
+rm "$vault/$G/claude/templates/task-readme.md.tmpl"
 # An id that is a task in any status folder, at the root or in the archive exits 6 and writes nothing.
 G="work/steps-on"
 GT="$vault/$G/tasks"

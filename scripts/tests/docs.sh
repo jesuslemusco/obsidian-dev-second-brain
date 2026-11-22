@@ -366,10 +366,7 @@ esac
 OUT="$(check_line unresolved-links Fix)"
 out_has "checks unresolved-links: a task's link takes the path find prints" \
   'A task'"'"'s path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`'
-case "$OUT" in
-  *'/tasks/EX-123/README|'*) fail "checks unresolved-links: the fix no longer builds the flat path" "in: $OUT" ;;
-  *) pass "checks unresolved-links: the fix no longer builds the flat path" ;;
-esac
+out_lacks "checks unresolved-links: the fix no longer builds the flat path" '/tasks/EX-123/README|'
 RM="$here/README.md"
 line_is "README: a ticket's note, in a flat project" "$RM" \
   '  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`, or'

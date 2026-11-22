@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 - unreleased
+## 0.9.0 - 2026-11-21
 
 - A project can keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl` in
   `<project>/claude/templates/`. Each wins over the plugin's template of that name.

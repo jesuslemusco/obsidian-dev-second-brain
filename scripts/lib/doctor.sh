@@ -1028,8 +1028,14 @@ sb_doc_check_task_location() {
       close(file)
       if (closed && type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
+  # In a status project a task's place is the folder of its status.
+  if [ "$(sb_task_layout)" = "status" ]; then
+    to="${to%/.}/<status>/<ID>/README.md, with the task's status,"
+  else
+    to="${to%/.}/<ID>/README.md,"
+  fi
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
-    "move it with second-brain move to ${to%/.}/<ID>/README.md, and tie it to its topic with a tag" 120
+    "move it with second-brain move to $to and tie it to its topic with a tag" 120
 }
 
 # Print id, file and reason for each task out of the archive layout: open inside the archive, or

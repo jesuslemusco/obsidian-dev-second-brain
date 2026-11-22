@@ -1025,6 +1025,10 @@ rc_is "task-location: a warning leaves exit 0" 0
 chk "task-location: a task filed under its topic warns, as its path under the project" task-location Example "warn | 1 | docs/billing/EX-2.md"
 is "task-location: the fix names the move command and where a task goes" "$(fix_of task-location)" \
   "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+is "task-location: in a status project the fix names the folder of the task's status" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<status>/<ID>/README.md, with the task's status, and tie it to its topic with a tag"
 reset
 stray "$P/tasks/EX-3.md" '"task"'
 doc Example

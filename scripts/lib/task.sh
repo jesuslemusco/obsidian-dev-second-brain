@@ -285,8 +285,8 @@ sb_task_set() {
     dest="$(sb_task_status_dir "$status")"
     if [ "$dest" = "${SB_T_REL%/*}" ]; then
       dest=""
-    elif [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then
-      sb_die 6 "the destination exists: $dest"
+    else
+      sb_task_dest_free "$dest"
     fi
   fi
   i=0
@@ -689,16 +689,22 @@ sb_task_status_dir() {
   printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/$SB_T_ID"
 }
 
+# sb_task_dest_free <dest>: exit 6 when anything is at the vault path dest, a link included, even a
+# dead one: move would put a task folder inside a folder that is there already, under its own name.
+sb_task_dest_free() {
+  if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then sb_die 6 "the destination exists: $1"; fi
+  return 0
+}
+
 # sb_task_relocate <dest>: move the folder of the task in SB_T_FILE to the vault path dest through
-# the move code, which rewrites every link into it. Exit 6 when anything is at dest, a link included:
-# move would put the task inside a folder that is there already, under its own name. A move that
+# the move code, which rewrites every link into it. Exit 6 when anything is at dest. A move that
 # fails while the folder is still where it was returns its code, with nothing changed. Otherwise
 # SB_T_FILE and SB_T_REL name the README at dest, which is printed, then the move's links: lines;
 # a task that leaves the archive loses its archived key. Returns the move's code.
 sb_task_relocate() {
   local dest="$1" from out rc=0 archive
   from="${SB_T_REL%/*}"
-  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
+  sb_task_dest_free "$dest"
   out="$(cmd_move -- "$from" "$dest")" || rc=$?
   if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
   SB_T_FILE="$SB_ROOT/$dest/README.md"

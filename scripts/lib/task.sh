@@ -570,10 +570,11 @@ sb_topic_dir() {
   printf '%s\n' "$dir"
 }
 
-# Create a task folder and its README from the template; exit 6 when the folder exists.
+# Create a task folder and its README from the template, in planned/ in a status project; exit 6
+# when the folder exists or the id is a task in another folder.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir vdir
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -614,12 +615,20 @@ sb_task_new() {
   fi
   sb_need_project "$project"
   sb_need_profile
-  dir="$SB_P_DIR/$SB_TASKS_ROOT/$id"
+  # In a status project a new task starts in planned/; in any other layout at the tasks root.
+  vdir="$SB_P_PATH/$SB_TASKS_ROOT/$id"
+  [ "$(sb_task_layout)" != "status" ] || vdir="$(SB_T_ID="$id" sb_task_status_dir planned)"
+  dir="$SB_ROOT/$vdir"
   file="$dir/README.md"
-  [ ! -e "$file" ] || sb_die 6 "the task already has a README: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
-  if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $SB_P_PATH/$SB_TASKS_ROOT/$id"; fi
+  [ ! -e "$file" ] || sb_die 6 "the task already has a README: $vdir/README.md"
+  if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $vdir"; fi
+  # The id is a task elsewhere: at the root, in a status folder or in the archive.
   other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)"
-  [ -z "$other" ] || sb_die 6 "the task is archived: $(sb_rel "$other")"
+  case "$other" in
+    "") ;;
+    "$SB_P_DIR/$SB_TASKS_ROOT/archive/"*) sb_die 6 "the task is archived: $(sb_rel "$other")" ;;
+    *) sb_die 6 "the task exists: $(sb_rel "$other")" ;;
+  esac
   other="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_alias_scan "$id" | head -1)"
   [ -z "$other" ] || sb_die 6 "$id is already an alias of $(sb_rel "$other")"
   [ -z "$sub" ] || sb_need_sub "$sub"
@@ -654,8 +663,8 @@ EOF
   had_dir=0
   [ ! -d "$dir" ] || had_dir=1
   sb_fill task-readme.md.tmpl "$file" "ID=$id" "TITLE=$title" "TOPIC_TAGS=$taglines" "UP_LINK=$uplink" || rc=$?
-  [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
-  [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
+  [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $vdir/README.md"
+  [ "$rc" -eq 0 ] || sb_die 1 "cannot write $vdir/README.md"
   # A project's own template may give no frontmatter, which every task command needs: write nothing.
   if ! LC_ALL=C awk '
     { sub(/\r$/, "") }

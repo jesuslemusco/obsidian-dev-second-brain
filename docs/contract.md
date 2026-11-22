@@ -879,8 +879,8 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
   `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`,
   `sb_board_sprint_literal`.
 - Every command that looks for a task goes through `sb_task_files`, which lists a tasks folder's
-  task READMEs at both depths, and `sb_task_readme`, which finds one task folder's README at
-  either.
+  task READMEs directly under it, in each of the five status folders and in the archive, and
+  `sb_task_readme`, which finds one task folder's README in any of them.
 
 ## 8. Templates
 
@@ -901,7 +901,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH`, `VALIDATION_LINE` (empty when the profile's `validation_home` is `repo`) |
 | `profile.md.tmpl` | `<project>/claude/profile.md` | `PROJECT`, `PROJECT_PATH`, `TICKET_KEYS`, `TASKS_ROOT`, `TOPICS_ROOT`, `SPRINTS_ROOT` |
 | `hub.md.tmpl` | `tasks/README.md`, `docs/README.md`, `sprints/README.md` | `PROJECT`, `PROJECT_PATH`, `HUB_NAME`, `HUB_TITLE`, `HUB_INTRO` |
-| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `SPRINT_ID` |
+| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |
 | `task-readme.md.tmpl` | a task README | `ID`, `TITLE`, `TOPIC_TAGS`, `UP_LINK` |
 | `task-envs.md.tmpl` | the environment-set additions | `ID`, `ENV` |
 | `ticket-description.md.tmpl` | paste-ready ticket text | none |

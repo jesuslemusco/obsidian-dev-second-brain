@@ -169,6 +169,13 @@ file_has "contract: task-location takes a task in a status folder" "$CS" '`<task
 file_has "contract: task-layout names a task out of its status folder" "$CS" '(`<ID>:<status>`; `--fix` moves it)'
 file_has "contract: task-layout names a status folder in another layout" "$CS" '(`<status>:flat` or `<status>:archive`)'
 file_has "contract: doctor --fix removes the archive's empty folders" "$CS" '`fixed: <path> -> removed (<project>)`'
+file_has "contract: sb_task_files lists the status folders' tasks too" "$CS" \
+  'task READMEs directly under it, in each of the five status folders and in the archive, and'
+file_has "contract: sb_task_readme finds a task's README in any of them" "$CS" \
+  '`sb_task_readme`, which finds one task folder'"'"'s README in any of them.'
+file_lacks "contract: the lookup no longer names two depths alone" "$CS" 'task READMEs at both depths'
+line_is "contract: the board template's placeholders take STATUS_DEPTH" "$CS" \
+  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |'
 CV="$here/templates/obsidian-conventions.md.tmpl"
 file_has "conventions: task_layout takes status" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive` or `status`.'
 file_has "conventions: the short version names the status folders" "$CV" 'With `status`, each'

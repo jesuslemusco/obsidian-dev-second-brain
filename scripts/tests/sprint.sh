@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Area sprint: sprint open, current, next, set and close, then edge cases of the task, sprint and
-# index commands on what they leave, and a sprint with no tasks.
+# index commands on what they leave, a sprint with no tasks, and sprint close in a status project.
 # Usage: bash scripts/test.sh sprint, or bash scripts/tests/sprint.sh
 . "$(dirname "$0")/lib.sh"
 
@@ -255,6 +255,90 @@ rc_is "sprint close: a sprint with no tasks closes" 0
 file_has "sprint close: the board keeps the closed sprint's literal" "$vault/work/four/tasks/tasks.base" 'sprint == date("2026-11-11")'
 sb board Four "Current sprint"
 out_is "board Current sprint: no rows once the sprint is closed, whatever the board's literal says" ""
+
+# ---------------------------------------------------------------- sprint close in a status project
+# In a status project each task named in --abandon moves into abandoned/ through move, once the
+# sprint note is written, so the move rewrites the note's link too. The tasks are written while the
+# project is flat, then put in the folder of their status by hand. GA-3 already is in abandoned/,
+# and GA-5 is abandoned before the close, in the wrong folder.
+G="work/gate"
+GT="$vault/$G/tasks"
+sb scaffold project Gate --path "$G" --keys GA
+for t in GA-1 GA-2 GA-3 GA-4 GA-5 GA-6 GA-7 GA-8; do sb task new "$t" --project Gate --title "Gate $t"; done
+sb task set GA-5 status=abandoned
+mkdir -p "$GT/planned" "$GT/abandoned"
+for t in GA-1 GA-2 GA-4 GA-5 GA-6 GA-7 GA-8; do mv "$GT/$t" "$GT/planned/$t"; done
+mv "$GT/GA-3" "$GT/abandoned/GA-3"
+edit "$vault/$G/claude/profile.md" 's/^task_layout: flat$/task_layout: status/'
+sb sprint open Gate --end 2026-10-14
+for t in GA-1 GA-2 GA-3 GA-4 GA-5; do sb task set "$t" sprint=2026-10-14; done
+for t in GA-6 GA-7 GA-8; do sb task set "$t" sprint=2026-10-28; done
+printf '# Gate links\n\nSee [[%s|GA-2]].\n' "$G/tasks/planned/GA-2/README" >"$vault/$G/links.md"
+GS="$vault/$G/sprints/2026-10-14.md"
+gate_tree() { find "$vault/$G" | sort; find "$vault/$G" -type f -exec cksum {} + | sort; }
+mkdir "$GT/abandoned/GA-2"
+gate_tree >"$tmp/gate.before"
+sb sprint close Gate --carry GA-1 --backlog GA-4 --abandon GA-2,GA-3
+rc_is "sprint close: abandoned/<ID> taken in a status project gives exit 6" 6
+err_has "sprint close: the message names the folder in the way" "the destination exists: $G/tasks/abandoned/GA-2"
+is "sprint close: nothing is written then" "$(gate_tree | cmp -s "$tmp/gate.before" - && printf same)" "same"
+rmdir "$GT/abandoned/GA-2"
+sb sprint close Gate --carry GA-1 --backlog GA-4 --abandon GA-2,GA-3
+rc_is "sprint close: --abandon in a status project, exit 0" 0
+out_is "sprint close: the six summary lines, then the moved task's path and links: lines" "sprint: 2026-10-14
+done: -
+carried: GA-1
+backlog: GA-4
+abandoned: GA-2, GA-5, GA-3
+next: 2026-10-28
+$G/tasks/abandoned/GA-2/README.md
+links: $G/links.md | 1
+links: $G/sprints/2026-10-14.md | 1"
+exists "sprint close: the abandoned task is in abandoned/" "$GT/abandoned/GA-2/README.md"
+absent "sprint close: its planned folder is gone" "$GT/planned/GA-2"
+line_is "sprint close: the moved task is abandoned" "$GT/abandoned/GA-2/README.md" "status: abandoned"
+line_is "sprint close: the sprint note's link leads into abandoned/" "$GS" "- [[$G/tasks/abandoned/GA-2/README|GA-2]] - Gate GA-2"
+line_is "sprint close: so does another note's" "$vault/$G/links.md" "See [[$G/tasks/abandoned/GA-2/README|GA-2]]."
+sb unresolved Gate
+rc_is "sprint close: unresolved runs after the move, exit 0" 0
+out_is "sprint close: unresolved lists nothing after the move" ""
+line_is "sprint close: a task already in abandoned/ is set abandoned" "$GT/abandoned/GA-3/README.md" "status: abandoned"
+line_is "sprint close: and stays where its link leads" "$GS" "- [[$G/tasks/abandoned/GA-3/README|GA-3]] - Gate GA-3"
+exists "sprint close: a task abandoned before the close is not moved" "$GT/planned/GA-5/README.md"
+exists "sprint close: a carried task stays in its folder" "$GT/planned/GA-1/README.md"
+exists "sprint close: a task sent to the backlog stays in its folder" "$GT/planned/GA-4/README.md"
+# A move that fails is named, the other tasks still move, and the first failing code is the exit:
+# mv fails for GA-6 and puts a folder in the way of GA-7, so GA-6 gives 1 and GA-7 gives 6.
+sb sprint open Gate --end 2026-10-28
+shim="$tmp/shim"
+mkdir -p "$shim"
+REAL_MV="$(type -P mv)"
+export REAL_MV
+cat >"$shim/mv" <<'EOF'
+#!/bin/sh
+# Stand-in for mv: fails without moving the folder the test names, once it has made the folder the
+# test names, as something put in the way of the next move while the command runs.
+case "$2" in
+  */"$SHIM_MV_FAIL_ON")
+    [ -z "${SHIM_MKDIR:-}" ] || mkdir -p "$SHIM_MKDIR"
+    exit 1
+    ;;
+esac
+exec "$REAL_MV" "$@"
+EOF
+chmod +x "$shim/mv"
+run env PATH="$shim:$PATH" SHIM_MV_FAIL_ON=GA-6 SHIM_MKDIR="$GT/abandoned/GA-7" "$SB" sprint close Gate --abandon GA-1,GA-6,GA-7,GA-8
+rc_is "sprint close: two failed moves exit with the first one's code, 1" 1
+err_has "sprint close: the failed move is named on stderr" "cannot move $G/tasks/planned/GA-6 to $G/tasks/abandoned/GA-6"
+err_has "sprint close: so is the one refused after it" "the destination exists: $G/tasks/abandoned/GA-7"
+out_has "sprint close: the summary is printed" "abandoned: GA-1, GA-6, GA-7, GA-8"
+out_has "sprint close: a task before the failure moves" "$G/tasks/abandoned/GA-1/README.md"
+out_has "sprint close: a task after the failures still moves" "$G/tasks/abandoned/GA-8/README.md"
+out_lacks "sprint close: no path for the task that did not move" "$G/tasks/abandoned/GA-6/README.md"
+line_is "sprint close: the task that did not move is abandoned" "$GT/planned/GA-6/README.md" "status: abandoned"
+exists "sprint close: the task refused after it stays in its folder" "$GT/planned/GA-7/README.md"
+exists "sprint close: the last task is in abandoned/" "$GT/abandoned/GA-8/README.md"
+line_is "sprint close: the sprint note is closed" "$vault/$G/sprints/2026-10-28.md" "status: done"
 
 # ---------------------------------------------------------------- result
 result

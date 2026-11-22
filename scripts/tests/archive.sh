@@ -221,5 +221,138 @@ sb task alias SK-3 add ARCHIVE
 rc_is "reserved: archive is still no task alias, exit 5" 5
 err_has "reserved: archive keeps its alias message" "archive is the folder of the archived tasks, not a task alias"
 
+# ---------------------------------------------------------------- status folders: task set
+# In a status project a status change moves the task into the folder of its new status, through
+# move. The tasks are written while the project is flat, then put in planned/ by hand.
+F="work/flow"
+FT="$vault/$F/tasks"
+sb scaffold project Flow --path "$F" --keys FL
+for t in FL-1 FL-2 FL-3 FL-4 FL-5 FL-6; do sb task new "$t" --project Flow --title "Flow $t"; done
+mkdir -p "$FT/planned"
+for t in FL-1 FL-2 FL-3 FL-4 FL-5 FL-6; do mv "$FT/$t" "$FT/planned/$t"; done
+edit "$vault/$F/claude/profile.md" 's/^task_layout: flat$/task_layout: status/'
+printf '# Links\n\nSee [[%s|FL-1]].\n' "$F/tasks/planned/FL-1/README" >"$vault/$F/links.md"
+sb task set FL-1 status=in-progress
+rc_is "task set: a status change in a status project, exit 0" 0
+out_is "task set: the keys, then the new path and the notes whose links it rewrote" "status: in-progress
+$F/tasks/in-progress/FL-1/README.md
+links: $F/links.md | 1"
+absent "task set: the planned folder of the task is gone" "$FT/planned/FL-1"
+line_is "task set: the link now leads into in-progress/" "$vault/$F/links.md" "See [[$F/tasks/in-progress/FL-1/README|FL-1]]."
+sb unresolved Flow
+rc_is "task set: unresolved runs after the move, exit 0" 0
+out_is "task set: unresolved lists nothing after the move" ""
+for s in in-review done abandoned planned; do
+  sb task set FL-1 status="$s"
+  rc_is "task set: status=$s, exit 0" 0
+  out_has "task set: status=$s prints the new path" "$F/tasks/$s/FL-1/README.md"
+  out_has "task set: status=$s prints the links: line" "links: $F/links.md | 1"
+  line_is "task set: status=$s moves the task into $s/" "$FT/$s/FL-1/README.md" "status: $s"
+  is "task set: status=$s leaves it in no other folder" "$(find "$FT" -type d -name FL-1 | wc -l | tr -d ' ')" "1"
+done
+line_is "task set: the link followed each move" "$vault/$F/links.md" "See [[$F/tasks/planned/FL-1/README|FL-1]]."
+sb unresolved Flow
+out_is "task set: unresolved lists nothing after the five moves" ""
+cp "$FT/planned/FL-1/README.md" "$tmp/FL-1.before"
+sb task set FL-1 status=planned
+out_is "task set: the same status prints no change" "no change"
+is "task set: the same status moves and writes nothing" "$(cmp -s "$tmp/FL-1.before" "$FT/planned/FL-1/README.md" && printf same)" "same"
+sb task set FL-1 status=done status=planned
+out_has "task set: the last status pair wins" "status: planned"
+exists "task set: so the task stays in planned/" "$FT/planned/FL-1/README.md"
+mkdir -p "$FT/in-review"
+mv "$FT/planned/FL-2" "$FT/in-review/FL-2"
+sb task set FL-2 status=planned
+out_is "task set: the same status in the wrong folder prints no change" "no change"
+exists "task set: the same status in the wrong folder moves nothing" "$FT/in-review/FL-2/README.md"
+sb task set FL-2 status=in-review
+rc_is "task set: a task already in the folder of its new status, exit 0" 0
+out_is "task set: its own folder is not in the way, and nothing moves" "status: in-review"
+exists "task set: it stays in in-review/" "$FT/in-review/FL-2/README.md"
+cp "$FT/planned/FL-3/README.md" "$tmp/FL-3.before"
+mkdir -p "$FT/done/FL-3"
+sb task set FL-3 status=done next="Ship it"
+rc_is "task set: a folder at the destination, even empty, gives exit 6" 6
+err_has "task set: the message names the destination" "the destination exists: $F/tasks/done/FL-3"
+is "task set: no key is written then" "$(cmp -s "$tmp/FL-3.before" "$FT/planned/FL-3/README.md" && printf same)" "same"
+is "task set: the destination is left as it was" "$(ls -A "$FT/done/FL-3")" ""
+rmdir "$FT/done/FL-3"
+printf 'x\n' >"$FT/done/FL-3"
+sb task set FL-3 status=done
+rc_is "task set: a file at the destination gives exit 6" 6
+is "task set: no key is written for it either" "$(cmp -s "$tmp/FL-3.before" "$FT/planned/FL-3/README.md" && printf same)" "same"
+rm "$FT/done/FL-3"
+if ! sb_is_windows; then
+  ln -s "$tmp/nowhere" "$FT/done/FL-3"
+  sb task set FL-3 status=done
+  rc_is "task set: a link at the destination, even a dead one, gives exit 6" 6
+  is "task set: no key is written for a link" "$(cmp -s "$tmp/FL-3.before" "$FT/planned/FL-3/README.md" && printf same)" "same"
+  rm "$FT/done/FL-3"
+fi
+# A move that fails after the keys are written: mv fails, or a linking note changes once mv ran.
+shim="$tmp/shim"
+mkdir -p "$shim"
+REAL_MV="$(type -P mv)"
+export REAL_MV
+cat >"$shim/mv" <<'EOF'
+#!/bin/sh
+# Stand-in for mv: fails without moving when a test asks for it, or moves and then runs what
+# the test gives it, as someone who edits a note while the command runs.
+[ -z "${SHIM_MV_FAILS:-}" ] || exit 1
+"$REAL_MV" "$@"
+rc=$?
+[ -z "${SHIM_AFTER_MV:-}" ] || eval "$SHIM_AFTER_MV"
+exit "$rc"
+EOF
+chmod +x "$shim/mv"
+run env PATH="$shim:$PATH" SHIM_MV_FAILS=1 "$SB" task set FL-4 status=in-progress
+rc_is "task set: a move that fails after the write exits as move does, 1" 1
+err_has "task set: the failure is named on stderr" "cannot move $F/tasks/planned/FL-4 to $F/tasks/in-progress/FL-4"
+out_is "task set: the keys written are printed, and no new path" "status: in-progress"
+line_is "task set: the status is written" "$FT/planned/FL-4/README.md" "status: in-progress"
+absent "task set: the task is not moved" "$FT/in-progress/FL-4"
+printf '# Links five\n\nSee [[%s|FL-5]].\n' "$F/tasks/planned/FL-5/README" >"$vault/$F/links5.md"
+run env PATH="$shim:$PATH" SHIM_AFTER_MV="printf 'edited\n' >>'$vault/$F/links5.md'" "$SB" task set FL-5 status=done
+rc_is "task set: a link rewrite that fails after the move exits as move does, 1" 1
+out_is "task set: the keys, then the new path" "status: done
+tags: status/done
+$F/tasks/done/FL-5/README.md"
+err_has "task set: the note left with an old link is named" "note: $F/links5.md changed while the command ran"
+err_has "task set: the move's failure is named" "moved $F/tasks/planned/FL-5 to $F/tasks/done/FL-5, but not every note could be rewritten"
+exists "task set: the task is in done/" "$FT/done/FL-5/README.md"
+# A task that leaves the archive loses archived; one that stays in it keeps it.
+edit "$vault/$F/claude/profile.md" 's/^task_layout: status$/task_layout: archive/'
+sb task set FL-6 status=done
+sb task archive FL-6
+exists "task set: FL-6 is archived while the project archives" "$FT/archive/2026/FL-6/README.md"
+edit "$vault/$F/claude/profile.md" 's/^task_layout: archive$/task_layout: status/'
+sb task set FL-6 status=done
+out_is "task set: the same status in the archive prints no change" "no change"
+file_has "task set: the task in the archive keeps archived" "$FT/archive/2026/FL-6/README.md" 'archived: "2026-10-08"'
+sb task set FL-6 status=in-progress
+rc_is "task set: a task leaves the archive, exit 0" 0
+out_is "task set: the keys, then its path in in-progress/" "status: in-progress
+tags: status/active
+$F/tasks/in-progress/FL-6/README.md"
+absent "task set: the archived folder is gone" "$FT/archive/2026/FL-6"
+is "task set: archived is removed on leaving the archive" "$(grep -c '^archived:' "$FT/in-progress/FL-6/README.md" 2>&1)" "0"
+cp "$FT/in-progress/FL-6/README.md" "$tmp/FL-6.before"
+sb task set FL-6 status=in-review
+is "task set: a move between status folders keeps every key, the status aside" \
+  "$(sed 's/^status: in-review$/status: in-progress/' "$FT/in-review/FL-6/README.md" | cmp -s - "$tmp/FL-6.before" && printf same)" "same"
+# In a flat or archive project a status change moves nothing, even a task in a status folder.
+for layout in flat archive; do
+  edit "$vault/$F/claude/profile.md" "s/^task_layout: .*\$/task_layout: $layout/"
+  sb task set FL-3 status=in-review
+  out_is "task set: a status change in a $layout project prints the keys only" "status: in-review"
+  exists "task set: nothing moves in a $layout project" "$FT/planned/FL-3/README.md"
+  sb task set FL-3 status=planned
+done
+sb task set SH-5 status=in-progress
+out_is "task set: a task at the root of an archive project stays there" "status: in-progress
+tags: status/active"
+exists "task set: it is not moved into a status folder" "$AT/SH-5/README.md"
+absent "task set: no status folder is made" "$AT/in-progress"
+
 # ---------------------------------------------------------------- result
 result

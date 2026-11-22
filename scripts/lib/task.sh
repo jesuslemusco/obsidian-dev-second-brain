@@ -194,9 +194,10 @@ sb_task_head() {
   ' "$SB_T_FILE"
 }
 
-# Set or remove scalar properties of a task; status and its tag change together.
+# Set or remove scalar properties of a task; status and its tag change together. In a status
+# project a status change then moves the task to the folder of its new status.
 sb_task_set() {
-  local id="" project="" kv key value out="" n=0 i=0
+  local id="" project="" kv key value out="" n=0 i=0 status="" dest=""
   local pairs
   pairs=()
   while [ $# -gt 0 ]; do
@@ -270,6 +271,24 @@ sb_task_set() {
     esac
     i=$((i + 1))
   done
+  # In a status project a new status moves the task to the folder of that status once the keys are
+  # written, so the destination is looked at first. The last status pair wins. The same status
+  # moves nothing, and a folder that already is the destination is not in its own way.
+  status=""
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    case "${pairs[$i]}" in status=*) status="${pairs[$i]#status=}" ;; esac
+    i=$((i + 1))
+  done
+  if [ -n "$status" ] && [ "$(sb_task_layout)" = "status" ] &&
+    [ "$status" != "$(sb_fm_get "$SB_T_FILE" status)" ]; then
+    dest="$(sb_task_status_dir "$status")"
+    if [ "$dest" = "${SB_T_REL%/*}" ]; then
+      dest=""
+    elif [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then
+      sb_die 6 "the destination exists: $dest"
+    fi
+  fi
   i=0
   while [ "$i" -lt "$n" ]; do
     kv="${pairs[$i]}"
@@ -299,6 +318,8 @@ sb_task_set() {
     i=$((i + 1))
   done
   if [ -n "$out" ]; then printf '%s' "$out"; else printf 'no change\n'; fi
+  [ -n "$dest" ] || return 0
+  sb_task_relocate "$dest"
 }
 
 # Print one status note line for today.
@@ -662,12 +683,46 @@ EOF
   sb_rel "$file"
 }
 
+# Print the vault path of the folder of the task in SB_T_ID for a status, in the status layout:
+# <project>/<tasks_root>/<status>/<ID>.
+sb_task_status_dir() {
+  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/$SB_T_ID"
+}
+
+# sb_task_relocate <dest>: move the folder of the task in SB_T_FILE to the vault path dest through
+# the move code, which rewrites every link into it. Exit 6 when anything is at dest, a link included:
+# move would put the task inside a folder that is there already, under its own name. A move that
+# fails while the folder is still where it was returns its code, with nothing changed. Otherwise
+# SB_T_FILE and SB_T_REL name the README at dest, which is printed, then the move's links: lines;
+# a task that leaves the archive loses its archived key. Returns the move's code.
+sb_task_relocate() {
+  local dest="$1" from out rc=0 archive
+  from="${SB_T_REL%/*}"
+  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
+  out="$(cmd_move -- "$from" "$dest")" || rc=$?
+  if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
+  SB_T_FILE="$SB_ROOT/$dest/README.md"
+  SB_T_REL="$dest/README.md"
+  printf '%s\n' "$SB_T_REL"
+  printf '%s\n' "$out" | grep '^links: ' || true
+  archive="$SB_P_PATH/$SB_TASKS_ROOT/archive/"
+  case "$from/" in
+    "$archive"*)
+      case "$dest/" in
+        "$archive"*) ;;
+        *) sb_fm_set "$SB_T_FILE" archived "" || sb_die 1 "moved the task, but cannot edit $SB_T_REL" ;;
+      esac
+      ;;
+  esac
+  return "$rc"
+}
+
 # Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
 # the year being today's, and date it in archived. Print its new path, then the move's links: lines.
 # A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat or status
 # project.
 sb_task_archive() {
-  local id="" project="" layout status today from dest out rc=0
+  local id="" project="" layout status today from dest rc=0
   local usage="usage: second-brain task archive <ID> [--project P]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -697,14 +752,10 @@ sb_task_archive() {
   today="$(sb_today)"
   from="${SB_T_REL%/*}"
   dest="$SB_P_PATH/$SB_TASKS_ROOT/archive/${today%%-*}/$SB_T_ID"
-  # move would put the task inside a folder that is there already, under its own name.
-  if [ -e "$SB_ROOT/$dest" ] || [ -L "$SB_ROOT/$dest" ]; then sb_die 6 "the destination exists: $dest"; fi
-  out="$(cmd_move -- "$from" "$dest")" || rc=$?
+  sb_task_relocate "$dest" || rc=$?
   # A move that stopped before the folder left keeps the task as it was.
   if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
-  sb_fm_set "$SB_ROOT/$dest/README.md" archived "$today" || sb_die 1 "moved the task, but cannot edit $dest/README.md"
-  printf '%s\n' "$dest/README.md"
-  printf '%s\n' "$out" | grep '^links: ' || true
+  sb_fm_set "$SB_T_FILE" archived "$today" || sb_die 1 "moved the task, but cannot edit $SB_T_REL"
   return "$rc"
 }
 

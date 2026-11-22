@@ -13,7 +13,8 @@ tags:
 
 1. Every task is `<project>/tasks/<TICKET-ID>/README.md`. Never file a task inside the topic it is
    about. With no ticket yet, the folder is a kebab-case slug. With `task_layout: archive` in the
-   profile, a done task moves once, to `tasks/archive/<YYYY>/<TICKET-ID>/`.
+   profile, a done task moves once, to `tasks/archive/<YYYY>/<TICKET-ID>/`. With `status`, each
+   task sits in `tasks/<status>/<TICKET-ID>/` and moves when its status changes.
 2. A note's **topic tags** say what it is about. A topic tag is a folder path under the project's
    **topics root** (`docs/` unless the profile says otherwise), lowercased: `billing/invoices`.
    Tag only folders that exist. A cross-cutting note carries no topic tag.
@@ -96,15 +97,20 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 <project>/tasks/README.md                  # the tasks hub
 <project>/tasks/tasks.base                 # the task board
 <project>/tasks/archive/<YYYY>/<TICKET-ID>/README.md   # an archived task
+<project>/tasks/<status>/<TICKET-ID>/README.md         # a task, in the folder of its status
 ```
 
-- The profile's `task_layout` is `flat`, the default, or `archive`. A `flat` project never moves
-  a task.
+- The profile's `task_layout` is `flat`, the default, `archive` or `status`. A `flat` project
+  never moves a task.
 - With `archive`, `second-brain task archive <ID>` moves a done or abandoned task. `<YYYY>` is the
   year it was archived. Every command still finds it by id.
-- `task archive` moves the folder with `second-brain move`; `## Moving and renaming` says what that
+- With `status`, a task sits in the folder of its status: `planned`, `in-progress`, `in-review`,
+  `done` or `abandoned`. A new task starts in `tasks/planned/`, and
+  `second-brain task set <ID> status=<status>` moves it to `tasks/<status>/<ID>/`. Nothing is
+  archived, and every command still finds it by id.
+- Both layouts move the folder with `second-brain move`; `## Moving and renaming` says what that
   rewrites.
-- No task is named `archive`.
+- No task is named `archive` or after a status folder.
 - Once a slug-named task has its ticket, add the id as an alias with
   `second-brain task alias <slug> add <ID>`. Every command then accepts the id.
 - The folder keeps the slug: renaming a task folder is not supported yet.
@@ -114,7 +120,7 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
   `Active`, `Current sprint`, `By topic`, `By subproject`, `Needs a status` and `All`. Nothing is
   added to it by hand.
 - A status edited in the board changes the property only: fix the `status/` tag the next time the
-  note is touched.
+  note is touched. With `status`, the folder stays too, until `second-brain doctor --fix` moves it.
 - A subproject's tasks stay in the one `tasks/` folder.
 - A status note is one line, newest first, under `## Status notes`:
   `` **YYYY-MM-DD (session `<id>`) - <text>** ``.
@@ -204,10 +210,10 @@ hold it, for several the lines that hold the most terms. To see every line of on
 ## Searching
 
 - Search by metadata first and by text last.
-- Scope a search to one project, and for tasks to the READMEs one level under `tasks/`, or three
-  under `tasks/archive/`.
-- **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias or an archived task:
-  `second-brain find <ID>`.
+- Scope a search to one project, and for tasks to the READMEs one level under `tasks/` or under a
+  status folder, or three under `tasks/archive/`.
+- **A task by id:** `ls -d "<project>/tasks/<ID>"`. No folder means an alias, or a task in the
+  archive or a status folder: `second-brain find <ID>`.
 - **Full text:** search inside the narrowest folder that could hold it, with `--in`. Never grep
   the whole vault.
 

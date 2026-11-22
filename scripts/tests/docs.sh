@@ -141,6 +141,48 @@ file_has "contract: drop-original never removes a folder that holds the link dir
 file_has "contract: link move writes a block scalar description as -" "$here/docs/contract.md" \
   '- A `description` written as a block scalar, `>` or `|` with its text on the lines below, is `-`.'
 
+# ---------------------------------------------------------------- the status layout in the contract, the conventions and the guide
+CS="$here/docs/contract.md"
+file_has "contract: task_layout takes status" "$CS" '- `task_layout` is `flat`, `archive` or `status`, in any letter case.'
+file_lacks "contract: task_layout is no longer flat or archive alone" "$CS" '`task_layout` is `flat` or `archive`'
+file_has "contract: a status project keeps a task in the folder of its status" "$CS" \
+  '- `status`: each task sits in the folder of its status, `<tasks_root>/<status>/<ID>/`'
+file_has "contract: a project turned to status runs doctor --fix once" "$CS" 'then run `doctor --fix` once'
+file_has "contract: a status task's path" "$CS" 'a task is `<project>/<tasks_root>/<status>/<ID>/README.md`'
+file_has "contract: a status change moves the folder" "$CS" '- There, a status change moves the task'"'"'s folder with `move`'
+file_has "contract: the six folders are never a task, nor their names an id or alias" "$CS" 'None of the six is a task'
+file_has "contract: a task that leaves the archive loses archived" "$CS" 'into a status folder loses the key'
+file_has "contract: the board takes the status folders" "$CS" \
+  'filter takes `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` in each of the five status'
+file_has "contract: task set moves a status task" "$CS" \
+  'moves the task'"'"'s folder with `move` to `<tasks_root>/<status>/<ID>/` once the keys are written'
+file_has "contract: task new writes into planned" "$CS" 'In a status project the README is `<tasks_root>/planned/<ID>/README.md`'
+file_has "contract: task new finds the id in any folder" "$CS" 'at `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` or archived'
+file_has "contract: task new refuses a status folder's name" "$CS" '`In-Review is the folder of the in-review tasks, not a task id`'
+file_has "contract: task alias refuses a status folder's name" "$CS" \
+  'exit 5 for an alias that names the folder `archive` or a status folder, in any letter case'
+file_has "contract: sprint close moves each abandoned task" "$CS" \
+  'moves each task named in `--abandon` to `<tasks_root>/<status>/<ID>/` for its new status, `abandoned`'
+file_has "contract: the board check names a board with no status filter" "$CS" '(`tasks.base:no-status-filter`)'
+file_has "contract: no-readme reads the status folders" "$CS" 'one directly under a status folder'
+file_has "contract: task-location takes a task in a status folder" "$CS" '`<tasks_root>/<status>/<ID>/README.md` in one of the five status folders'
+file_has "contract: task-layout names a task out of its status folder" "$CS" '(`<ID>:<status>`; `--fix` moves it)'
+file_has "contract: task-layout names a status folder in another layout" "$CS" '(`<status>:flat` or `<status>:archive`)'
+file_has "contract: doctor --fix removes the archive's empty folders" "$CS" '`fixed: <path> -> removed (<project>)`'
+CV="$here/templates/obsidian-conventions.md.tmpl"
+file_has "conventions: task_layout takes status" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive` or `status`.'
+file_has "conventions: the short version names the status folders" "$CV" 'With `status`, each'
+file_has "conventions: the path of a task in a status project" "$CV" '<project>/tasks/<status>/<TICKET-ID>/README.md'
+file_has "conventions: task set moves a status task" "$CV" '`second-brain task set <ID> status=<status>` moves it to `tasks/<status>/<ID>/`'
+file_has "conventions: a status edited in the board moves nothing" "$CV" 'the folder stays too, until `second-brain doctor --fix` moves it'
+file_has "conventions: no task is named after a status folder" "$CV" '- No task is named `archive` or after a status folder.'
+GS="$here/docs/guide.md"
+line_is "guide: a section on the status folders" "$GS" '### Status folders'
+file_has "guide: status keeps a task in the folder of its status" "$GS" '`task_layout: status` in the profile keeps each task in the folder of its status'
+file_has "guide: task set moves the folder" "$GS" '`second-brain task set` moves the folder to `tasks/<status>/<ID>/`'
+file_has "guide: a sprint close moves the tasks it abandons" "$GS" 'each task it abandons moves to `tasks/abandoned/<ID>/`'
+file_has "guide: a project turned to status runs doctor --fix once" "$GS" 'then run `second-brain doctor --fix` once'
+
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"
 sk_desc="$(sed -n 's/^description: //p' "$SK")"

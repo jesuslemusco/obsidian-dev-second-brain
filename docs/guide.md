@@ -117,6 +117,19 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - `second-brain doctor --fix` archives each task that is due, as
   `## fix` in `skills/vault-doctor/SKILL.md` says.
 
+### Status folders
+
+- `task_layout: status` in the profile keeps each task in the folder of its status: `planned`,
+  `in-progress`, `in-review`, `done` or `abandoned`, as `## 4. A task` in `docs/contract.md` says.
+- A new story starts in `tasks/planned/<ID>/`.
+- When its status changes, `second-brain task set` moves the folder to `tasks/<status>/<ID>/`, and
+  every link to it follows. Nothing is archived, so Claude asks nothing.
+- When a sprint closes, each task it abandons moves to `tasks/abandoned/<ID>/`.
+- A status edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
+  folder of its status.
+- To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once. It
+  also removes the archive's empty folders.
+
 ## Spec-driven delivery
 
 - Start one with `/odsb:spec EX-2`, or with the request under

@@ -241,8 +241,16 @@ line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/cla
 line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
 PF="$vault/$P/claude/profile.md"
 line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
-line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or'
-line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
+line_is "profile: the three task layouts" "$PF" '- `task_layout:` above is `flat`, the default, `archive` or `status`. A `flat` project never'
+line_is "profile: flat moves no task" "$PF" '  moves a task.'
+line_is "profile: archive moves a done task once, with task archive" "$PF" \
+  '- `archive` moves a done or abandoned task, once, with `second-brain task archive <ID>`, to'
+line_is "profile: the archive folder" "$PF" '  `archive/<YYYY>/<ID>/` under the tasks root.'
+line_is "profile: status keeps a task in the folder of its status" "$PF" \
+  '- `status` keeps each task in the folder of its status under the tasks root, such as `done/<ID>/`.'
+line_is "profile: task set moves a status task, and nothing is archived" "$PF" \
+  '  `second-brain task set <ID> status=<status>` moves it there, and nothing is archived.'
+file_lacks "profile: no longer says only archive moves a task" "$PF" 'Only `archive` moves'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
 file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \

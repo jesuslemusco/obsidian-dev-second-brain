@@ -190,6 +190,74 @@ file_has "guide: task set moves the folder" "$GS" '`second-brain task set` moves
 file_has "guide: a sprint close moves the tasks it abandons" "$GS" 'each task it abandons moves to `tasks/abandoned/<ID>/`'
 file_has "guide: a project turned to status runs doctor --fix once" "$GS" 'then run `second-brain doctor --fix` once'
 
+# ---------------------------------------------------------------- the status layout in the skill text and the changelog
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: task_layout takes status" "$ST" \
+  '   - `task_layout` is `flat`, `archive` or `status`. A profile with no such line is `flat`.'
+file_lacks "story-tracker: task_layout is no longer flat or archive alone" "$ST" '`task_layout` is `flat` or `archive`'
+line_is "story-tracker: a status project's folder follows the status, with nothing to archive" "$ST" \
+  '   - With `status`, a story'"'"'s folder follows its status, so there is nothing to archive and'
+line_is "story-tracker: nothing to ask, as task set moves the folder" "$ST" \
+  '     nothing to ask: `second-brain task set` moves it to `<tasks_root>/<status>/<ID>/`.'
+line_is "story-tracker: an archived story set back in a status project is moved already" "$ST" \
+  '  - With `task_layout: status`, `task set` has moved it already: ask nothing.'
+line_is "story-tracker: a status project's story path is the one find prints" "$ST" \
+  '  - An archived story'"'"'s path, or one in a `status` project, is the one `find` prints.'
+# check_line <check> <field>: the Means, Why or Fix line of one entry of checks.md.
+check_line() {
+  awk -v h="### $1" -v f="- $2: " '/^### / { on = ($0 == h) } on && index($0, f) == 1 { print; exit }' \
+    "$here/skills/vault-doctor/checks.md"
+}
+OUT="$(check_line board Means)"
+out_has "checks board: names a status project's board with no status filter" \
+  'the project has `task_layout: status` and the board'"'"'s own `filters` block does not take each of the five status folders (`tasks.base:no-status-filter`)'
+OUT="$(check_line board Why)"
+out_has "checks board: says why the status filter matters" 'Without the status filter, Obsidian shows no task in a status folder'
+OUT="$(check_line board Fix)"
+out_has "checks board: the status filter's fix" '`no-status-filter`: replace the `filters` block as for `no-archive-filter`'
+out_has "checks board: STATUS_DEPTH is one more than TASK_DEPTH" '`{{STATUS_DEPTH}}` the `{{TASK_DEPTH}}` number plus 1'
+OUT="$(check_line no-readme Means)"
+out_has "checks no-readme: the status folders are no task folder" 'other than `archive` and the five status folders'
+out_has "checks no-readme: reads each folder under a status folder" 'one directly under a status folder'
+out_has "checks no-readme: a status folder needs no README" 'A status folder itself never needs a README, in every layout.'
+OUT="$(check_line no-readme Fix)"
+out_has "checks no-readme: a folder under a status folder is moved where task new writes" \
+  'A folder under a status folder: `task new` writes into `<tasks root>/<ID>/`, or `<tasks root>/planned/<ID>/` in a status project'
+out_has "checks no-readme: then task set moves it to the folder of its status" \
+  '`second-brain task set <ID> status=<status>` then moves it to the folder of its status'
+OUT="$(check_line task-location Means)"
+out_has "checks task-location: a task's place in a status folder" '`<tasks root>/<status>/<ID>/README.md` in one of the five status folders'
+OUT="$(check_line task-location Fix)"
+out_has "checks task-location: a status project's task goes to the folder of its status" \
+  'In a status project, move it to `<project path>/<tasks root>/<status>/<ID>/README.md`'
+OUT="$(check_line task-layout Means)"
+out_has "checks task-layout: a status folder in another layout" '(`<status>:flat` or `<status>:archive`'
+out_has "checks task-layout: a task out of the folder of its status" '(`<ID>:<status>`'
+out_has "checks task-layout: a task in a status project's archive" '(`archive:status`)'
+out_has "checks task-layout: no status of the five is needs-a-status's" 'is left to `needs-a-status`'
+OUT="$(check_line task-layout Why)"
+out_has "checks task-layout: says why a status project's folders matter" 'With `status`, the folder shows a task'"'"'s status'
+OUT="$(check_line task-layout Fix)"
+out_has "checks task-layout: doctor --fix moves a task to the folder of its status" \
+  '`<ID>:<status>` and `archive:status`: `second-brain doctor --fix` moves each task to the folder of its status'
+out_has "checks task-layout: and removes the archive's empty folders" 'then removes the archive'"'"'s empty folders'
+out_has "checks task-layout: a status folder in another layout asks first" '`<status>:flat` or `<status>:archive`: ask whether'
+out_has "checks task-layout: on a yes the profile takes status" 'set `task_layout: status` in the profile'
+AD="$here/skills/vault-setup/adopt.md"
+line_is "vault-setup adopt: a status project's tasks wait for doctor --fix" "$AD" \
+  '- With `task_layout: status`, the tasks already there stay where they are until'
+line_is "vault-setup adopt: doctor --fix runs once" "$AD" \
+  '  `second-brain doctor <project> --fix` runs once. The doctor'"'"'s `task-layout` row names each task'
+file_has "vault-setup adopt: the run is a bulk move, made on a yes" "$AD" '- Offer that run, as a bulk move, and make it only on a yes:'
+file_has "vault-setup adopt: a task's place in a status folder" "$AD" '`<tasks_root>/<status>/<ID>/README.md` in a status'
+CG="$here/CHANGELOG.md"
+is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
+st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
+st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
+st_end="$(lineno "$CG" '## 0.9.0 - ')"
+is "changelog: the status layout is under 0.10.0" \
+  "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
+
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"
 sk_desc="$(sed -n 's/^description: //p' "$SK")"

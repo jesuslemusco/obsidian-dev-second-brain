@@ -23,6 +23,10 @@
   `doctor --fix` once.
 - The conventions note is at version 8: it names the status layout. The doctor's `conventions`
   check warns about an older note.
+- The vault index and docs-keeper name `tasks/<status>/` as a task's place in a status project.
+  The plugin's index template is now at `index_version: 6`, so the doctor's `index` check warns.
+  Copy the task line under `## Rules for notes that most often go wrong` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 6`.
 
 ## 0.9.0 - 2026-11-21
 

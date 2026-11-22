@@ -299,7 +299,22 @@ vd_move="$(lineno "$VD" '- After a move to the folders of their status')"
 vd_broke="$(lineno "$VD" '- An `unresolved added:` line')"
 is "vault-doctor fix: the status move's compare comes after the archive's and before the broken-link line" \
   "$((${vd_arch:-0} < ${vd_move:-0} && ${vd_move:-0} < ${vd_broke:-0}))" "1"
+VI="$here/templates/vault-index.md.tmpl"
+line_is "index template: a task note's place names the status folders" "$VI" \
+  '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
+vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
+is "index template: the status folders raise index_version to 6" "$vi_version" "6"
+line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
+line_is "docs-keeper: a task's place names the status folders" "$DK" \
+  '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
+line_is "docs-keeper: in a status project, or archived" "$DK" \
+  '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
+vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
+vi_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
+vi_end="$(lineno "$CG" '## 0.9.0 - ')"
+is "changelog: the index's status line is under 0.10.0" "$((${vi_line:-0} > ${vi_top:-0} && ${vi_line:-0} < ${vi_end:-0}))" "1"
+file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
 is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"

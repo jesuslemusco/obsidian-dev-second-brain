@@ -317,7 +317,7 @@ delivery: spec                # optional; omit it to take the subproject's or th
 sprint: "2026-10-14"          # omit the key when the task is in the backlog
 carried_from: []              # sprint ids this task was carried over from
 depends_on:                   # optional; the tasks this one waits on, as quoted path links
-  - "[[<project>/<tasks_root>/<other ID>/README|<other ID>]]"
+  - "[[<vault path of its README, no .md>|<other ID>]]"
 type: task
 tags:
   - <topic/tag>               # zero or more; the folder path under the topics root, lowercased

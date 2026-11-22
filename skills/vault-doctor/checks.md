@@ -225,7 +225,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: a note under the project holds a link that resolves to no file. Each offender is the note's path under the project and the line.
 - Why: the link reaches no note; a bare alias link such as `[[EX-123]]` never resolves.
-- Fix: `second-brain unresolved <project>` lists each link. Write it as a path link: `[[<project path>/tasks/EX-123/README|EX-123]]`.
+- Fix: `second-brain unresolved <project>` lists each link. Write it as a path link. A task's path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`.
 
 ### bare-links
 

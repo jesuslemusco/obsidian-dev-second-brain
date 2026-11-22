@@ -363,6 +363,24 @@ case "$cv_text" in
   *'The doctor'"'"'s `conventions` check warns about an older note.'*) pass "changelog: the version 8 line says the doctor warns on an older note" ;;
   *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
 esac
+OUT="$(check_line unresolved-links Fix)"
+out_has "checks unresolved-links: a task's link takes the path find prints" \
+  'A task'"'"'s path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`'
+case "$OUT" in
+  *'/tasks/EX-123/README|'*) fail "checks unresolved-links: the fix no longer builds the flat path" "in: $OUT" ;;
+  *) pass "checks unresolved-links: the fix no longer builds the flat path" ;;
+esac
+RM="$here/README.md"
+line_is "README: a ticket's note, in a flat project" "$RM" \
+  '  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`, or'
+line_is "README: a ticket's note, in a status project" "$RM" \
+  '  `<project>/tasks/<status>/<ID>/README.md` in a project that keeps each task in the folder of its'
+line_is "README: the first story's note, in a status project" "$RM" \
+  'tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`'
+line_is "contract: a depends_on link holds the README's vault path" "$here/docs/contract.md" \
+  '  - "[[<vault path of its README, no .md>|<other ID>]]"'
+file_lacks "contract: a depends_on link no longer builds the flat path" "$here/docs/contract.md" \
+  '[[<project>/<tasks_root>/<other ID>/README|'
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

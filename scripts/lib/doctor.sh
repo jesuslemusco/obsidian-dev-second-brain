@@ -1653,7 +1653,9 @@ EOF
         new="$( (sb_task_archive "$id" --project "$name") )"
       fi
       new="${new%%"$nl"*}"
-      [ -n "$new" ] || continue
+      # A refused lookup, such as an id held by two folders, prints the paths it found and moves
+      # nothing: a task is fixed only when the file the row names has left its place.
+      [ -n "$new" ] && [ ! -e "$file" ] || continue
       n=$((n + 1))
       printf 'fixed: %s -> %s (%s)\n' "$id" "$new" "$name"
     done 4<<EOF

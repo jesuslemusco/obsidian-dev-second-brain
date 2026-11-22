@@ -1365,6 +1365,24 @@ is "task-layout --fix: the year folder that holds a task and the archive that ho
   "$(ls "$T/archive" | tr '\n' ' ')" "2025 README.md "
 chk "task-layout --fix: the task it could not move is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
 reset
+# The same id in the folder of its status and in the archive: the lookup refuses it, and nothing is
+# said to be fixed for it.
+layout status
+mkdir -p "$T/done" "$T/archive/2025"
+mv "$T/EX-2" "$T/done/EX-2"
+cp -R "$T/done/EX-2" "$T/archive/2025/EX-2"
+cp "$T/done/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+rc_is "task-layout --fix: an id held by two folders leaves exit 0" 0
+is "task-layout --fix: no fixed line for an id held by two folders" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-3/README.md (Example)"
+case "$ERR" in *"several tasks match EX-2"*) pass "task-layout --fix: stderr says the id is held by two folders" ;;
+  *) fail "task-layout --fix: stderr says the id is held by two folders" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the copy stays in the archive, and the task in its folder is unchanged" \
+  "$(ls "$T/archive/2025/EX-2")/$(cmp -s "$tmp/EX-2.before" "$T/done/EX-2/README.md" && printf same)" "README.md/same"
+chk "task-layout --fix: the copy in the archive is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
+reset
 
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.

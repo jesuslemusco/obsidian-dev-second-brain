@@ -310,10 +310,6 @@ line_is "docs-keeper: a task's place names the status folders" "$DK" \
 line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
-vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
-vi_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
-vi_end="$(lineno "$CG" '## 0.9.0 - ')"
-is "changelog: the index's status line is under 0.10.0" "$((${vi_line:-0} > ${vi_top:-0} && ${vi_line:-0} < ${vi_end:-0}))" "1"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
 is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
@@ -321,6 +317,9 @@ st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
 is "changelog: the status layout is under 0.10.0" \
   "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
+vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
+is "changelog: the index's status line is under 0.10.0" \
+  "$((${vi_line:-0} > ${st_top:-0} && ${vi_line:-0} < ${st_end:-0}))" "1"
 cv_line="$(lineno "$CG" '- The conventions note is at version 8: it names the status layout.')"
 is "changelog: the conventions note at version 8 is under 0.10.0" \
   "$((${cv_line:-0} > ${st_top:-0} && ${cv_line:-0} < ${st_end:-0}))" "1"

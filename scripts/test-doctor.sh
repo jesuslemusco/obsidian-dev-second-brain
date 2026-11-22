@@ -1221,6 +1221,87 @@ is "task-layout --fix: nothing is moved through a tasks root that leaves the pro
 rm -r "$O/tasks/EX-2"
 reset
 
+# ---------------------------------------------------------------- task-layout, the status folders
+# drift: print the rows of sb_doc_layout_drift for Example, as id, file under the tasks root and
+# status, one blank apart.
+drift() {
+  (
+    for f in "$here"/scripts/lib/*.sh; do . "$f"; done
+    SB_ROOT="$vault"
+    sb_doc_project Example "$P" EX
+    sb_doc_layout_drift | while IFS=$'\t' read -r id file status; do
+      printf '%s %s %s\n' "$id" "${file#"$T/"}" "$status"
+    done
+  )
+}
+layout status
+mkdir -p "$T/planned" "$T/in-progress"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+mv "$T/EX-2" "$T/planned/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+rc_is "task-layout: a warning in a status project leaves exit 0" 0
+chk "task-layout: a done task in planned warns, as its id and status" task-layout Example "warn | 1 | EX-2:done"
+is "task-layout: the status fix names --fix" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status"
+chk "no-readme: a status folder needs no README" no-readme Example "ok | 0 | -"
+chk "task-location: a task in a status folder is in its place" task-location Example "ok | 0 | -"
+is "task-layout: the drift is the id, the file and the status" "$(drift)" "EX-2 planned/EX-2/README.md done"
+mv "$T/planned/EX-2" "$T/EX-2"
+doc Example
+chk "task-layout: a done task directly under the tasks root warns too" task-layout Example "warn | 1 | EX-2:done"
+mkdir -p "$T/done/EX-9"
+mv "$T/EX-2" "$T/done/EX-2"
+doc Example
+chk "task-layout: a task in the folder of its status is in its place" task-layout Example "ok | 0 | -"
+chk "no-readme: a folder in a status folder with no README warns" no-readme Example "warn | 1 | EX-9"
+rmdir "$T/done/EX-9"
+edit "$T/planned/EX-3/README.md" '/^status: /d'
+edit "$T/in-progress/EX-1/README.md" 's/^status: .*/status: blocked/'
+mv "$T/in-progress/EX-1" "$T/done/EX-1"
+doc Example
+chk "task-layout: no row for a task with no status, or one outside the five" task-layout Example "ok | 0 | -"
+chk "task-layout: needs-a-status names them" needs-a-status Example "warn | 2 | EX-3, EX-1:blocked"
+is "task-layout: the drift names a task with no status of the five no-status" "$(drift)" \
+  "EX-3 planned/EX-3/README.md no-status${NL}EX-1 done/EX-1/README.md no-status"
+mkdir -p "$T/archive/2025"
+doc Example
+chk "task-layout: an archive that holds no task is not named" task-layout Example "ok | 0 | -"
+mv "$T/done/EX-2" "$T/archive/2025/EX-2"
+doc Example
+chk "task-layout: a task in the archive warns, and so does the archive" task-layout Example "warn | 2 | EX-2:done, archive:status"
+mv "$T/archive/2025/EX-2" "$T/done/EX-2"
+mv "$T/planned/EX-3" "$T/archive/2025/EX-3"
+doc Example
+chk "task-layout: an archive that holds a task with no status warns alone" task-layout Example "warn | 1 | archive:status"
+reset
+mkdir -p "$T/planned" "$T/done"
+mv "$T/EX-2" "$T/done/EX-2"
+doc Example
+chk "task-layout: a status folder that holds a task warns in a flat project, and an empty one does not" task-layout Example \
+  "warn | 1 | done:flat"
+is "task-layout: the fix names the status layout and the way back" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: a status folder needs no README, in a flat project too" no-readme Example "ok | 0 | -"
+chk "task-location: a task in a status folder is in its place, in a flat project too" task-location Example "ok | 0 | -"
+is "task-layout: no drift in a flat project" "$(drift)" ""
+mkdir -p "$T/archive/2025/EX-0"
+sed 's/^  - EX-2$/  - EX-0/' "$T/done/EX-2/README.md" >"$T/archive/2025/EX-0/README.md"
+doc Example
+chk "task-layout: the archive and a status folder share one row" task-layout Example "warn | 2 | archive:flat, done:flat"
+is "task-layout: the fix holds both" "$(fix_of task-layout)" \
+  "set task_layout: archive in the profile, or move each task in $P/tasks/archive back to $P/tasks/<ID> with second-brain move; set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+rm -r "$T/archive"
+layout archive
+mkdir -p "$T/in-progress"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+doc Example
+chk "task-layout: each status folder that holds a task warns in an archive project" task-layout Example \
+  "warn | 2 | in-progress:archive, done:archive"
+is "task-layout: the fix names the status layout and the way back, in an archive project" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {

@@ -979,13 +979,18 @@ EOF
 }
 
 # Check that every task folder holds a README with something in it: each folder directly under the
-# tasks root but the archive, and each one directly under a year of the archive.
+# tasks root but the archive and the five status folders, each one directly under a status folder,
+# and each one directly under a year of the archive. In every layout.
 sb_doc_check_no_readme() {
-  local d bad="" nl=$'\n'
-  for d in "$SB_P_DIR/$SB_TASKS_ROOT"/*/ "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/*/; do
+  local d s rel bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT"
+  set -- "$root"/*/
+  for s in $SB_TASK_STATUSES; do set -- "$@" "$root/$s"/*/; done
+  set -- "$@" "$root"/archive/[0-9][0-9][0-9][0-9]/*/
+  for d in "$@"; do
     [ -d "$d" ] || continue
     d="${d%/}"
-    [ "$d" != "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || continue
+    rel="${d#"$root"/}"
+    case " archive $SB_TASK_STATUSES " in *" $rel "*) continue ;; esac
     [ -s "$d/README.md" ] || bad="$bad${d##*/}$nl"
   done
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
@@ -1031,10 +1036,21 @@ sb_doc_check_task_location() {
 # done or abandoned outside it for archive_after_days days or more. A done task's age counts from
 # the newest date it holds, of its status notes and its sprint id; with none it is never due, as
 # --fix moves no folder it cannot date.
+# In a status project: id, file and status for each task not at <root>/<status>/<ID>/README.md,
+# and id, file and no-status for a task with no status of the five.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
-  local days
-  [ "$(sb_task_layout)" = "archive" ] || return 0
+  local days layout
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ]; then
+    printf '%s\n' "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_S="$SB_TASK_STATUSES" LC_ALL=C awk -F'\t' '
+      BEGIN { root = ENVIRON["SB_R"]; n = split(ENVIRON["SB_S"], s, " "); for (i = 1; i <= n; i++) five[s[i]] = 1 }
+      NF < 12 { next }
+      !($3 in five) { print $2 "\t" $1 "\tno-status"; next }
+      $1 != root $3 "/" $2 "/README.md" { print $2 "\t" $1 "\t" $3 }'
+    return 0
+  fi
+  [ "$layout" = "archive" ] || return 0
   days="$(sb_setting "$SB_P_PATH" archive_after_days 14)"
   case "$days" in *[!0-9]*) days=14 ;; esac
   printf '%s\n' "$SB_DOC_SCAN" | SB_A="$SB_P_DIR/$SB_TASKS_ROOT/archive/" SB_NOW="$(sb_today)" SB_DAYS="$days" \
@@ -1065,20 +1081,36 @@ sb_doc_layout_drift() {
 }
 
 # Check that the tasks follow the profile's task_layout: no archive folder in a flat project; in an
-# archive project, no open task in the archive and no done one left out of it too long.
+# archive project, no open task in the archive and no done one left out of it too long; in either,
+# no status folder that holds a task. In a status project, each task in the folder of its status,
+# and no task in the archive.
 sb_doc_check_task_layout() {
-  local days bad="" to="$SB_P_PATH/$SB_TASKS_ROOT"
-  if [ "$(sb_task_layout)" != "archive" ]; then
-    [ ! -d "$SB_P_DIR/$SB_TASKS_ROOT/archive" ] || bad="archive:flat"
+  local days layout s bad="" fix="" folders="" nl=$'\n' to="$SB_P_PATH/$SB_TASKS_ROOT" root="$SB_P_DIR/$SB_TASKS_ROOT"
+  local back
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ]; then
+    bad="$(sb_doc_layout_drift | awk -F'\t' '$3 != "no-status" { print $1 ":" $3 }')"
+    case "$nl$SB_DOC_FILES" in *"$nl$root/archive/"*) bad="$bad${nl}archive:status" ;; esac
     sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
-      "set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+      "run second-brain doctor --fix to move each task to the folder of its status"
     return 0
   fi
-  days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
-  case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number"$'\n' ;; esac
-  bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
-  sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
-    "run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+  for s in $SB_TASK_STATUSES; do
+    case "$nl$SB_DOC_FILES" in *"$nl$root/$s/"*) folders="$folders$s:$layout$nl" ;; esac
+  done
+  back="set task_layout: status in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
+  if [ "$layout" != "archive" ]; then
+    [ ! -d "$root/archive" ] || bad="archive:flat$nl"
+    [ -z "$bad" ] || fix="set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+  else
+    days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
+    case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number$nl" ;; esac
+    bad="$bad$(sb_doc_layout_drift | awk -F'\t' '{ print $1 ":" $3 }')"
+    [ -z "$bad" ] || fix="run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
+    bad="${bad:+$bad$nl}"
+  fi
+  [ -z "$folders" ] || fix="${fix:+$fix; }$back"
+  sb_doc_report warn task-layout "$SB_P_NAME" "$bad$folders" "$fix"
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.

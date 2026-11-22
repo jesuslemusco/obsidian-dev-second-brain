@@ -161,6 +161,17 @@ file_has "contract: task new finds the id in any folder" "$CS" 'at `<tasks_root>
 file_has "contract: task new refuses a status folder's name" "$CS" '`In-Review is the folder of the in-review tasks, not a task id`'
 file_has "contract: task alias refuses a status folder's name" "$CS" \
   'exit 5 for an alias that names the folder `archive` or a status folder, in any letter case'
+TN="$(grep '^| `task new ' "$CS")"
+TA="$(grep '^| `task alias ' "$CS")"
+for want in '`archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task id`' \
+  'a status folder'"'"'s name says `<ID> is the folder of the <status> tasks, not a task id`, with `<ID>` as typed and `<status>` lowercased'; do
+  case "$TN" in *"$want"*) pass "contract: the task new row gives the message: $want" ;; *) fail "contract: the task new row gives the message: $want" "in: $TN" ;; esac
+done
+case "$TN" in *'not a task id`, the id as typed'*) fail "contract: the task new row no longer gives archive the status message" "in: $TN" ;; *) pass "contract: the task new row no longer gives archive the status message" ;; esac
+for want in '`archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task alias`' \
+  'a status folder'"'"'s name says `<alias> is the folder of the <status> tasks, not a task alias`, with `<alias>` as typed and `<status>` lowercased'; do
+  case "$TA" in *"$want"*) pass "contract: the task alias row gives the message: $want" ;; *) fail "contract: the task alias row gives the message: $want" "in: $TA" ;; esac
+done
 file_has "contract: sprint close moves each abandoned task" "$CS" \
   'moves each task named in `--abandon` to `<tasks_root>/<status>/<ID>/` for its new status, `abandoned`'
 file_has "contract: the board check names a board with no status filter" "$CS" '(`tasks.base:no-status-filter`)'

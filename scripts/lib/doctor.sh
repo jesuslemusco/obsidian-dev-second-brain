@@ -213,6 +213,15 @@ sb_doc_check_pull_request() {
   fi
 }
 
+# Check that the vault's writing style note exists.
+sb_doc_check_writing_style() {
+  if [ ! -f "$SB_ROOT/claude/writing-style.md" ]; then
+    sb_doc_row warn writing-style vault "claude/writing-style.md" "run second-brain scaffold vault to create it"
+    return 0
+  fi
+  sb_doc_row ok writing-style vault "" "-"
+}
+
 # Return 0 when a line of the link directory's CLAUDE.md is an import of the index.
 sb_doc_imports_index() {
   local line="$1" home="$2" p
@@ -301,21 +310,29 @@ sb_doc_check_links() {
   sb_doc_report fail links vault "$bad" "run second-brain link --apply, then repair by hand what it leaves"
 }
 
+# Check for skills and agents in the link directory that no claude folder of the vault provides.
+sb_doc_check_foreign() {
+  local home name kind what target slot bad="" nl=$'\n'
+  home="$(sb_link_home)"
+  while IFS=$'\t' read -r name kind what target slot; do
+    [ -n "$name" ] || continue
+    bad="$bad${slot#"$home"/}:$what"
+    [ "$what" != "link" ] || bad="$bad to $(sb_path_out "$target")"
+    bad="$bad$nl"
+  done <<EOF
+$(sb_link_foreign 2>/dev/null)
+EOF
+  sb_doc_report warn foreign vault "$bad" \
+    "ask where each one belongs, then run second-brain link move <skill or agent> <name> [--project P]" 120
+}
+
 # Check that no link in the link directory points inside the plugin.
 sb_doc_check_double_registration() {
-  local home root slot t bad="" nl=$'\n'
+  local home slot bad="" nl=$'\n'
   home="$(sb_link_home)"
-  root="$(cd -P "$(sb_plugin_root)" 2>/dev/null && pwd -P)" || root=""
   for slot in "$home"/skills/* "$home"/agents/*; do
-    [ -L "$slot" ] && [ -n "$root" ] || continue
-    t="$(readlink "$slot")" || continue
-    case "$t" in /*) ;; *) t="${slot%/*}/$t" ;; esac
-    if [ -d "$t" ]; then
-      t="$(cd -P "$t" 2>/dev/null && pwd -P)" || continue
-    elif [ -d "${t%/*}" ]; then
-      t="$(cd -P "${t%/*}" 2>/dev/null && pwd -P)/${t##*/}"
-    fi
-    case "$t/" in "$root"/*) bad="$bad${slot#"$home"/}$nl" ;; esac
+    sb_link_in_plugin "$slot" || continue
+    bad="$bad${slot#"$home"/}$nl"
   done
   sb_doc_report warn double-registration vault "$bad" "remove the link: the enabled plugin registers it already"
 }
@@ -831,6 +848,36 @@ sb_doc_check_placeholders() {
     }')"
   sb_doc_report warn placeholders "$SB_P_NAME" "$bad" \
     "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
+}
+
+# Check that the project's own task README template keeps each frontmatter key the helper writes
+# and each section the helper or story-tracker writes under. A key is read from frontmatter that
+# opens on the first line; a heading is a line equal to it without letter case and trailing
+# blanks, outside fenced code, as sb_body_insert finds it for task note. Frontmatter is not read
+# for one. No template is ok.
+sb_doc_check_task_template() {
+  local f="$SB_P_DIR/claude/templates/task-readme.md.tmpl" bad=""
+  [ ! -f "$f" ] || bad="$(LC_ALL=C awk '
+    BEGIN {
+      nk = split("aliases title status next branch epic type", keys, " ")
+      ns = split("## Status notes|## Discovery log", secs, "|")
+    }
+    { sub(/\r$/, "") }
+    NR == 1 { sub(/^\357\273\277/, ""); if ($0 == "---") { st = 1; next } }
+    st == 1 {
+      if ($0 == "---") st = 0
+      else if ($0 ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) { k = $0; sub(/:.*$/, "", k); has[k] = 1 }
+      next
+    }
+    /^[ \t]*(```|~~~)/ { fence = !fence; next }
+    fence { next }
+    { h = $0; sub(/[ \t]+$/, "", h); sec[tolower(h)] = 1 }
+    END {
+      for (i = 1; i <= nk; i++) if (!(keys[i] in has)) print keys[i]
+      for (i = 1; i <= ns; i++) if (!(tolower(secs[i]) in sec)) print secs[i]
+    }' "$f")"
+  sb_doc_report warn task-template "$SB_P_NAME" "$bad" \
+    "add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
 }
 
 # Print the facts, then the core scan rows, of the current project, for one awk to join.
@@ -1459,15 +1506,15 @@ sb_doc_rows() {
   SB_DOC_UNRES=""
   SB_DOC_UNRES_DONE=""
   SB_DOC_PIECES="$(sb_doc_piece_files | sb_doc_piece_scan)"
-  for c in pointer index conventions pull_request import global_rules links double_registration \
-    always_loaded_size descriptions skill_size old_namespace; do
+  for c in pointer index conventions pull_request writing_style import global_rules links foreign \
+    double_registration always_loaded_size descriptions skill_size old_namespace; do
     "sb_doc_check_$c"
   done
   while IFS=$'\t' read -r name path keys <&3; do
     # A row whose path leaves the vault gets no rows, and nothing under it is opened.
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
-    for c in profile board hubs placeholders task_frontmatter needs_a_status status_tag yaml_traps \
+    for c in profile board hubs placeholders task_template task_frontmatter needs_a_status status_tag yaml_traps \
       alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
       delivery validation spec_trace sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"

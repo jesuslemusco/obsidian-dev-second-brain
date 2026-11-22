@@ -74,6 +74,8 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 
 - The vault's files are under `## 1. Words and paths` in `docs/contract.md`.
 - A project's files are under `## 3. The project` in `docs/contract.md`.
+- Claude writes notes in the style of the vault's `claude/writing-style.md`. A project's own
+  `<project>/claude/writing-style.md` wins.
 - A task names what it is about with topic tags, and never sits in the topic's folder, as
   `## The short version` in `templates/obsidian-conventions.md.tmpl` says.
 - An existing project keeps its folders. `/odsb:vault-setup adopt <path>`
@@ -88,6 +90,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `## 2. The index` in `docs/contract.md` says.
 - The doctor's `global-rules` check warns about a line of `~/.claude/CLAUDE.md` that names a
   project.
+- The doctor's `foreign` check warns about a skill or agent in `~/.claude/skills` or
+  `~/.claude/agents` that no vault `claude/` folder provides.
+- `/odsb:vault-doctor fix` asks where each one goes, the vault's `claude/` or a project's, and
+  moves it there, as `## fix` in `skills/vault-doctor/SKILL.md` says.
 - To run a project without sprints, say so when `vault-setup` sets it up, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says.
 - Tell Claude a story waits on another task, and it runs `second-brain task dep EX-2 add EX-1`.
@@ -249,6 +255,14 @@ bash scripts/leak-check.sh
 claude plugin validate . --strict
 ```
 
+- `scripts/test.sh` runs each area file in `scripts/tests/` and prints one total. Each area builds
+  its own scratch vault, so one runs alone: `bash scripts/test.sh tasks` runs `tasks.sh`.
+- The areas run in parallel, one per processor, and print in area order.
+  `SECOND_BRAIN_TEST_JOBS=1 bash scripts/test.sh` runs them one at a time.
+- A new check goes in the area of the command it tests. The helpers and fixtures the areas share
+  are in `scripts/tests/lib.sh`.
+- The fixtures in `scripts/tests/lib.sh` and `scripts/tests/generated.sh` copy the commands of the
+  sections that write the vault. A change to what such a section writes goes into those copies too.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
   to `main`.

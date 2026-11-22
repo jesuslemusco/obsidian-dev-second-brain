@@ -48,7 +48,9 @@ setup:    scaffold vault [DIR]
               [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
           scaffold subproject <project> <name> [--repos R1,R2]
           pointer | pointer set <DIR> [--replace]
-          link [--check | --apply] | doctor [project] [--json] [--fix]
+          link [--check | --apply | --foreign] | doctor [project] [--json] [--fix]
+          link move <skill|agent> <name> [--project P]   (a foreign one into the vault)
+          link drop-original <skill|agent> <name> <path>   (the original of a copy)
           snapshot [name] | compare [name] | session-check
 json:     task head, spec tasks, spec status <ID>, validation <project> [repo] and validation run take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
@@ -586,10 +588,36 @@ sb_section() {
   ' "$1"
 }
 
+# Print the path of a template. A project may keep its own task-readme.md.tmpl and
+# ticket-description.md.tmpl in its claude/templates/: the current project's wins over the plugin's.
+sb_template() {
+  case "$1" in
+    task-readme.md.tmpl | ticket-description.md.tmpl)
+      if [ -n "${SB_P_DIR:-}" ] && [ -f "$SB_P_DIR/claude/templates/$1" ]; then
+        printf '%s\n' "$SB_P_DIR/claude/templates/$1"
+        return 0
+      fi
+      ;;
+  esac
+  printf '%s\n' "$(sb_plugin_root)/templates/$1"
+}
+
+# Print how a message names the template sb_template finds: the plugin's by its name, a project's
+# own by its vault path.
+sb_template_shown() {
+  local path
+  path="$(sb_template "$1")"
+  if [ "$path" = "$(sb_plugin_root)/templates/$1" ]; then
+    printf '%s\n' "$1"
+  else
+    sb_rel "$path"
+  fi
+}
+
 # Print a template with its placeholders filled from KEY=VALUE pairs.
 sb_fill_text() {
   local tmpl kv
-  tmpl="$(sb_plugin_root)/templates/$1"
+  tmpl="$(sb_template "$1")"
   shift
   [ -f "$tmpl" ] || sb_die 2 "template missing: $(sb_path_out "$tmpl")"
   local assigns
@@ -630,7 +658,7 @@ sb_fill() {
   sb_fill_text "$name" "$@" >"$tmp" || { rm -f "$tmp"; exit 2; }
   if grep -q '{{' "$tmp"; then
     rm -f "$tmp"
-    sb_die 5 "a placeholder was left unfilled in $name, or a value contains {{"
+    sb_die 5 "a placeholder was left unfilled in $(sb_template_shown "$name"), or a value contains {{"
   fi
   mkdir -p "$(dirname "$dest")" || { rm -f "$tmp"; return 1; }
   cat "$tmp" >"$dest"
@@ -638,8 +666,8 @@ sb_fill() {
   return 0
 }
 
-# Insert text before or after the first line equal to a heading; keeps line endings.
-# Modes: before, after, list (after, with no blank line before a following list item).
+# Insert text before or after the first line equal to a heading, outside fenced code; keeps line
+# endings. Modes: before, after, list (after, with no blank line before a following list item).
 # Returns 1, and writes nothing, when the heading is absent.
 sb_body_insert() {
   local file="$1" heading="$2" mode="$3" text="$4" tmp eofnl=1 rc=0
@@ -651,7 +679,7 @@ sb_body_insert() {
     function puttext(   i) { for (i = 1; i <= nt; i++) put(tl[i] eol) }
     BEGIN {
       want = tolower(ENVIRON["SB_H"]); mode = ENVIRON["SB_MODE"]; eofnl = ENVIRON["SB_EOFNL"] + 0
-      nt = split(ENVIRON["SB_TEXT"], tl, "\n"); sep = ""; done = 0; skipping = 0; eol = ""
+      nt = split(ENVIRON["SB_TEXT"], tl, "\n"); sep = ""; done = 0; skipping = 0; eol = ""; fence = 0
     }
     {
       raw = $0; line = raw; sub(/\r$/, "", line)
@@ -661,8 +689,9 @@ sb_body_insert() {
         skipping = 0
         if (!(mode == "list" && line ~ /^[-*] /)) put(eol)
       }
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
       t = line; sub(/[ \t]+$/, "", t)
-      if (!done && tolower(t) == want) {
+      if (!done && !fence && tolower(t) == want) {
         done = 1
         if (mode == "before") { puttext(); put(eol); put(raw); next }
         put(raw); put(eol); puttext(); skipping = 1; next

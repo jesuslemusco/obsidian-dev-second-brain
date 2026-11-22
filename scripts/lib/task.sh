@@ -165,13 +165,15 @@ sb_task_head() {
         }
         next
       }
+      # A heading in fenced code is no heading, as sb_body_insert reads it for task note.
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
       if (h1 == "" && line ~ /^# /) { h1 = trim(substr(line, 3)); next }
       if (!gotsum && line ~ /^\*\*Summary:\*\*/) { summary = trim(substr(line, 13)); gotsum = 1; insum = 1; next }
       if (insum) {
         if (line ~ /^[ \t]*$/ || line ~ /^#/ || line ~ /^\*\*[A-Za-z]/) insum = 0
         else { summary = summary " " trim(line); next }
       }
-      if (line ~ /^## /) { innotes = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); next }
+      if (!fence && line ~ /^## /) { innotes = (tolower(line) ~ /^##[ \t]+status notes[ \t]*$/); next }
       if (innotes && note == "" && line !~ /^[ \t]*$/ && line !~ /^[ \t]*</) note = trim(line)
     }
     END {
@@ -526,7 +528,7 @@ sb_topic_dir() {
 # Create a task folder and its README from the template; exit 6 when the folder exists.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
-  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub=""
+  local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" had_dir
   local tab=$'\t' nl=$'\n'
   usage="usage: second-brain task new <ID> --project P [--title T] [--topics a,b] [--envs] [--subproject S]"
   while [ $# -gt 0 ]; do
@@ -605,9 +607,21 @@ EOF
   alias="$(sb_fm_list "$hub" aliases 2>/dev/null | head -1)"
   [ -n "$alias" ] || alias="$SB_P_NAME Tasks Hub"
   uplink="[[$SB_P_PATH/$SB_TASKS_ROOT/README|$alias]]"
+  had_dir=0
+  [ ! -d "$dir" ] || had_dir=1
   sb_fill task-readme.md.tmpl "$file" "ID=$id" "TITLE=$title" "TOPIC_TAGS=$taglines" "UP_LINK=$uplink" || rc=$?
   [ "$rc" -ne 6 ] || sb_die 6 "the task README exists: $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
   [ "$rc" -eq 0 ] || sb_die 1 "cannot write $SB_P_PATH/$SB_TASKS_ROOT/$id/README.md"
+  # A project's own template may give no frontmatter, which every task command needs: write nothing.
+  if ! LC_ALL=C awk '
+    { sub(/\r$/, "") }
+    NR == 1 { sub(/^\357\273\277/, ""); if ($0 != "---") exit 1; next }
+    $0 == "---" { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$file"; then
+    rm -f "$file"
+    [ "$had_dir" -eq 1 ] || rmdir "$dir" 2>/dev/null
+    sb_die 5 "the README filled from $(sb_template_shown task-readme.md.tmpl) has no frontmatter: start the template with it, as the plugin's has"
+  fi
   sb_fm_set_raw "$file" title "$(sb_yaml_quote "$title" 1)"
   [ "$(sb_yaml_quote "$id")" = "$id" ] || sb_fm_edit "$file" listswap aliases "$id" "$id"
   [ -z "$sub" ] || sb_fm_set "$file" subproject "$SB_S_NAME"

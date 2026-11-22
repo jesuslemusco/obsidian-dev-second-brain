@@ -188,6 +188,14 @@ rc_is "pull-request: a missing note leaves exit 0" 0
 chk "pull-request: a missing note warns" pull-request vault "warn | 1 | claude/pull-request.md"
 is "pull-request: the fix says to scaffold the vault" "$(fix_of pull-request vault)" "run second-brain scaffold vault to create it"
 reset
+doc
+chk "writing-style: ok" writing-style vault "ok | 0 | -"
+rm "$vault/claude/writing-style.md"
+doc
+rc_is "writing-style: a missing note leaves exit 0" 0
+chk "writing-style: a missing note warns" writing-style vault "warn | 1 | claude/writing-style.md"
+is "writing-style: the fix says to scaffold the vault" "$(fix_of writing-style vault)" "run second-brain scaffold vault to create it"
+reset
 # The note as 0.2.0 wrote it, with no version.
 cat >"$tmp/pr-0.2.0.md" <<'EOF'
 ---
@@ -500,6 +508,41 @@ symlink "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
 symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
 chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/scrum-master.md"
+
+# ---------------------------------------------------------------- foreign
+chk "foreign: a vault link, links into the plugin and a link to a folder with no SKILL.md do not warn" foreign vault "ok | 0 | -"
+mkdir -p "$home/skills/kept" "$home/skills/synced/notes" "$tmp/out/outer"
+printf '%s\n' '---' 'name: kept' 'description: A real folder.' '---' >"$home/skills/kept/SKILL.md"
+printf '%s\n' '---' 'name: outer' '---' >"$tmp/out/outer/SKILL.md"
+printf '%s\n' '---' 'name: solo' '---' >"$home/agents/solo.md"
+printf 'x\n' >"$home/agents/notes.txt"
+printf 'x\n' >"$home/skills/stray.txt"
+symlink "$tmp/out/outer" "$home/skills/outer"
+oOuter="$(sb_path_out "$tmp/out/outer")"
+doc
+rc_is "foreign: a warning leaves exit 0" 0
+chk "foreign: a real folder, a link and where it leads, and a real file warn; a folder with no SKILL.md and other files do not" foreign vault \
+  "warn | 3 | skills/kept:folder, skills/outer:link to $oOuter, agents/solo.md:file"
+is "foreign: the fix names link move" "$(fix_of foreign vault)" \
+  "ask where each one belongs, then run second-brain link move <skill or agent> <name> [--project P]"
+chk "foreign: links stays ok" links vault "ok | 0 | -"
+sb link move skill kept
+rc_is "foreign: link move takes the real folder into the vault" 0
+doc
+chk "foreign: the next doctor run no longer names it" foreign vault "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
+chk "foreign: the next doctor run has it linked" links vault "ok | 0 | -"
+sb link --check
+out_has "foreign: link --check shows it linked" "kept | skill | linked | $(sb_path_out "$vault")/claude/skills/kept"
+mkdir -p "$vault/claude/skills/odd" "$vault/claude/skills/twin" "$vault/$P/claude/skills/twin"
+printf '%s\n' '---' 'name: other' '---' >"$vault/claude/skills/odd/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/claude/skills/twin/SKILL.md"
+printf '%s\n' '---' 'name: twin' '---' >"$vault/$P/claude/skills/twin/SKILL.md"
+symlink "$vault/claude/skills/odd" "$home/skills/odd"
+symlink "$vault/claude/skills/twin" "$home/skills/twin"
+doc
+chk "foreign: a link to a vault item that is name-mismatch or duplicate is left to links" foreign vault \
+  "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
+chk "foreign: links names the name-mismatch and the duplicates" links vault "fail | 3 | odd:name-mismatch, twin:duplicate, twin:duplicate"
 reset
 
 # ---------------------------------------------------------------- sizes
@@ -686,7 +729,7 @@ is "outside: it gets no project rows, and nothing under it is read" "$(scope_row
 chk "outside: the skill in its claude folder is not scanned" descriptions vault "ok | 0 | -"
 doc Out
 rc_is "outside: named, the row still gives exit 1" 1
-is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "12/0/0"
+is "outside: named, it gets the vault rows alone" "$(printf '%s\n' "$OUT" | grep -c ' | ')/$(scope_rows Out)/$(marks)" "14/0/0"
 doc --fix
 is "outside: --fix writes nothing there" "$(cmp -s "$tmp/outside.before" "$O/tasks/OUTMARK-1/README.md" && printf same)" "same"
 index_back
@@ -801,6 +844,41 @@ chk "placeholders: frontmatter, fenced code and another template's placeholder a
 sb scaffold subproject Example infra --repos example-infra
 doc Example
 chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
+reset
+
+# ---------------------------------------------------------------- task-template
+TT="$vault/$P/claude/templates/task-readme.md.tmpl"
+doc Example
+chk "task-template: ok for a project with no template of its own" task-template Example "ok | 0 | -"
+mkdir -p "$vault/$P/claude/templates"
+printf '%s\n' 'No frontmatter and no section.' >"$vault/$P/claude/templates/ticket-description.md.tmpl"
+doc Example
+chk "task-template: the ticket text template is not read" task-template Example "ok | 0 | -"
+cp "$here/templates/task-readme.md.tmpl" "$TT"
+doc Example
+chk "task-template: ok for a copy of the plugin's" task-template Example "ok | 0 | -"
+edit "$TT" '/^next: /d; /^epic: /d; /^## Status notes$/d'
+doc Example
+rc_is "task-template: a warning leaves exit 0" 0
+chk "task-template: each key, then each section, it lacks" task-template Example "warn | 3 | next, epic, ## Status notes"
+is "task-template: the fix names the file and the plugin's template" "$(fix_of task-template)" \
+  "add them to claude/templates/task-readme.md.tmpl, as the plugin's templates/task-readme.md.tmpl has them"
+printf '%s\n' '```' '## Status notes' '```' 'next: "Frame the story"' 'epic: "-"' >>"$TT"
+doc Example
+chk "task-template: a heading in fenced code and a key in the body do not count" task-template Example "warn | 3 | next, epic, ## Status notes"
+printf '%s\n' '## status NOTES  ' >>"$TT"
+doc Example
+chk "task-template: a heading matches without letter case and trailing blanks, as task note finds it" task-template Example "warn | 2 | next, epic"
+grep -v '^---$' "$here/templates/task-readme.md.tmpl" >"$TT"
+doc Example
+chk "task-template: with no frontmatter every key is missing" task-template Example "warn | 7 | aliases, title, status, next, branch"
+grep -v -x -F -e 'aliases:' -e '  - {{ID}}' "$here/templates/task-readme.md.tmpl" >"$TT"
+doc Example
+chk "task-template: a template with no aliases warns, as each story made from it fails task-frontmatter" task-template Example \
+  "warn | 1 | aliases"
+{ printf '\357\273\277'; awk '{ printf "%s\r\n", $0 }' "$here/templates/task-readme.md.tmpl"; } >"$TT"
+doc Example
+chk "task-template: a BOM and CRLF line endings are read" task-template Example "ok | 0 | -"
 reset
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -1227,7 +1305,7 @@ subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty-three rows" "$(scope_rows Example)" "23"
+is "subprojects: a project with no subproject keeps twenty-four rows" "$(scope_rows Example)" "24"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
 chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
@@ -1237,7 +1315,7 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "25"
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "26"
 is "subprojects: its rows sit between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects task-subproject sprints "
@@ -1443,7 +1521,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "35"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "38"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -1481,8 +1559,8 @@ names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
 print(names.index("spec-trace") - names.index("validation"), by["spec-trace"]["result"], by["spec-trace"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 35 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
-    "35 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 38 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
+    "38 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -1497,16 +1575,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: twenty-three rows for each" "$(scope_rows Example)/$(scope_rows Two)" "23/23"
-is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -12 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "pointer index conventions pull-request import global-rules links double-registration always-loaded-size descriptions skill-size old-namespace "
+is "two projects: twenty-four rows for each" "$(scope_rows Example)/$(scope_rows Two)" "24/24"
+is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -14 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
+  "pointer index conventions pull-request writing-style import global-rules links foreign double-registration always-loaded-size descriptions skill-size old-namespace "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs placeholders task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-template task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "12/23/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "14/24/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"

@@ -264,6 +264,26 @@ Claude writes every pull request description in the format of the note `claude/p
 in your vault, written from `templates/pull-request.md.tmpl`. Edit that note to change the format.
 A project's own `<project>/claude/pull-request.md` wins over it.
 
+## Story templates
+
+A project can give its stories its own shape. Copy `templates/task-readme.md.tmpl` or
+`templates/ticket-description.md.tmpl` into `<project>/claude/templates/` in your vault, under the
+same name, and edit it there.
+
+- `second-brain task new` fills the project's README template in place of the plugin's.
+- story-tracker fills the project's ticket text template for a draft or ticket text.
+- A project with no template of its own gets the plugin's.
+- The helper and story-tracker write some frontmatter keys and sections of the README template.
+  The doctor's `task-template` check warns when the project's template lacks one.
+- What a project's template must keep is under `### A project's own templates` in
+  `docs/contract.md`.
+
+## Writing style
+
+Claude writes notes in the style of the note `claude/writing-style.md` in your vault, written from
+`templates/writing-style.md.tmpl`. Edit that note to change the style. A project's own
+`<project>/claude/writing-style.md` wins over it.
+
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,

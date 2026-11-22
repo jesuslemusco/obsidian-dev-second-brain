@@ -57,11 +57,35 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      `archive/<YYYY>/`, and nothing else.
    - An `unresolved added:` line, or a `tasks added:`, `tasks removed:` or `tasks changed:` line,
      is a link or a task the move broke. Report it.
-7. Every other check: propose the fix from its `checks.md` entry, one check at a time.
+7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at
+   a time.
+   - Ask the user with AskUserQuestion where it goes. Name it, its kind, and what it is: a folder,
+     a file, or a link and where it leads.
+   - Options: the vault's general `claude/`, the one or two projects of `second-brain projects`
+     that fit it best, and `Stays where it is`. The free-text answer names another project.
+   - Nothing moves without that answer. `Stays where it is`: leave it, and go on to the next.
+   - Otherwise run `second-brain link move <skill or agent> <name>`, with `--project "<project>"`
+     for a project's `claude/`.
+   - A link into the vault: the move rewrites the links to what it leads to. Snapshot before it
+     and compare after it, as `## snapshot and compare` says.
+   - It prints `moved:` or `copied:`, then `listed:` with the `README.md` it added the row to,
+     then the item's row, `linked`. Report them.
+   - A `copied:` line: the original stays where it was. Once the item's row is `linked`, ask with
+     AskUserQuestion whether to delete the original, named by its path.
+   - On a yes, run `second-brain link drop-original <skill or agent> <name> "<path>"`. It removes
+     the original only when it matches the copy. On a no, the original stays: name its path in the
+     report.
+   - Exit 5: read the message. Only one on the `name in its frontmatter`, missing or not the folder
+     or file name, is fixed here: ask which one to change, change it after a yes, then run the
+     move again.
+   - Any other exit 5, and exit 1: show the message and stop.
+   - Exit 6: the destination exists. Show it, and ask again.
+   - `link drop-original` exits 1 or 5: show the message. The original stays: name its path.
+8. Every other check: propose the fix from its `checks.md` entry, one check at a time.
    - Do it only after the user agrees to that one.
    - A fix that touches more than one note is a bulk change: snapshot before it and compare after
      it, as `## snapshot and compare` says.
-8. Run check again. Report what is left.
+9. Run check again. Report what is left.
 
 ## snapshot and compare
 
@@ -83,4 +107,5 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
   that fix.
 - Run `second-brain move` with `--dry-run` first.
 - The helper prints `-` for an empty cell. Read it as empty.
-- A template named in `checks.md` is under the plugin root, in `templates/`.
+- A template named in `checks.md` is under the plugin root, in `templates/`, unless the entry says
+  it is in the project, in `claude/templates/`.

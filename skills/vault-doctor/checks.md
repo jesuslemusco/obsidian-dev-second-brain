@@ -29,6 +29,12 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Why: the index has every session write pull request descriptions in that format, so with no note each takes its own shape, and with an old one the old format.
 - Fix: missing: `second-brain scaffold vault`, which overwrites nothing. Older and, as the row's fix says, never edited: `second-brain doctor --fix` replaces it with the template. Older and edited: ask first, then bring it in line with `templates/pull-request.md.tmpl` by hand, keep the user's added rules, and set `pull_request_version` to the template's.
 
+### writing-style
+
+- Means: the vault's `claude/writing-style.md`, the style Claude writes notes in, is missing (warn).
+- Why: the index has every session write notes in that style, so with no note each takes its own.
+- Fix: `second-brain scaffold vault`, which creates it and overwrites nothing.
+
 ### import
 
 - Means: `~/.claude/CLAUDE.md` holds no `@` import of the vault's `CLAUDE.md`.
@@ -46,6 +52,12 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Means: a vault skill or agent is `missing`, `wrong-target`, `dangling`, `name-mismatch` or `duplicate` in `second-brain link --check`.
 - Why: Claude Code registers only what is linked into `~/.claude/skills` and `~/.claude/agents`, so that one cannot be invoked by name.
 - Fix: `second-brain link --apply`. It leaves `name-mismatch` and `duplicate`: rename one first. It leaves `wrong-target` with target `-`, a real file or folder holding the name: the user decides.
+
+### foreign
+
+- Means: a skill or agent sits in `~/.claude/skills` or `~/.claude/agents` and no vault `claude/` folder provides it: a real folder (`skills/<name>:folder`), a real file (`agents/<name>.md:file`), or a link and where it leads (`skills/<name>:link to <target>`). Not read: a folder with no `SKILL.md`, an `agents/README.md`, a file that is not `.md`, and a link into the plugin, which `double-registration` names.
+- Why: it lives on this host alone, so it is not versioned with the vault, no `claude/README.md` lists it, and the vault's checks of skills and agents never read it.
+- Fix: one at a time, ask whether it goes to the vault's `claude/`, to a project's `claude/`, or stays, then move it with `second-brain link move <skill or agent> <name> [--project <name>]`, as `## fix` in `skills/vault-doctor/SKILL.md` says. Nothing moves without the answer. One that stays warns again on the next check.
 
 ### double-registration
 
@@ -100,6 +112,12 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Means: a line of the project's `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` still holds a placeholder of its template, such as `<A rule Claude must follow in this project, one per bullet.>` (`<path under the project>:<line>`). The owner's own angle brackets never count. Not read: frontmatter, fenced code and task READMEs.
 - Why: every session reads the hub and `claude/README.md` before it works on the project, so an unwritten rule gives it nothing to follow, and a profile line left as template text answers no question a skill asks.
 - Fix: ask the user, then write the rule or the fact the line asks for in its place, or delete the line when there is none. Never invent one. Keep the headings: the `profile` check needs the seven sections.
+
+### task-template
+
+- Means: the project's own task README template, `claude/templates/task-readme.md.tmpl` in the project, lacks a frontmatter key the helper writes (`aliases`, `title`, `status`, `next`, `branch`, `epic`, `type`) or a section the helper or story-tracker writes under (`## Status notes`, `## Discovery log`). Each offender is the key or the heading. A heading in fenced code does not count. A project with no such template is ok.
+- Why: `second-brain task new` fills that template in place of the plugin's, so each new story starts without the key or the section: a story with no `aliases` fails `task-frontmatter`, the board and `task head` show another key as empty, and `task note` and story-tracker add the section where the project did not plan it.
+- Fix: ask the user, then add each to the project's template, shaped as the plugin's `templates/task-readme.md.tmpl`. A story already made from it: add `aliases` with `second-brain task alias <ID> add <ID>`, another key with `second-brain task set <ID> <key>=<value>`, and a section's heading by hand.
 
 ### task-frontmatter
 

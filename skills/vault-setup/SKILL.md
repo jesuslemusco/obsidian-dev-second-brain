@@ -46,7 +46,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - `second-brain pointer` prints where the pointer leads, at any time.
 3. Run `second-brain root`. It must print the vault's path. Exit 2: show the message and stop.
 4. Run `second-brain scaffold vault`. It prints each file it created: `CLAUDE.md`,
-   `obsidian-conventions.md`, `claude/README.md` and `claude/pull-request.md`.
+   `obsidian-conventions.md`, `claude/README.md`, `claude/pull-request.md` and
+   `claude/writing-style.md`.
    - `exists: <path>`: that file was there and is kept.
 5. Read `~/.claude/CLAUDE.md`. The import line is `@~/.claude/second-brain-vault/CLAUDE.md`.
    - It already imports this vault's `CLAUDE.md`, in that form or by the vault's own path: say so
@@ -140,8 +141,10 @@ or docs.
    - Exit 1: at least one row is neither `linked` nor `foreign`.
 2. Show only the rows that are neither `linked` nor `foreign`.
    - `foreign` is an entry in `~/.claude` that no vault skill or agent claims, such as the user's
-     own global skills or a folder a plugin manages. It is normal and never touched: do not show
-     it as a problem.
+     own global skills or a folder a plugin manages. It is normal and never touched here: do not
+     show it as a problem.
+   - The doctor's `foreign` check warns on each skill or agent among them. vault-doctor fix asks
+     where each one goes and moves it, as `## fix` in `skills/vault-doctor/SKILL.md` says.
 3. Explain each row shown:
    - `missing`: not linked yet. `--apply` links it.
    - `wrong-target` or `dangling`, with a target: a link by that name leads elsewhere, or

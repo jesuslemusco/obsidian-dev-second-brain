@@ -9,6 +9,10 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/sb-link.XXXXXX")" || exit 2
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
+# The README tests compare bytes. On Windows, in Git Bash, the platform library gives the suite
+# the awk, grep and sed that keep every CR, as the helper has them.
+. "$here/scripts/lib/platform.sh"
+
 vault="$tmp/my vault"
 home="$tmp/link home"
 mkdir -p "$vault/.obsidian" "$tmp/userdir"
@@ -70,6 +74,9 @@ out_lacks() {
 }
 out_has() {
   case "$OUT" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in: $OUT" ;; esac
+}
+err_has() {
+  case "$ERR" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" "in stderr: $ERR" ;; esac
 }
 # points_at <desc> <link> <target>: the entry is a link holding exactly that target.
 points_at() {
@@ -517,6 +524,397 @@ run env -u SECOND_BRAIN_CLAUDE_HOME "$SB" link --check
 rc_is "default link directory: exit 1, nothing is linked there" 1
 row_is "default link directory: the .claude folder in the home" "home-skill | skill | foreign | -"
 row_is "default link directory: the vault items are missing there" "my-skill | skill | missing | $oVS"
+
+# ---------------------------------------------------------------- foreign skills and agents
+# A vault and a link directory of their own, so the rows above stay as they are.
+fv="$tmp/foreign vault"
+fh="$tmp/foreign home"
+fo="$tmp/foreign outside"
+mkdir -p "$fv/.obsidian"
+# fl <args...>: run the helper against that vault and link directory.
+fl() { run env SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" "$@"; }
+# piece <file> <name> [description]: write a skill or agent file with that frontmatter.
+piece() {
+  mkdir -p "${1%/*}"
+  if [ $# -ge 3 ]; then
+    printf -- '---\nname: %s\ndescription: %s\n---\n\nBody.\n' "$2" "$3" >"$1"
+  else
+    printf -- '---\nname: %s\n---\n\nBody.\n' "$2" >"$1"
+  fi
+}
+# bytes <file> <character>: count one character in a file, read byte for byte on every system.
+bytes() { tr -cd "$2" <"$1" | wc -c | tr -d ' '; }
+fl scaffold vault
+fl scaffold project Example --path "$P" --keys EX
+rc_is "foreign: setup" 0
+ofv="$(shown "$fv")"
+ofh="$(shown "$fh")"
+ofo="$(shown "$fo")"
+piece "$fv/claude/skills/mine/SKILL.md" mine "A vault skill."
+fl link --apply
+piece "$fv/claude/skills/unlinked/SKILL.md" unlinked "A vault skill not linked yet."
+piece "$fh/skills/kept/SKILL.md" kept "Keeps a folder | of its own."
+mkdir -p "$fh/skills/synced/notes"
+printf 'x\n' >"$fh/skills/stray.txt"
+piece "$fh/agents/solo.md" solo "A real agent file."
+printf 'x\n' >"$fh/agents/notes.txt"
+piece "$fh/agents/README.md" README "Not an agent: no claude folder links a README.md."
+piece "$fo/outer/SKILL.md" outer "A skill kept outside."
+piece "$fo/far.md" far
+mkdir -p "$fo/no-skill"
+symlink "$fo/outer" "$fh/skills/outer"
+symlink "$fo/far.md" "$fh/agents/far.md"
+symlink "$fo/no-skill" "$fh/skills/no-skill"
+symlink "$fo/gone" "$fh/skills/gone"
+symlink "$here/skills/story-tracker" "$fh/skills/story-tracker"
+piece "$fv/ai-docs/skills/inner/SKILL.md" inner "A skill in the vault, outside a claude folder."
+symlink "$fv/ai-docs/skills/inner" "$fh/skills/inner"
+mkdir -p "$fv/notes"
+printf 'See [[ai-docs/skills/inner/SKILL|the inner skill]].\n' >"$fv/notes/uses.md"
+
+fl link --foreign
+rc_is "link --foreign: exit 0" 0
+out_is "link --foreign: each foreign skill and agent, as name, kind, what and target" "inner | skill | link | $ofv/ai-docs/skills/inner
+kept | skill | folder | -
+outer | skill | link | $ofo/outer
+far | agent | link | $ofo/far.md
+solo | agent | file | -"
+fl link --check
+row_is "link --foreign: link --check still lists a folder with no SKILL.md as foreign" "synced | skill | foreign | -"
+row_is "link --foreign: link --check still lists a link into the plugin as foreign" "story-tracker | skill | foreign | $(shown "$here")/skills/story-tracker"
+fl link --foreign --check
+rc_is "link --foreign: with another flag gives exit 5" 5
+
+fl link move
+rc_is "link move: no kind and no name give exit 5" 5
+fl link move tool kept
+rc_is "link move: a kind that is not skill or agent gives exit 5" 5
+fl link move skill
+rc_is "link move: no name gives exit 5" 5
+fl link move skill kept extra
+rc_is "link move: a third word gives exit 5" 5
+fl link move skill sub/kept
+rc_is "link move: a name with a slash gives exit 5" 5
+fl link move skill .kept
+rc_is "link move: a name that starts with a dot gives exit 5" 5
+fl link move skill kept --project
+rc_is "link move: --project with no name gives exit 5" 5
+fl link move skill synced
+rc_is "link move: a folder with no SKILL.md gives exit 1" 1
+fl link move skill gone
+rc_is "link move: a dangling link gives exit 1" 1
+fl link move skill mine
+rc_is "link move: a linked vault skill gives exit 1" 1
+fl link move skill unlinked
+rc_is "link move: a vault skill not linked yet gives exit 1" 1
+fl link move agent kept
+rc_is "link move: the wrong kind gives exit 1" 1
+fl link move skill story-tracker
+rc_is "link move: a link into the plugin gives exit 1" 1
+fl link move skill kept --project Nope
+rc_is "link move: an unknown project gives exit 1" 1
+exists_dir "link move: nothing moves for an unknown project" "$fh/skills/kept"
+
+piece "$fh/skills/renamed/SKILL.md" other "Its name differs."
+fl link move skill renamed
+rc_is "link move: a frontmatter name that differs gives exit 5" 5
+case "$ERR" in *"other"*) pass "link move: the message names the frontmatter name" ;; *) fail "link move: the message names the frontmatter name" "$ERR" ;; esac
+exists_dir "link move: nothing moves on a name that differs" "$fh/skills/renamed"
+printf 'No frontmatter.\n' >"$fh/skills/renamed/SKILL.md"
+fl link move skill renamed
+rc_is "link move: a skill with no frontmatter name gives exit 5" 5
+rm -r "$fh/skills/renamed"
+
+piece "$fh/skills/taken/SKILL.md" taken "Its place in the vault is taken."
+mkdir -p "$fv/claude/skills/taken"
+fl link move skill taken
+rc_is "link move: a destination that exists gives exit 6" 6
+exists_dir "link move: nothing moves when the destination exists" "$fh/skills/taken"
+rm -r "$fh/skills/taken" "$fv/claude/skills/taken"
+
+VR="$fv/claude/README.md"
+fl link move skill kept
+rc_is "link move: a real skill folder moves into the vault's claude folder" 0
+is "link move: the first line says what moved where" "$(printf '%s\n' "$OUT" | sed -n 1p)" "moved: $ofh/skills/kept -> claude/skills/kept"
+row_is "link move: names the README it listed the skill in" "listed: claude/README.md"
+is "link move: the last line is its row, linked" "$(printf '%s\n' "$OUT" | tail -n 1)" "kept | skill | linked | $ofv/claude/skills/kept"
+is "link move: the folder is in the vault, whole" "$(sed -n 2p "$fv/claude/skills/kept/SKILL.md")" "name: kept"
+leads_to "link move: the slot holds the link --apply makes" "$fh/skills/kept" "$fv/claude/skills/kept"
+case "$ERR" in *"note: linked: skill kept"*) pass "link move: says it linked the skill" ;; *) fail "link move: says it linked the skill" "$ERR" ;; esac
+is "link move: the row goes under the Skills table, after its last row" "$(awk '/^## Skills/ { s = 1 } s && /^\|/ { print } /^## Agents/ { exit }' "$VR")" \
+  '| Skill | Use when |
+|---|---|
+| [[claude/skills/kept/SKILL\|kept]] | Keeps a folder \| of its own. |'
+fl link --check
+row_is "link move: no other link is made" "unlinked | skill | missing | $ofv/claude/skills/unlinked"
+
+fl link move agent solo --project Example
+rc_is "link move: a real agent file moves into a project's claude folder" 0
+is "link move: the agent's first line" "$(printf '%s\n' "$OUT" | sed -n 1p)" "moved: $ofh/agents/solo.md -> $P/claude/agents/solo.md"
+row_is "link move: names the project's README" "listed: $P/claude/README.md"
+is "link move: the agent's row, linked" "$(printf '%s\n' "$OUT" | tail -n 1 | cut -d'|' -f1-3)" "solo | agent | linked "
+is "link move: the agent file is in the project" "$(sed -n 2p "$fv/$P/claude/agents/solo.md")" "name: solo"
+is "link move: the row goes under the project's Agents table" "$(awk '/^## Agents/ { s = 1 } s && /^\|/ { print }' "$fv/$P/claude/README.md")" \
+  "| Agent | Use when |
+|---|---|
+| [[$P/claude/agents/solo\|solo]] | A real agent file. |"
+
+fl link move skill inner
+rc_is "link move: a link into the vault moves what it leads to" 0
+out_has "link move: the move inside the vault" "moved: ai-docs/skills/inner -> claude/skills/inner"
+out_has "link move: the links to it are rewritten" "links: notes/uses.md | 1"
+is "link move: the note now links the new place" "$(cat "$fv/notes/uses.md")" "See [[claude/skills/inner/SKILL|the inner skill]]."
+absent "link move: nothing is left at the old place" "$fv/ai-docs/skills/inner"
+leads_to "link move: the slot leads to the new place" "$fh/skills/inner" "$fv/claude/skills/inner"
+
+fl link move skill outer
+rc_is "link move: a link out of the vault copies what it leads to" 0
+is "link move: the copy's first line" "$(printf '%s\n' "$OUT" | sed -n 1p)" "copied: $ofo/outer -> claude/skills/outer"
+case "$ERR" in *"$ofo/outer"*) pass "link move: a note names what is left where it was" ;; *) fail "link move: a note names what is left where it was" "$ERR" ;; esac
+is "link move: the original stays" "$(sed -n 2p "$fo/outer/SKILL.md")" "name: outer"
+is "link move: the copy is in the vault" "$(sed -n 2p "$fv/claude/skills/outer/SKILL.md")" "name: outer"
+leads_to "link move: the slot leads to the copy" "$fh/skills/outer" "$fv/claude/skills/outer"
+
+printf '| [[claude/agents/far\\|far]] | Listed by hand. |\n' >"$tmp/far.row"
+SB_ROW="$(cat "$tmp/far.row")" awk '{ print } /^\|---\|---\|$/ && seen++ == 1 { print ENVIRON["SB_ROW"] }' "$VR" >"$tmp/readme" && cat "$tmp/readme" >"$VR"
+fl link move agent far
+rc_is "link move: an agent link out of the vault is copied" 0
+out_lacks "link move: no listed line for an item the table names already" "listed:"
+case "$ERR" in *"lists far already"*) pass "link move: a note says the table names it already" ;; *) fail "link move: a note says the table names it already" "$ERR" ;; esac
+is "link move: the table keeps one row for it" "$(grep -c 'claude/agents/far' "$VR")" "1"
+row_is "link move: the agent link out of the vault is linked" "far | agent | linked | $ofv/claude/agents/far.md"
+piece "$fh/skills/listed/SKILL.md" listed "Listed by its path."
+piece "$fh/skills/aka/SKILL.md" aka "Listed under another alias."
+printf '%s\n' '| [[claude/skills/listed/SKILL]] | By path. |' '| [[claude/skills/aka/SKILL.md\|Also known]] | By path, with an alias. |' >"$tmp/rows"
+SB_ROWS="$(cat "$tmp/rows")" awk '{ print } /^\|---\|---\|$/ && !seen++ { print ENVIRON["SB_ROWS"] }' "$VR" >"$tmp/readme" && cat "$tmp/readme" >"$VR"
+fl link move skill listed
+rc_is "link move: a skill a row links with no alias" 0
+case "$ERR" in *"lists listed already"*) pass "link move: a link with no alias names the item by its path" ;; *) fail "link move: a link with no alias names the item by its path" "$ERR" ;; esac
+is "link move: no second row for a link with no alias" "$(grep -c 'claude/skills/listed/SKILL' "$VR")" "1"
+fl link move skill aka
+rc_is "link move: a skill a row links under another alias" 0
+case "$ERR" in *"lists aka already"*) pass "link move: a link with another alias names the item by its path" ;; *) fail "link move: a link with another alias names the item by its path" "$ERR" ;; esac
+is "link move: no second row for a link with another alias" "$(grep -c 'claude/skills/aka/SKILL' "$VR")" "1"
+
+# A destination that appears after the check is never removed or overwritten. Stand-ins for mkdir
+# and mv put one there just before the real tool runs.
+real_mkdir="$(command -v mkdir)"
+real_mv="$(command -v mv)"
+mkdir -p "$tmp/shims"
+cat >"$tmp/shims/mkdir" <<EOF
+#!/usr/bin/env bash
+for a in "\$@"; do last="\$a"; done
+case "\${last:-}" in */claude/skills/race) "$real_mkdir" -p "\$last" && printf 'theirs\n' >"\$last/keep.md" ;; esac
+exec "$real_mkdir" "\$@"
+EOF
+cat >"$tmp/shims/mv" <<EOF
+#!/usr/bin/env bash
+for a in "\$@"; do last="\$a"; done
+case "\${last:-}" in
+  */claude/agents/racer.md) printf 'theirs\n' >"\$last" ;;
+  */claude/skills/rival) "$real_mkdir" -p "\$last" && printf 'theirs\n' >"\$last/keep.md" ;;
+  */claude/agents/nested.md) "$real_mkdir" -p "\$last" ;;
+  */claude/skills/stuck) "$real_mkdir" -p "\$last" ;;
+  *"/foreign home/skills/stuck") exit 1 ;;
+  */claude/skills/cutbefore) kill -TERM "\$PPID"; exit 1 ;;
+  */claude/skills/cutafter) "$real_mv" "\$@"; rc=\$?; kill -TERM "\$PPID"; exit "\$rc" ;;
+esac
+exec "$real_mv" "\$@"
+EOF
+chmod +x "$tmp/shims/mkdir" "$tmp/shims/mv"
+piece "$fo/race/SKILL.md" race "Copied while its place appears."
+symlink "$fo/race" "$fh/skills/race"
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill race
+rc_is "link move: a destination folder that appears after the check gives exit 6" 6
+is "link move: the folder that appeared is not removed" "$(cat "$fv/claude/skills/race/keep.md" 2>/dev/null)" "theirs"
+leads_to "link move: the link stays when its copy cannot be made" "$fh/skills/race" "$fo/race"
+piece "$fh/agents/racer.md" racer "Moved while its place appears."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move agent racer
+rc_is "link move: a destination file that appears after the check gives exit 6" 6
+is "link move: the file that appeared is not overwritten" "$(cat "$fv/claude/agents/racer.md" 2>/dev/null)" "theirs"
+is "link move: the agent stays where it was" "$(sed -n 2p "$fh/agents/racer.md")" "name: racer"
+piece "$fh/skills/rival/SKILL.md" rival "Moved while a folder takes its place."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill rival
+rc_is "link move: a destination folder that appears before a real folder moves gives exit 6" 6
+out_lacks "link move: no listed line when a folder took its place" "listed:"
+is "link move: the folder that took its place is left as it was" "$(ls -A "$fv/claude/skills/rival" 2>/dev/null)" "keep.md"
+is "link move: the skill is back where it was" "$(sed -n 2p "$fh/skills/rival/SKILL.md" 2>/dev/null)" "name: rival"
+is "link move: the skill carries no mark of the move" "$(ls -A "$fh/skills/rival" 2>/dev/null)" "SKILL.md"
+is "link move: no row for a skill that did not move" "$(grep -c 'skills/rival' "$VR")" "0"
+is "link move: a real folder that moved carries no mark of the move" "$(ls -A "$fv/claude/skills/kept")" "SKILL.md"
+piece "$fh/agents/nested.md" nested "Moved while a folder takes its place."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move agent nested
+rc_is "link move: a folder that takes an agent file's place gives exit 6" 6
+is "link move: the agent file is back where it was" "$(sed -n 2p "$fh/agents/nested.md" 2>/dev/null)" "name: nested"
+is "link move: the folder that took the agent's place is left empty" "$(ls -A "$fv/claude/agents/nested.md" 2>/dev/null)" ""
+rm -f "$fh/agents/nested.md"
+case "$fv/claude/agents/nested.md" in "$tmp"/*/claude/agents/nested.md) rmdir "$fv/claude/agents/nested.md" ;; esac
+rm -f "$fh/skills/race" "$fh/agents/racer.md" "$fv/claude/agents/racer.md"
+case "$fv/claude/skills/race" in "$tmp"/*/claude/skills/race) rm -r "$fv/claude/skills/race" ;; esac
+case "$fo/race" in "$tmp"/*/race) rm -r "$fo/race" ;; esac
+case "$fv/claude/skills/rival" in "$tmp"/*/claude/skills/rival) rm -r "$fv/claude/skills/rival" ;; esac
+case "$fh/skills/rival" in "$tmp"/*/skills/rival) rm -r "$fh/skills/rival" ;; esac
+# The mark never stays behind: not when the move is stopped, not when it cannot move back, and a
+# stale one is never carried into the vault.
+# marks <folder>: print the mark files directly in a folder, or nothing.
+marks() { (cd "$1" 2>/dev/null && find . -name '.sb-move.*' -print); }
+piece "$fh/skills/cutbefore/SKILL.md" cutbefore "Stopped before it moves."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill cutbefore
+rc_is "link move: stopped by TERM before mv, it exits 1" 1
+is "link move: stopped before mv, the folder is where it was" "$(sed -n 2p "$fh/skills/cutbefore/SKILL.md" 2>/dev/null)" "name: cutbefore"
+is "link move: stopped before mv, the folder carries no mark" "$(marks "$fh/skills/cutbefore")" ""
+piece "$fh/skills/cutafter/SKILL.md" cutafter "Stopped after it moves."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill cutafter
+rc_is "link move: stopped by TERM after mv, it exits 1" 1
+is "link move: stopped after mv, the folder is in the vault" "$(sed -n 2p "$fv/claude/skills/cutafter/SKILL.md" 2>/dev/null)" "name: cutafter"
+is "link move: stopped after mv, the copy in the vault carries no mark" "$(marks "$fv/claude/skills/cutafter")" ""
+piece "$fh/skills/stuck/SKILL.md" stuck "Cannot move back out."
+run env PATH="$tmp/shims:$PATH" SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fh" "$SB" link move skill stuck
+rc_is "link move: a folder that cannot move back out of the one that took its place gives exit 1" 1
+is "link move: it is left inside that folder" "$(sed -n 2p "$fv/claude/skills/stuck/stuck/SKILL.md" 2>/dev/null)" "name: stuck"
+is "link move: left inside, it carries no mark" "$(marks "$fv/claude/skills/stuck/stuck")" ""
+piece "$fh/skills/stale/SKILL.md" stale "Carries a mark from a move that was cut off."
+: >"$fh/skills/stale/.sb-move.old123"
+fl link move skill stale
+rc_is "link move: a folder with a stale mark moves" 0
+is "link move: the stale mark is not carried into the vault" "$(marks "$fv/claude/skills/stale")" ""
+case "$fv/claude/skills/cutafter" in "$tmp"/*/claude/skills/cutafter) rm -r "$fv/claude/skills/cutafter" ;; esac
+case "$fv/claude/skills/stuck" in "$tmp"/*/claude/skills/stuck) rm -r "$fv/claude/skills/stuck" ;; esac
+case "$fh/skills/cutbefore" in "$tmp"/*/skills/cutbefore) rm -r "$fh/skills/cutbefore" ;; esac
+
+# The original of a copy is removed only on its own command, and only when it matches the copy.
+fl link drop-original skill outer
+rc_is "drop-original: no path gives exit 5" 5
+fl link drop-original tool outer "$fo/outer"
+rc_is "drop-original: another kind gives exit 5" 5
+fl link drop-original skill outer "foreign outside/outer"
+rc_is "drop-original: a path that is not absolute gives exit 5" 5
+fl link drop-original skill outer "$fv/claude/skills/outer"
+rc_is "drop-original: a path inside the vault gives exit 5" 5
+err_has "drop-original: the message says it is inside the vault" "the vault or inside it"
+exists_dir "drop-original: the copy in the vault stays" "$fv/claude/skills/outer"
+fl link drop-original skill outer "$fv"
+rc_is "drop-original: the vault itself gives exit 5" 5
+err_has "drop-original: the message says it is the vault" "the vault or inside it"
+piece "$tmp/SKILL.md" outer "A skill kept outside."
+fl link drop-original skill outer "$tmp"
+rc_is "drop-original: a folder that holds the vault gives exit 5" 5
+err_has "drop-original: the message says the vault is inside it" "the vault is inside it"
+fl link drop-original skill outer /
+rc_is "drop-original: the root folder gives exit 5" 5
+err_has "drop-original: the root folder holds the vault" "the vault is inside it"
+mkdir -p "$fo/held home"
+run env SECOND_BRAIN_VAULT="$fv" SECOND_BRAIN_CLAUDE_HOME="$fo/held home" "$SB" link drop-original skill outer "$fo"
+rc_is "drop-original: a folder that holds the link directory gives exit 5" 5
+err_has "drop-original: the message says the link directory is inside it" "the link directory is inside it"
+rmdir "$fo/held home"
+rm -f "$tmp/SKILL.md"
+symlink "$fo/outer" "$fo/outer-link"
+fl link drop-original skill outer "$fo/outer-link"
+rc_is "drop-original: a link gives exit 5" 5
+err_has "drop-original: the message says it is a link" "is a link"
+fl link drop-original agent far "$fo/outer"
+rc_is "drop-original: a folder given for an agent gives exit 5" 5
+err_has "drop-original: the message says it is no agent file" "not an agent .md file"
+fl link drop-original skill outer "$fo/missing"
+rc_is "drop-original: a missing path gives exit 1" 1
+fl link drop-original skill synced "$fo/outer"
+rc_is "drop-original: an item no vault claude folder links gives exit 1" 1
+fl link drop-original skill kept "$fo/outer"
+rc_is "drop-original: a path that is not the item's original gives exit 1" 1
+# A .. after a link leads where the link leads, not back up the path as it is written.
+symlink "$fv/claude/skills" "$fo/lnk"
+fl link drop-original agent far "$fo/lnk/../agents/far.md"
+rc_is "drop-original: an agent path whose .. leads into the vault through a link gives exit 5" 5
+is "drop-original: the vault's agent file stays" "$(sed -n 2p "$fv/claude/agents/far.md" 2>/dev/null)" "name: far"
+fl link drop-original skill outer "$fo/lnk/../skills/outer"
+rc_is "drop-original: a skill path whose .. leads into the vault through a link gives exit 5" 5
+is "drop-original: the vault's skill folder stays" "$(sed -n 2p "$fv/claude/skills/outer/SKILL.md" 2>/dev/null)" "name: outer"
+rm -f "$fo/lnk"
+fl link drop-original skill outer "$fo/outer/.."
+rc_is "drop-original: a path whose last part is .. gives exit 5" 5
+printf 'Edited.\n' >>"$fo/outer/SKILL.md"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: an original that differs from the copy gives exit 1" 1
+is "drop-original: an original that differs is kept" "$(tail -n 1 "$fo/outer/SKILL.md")" "Edited."
+piece "$fo/outer/SKILL.md" outer "A skill kept outside."
+mkdir "$fo/outer/empty"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: an original with a folder the copy lacks gives exit 1" 1
+exists_dir "drop-original: an original with an extra folder is kept" "$fo/outer/empty"
+rmdir "$fo/outer/empty"
+cp "$fo/outer/SKILL.md" "$fo/outer/extra.md"
+symlink "$fv/claude/skills/outer/SKILL.md" "$fv/claude/skills/outer/extra.md"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: a file in the original that is a link in the copy gives exit 1" 1
+is "drop-original: an original whose entry differs in type is kept" "$(sed -n 2p "$fo/outer/extra.md" 2>/dev/null)" "name: outer"
+rm -f "$fo/outer/extra.md" "$fv/claude/skills/outer/extra.md"
+fl link drop-original skill outer "$fo/outer"
+rc_is "drop-original: the original of a copied skill is removed" 0
+out_is "drop-original: says what it removed" "removed: $ofo/outer"
+absent "drop-original: the original folder is gone" "$fo/outer"
+is "drop-original: the copy in the vault stays" "$(sed -n 2p "$fv/claude/skills/outer/SKILL.md")" "name: outer"
+leads_to "drop-original: the link still leads to the copy" "$fh/skills/outer" "$fv/claude/skills/outer"
+fl link drop-original agent far "$fo/far.md"
+rc_is "drop-original: the original of a copied agent is removed" 0
+absent "drop-original: the original file is gone" "$fo/far.md"
+is "drop-original: the agent's copy stays" "$(sed -n 2p "$fv/claude/agents/far.md")" "name: far"
+# A vault item that is itself a link to the original is no copy of it.
+piece "$fo/shared/SKILL.md" shared "Shared through a link."
+symlink "$fo/shared" "$fv/claude/skills/shared"
+piece "$fo/sharer.md" sharer "An agent shared through a link."
+symlink "$fo/sharer.md" "$fv/claude/agents/sharer.md"
+fl link --apply
+fl link drop-original skill shared "$fo/shared"
+rc_is "drop-original: a vault skill that is a link to the original gives exit 5" 5
+is "drop-original: the skill the vault links to stays" "$(sed -n 2p "$fo/shared/SKILL.md" 2>/dev/null)" "name: shared"
+fl link drop-original agent sharer "$fo/sharer.md"
+rc_is "drop-original: a vault agent that is a link to the original gives exit 5" 5
+is "drop-original: the agent the vault links to stays" "$(sed -n 2p "$fo/sharer.md" 2>/dev/null)" "name: sharer"
+
+fl link --foreign
+rc_is "link --foreign: exit 0 with nothing left" 0
+out_is "link --foreign: nothing is left" ""
+
+# The README's table: under a heading with no table, with no heading, with CRLF endings, missing.
+PR="$fv/$P/claude/README.md"
+piece "$fh/skills/plain/SKILL.md" plain
+awk '/^\| Skill \| Use when \|$/ || /^\|---\|---\|$/ && !done { if (/---/) done = 1; next } { print }' "$PR" >"$tmp/readme" && cat "$tmp/readme" >"$PR"
+fl link move skill plain --project Example
+rc_is "link move: a Skills heading with no table" 0
+is "link move: a new table ends the section, the description is -" "$(awk '/^## Skills/ { s = 1; next } /^## / { s = 0 } s' "$PR")" "
+Project skills live in \`claude/skills/<name>/SKILL.md\`. Prefix each name with the project.
+
+| Skill | Use when |
+|---|---|
+| [[$P/claude/skills/plain/SKILL\\|plain]] | - |"
+piece "$fh/skills/headless/SKILL.md" headless "No heading for it."
+awk '/^## Skills/ { skip = 1; next } /^## / { skip = 0 } !skip' "$VR" >"$tmp/readme" && cat "$tmp/readme" >"$VR"
+fl link move skill headless
+rc_is "link move: a README with no Skills heading" 0
+is "link move: the heading and the table end the file" "$(tail -n 5 "$VR")" "## Skills
+
+| Skill | Use when |
+|---|---|
+| [[claude/skills/headless/SKILL\\|headless]] | No heading for it. |"
+mkdir -p "$fh/skills/folded"
+printf -- '---\nname: folded\ndescription: >-\n  A description on the lines below its key.\n---\n\nBody.\n' >"$fh/skills/folded/SKILL.md"
+fl link move skill folded
+rc_is "link move: a skill whose description is a block scalar" 0
+is "link move: a block scalar description is written as -" "$(tail -n 1 "$VR")" "| [[claude/skills/folded/SKILL\\|folded]] | - |"
+piece "$fh/agents/crlf.md" crlf "Ends lines with CRLF."
+while IFS= read -r line; do printf '%s\r\n' "$line"; done <"$PR" >"$tmp/readme" && cat "$tmp/readme" >"$PR"
+fl link move agent crlf --project Example
+rc_is "link move: a CRLF README" 0
+is "link move: every line of the CRLF README still ends with CRLF" "$(bytes "$PR" '\r')" "$(bytes "$PR" '\n')"
+case "$(cat "$PR")" in *"[[$P/claude/agents/crlf\\|crlf]]"*) pass "link move: the CRLF README has the row" ;; *) fail "link move: the CRLF README has the row" "$(cat "$PR")" ;; esac
+piece "$fh/skills/unlisted/SKILL.md" unlisted "Its README is gone."
+rm "$VR"
+fl link move skill unlisted
+rc_is "link move: no README still moves and links" 0
+out_lacks "link move: no listed line without a README" "listed:"
+case "$ERR" in *"no claude/README.md"*) pass "link move: a note names the missing README" ;; *) fail "link move: a note names the missing README" "$ERR" ;; esac
+row_is "link move: linked without a README" "unlisted | skill | linked | $ofv/claude/skills/unlisted"
 
 # ---------------------------------------------------------------- pointer
 phome="$tmp/pointer home"

@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.9.0 - unreleased
+
+- A project can keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl` in
+  `<project>/claude/templates/`. Each wins over the plugin's template of that name.
+- `second-brain task new` fills the project's README template. story-tracker fills the project's
+  ticket text template for a draft or ticket text.
+- `spec link` takes a section that holds the text of the project's README template or of the
+  plugin's as template text, so a story made before the project had its own gets its link alone.
+- A placeholder left unfilled in a project's template makes `task new` exit 5 and name the
+  template by its vault path.
+- A README filled from a project's template with no frontmatter, such as an empty one, makes
+  `task new` exit 5 and write nothing.
+- The doctor's new `task-template` check warns when a project's README template lacks a
+  frontmatter key, `aliases` included, or a section the helper or story-tracker writes. Each
+  project gets one more doctor row.
+- story-tracker adds no section to a new story that the project's README template leaves out.
+- `task note`, `task head`, `task new --envs`, `sprint open`, `sprint close` and
+  `scaffold subproject` take no line in fenced code for the heading they write under or read.
+  `task note` once wrote into a fenced `## Status notes` example that came before the real
+  heading, and `task head` showed that example as the newest note.
+- `second-brain link --foreign` lists each skill and agent in `~/.claude/skills` and
+  `~/.claude/agents` that no vault `claude/` folder provides: a real folder or file, or a link and
+  where it leads.
+- `second-brain link move <skill|agent> <name> [--project P]` moves one of them into the vault's
+  `claude/` or a project's, links it as `link --apply` does, and adds its row to the Skills or
+  Agents table of that folder's `README.md`.
+- What a link into the vault leads to is moved as `second-brain move` moves it, and the links to
+  it are rewritten. What a link out of the vault leads to is copied, and the original stays.
+- `second-brain link drop-original <skill|agent> <name> <path>` removes that original, only when
+  the item is linked from the vault and the original matches the copy byte for byte.
+- After a copy, `/odsb:vault-doctor fix` asks whether to delete the original. On a yes it runs
+  `link drop-original`. On a no the original stays, and the report names it.
+- The doctor's new `foreign` check warns on each of them, named with what it is:
+  `skills/<name>:folder`, `agents/<name>.md:file` or `skills/<name>:link to <target>`. A folder
+  with no `SKILL.md` and a link into the plugin are not read.
+- `/odsb:vault-doctor fix` asks with AskUserQuestion, one at a time, whether each goes to the
+  vault's `claude/`, to a project's `claude/`, or stays. Only on that answer does it run
+  `second-brain link move`.
+- The vault-setup skill's link mode points to that check: it still leaves a foreign entry alone.
+- Notes follow `claude/writing-style.md`, which `scaffold vault` creates; a project's own wins.
+- The plugin's index template is now at `index_version: 5`, so the doctor's `index` check warns.
+  Run `second-brain scaffold vault`, which creates `claude/writing-style.md` and overwrites
+  nothing. Then add the template's new line under `## In every session` and set
+  `index_version: 5`. The doctor's new `writing-style` check warns while the note is missing.
+- `scripts/test.sh` runs the areas of `scripts/tests/` in parallel, or one: `scripts/test.sh tasks`.
+
 ## 0.8.0 - 2026-11-08
 
 - The README has a quick start, a section for each `/odsb:` command and a table of the agents, each

@@ -455,6 +455,19 @@ sb task new SBARE-1 --project "Steps bare" --title "No frontmatter"
 rc_is "status layout: no frontmatter with planned/ there before exits 5" 5
 exists "status layout: a planned/ folder that was there before stays" "$GT/planned"
 absent "status layout: and no task folder is left in it" "$GT/planned/SBARE-1"
+# With no tasks root folder at all, the refusal leaves every folder the fill made.
+rm -r "$GT"
+find "$vault/$G" | sort >"$tmp/bare.before"
+sb task new SBARE-2 --project "Steps bare" --title "No tasks root"
+rc_is "status layout: no frontmatter with no tasks root folder exits 5" 5
+absent "status layout: no tasks root folder is left" "$GT"
+is "status layout: the project folder is as it was" "$(find "$vault/$G" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
+edit "$vault/$G/claude/profile.md" 's/^task_layout: status$/task_layout: flat/'
+edit "$vault/$G/claude/profile.md" 's/^tasks_root: tasks$/tasks_root: plan\/tasks/'
+sb task new SBARE-2 --project "Steps bare" --title "No nested tasks root"
+rc_is "flat layout: no frontmatter with no nested tasks root exits 5" 5
+absent "flat layout: no folder of the nested tasks root is left" "$vault/$G/plan"
+is "flat layout: the project folder is as it was" "$(find "$vault/$G" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
 rm "$vault/$G/claude/templates/task-readme.md.tmpl"
 # An id that is a task in any status folder, at the root or in the archive exits 6 and writes nothing.
 G="work/steps-on"

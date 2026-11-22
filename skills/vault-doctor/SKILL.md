@@ -47,7 +47,15 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    `task-layout`. Their `Fix` lines in `checks.md` say what it changes.
 3. A `task-layout` row with `to-archive` offenders makes the `--fix` run a bulk change: it moves
    task folders and rewrites links.
-   - Say how many tasks it will archive, the row's count, and name them.
+   - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:
+     `--fix` moves each task to the folder of its status.
+   - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
+     `<ID>:<status>` offender.
+   - The number is the row's count, less each offender that is not a task it moves:
+     `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive
+     project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.
+   - The count is above five: say that the doctor names only the first five, and name those. The
+     count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.
    - Then run `second-brain snapshot` before it.
    - With no such row, `--fix` needs no snapshot.
 4. Run `second-brain doctor --fix`. It prints one `fixed:` line per change, then the table.
@@ -55,6 +63,8 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 6. After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.
    - It lists the aliases of each archived task folder as removed at the old path and added under
      `archive/<YYYY>/`, and nothing else.
+   - After a move to the folders of their status, run it too. It lists the aliases of each moved
+     task folder as removed at the old path and added under `<status>/`, and nothing else.
    - An `unresolved added:` line, or a `tasks added:`, `tasks removed:` or `tasks changed:` line,
      is a link or a task the move broke. Report it.
 7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at

@@ -408,5 +408,132 @@ is "task dep: CRLF kept" "$(grep -c "$CR\$" "$T6")" "$(grep -c '' "$T6")"
 line_is "task dep: CRLF line written" "$T6" "  - \"[[$P/tasks/EX-2/README|EX-2]]\"$CR"
 sb task dep EX-6 remove EX-2
 
+# ---------------------------------------------------------------- task new: the status layout
+# With task_layout: status, in any letter case, a new task starts in planned/, whether or not the
+# project runs sprints, and its up link leads to the tasks hub as in a flat project.
+for sprints in on off; do
+  G="work/steps-$sprints"
+  GT="$vault/$G/tasks"
+  key="S$(printf '%s' "$sprints" | tr '[:lower:]' '[:upper:]')"
+  if [ "$sprints" = on ]; then
+    sb scaffold project "Steps $sprints" --path "$G" --keys "$key"
+    line_is "status layout: sprints on" "$vault/$G/claude/profile.md" "uses_sprints: true"
+  else
+    sb scaffold project "Steps $sprints" --path "$G" --keys "$key" --no-sprints
+    line_is "status layout: sprints off" "$vault/$G/claude/profile.md" "uses_sprints: false"
+  fi
+  edit "$vault/$G/claude/profile.md" 's/^task_layout: flat$/task_layout: Status/'
+  sb task new "$key-1" --project "Steps $sprints" --title "Steps one"
+  rc_is "status layout: task new, exit 0 (sprints $sprints)" 0
+  out_is "status layout: task new prints the path in planned/ (sprints $sprints)" "$G/tasks/planned/$key-1/README.md"
+  exists "status layout: the README is in planned/ (sprints $sprints)" "$GT/planned/$key-1/README.md"
+  absent "status layout: no folder at the root of the tasks (sprints $sprints)" "$GT/$key-1"
+  line_is "status layout: the up link leads to the tasks hub (sprints $sprints)" "$GT/planned/$key-1/README.md" \
+    "> Up: [[$G/tasks/README|Steps $sprints Tasks Hub]]"
+  line_is "status layout: the task is planned (sprints $sprints)" "$GT/planned/$key-1/README.md" "status: planned"
+done
+# A README refused after the fill, from a project template that is empty or has no frontmatter,
+# leaves no planned/ folder that was not there before.
+G="work/steps-bare"
+GT="$vault/$G/tasks"
+sb scaffold project "Steps bare" --path "$G" --keys SBARE
+edit "$vault/$G/claude/profile.md" 's/^task_layout: flat$/task_layout: status/'
+mkdir -p "$vault/$G/claude/templates"
+find "$GT" | sort >"$tmp/bare.before"
+: >"$vault/$G/claude/templates/task-readme.md.tmpl"
+sb task new SBARE-1 --project "Steps bare" --title "Empty template"
+rc_is "status layout: an empty template exits 5" 5
+absent "status layout: an empty template leaves no planned/ folder" "$GT/planned"
+printf '%s\n' '# {{ID}} - {{TITLE}}' '' '## Status notes' >"$vault/$G/claude/templates/task-readme.md.tmpl"
+sb task new SBARE-1 --project "Steps bare" --title "No frontmatter"
+rc_is "status layout: a template with no frontmatter exits 5" 5
+err_has "status layout: the message says the README has no frontmatter" "no frontmatter"
+absent "status layout: a template with no frontmatter leaves no planned/ folder" "$GT/planned"
+is "status layout: the tasks folder is as it was" "$(find "$GT" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
+mkdir -p "$GT/planned"
+sb task new SBARE-1 --project "Steps bare" --title "No frontmatter"
+rc_is "status layout: no frontmatter with planned/ there before exits 5" 5
+exists "status layout: a planned/ folder that was there before stays" "$GT/planned"
+absent "status layout: and no task folder is left in it" "$GT/planned/SBARE-1"
+# With no tasks root folder at all, the refusal leaves every folder the fill made.
+rm -r "$GT"
+find "$vault/$G" | sort >"$tmp/bare.before"
+sb task new SBARE-2 --project "Steps bare" --title "No tasks root"
+rc_is "status layout: no frontmatter with no tasks root folder exits 5" 5
+absent "status layout: no tasks root folder is left" "$GT"
+is "status layout: the project folder is as it was" "$(find "$vault/$G" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
+edit "$vault/$G/claude/profile.md" 's/^task_layout: status$/task_layout: flat/'
+edit "$vault/$G/claude/profile.md" 's/^tasks_root: tasks$/tasks_root: plan\/tasks/'
+sb task new SBARE-2 --project "Steps bare" --title "No nested tasks root"
+rc_is "flat layout: no frontmatter with no nested tasks root exits 5" 5
+absent "flat layout: no folder of the nested tasks root is left" "$vault/$G/plan"
+is "flat layout: the project folder is as it was" "$(find "$vault/$G" | sort | cmp -s "$tmp/bare.before" - && printf same)" "same"
+rm "$vault/$G/claude/templates/task-readme.md.tmpl"
+# An id that is a task in any status folder, at the root or in the archive exits 6 and writes nothing.
+G="work/steps-on"
+GT="$vault/$G/tasks"
+steps_tree() { find "$vault/$G" | sort; find "$vault/$G" -type f -exec cksum {} + | sort; }
+i=1
+for s in in-progress in-review done abandoned; do
+  i=$((i + 1))
+  sb task new "SON-$i" --project "Steps on" --title "Steps $s"
+  sb task set "SON-$i" status="$s"
+done
+exists "status layout: task set moved a task into abandoned/" "$GT/abandoned/SON-5/README.md"
+mkdir -p "$GT/archive/2026"
+sb task new SON-6 --project "Steps on" --title "Steps archived"
+mv "$GT/planned/SON-6" "$GT/archive/2026/SON-6"
+sb task new SON-7 --project "Steps on" --title "Steps at the root"
+mv "$GT/planned/SON-7" "$GT/SON-7"
+steps_tree >"$tmp/steps.before"
+sb task new SON-1 --project "Steps on"
+rc_is "status layout: task new for a task in planned/ exits 6" 6
+err_has "status layout: the message names the README in planned/" "the task already has a README: $G/tasks/planned/SON-1/README.md"
+i=1
+for s in in-progress in-review done abandoned; do
+  i=$((i + 1))
+  sb task new "SON-$i" --project "Steps on"
+  rc_is "status layout: task new for a task in $s/ exits 6" 6
+  err_has "status layout: the message names the task in $s/" "the task exists: $G/tasks/$s/SON-$i/README.md"
+done
+sb task new SON-6 --project "Steps on"
+rc_is "status layout: task new for an archived task exits 6" 6
+err_has "status layout: an archived task keeps its message" "the task is archived: $G/tasks/archive/2026/SON-6/README.md"
+sb task new SON-7 --project "Steps on"
+rc_is "status layout: task new for a task at the root exits 6" 6
+err_has "status layout: the message names the task at the root" "the task exists: $G/tasks/SON-7/README.md"
+steps_tree >"$tmp/steps.after"
+is "status layout: nothing written on refusal" "$(cmp -s "$tmp/steps.before" "$tmp/steps.after" && printf same)" "same"
+mkdir -p "$GT/planned/SON-8"
+printf 'x\n' >"$GT/planned/SON-9"
+sb task new SON-9 --project "Steps on"
+rc_is "status layout: a file in the way in planned/ exits 6" 6
+err_has "status layout: the message names the path in planned/" "a file is in the way: $G/tasks/planned/SON-9"
+rm "$GT/planned/SON-9"
+sb task new SON-8 --project "Steps on" --title "Folder came first"
+out_is "status layout: a folder in planned/ with no README gets one" "$G/tasks/planned/SON-8/README.md"
+# In a flat project, an id in a status folder is no archived task.
+edit "$vault/$G/claude/profile.md" 's/^task_layout: Status$/task_layout: flat/'
+sb task new SON-3 --project "Steps on"
+rc_is "flat layout: task new for a task in in-review/ exits 6" 6
+err_has "flat layout: the message says it exists" "the task exists: $G/tasks/in-review/SON-3/README.md"
+# Any other layout, another value or no key writes the task at the root of the tasks, as today.
+PF="$vault/$G/claude/profile.md"
+i=10
+for layout in flat archive Archive kanban none; do
+  i=$((i + 1))
+  if [ "$layout" = none ]; then
+    edit "$PF" '/^task_layout: /d'
+  else
+    edit "$PF" "s/^task_layout: .*\$/task_layout: $layout/"
+  fi
+  sb task new "SON-$i" --project "Steps on" --title "Steps $layout"
+  rc_is "other layouts: task new, exit 0 ($layout)" 0
+  out_is "other layouts: task new prints the path at the root ($layout)" "$G/tasks/SON-$i/README.md"
+  exists "other layouts: the README is at the root ($layout)" "$GT/SON-$i/README.md"
+  absent "other layouts: nothing in planned/ ($layout)" "$GT/planned/SON-$i"
+done
+is "other layouts: the key is gone at the last" "$(grep -c '^task_layout:' "$PF")" "0"
+
 # ---------------------------------------------------------------- result
 result

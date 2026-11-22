@@ -301,6 +301,7 @@ sb_sprint_close() {
   local row note id status start end goal len next plan problems action file tid title rest
   local done_ids="" carried_ids="" backlog_ids="" abandoned_ids="" text link nl=$'\n'
   local done_md="" carried_md="" backlog_md="" abandoned_md="" n_done=0 n_carried=0 n_backlog=0 n_abandoned=0
+  local moves="" dir dest first=0 code
   local usage="usage: second-brain sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -374,6 +375,20 @@ EOF
     printf '%s\n' "$problems"
     sb_die 5 "sprint $id was not closed; fix the lists (problems listed above)"
   fi
+  # In a status project each task named in --abandon moves to abandoned/<ID>, so that folder must be
+  # free before anything is written. A task already in it is not in its own way, and stays.
+  if [ "$(sb_task_layout)" = "status" ]; then
+    while IFS=$'\t' read -r action file tid title rest; do
+      [ "$action" = "abandon" ] || continue
+      dir="${file%/*}"
+      dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned)"
+      [ "$dest" != "$(sb_rel "$dir")" ] || continue
+      sb_task_dest_free "$dest"
+      moves="$moves$file"$'\t'"$dest$nl"
+    done <<EOF
+$plan
+EOF
+  fi
   while IFS=$'\t' read -r action file tid title rest; do
     [ -n "$action" ] || continue
     link="${file#"$SB_ROOT"/}"
@@ -427,6 +442,22 @@ EOF
   sb_fm_status_tag "$note" done
   printf 'sprint: %s\ndone: %s\ncarried: %s\nbacklog: %s\nabandoned: %s\nnext: %s\n' \
     "$id" "${done_ids:--}" "${carried_ids:--}" "${backlog_ids:--}" "${abandoned_ids:--}" "$next"
+  # Now the sprint note is written, so the move rewrites its links too. Each move runs in a subshell:
+  # one that fails is named on stderr, and the others still move. The exit is the first failing code.
+  while IFS=$'\t' read -r file dest; do
+    [ -n "$file" ] || continue
+    code=0
+    (
+      SB_T_FILE="$file"
+      SB_T_REL="$(sb_rel "$file")"
+      SB_T_ID="${dest##*/}"
+      sb_task_relocate "$dest"
+    ) </dev/null || code=$?
+    [ "$first" -ne 0 ] || first="$code"
+  done <<EOF
+$moves
+EOF
+  return "$first"
 }
 
 # Dispatch the sprint subcommands.

@@ -7,7 +7,9 @@ It can also build a story from a spec you approve, one task at a time, each test
 ## Overview
 
 - **Tickets.** Claude drafts a ticket's text, starts its story, updates it and says where it
-  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`.
+  stands. Each ticket is one note, `<project>/tasks/<ID>/README.md`, or
+  `<project>/tasks/<status>/<ID>/README.md` in a project that keeps each task in the folder of its
+  status.
 - **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
   carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
@@ -166,8 +168,9 @@ Start EX-123: the invoice export drops the tax column.
 ```
 
 Claude finds no story for EX-123 and checks the repo's branch. It asks you for anything it cannot
-tell. Then it writes `<project>/tasks/EX-123/README.md` with a summary, a description and up to
-four acceptance criteria, checked against the code. A simple story is built direct. For one a
+tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
+in a project that keeps each task in the folder of its status, with a summary, a description and
+up to four acceptance criteria, checked against the code. A simple story is built direct. For one a
 spec would help, Claude asks you.
 
 ### Ask where things stand

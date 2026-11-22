@@ -1,24 +1,49 @@
 #!/usr/bin/env bash
 # board.sh - the task board: the views of the board file, read from task frontmatter.
 
+# The five status folders of a tasks folder in the status layout, in this order.
+SB_TASK_STATUSES="planned in-progress in-review done abandoned"
+
+# Print the task layout of the project in SB_P_PATH: flat, archive or status, from task_layout in
+# any letter case. Another value, or no key, is flat.
+sb_task_layout() {
+  local layout
+  layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
+  case "$layout" in
+    archive | status) printf '%s\n' "$layout" ;;
+    *) printf 'flat\n' ;;
+  esac
+}
+
 # Print the task READMEs of a tasks folder, one absolute path per line: those directly inside it,
-# then the archived ones, archive/<YYYY>/<ID>/README.md. The folder archive is never a task.
+# then those in each status folder, <status>/<ID>/README.md, in the order of SB_TASK_STATUSES, then
+# the archived ones, archive/<YYYY>/<ID>/README.md. In every layout. The folder archive and the
+# status folders are never a task.
 sb_task_files() {
-  local f
-  for f in "$1"/*/README.md "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do
-    [ "$f" != "$1/archive/README.md" ] || continue
+  local f s
+  for f in "$1"/*/README.md; do
+    for s in archive $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
     [ -f "$f" ] && printf '%s\n' "$f"
   done
+  for s in $SB_TASK_STATUSES; do
+    for f in "$1/$s"/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
+  done
+  for f in "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
   return 0
 }
 
-# Print the README of one task folder of a tasks folder, live or archived; nothing when it has none.
+# Print the README of one task folder of a tasks folder: directly inside it, in a status folder or
+# archived, in that order; nothing when it has none. The folder archive and the status folders are
+# never a task.
 sb_task_readme() {
-  local f
-  for f in "$1/$2/README.md" "$1"/archive/[0-9][0-9][0-9][0-9]/"$2"/README.md; do
-    [ "$f" != "$1/archive/README.md" ] || continue
-    [ -f "$f" ] && printf '%s\n' "$f"
+  local f s
+  f="$1/$2/README.md"
+  for s in archive $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || f=""; done
+  [ -z "$f" ] || [ ! -f "$f" ] || printf '%s\n' "$f"
+  for s in $SB_TASK_STATUSES; do
+    [ ! -f "$1/$s/$2/README.md" ] || printf '%s\n' "$1/$s/$2/README.md"
   done
+  for f in "$1"/archive/[0-9][0-9][0-9][0-9]/"$2"/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
   return 0
 }
 

@@ -91,7 +91,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 5"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 6"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -122,7 +122,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 7"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 8"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -203,6 +203,22 @@ line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '        - file.folder.split("/").length == 6'
 line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base" "            - file.inFolder(\"$P/tasks/archive\")"
 line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
+# filters_of <board>: the board's own filters block, above its formulas and views.
+filters_of() { awk '/^[^ \t#-]/ { top = ($0 ~ /^filters:/) } top' "$1"; }
+# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root.
+filters_want() {
+  local s
+  printf '%s\n' "filters:" "  and:" "    - file.inFolder(\"$1\")" '    - file.name == "README"' "    - or:" \
+    "        - file.folder.split(\"/\").length == $2" "        - and:" "            - file.inFolder(\"$1/archive\")" \
+    "            - file.folder.split(\"/\").length == $(($2 + 2))" "        - and:" \
+    "            - file.folder.split(\"/\").length == $(($2 + 1))" "            - or:"
+  for s in planned in-progress in-review done abandoned; do printf '%s\n' "                - file.inFolder(\"$1/$s\")"; done
+}
+is "board: the filters take a task in each status folder, one folder deeper than a flat task" \
+  "$(filters_of "$vault/$P/tasks/tasks.base")" "$(filters_want "$P/tasks" 6)"
+is "board: the depth of the status folders is that of a task folder in each" \
+  "$(filters_of "$vault/$P/tasks/tasks.base" | awk '/split\("\/"\)\.length ==/ { d = $NF } /^            - or:$/ { print d; exit }')" \
+  "$(for s in planned in-progress in-review done abandoned; do printf '%s\n' "$P/tasks/$s/EX-1"; done | awk -F/ '{ print NF }' | sort -u)"
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
@@ -225,8 +241,16 @@ line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/cla
 line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
 PF="$vault/$P/claude/profile.md"
 line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
-line_is "profile: only archive moves a task" "$PF" '- `task_layout:` above is `flat`, the default, or `archive`. Only `archive` moves a done or'
-line_is "profile: the archive command and folder" "$PF" '  abandoned task, once, with `second-brain task archive <ID>`, to `archive/<YYYY>/<ID>/` under'
+line_is "profile: the three task layouts" "$PF" '- `task_layout:` above is `flat`, the default, `archive` or `status`. A `flat` project never'
+line_is "profile: flat moves no task" "$PF" '  moves a task.'
+line_is "profile: archive moves a done task once, with task archive" "$PF" \
+  '- `archive` moves a done or abandoned task, once, with `second-brain task archive <ID>`, to'
+line_is "profile: the archive folder" "$PF" '  `archive/<YYYY>/<ID>/` under the tasks root.'
+line_is "profile: status keeps a task in the folder of its status" "$PF" \
+  '- `status` keeps each task in the folder of its status under the tasks root, such as `done/<ID>/`.'
+line_is "profile: task set moves a status task, and nothing is archived" "$PF" \
+  '  `second-brain task set <ID> status=<status>` moves it there, and nothing is archived.'
+file_lacks "profile: no longer says only archive moves a task" "$PF" 'Only `archive` moves'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
 file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \
@@ -296,6 +320,8 @@ for d in tasks docs sprints; do absent "scaffold roots: no default $d folder" "$
 line_is "scaffold roots: board folder is the tasks root" "$vault/$R/plan/tasks/tasks.base" "    - file.inFolder(\"$R/plan/tasks\")"
 line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '        - file.folder.split("/").length == 5'
 line_is "scaffold roots: the archive depth counts it too" "$vault/$R/plan/tasks/tasks.base" '            - file.folder.split("/").length == 7'
+is "scaffold roots: the status folders sit in the nested tasks root, one folder deeper than a flat task" \
+  "$(filters_of "$vault/$R/plan/tasks/tasks.base")" "$(filters_want "$R/plan/tasks" 5)"
 line_is "scaffold roots: tasks hub embeds its own board" "$vault/$R/plan/tasks/README.md" "![[$R/plan/tasks/tasks.base#Active]]"
 line_is "scaffold roots: map links the tasks hub" "$vault/$R/README.md" "- [[$R/plan/tasks/README|Roots Tasks Hub]] - one folder per task, and the task board"
 line_is "scaffold roots: map links the topics hub" "$vault/$R/README.md" "- [[$R/knowledge/README|Roots Docs Hub]] - the topics: one folder per subject"
@@ -394,6 +420,7 @@ file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/t
 for v in Active "By topic" "By subproject" "Needs a status" All; do
   line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
 done
+is "no sprints: the board takes the status folders too" "$(filters_of "$vault/$N/tasks/tasks.base")" "$(filters_want "$N/tasks" 4)"
 is "no sprints: the board keeps its five views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "5"
 line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
 sb context --cwd "$vault/$N"

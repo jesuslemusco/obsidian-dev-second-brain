@@ -47,6 +47,12 @@ moves nothing, renames nothing and rewrites no note body.
   `task-layout` row names the ones due.
 - Archive them later, as a bulk move, only when the user asks: `second-brain snapshot`, then
   `second-brain doctor <project> --fix`, then `second-brain compare`.
+- With `task_layout: status`, the tasks already there stay where they are until
+  `second-brain doctor <project> --fix` runs once. The doctor's `task-layout` row names each task
+  outside the folder of its status.
+- Offer that run, as a bulk move, and make it only on a yes: `second-brain snapshot`, then
+  `second-brain doctor <project> --fix`, then `second-brain compare`. A task with no status of the
+  five stays where it is.
 - Ask how a deployment is confirmed. Write the answer in the opening paragraph of `## Docs`.
 - For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
   `repo.md` says.
@@ -62,9 +68,9 @@ moves nothing, renames nothing and rewrites no note body.
 Run `second-brain doctor <project>`. From its rows and from section 1, list what is off-standard.
 Fix none of it here.
 
-- A task not at `<tasks_root>/<ID>/README.md`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md`
-  once archived: `task-location` when it has `type: task`, section 1 when it has no frontmatter
-  yet.
+- A task not at `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` in a status
+  folder, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived: `task-location` when it
+  has `type: task`, section 1 when it has no frontmatter yet.
 - A task folder with no README: `no-readme`.
 - Tasks that do not follow `task_layout`, such as an `archive` folder under the tasks root of a
   `flat` project: `task-layout`.

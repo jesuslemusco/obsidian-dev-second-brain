@@ -683,11 +683,16 @@ edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
 doc Example
 chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
 reset
-# The board's filters as 0.2.0 wrote them, with no archive branch.
-edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; s/^        - file\.folder/    - file.folder/'
+# The board's filters as 0.2.0 wrote them, with no archive branch and no status branch.
+edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; /^                - /d; s/^        - file\.folder/    - file.folder/'
 is "board: the old filters keep one depth line" "$(grep -c '^    - file.folder.split("/").length == 4$' "$T/tasks.base")/$(grep -c 'archive' "$T/tasks.base")" "1/0"
+is "board: the old filters keep one folder filter" "$(grep -c 'file\.inFolder' "$T/tasks.base")" "1"
 doc Example
 chk "board: a flat project is not asked for the archive filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project whose board takes no status folder warns, and is not asked for the archive filter" board Example \
+  "warn | 1 | tasks.base:no-status-filter"
 edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Archive/'
 doc Example
 rc_is "board: a missing archive filter leaves exit 0" 0
@@ -703,6 +708,48 @@ reset
 edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
 doc Example
 chk "board: an archive project with the template's filters is ok" board Example "ok | 0 | -"
+reset
+# no_status_branch: the board's filters as 0.8.0 wrote them, with the archive branch and no status
+# branch, the second and: of the filters.
+no_status_branch() {
+  awk '/^        - and:$/ { n++ } /^formulas:/ { n = 0 } n < 2 { print }' "$T/tasks.base" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$T/tasks.base"
+}
+no_status_branch
+is "board: the 0.8.0 filters take the archive and no status folder" \
+  "$(grep -c 'file\.inFolder' "$T/tasks.base")/$(grep -c 'file\.inFolder(".*/archive")' "$T/tasks.base")" "2/1"
+doc Example
+chk "board: a flat project is not asked for the status filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project is not asked for the status filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Status/'
+doc Example
+rc_is "board: a missing status filter leaves exit 0" 0
+chk "board: a status project whose board takes no status folder warns, in any letter case" board Example \
+  "warn | 1 | tasks.base:no-status-filter"
+is "board: the status fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project with the template's filters is ok" board Example "ok | 0 | -"
+edit "$T/tasks.base" 's#^\(                - file\.inFolder("\)[^"]*/\([a-z-]*"\))$#\1old/tasks/\2)#'
+is "board: the status folders under another path" "$(grep -c 'inFolder("old/tasks/' "$T/tasks.base")" "5"
+doc Example
+chk "board: a status folder under any path counts" board Example "ok | 0 | -"
+edit "$T/tasks.base" '/\/abandoned")$/d'
+doc Example
+chk "board: a board that misses one status folder warns" board Example "warn | 1 | tasks.base:no-status-filter"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+no_status_branch
+# The last view, All, takes the five folders as a filter of its own.
+printf '%s\n' "    filters:" "      or:" >>"$T/tasks.base"
+for s in planned in-progress in-review done abandoned; do
+  printf '%s\n' "        - file.inFolder(\"$P/tasks/$s\")" >>"$T/tasks.base"
+done
+doc Example
+chk "board: the status folders in a view's filters are not the board's own" board Example "warn | 1 | tasks.base:no-status-filter"
 reset
 
 # ---------------------------------------------------------------- paths that leave the vault
@@ -978,6 +1025,10 @@ rc_is "task-location: a warning leaves exit 0" 0
 chk "task-location: a task filed under its topic warns, as its path under the project" task-location Example "warn | 1 | docs/billing/EX-2.md"
 is "task-location: the fix names the move command and where a task goes" "$(fix_of task-location)" \
   "move it with second-brain move to $P/tasks/<ID>/README.md, and tie it to its topic with a tag"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+is "task-location: in a status project the fix names the folder of the task's status" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/<status>/<ID>/README.md, with the task's status, and tie it to its topic with a tag"
 reset
 stray "$P/tasks/EX-3.md" '"task"'
 doc Example
@@ -1172,6 +1223,169 @@ doc Example --fix
 is "task-layout --fix: nothing is moved through a tasks root that leaves the project" \
   "$(printf '%s\n' "$OUT" | head -1)/$(ls "$O/tasks" | tr '\n' ' ')" "fixed: nothing/EX-2 OUTMARK-1 tasks.base "
 rm -r "$O/tasks/EX-2"
+reset
+
+# ---------------------------------------------------------------- task-layout, the status folders
+# drift: print the rows of sb_doc_layout_drift for Example, as id, file under the tasks root and
+# status, one blank apart.
+drift() {
+  (
+    for f in "$here"/scripts/lib/*.sh; do . "$f"; done
+    SB_ROOT="$vault"
+    sb_doc_project Example "$P" EX
+    sb_doc_layout_drift | while IFS=$'\t' read -r id file status; do
+      printf '%s %s %s\n' "$id" "${file#"$T/"}" "$status"
+    done
+  )
+}
+layout status
+mkdir -p "$T/planned" "$T/in-progress"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+mv "$T/EX-2" "$T/planned/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+rc_is "task-layout: a warning in a status project leaves exit 0" 0
+chk "task-layout: a done task in planned warns, as its id and status" task-layout Example "warn | 1 | EX-2:done"
+is "task-layout: the status fix names --fix" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status"
+chk "no-readme: a status folder needs no README" no-readme Example "ok | 0 | -"
+chk "task-location: a task in a status folder is in its place" task-location Example "ok | 0 | -"
+is "task-layout: the drift is the id, the file and the status" "$(drift)" "EX-2 planned/EX-2/README.md done"
+mv "$T/planned/EX-2" "$T/EX-2"
+doc Example
+chk "task-layout: a done task directly under the tasks root warns too" task-layout Example "warn | 1 | EX-2:done"
+mkdir -p "$T/done/EX-9"
+mv "$T/EX-2" "$T/done/EX-2"
+doc Example
+chk "task-layout: a task in the folder of its status is in its place" task-layout Example "ok | 0 | -"
+chk "no-readme: a folder in a status folder with no README warns" no-readme Example "warn | 1 | EX-9"
+rmdir "$T/done/EX-9"
+edit "$T/planned/EX-3/README.md" '/^status: /d'
+edit "$T/in-progress/EX-1/README.md" 's/^status: .*/status: blocked/'
+mv "$T/in-progress/EX-1" "$T/done/EX-1"
+doc Example
+chk "task-layout: no row for a task with no status, or one outside the five" task-layout Example "ok | 0 | -"
+chk "task-layout: needs-a-status names them" needs-a-status Example "warn | 2 | EX-3, EX-1:blocked"
+is "task-layout: the drift names a task with no status of the five no-status" "$(drift)" \
+  "EX-3 planned/EX-3/README.md no-status${NL}EX-1 done/EX-1/README.md no-status"
+mkdir -p "$T/archive/2025"
+doc Example
+chk "task-layout: an archive that holds no task is not named" task-layout Example "ok | 0 | -"
+mv "$T/done/EX-2" "$T/archive/2025/EX-2"
+doc Example
+chk "task-layout: a task in the archive warns, and so does the archive" task-layout Example "warn | 2 | EX-2:done, archive:status"
+mv "$T/archive/2025/EX-2" "$T/done/EX-2"
+mv "$T/planned/EX-3" "$T/archive/2025/EX-3"
+doc Example
+chk "task-layout: an archive that holds a task with no status warns alone" task-layout Example "warn | 1 | archive:status"
+reset
+mkdir -p "$T/planned" "$T/done"
+mv "$T/EX-2" "$T/done/EX-2"
+doc Example
+chk "task-layout: a status folder that holds a task warns in a flat project, and an empty one does not" task-layout Example \
+  "warn | 1 | done:flat"
+is "task-layout: the fix names the status layout and the way back" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: a status folder needs no README, in a flat project too" no-readme Example "ok | 0 | -"
+chk "task-location: a task in a status folder is in its place, in a flat project too" task-location Example "ok | 0 | -"
+is "task-layout: no drift in a flat project" "$(drift)" ""
+mkdir -p "$T/archive/2025/EX-0"
+sed 's/^  - EX-2$/  - EX-0/' "$T/done/EX-2/README.md" >"$T/archive/2025/EX-0/README.md"
+doc Example
+chk "task-layout: the archive and a status folder share one row" task-layout Example "warn | 2 | archive:flat, done:flat"
+is "task-layout: the fix holds both" "$(fix_of task-layout)" \
+  "set task_layout: archive in the profile, or move each task in $P/tasks/archive back to $P/tasks/<ID> with second-brain move; set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+rm -r "$T/archive"
+layout archive
+mkdir -p "$T/in-progress"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+doc Example
+chk "task-layout: each status folder that holds a task warns in an archive project" task-layout Example \
+  "warn | 2 | in-progress:archive, done:archive"
+is "task-layout: the fix names the status layout and the way back, in an archive project" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+reset
+
+# ---------------------------------------------------------------- task-layout --fix, the status folders
+# A flat project with an archive, left from the time it archived tasks, turned status. The links
+# between the tasks lead into the archive and out of it.
+layout archive
+sb task new EX-4 --project Example --title "Fourth task"
+sb task set EX-4 status=abandoned
+sb task dep EX-3 add EX-2
+sb task dep EX-1 add EX-4
+SECOND_BRAIN_TODAY=2025-12-20 sb task archive EX-4
+sb task archive EX-2
+layout flat
+doc Example
+chk "task-layout --fix: the setup is a flat project with an archive" task-layout Example "warn | 1 | archive:flat"
+layout status
+doc Example --fix
+rc_is "task-layout --fix: exit 0 in a project turned status" 0
+is "task-layout --fix: one fixed line per task moved, archived ones included, then one per archive folder removed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-3/README.md (Example)
+fixed: EX-4 -> $P/tasks/abandoned/EX-4/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)
+fixed: $P/tasks/archive/2025 -> removed (Example)
+fixed: $P/tasks/archive/2026 -> removed (Example)
+fixed: $P/tasks/archive -> removed (Example)"
+is "task-layout --fix: every task is in the folder of its status, and the archive is gone" \
+  "$(LC_ALL=C ls "$T" | tr '\n' ' ')/$(cd "$T" && LC_ALL=C ls -d -- */*/README.md | tr '\n' ' ')" \
+  "README.md abandoned done in-progress planned tasks.base /abandoned/EX-4/README.md done/EX-2/README.md in-progress/EX-1/README.md planned/EX-3/README.md "
+is "task-layout --fix: a task out of the archive loses its archived key" \
+  "$(cat "$T/done/EX-2/README.md" "$T/abandoned/EX-4/README.md" | grep -c '^archived:' || true)" "0"
+is "task-layout --fix: the links follow the moves" \
+  "$(grep -h -e 'done/EX-2/README|EX-2' -e 'abandoned/EX-4/README|EX-4' "$T/planned/EX-3/README.md" "$T/in-progress/EX-1/README.md" | wc -l | tr -d ' ')" "2"
+doc Example
+chk "task-layout --fix: the next doctor shows task-layout ok" task-layout Example "ok | 0 | -"
+sb unresolved Example
+is "task-layout --fix: unresolved lists nothing" "$RC/$OUT" "0/"
+doc Example --fix
+is "task-layout --fix: nothing left to move or remove" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+reset
+# A task with no status, and one whose destination is taken, stay where they are. A year folder
+# that holds a task, and an archive that holds a README, stay; an empty year folder goes.
+layout status
+edit "$T/EX-3/README.md" '/^status: /d'
+mkdir -p "$T/archive/2025" "$T/archive/2026" "$T/done/EX-2"
+mv "$T/EX-2" "$T/archive/2025/EX-2"
+printf '%s\n' '# The archive' >"$T/archive/README.md"
+doc Example --fix
+rc_is "task-layout --fix: a task it cannot move leaves exit 0" 0
+is "task-layout --fix: the task it can move, and the emptied year folder, are fixed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: $P/tasks/archive/2026 -> removed (Example)"
+case "$ERR" in *"EX-3 has no status of the five: left where it is"*) pass "task-layout --fix: stderr names the task with no status" ;;
+  *) fail "task-layout --fix: stderr names the task with no status" "in stderr: $ERR" ;; esac
+case "$ERR" in *"the destination exists: $P/tasks/done/EX-2"*) pass "task-layout --fix: stderr names the taken destination" ;;
+  *) fail "task-layout --fix: stderr names the taken destination" "in stderr: $ERR" ;; esac
+exists "task-layout --fix: the task with no status stays where it is" "$T/EX-3/README.md"
+is "task-layout --fix: the task whose destination is taken stays, and the destination stays empty" \
+  "$(ls "$T/archive/2025/EX-2")/$(ls -A "$T/done/EX-2")" "README.md/"
+is "task-layout --fix: the year folder that holds a task and the archive that holds a README stay" \
+  "$(ls "$T/archive" | tr '\n' ' ')" "2025 README.md "
+chk "task-layout --fix: the task it could not move is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
+reset
+# The same id in the folder of its status and in the archive: the lookup refuses it, and nothing is
+# said to be fixed for it.
+layout status
+mkdir -p "$T/done" "$T/archive/2025"
+mv "$T/EX-2" "$T/done/EX-2"
+cp -R "$T/done/EX-2" "$T/archive/2025/EX-2"
+cp "$T/done/EX-2/README.md" "$tmp/EX-2.before"
+doc Example --fix
+rc_is "task-layout --fix: an id held by two folders leaves exit 0" 0
+is "task-layout --fix: no fixed line for an id held by two folders" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-3/README.md (Example)"
+case "$ERR" in *"several tasks match EX-2"*) pass "task-layout --fix: stderr says the id is held by two folders" ;;
+  *) fail "task-layout --fix: stderr says the id is held by two folders" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the copy stays in the archive, and the task in its folder is unchanged" \
+  "$(ls "$T/archive/2025/EX-2")/$(cmp -s "$tmp/EX-2.before" "$T/done/EX-2/README.md" && printf same)" "README.md/same"
+chk "task-layout --fix: the copy in the archive is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
 reset
 
 # ---------------------------------------------------------------- topic-tags

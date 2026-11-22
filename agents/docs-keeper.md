@@ -191,8 +191,8 @@ of `## 0. Before you start` applies.
 Read cheapest first: a whole note is the last resort.
 
 - Find a note: `second-brain find <ID-or-alias> --project <project>`.
-- A task is `<tasks_root>/<ID>/README.md`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once
-  archived.
+- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with
+  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.
 - Take a task's path from `find` or `task head`; never build it from the id.
 - Tasks on a topic: `second-brain topic <project> <tag>`.
 - Before you change or remove a note: `second-brain backlinks "<vault path>"`.

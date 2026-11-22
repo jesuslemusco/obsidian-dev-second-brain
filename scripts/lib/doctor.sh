@@ -734,9 +734,23 @@ sb_doc_has_archive_filter() {
     END { exit(found ? 0 : 1) }' "$1"
 }
 
+# Return 0 when a board file's own filters take each of the five status folders, a quoted path
+# ending in /<status>.
+sb_doc_has_status_filter() {
+  SB_STATUSES="$SB_TASK_STATUSES" LC_ALL=C awk '
+    BEGIN { n = split(ENVIRON["SB_STATUSES"], st, " ") }
+    { sub(/\r$/, "") }
+    /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
+    top {
+      for (i = 1; i <= n; i++)
+        if ($0 ~ ("file\\.inFolder\\([\"\047][^\"\047]*/" st[i] "[\"\047]\\)")) has[st[i]] = 1
+    }
+    END { for (i = 1; i <= n; i++) if (!(st[i] in has)) exit 1; exit 0 }' "$1"
+}
+
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
-# that a project with a subproject has the By subproject view, and that an archive project's board
-# takes the archived tasks.
+# that a project with a subproject has the By subproject view, and that an archive or status
+# project's board takes the archived tasks or the status folders.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -771,6 +785,11 @@ sb_doc_check_board() {
   # A board scaffolded before the archive layout shows no archived task in Obsidian.
   if [ "$(sb_task_layout)" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
     bad="${bad:+$bad$nl}tasks.base:no-archive-filter"
+    fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
+  fi
+  # A board scaffolded before the status layout shows no task in a status folder.
+  if [ "$(sb_task_layout)" = "status" ] && ! sb_doc_has_status_filter "$base"; then
+    bad="${bad:+$bad$nl}tasks.base:no-status-filter"
     fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
   fi
   sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"

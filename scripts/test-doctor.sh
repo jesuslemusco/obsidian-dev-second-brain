@@ -683,11 +683,16 @@ edit "$T/tasks.base" 's/name: Current sprint/name: Last Current sprint/'
 doc Example
 chk "board: a view whose name only holds the words Current sprint is not that view" board Example "warn | 1 | tasks.base:no-view"
 reset
-# The board's filters as 0.2.0 wrote them, with no archive branch.
-edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; s/^        - file\.folder/    - file.folder/'
+# The board's filters as 0.2.0 wrote them, with no archive branch and no status branch.
+edit "$T/tasks.base" '/^    - or:$/d; /^        - and:$/d; /^            - /d; /^                - /d; s/^        - file\.folder/    - file.folder/'
 is "board: the old filters keep one depth line" "$(grep -c '^    - file.folder.split("/").length == 4$' "$T/tasks.base")/$(grep -c 'archive' "$T/tasks.base")" "1/0"
+is "board: the old filters keep one folder filter" "$(grep -c 'file\.inFolder' "$T/tasks.base")" "1"
 doc Example
 chk "board: a flat project is not asked for the archive filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project whose board takes no status folder warns, and is not asked for the archive filter" board Example \
+  "warn | 1 | tasks.base:no-status-filter"
 edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Archive/'
 doc Example
 rc_is "board: a missing archive filter leaves exit 0" 0
@@ -703,6 +708,48 @@ reset
 edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
 doc Example
 chk "board: an archive project with the template's filters is ok" board Example "ok | 0 | -"
+reset
+# no_status_branch: the board's filters as 0.8.0 wrote them, with the archive branch and no status
+# branch, the second and: of the filters.
+no_status_branch() {
+  awk '/^        - and:$/ { n++ } /^formulas:/ { n = 0 } n < 2 { print }' "$T/tasks.base" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$T/tasks.base"
+}
+no_status_branch
+is "board: the 0.8.0 filters take the archive and no status folder" \
+  "$(grep -c 'file\.inFolder' "$T/tasks.base")/$(grep -c 'file\.inFolder(".*/archive")' "$T/tasks.base")" "2/1"
+doc Example
+chk "board: a flat project is not asked for the status filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project is not asked for the status filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Status/'
+doc Example
+rc_is "board: a missing status filter leaves exit 0" 0
+chk "board: a status project whose board takes no status folder warns, in any letter case" board Example \
+  "warn | 1 | tasks.base:no-status-filter"
+is "board: the status fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project with the template's filters is ok" board Example "ok | 0 | -"
+edit "$T/tasks.base" 's#^\(                - file\.inFolder("\)[^"]*/\([a-z-]*"\))$#\1old/tasks/\2)#'
+is "board: the status folders under another path" "$(grep -c 'inFolder("old/tasks/' "$T/tasks.base")" "5"
+doc Example
+chk "board: a status folder under any path counts" board Example "ok | 0 | -"
+edit "$T/tasks.base" '/\/abandoned")$/d'
+doc Example
+chk "board: a board that misses one status folder warns" board Example "warn | 1 | tasks.base:no-status-filter"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+no_status_branch
+# The last view, All, takes the five folders as a filter of its own.
+printf '%s\n' "    filters:" "      or:" >>"$T/tasks.base"
+for s in planned in-progress in-review done abandoned; do
+  printf '%s\n' "        - file.inFolder(\"$P/tasks/$s\")" >>"$T/tasks.base"
+done
+doc Example
+chk "board: the status folders in a view's filters are not the board's own" board Example "warn | 1 | tasks.base:no-status-filter"
 reset
 
 # ---------------------------------------------------------------- paths that leave the vault

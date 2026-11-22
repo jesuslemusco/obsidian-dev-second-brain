@@ -203,6 +203,22 @@ line_is "board: folder filter" "$vault/$P/tasks/tasks.base" "    - file.inFolder
 line_is "board: folder depth is the path segments plus one" "$vault/$P/tasks/tasks.base" '        - file.folder.split("/").length == 6'
 line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base" "            - file.inFolder(\"$P/tasks/archive\")"
 line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
+# filters_of <board>: the board's own filters block, above its formulas and views.
+filters_of() { awk '/^[^ \t#-]/ { top = ($0 ~ /^filters:/) } top' "$1"; }
+# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root.
+filters_want() {
+  local s
+  printf '%s\n' "filters:" "  and:" "    - file.inFolder(\"$1\")" '    - file.name == "README"' "    - or:" \
+    "        - file.folder.split(\"/\").length == $2" "        - and:" "            - file.inFolder(\"$1/archive\")" \
+    "            - file.folder.split(\"/\").length == $(($2 + 2))" "        - and:" \
+    "            - file.folder.split(\"/\").length == $(($2 + 1))" "            - or:"
+  for s in planned in-progress in-review done abandoned; do printf '%s\n' "                - file.inFolder(\"$1/$s\")"; done
+}
+is "board: the filters take a task in each status folder, one folder deeper than a flat task" \
+  "$(filters_of "$vault/$P/tasks/tasks.base")" "$(filters_want "$P/tasks" 6)"
+is "board: the depth of the status folders is that of a task folder in each" \
+  "$(filters_of "$vault/$P/tasks/tasks.base" | awk '/split\("\/"\)\.length ==/ { d = $NF } /^            - or:$/ { print d; exit }')" \
+  "$(for s in planned in-progress in-review done abandoned; do printf '%s\n' "$P/tasks/$s/EX-1"; done | awk -F/ '{ print NF }' | sort -u)"
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
@@ -296,6 +312,8 @@ for d in tasks docs sprints; do absent "scaffold roots: no default $d folder" "$
 line_is "scaffold roots: board folder is the tasks root" "$vault/$R/plan/tasks/tasks.base" "    - file.inFolder(\"$R/plan/tasks\")"
 line_is "scaffold roots: board depth counts the nested tasks root" "$vault/$R/plan/tasks/tasks.base" '        - file.folder.split("/").length == 5'
 line_is "scaffold roots: the archive depth counts it too" "$vault/$R/plan/tasks/tasks.base" '            - file.folder.split("/").length == 7'
+is "scaffold roots: the status folders sit in the nested tasks root, one folder deeper than a flat task" \
+  "$(filters_of "$vault/$R/plan/tasks/tasks.base")" "$(filters_want "$R/plan/tasks" 5)"
 line_is "scaffold roots: tasks hub embeds its own board" "$vault/$R/plan/tasks/README.md" "![[$R/plan/tasks/tasks.base#Active]]"
 line_is "scaffold roots: map links the tasks hub" "$vault/$R/README.md" "- [[$R/plan/tasks/README|Roots Tasks Hub]] - one folder per task, and the task board"
 line_is "scaffold roots: map links the topics hub" "$vault/$R/README.md" "- [[$R/knowledge/README|Roots Docs Hub]] - the topics: one folder per subject"
@@ -394,6 +412,7 @@ file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/t
 for v in Active "By topic" "By subproject" "Needs a status" All; do
   line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
 done
+is "no sprints: the board takes the status folders too" "$(filters_of "$vault/$N/tasks/tasks.base")" "$(filters_want "$N/tasks" 4)"
 is "no sprints: the board keeps its five views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "5"
 line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
 sb context --cwd "$vault/$N"

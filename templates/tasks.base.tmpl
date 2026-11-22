@@ -7,6 +7,14 @@ filters:
         - and:
             - file.inFolder("{{TASKS_PATH}}/archive")
             - file.folder.split("/").length == {{ARCHIVE_DEPTH}}
+        - and:
+            - file.folder.split("/").length == {{STATUS_DEPTH}}
+            - or:
+                - file.inFolder("{{TASKS_PATH}}/planned")
+                - file.inFolder("{{TASKS_PATH}}/in-progress")
+                - file.inFolder("{{TASKS_PATH}}/in-review")
+                - file.inFolder("{{TASKS_PATH}}/done")
+                - file.inFolder("{{TASKS_PATH}}/abandoned")
 formulas:
   task: file.asLink(aliases[0])
   topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))

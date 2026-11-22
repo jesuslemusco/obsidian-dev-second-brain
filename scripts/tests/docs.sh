@@ -250,6 +250,28 @@ line_is "vault-setup adopt: doctor --fix runs once" "$AD" \
   '  `second-brain doctor <project> --fix` runs once. The doctor'"'"'s `task-layout` row names each task'
 file_has "vault-setup adopt: the run is a bulk move, made on a yes" "$AD" '- Offer that run, as a bulk move, and make it only on a yes:'
 file_has "vault-setup adopt: a task's place in a status folder" "$AD" '`<tasks_root>/<status>/<ID>/README.md` in a status'
+VS="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: the task_layout row offers status" "$VS" \
+  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, or each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes | `archive`, `flat` or `status` |'
+file_lacks "vault-setup: task_layout is no longer archive or flat alone" "$VS" '| `archive` or `flat` |'
+VD="$here/skills/vault-doctor/SKILL.md"
+line_is "vault-doctor fix: a status move by --fix is a bulk change" "$VD" \
+  '   - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:'
+line_is "vault-doctor fix: --fix moves each task to the folder of its status" "$VD" \
+  '     `--fix` moves each task to the folder of its status.'
+line_is "vault-doctor fix: names the tasks it will archive or move" "$VD" \
+  '   - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or'
+line_is "vault-doctor fix: the tasks are the to-archive and status offenders" "$VD" '     `<ID>:<status>` offender.'
+file_lacks "vault-doctor fix: no longer counts the archive alone" "$VD" 'Say how many tasks it will archive, the row'"'"'s count'
+line_is "vault-doctor fix: compare proves a status move too" "$VD" \
+  '   - After a move to the folders of their status, run it too. It lists the aliases of each moved'
+line_is "vault-doctor fix: the aliases go under the status folders" "$VD" \
+  '     task folder as removed at the old path and added under `<status>/`, and nothing else.'
+vd_arch="$(lineno "$VD" '`archive/<YYYY>/`, and nothing else.')"
+vd_move="$(lineno "$VD" '- After a move to the folders of their status')"
+vd_broke="$(lineno "$VD" '- An `unresolved added:` line')"
+is "vault-doctor fix: the status move's compare comes after the archive's and before the broken-link line" \
+  "$((${vd_arch:-0} < ${vd_move:-0} && ${vd_move:-0} < ${vd_broke:-0}))" "1"
 CG="$here/CHANGELOG.md"
 is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"

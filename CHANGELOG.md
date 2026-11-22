@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 - unreleased
+## 0.10.0 - 2026-11-22
 
 - A project can keep each task in the folder of its status: `task_layout: status` in the profile
   puts a task at `<tasks_root>/<status>/<ID>/README.md`, in `planned`, `in-progress`,

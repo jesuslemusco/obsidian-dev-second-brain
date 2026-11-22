@@ -872,7 +872,7 @@ chk "task-template: a heading matches without letter case and trailing blanks, a
 grep -v '^---$' "$here/templates/task-readme.md.tmpl" >"$TT"
 doc Example
 chk "task-template: with no frontmatter every key is missing" task-template Example "warn | 7 | aliases, title, status, next, branch"
-grep -v '^aliases:$\|^  - {{ID}}$' "$here/templates/task-readme.md.tmpl" >"$TT"
+grep -v -x -F -e 'aliases:' -e '  - {{ID}}' "$here/templates/task-readme.md.tmpl" >"$TT"
 doc Example
 chk "task-template: a template with no aliases warns, as each story made from it fails task-frontmatter" task-template Example \
   "warn | 1 | aliases"

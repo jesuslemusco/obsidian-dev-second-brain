@@ -1302,6 +1302,70 @@ is "task-layout: the fix names the status layout and the way back, in an archive
   "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
 reset
 
+# ---------------------------------------------------------------- task-layout --fix, the status folders
+# A flat project with an archive, left from the time it archived tasks, turned status. The links
+# between the tasks lead into the archive and out of it.
+layout archive
+sb task new EX-4 --project Example --title "Fourth task"
+sb task set EX-4 status=abandoned
+sb task dep EX-3 add EX-2
+sb task dep EX-1 add EX-4
+SECOND_BRAIN_TODAY=2025-12-20 sb task archive EX-4
+sb task archive EX-2
+layout flat
+doc Example
+chk "task-layout --fix: the setup is a flat project with an archive" task-layout Example "warn | 1 | archive:flat"
+layout status
+doc Example --fix
+rc_is "task-layout --fix: exit 0 in a project turned status" 0
+is "task-layout --fix: one fixed line per task moved, archived ones included, then one per archive folder removed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-3/README.md (Example)
+fixed: EX-4 -> $P/tasks/abandoned/EX-4/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)
+fixed: $P/tasks/archive/2025 -> removed (Example)
+fixed: $P/tasks/archive/2026 -> removed (Example)
+fixed: $P/tasks/archive -> removed (Example)"
+is "task-layout --fix: every task is in the folder of its status, and the archive is gone" \
+  "$(LC_ALL=C ls "$T" | tr '\n' ' ')/$(cd "$T" && LC_ALL=C ls -d -- */*/README.md | tr '\n' ' ')" \
+  "README.md abandoned done in-progress planned tasks.base /abandoned/EX-4/README.md done/EX-2/README.md in-progress/EX-1/README.md planned/EX-3/README.md "
+is "task-layout --fix: a task out of the archive loses its archived key" \
+  "$(cat "$T/done/EX-2/README.md" "$T/abandoned/EX-4/README.md" | grep -c '^archived:' || true)" "0"
+is "task-layout --fix: the links follow the moves" \
+  "$(grep -h -e 'done/EX-2/README|EX-2' -e 'abandoned/EX-4/README|EX-4' "$T/planned/EX-3/README.md" "$T/in-progress/EX-1/README.md" | wc -l | tr -d ' ')" "2"
+doc Example
+chk "task-layout --fix: the next doctor shows task-layout ok" task-layout Example "ok | 0 | -"
+sb unresolved Example
+is "task-layout --fix: unresolved lists nothing" "$RC/$OUT" "0/"
+doc Example --fix
+is "task-layout --fix: nothing left to move or remove" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+reset
+# A task with no status, and one whose destination is taken, stay where they are. A year folder
+# that holds a task, and an archive that holds a README, stay; an empty year folder goes.
+layout status
+edit "$T/EX-3/README.md" '/^status: /d'
+mkdir -p "$T/archive/2025" "$T/archive/2026" "$T/done/EX-2"
+mv "$T/EX-2" "$T/archive/2025/EX-2"
+printf '%s\n' '# The archive' >"$T/archive/README.md"
+doc Example --fix
+rc_is "task-layout --fix: a task it cannot move leaves exit 0" 0
+is "task-layout --fix: the task it can move, and the emptied year folder, are fixed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: $P/tasks/archive/2026 -> removed (Example)"
+case "$ERR" in *"EX-3 has no status of the five: left where it is"*) pass "task-layout --fix: stderr names the task with no status" ;;
+  *) fail "task-layout --fix: stderr names the task with no status" "in stderr: $ERR" ;; esac
+case "$ERR" in *"the destination exists: $P/tasks/done/EX-2"*) pass "task-layout --fix: stderr names the taken destination" ;;
+  *) fail "task-layout --fix: stderr names the taken destination" "in stderr: $ERR" ;; esac
+exists "task-layout --fix: the task with no status stays where it is" "$T/EX-3/README.md"
+is "task-layout --fix: the task whose destination is taken stays, and the destination stays empty" \
+  "$(ls "$T/archive/2025/EX-2")/$(ls -A "$T/done/EX-2")" "README.md/"
+is "task-layout --fix: the year folder that holds a task and the archive that holds a README stay" \
+  "$(ls "$T/archive" | tr '\n' ' ')" "2025 README.md "
+chk "task-layout --fix: the task it could not move is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {

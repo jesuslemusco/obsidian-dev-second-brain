@@ -1615,10 +1615,12 @@ sb_doc_fix_pull_request() {
 }
 
 # Replace an old, never edited pull request note, make the status/ tag follow the status on each
-# task where they disagree, then archive each done or abandoned task the task-layout check names;
-# print each change. An open task is never moved.
+# task where they disagree, then fix each task the task-layout check names; print each change. In
+# an archive project each done or abandoned task is archived, and an open task is never moved. In
+# a status project each task goes to the folder of its status, then each empty year folder of the
+# archive is removed, and the archive when it is empty.
 sb_doc_fix() {
-  local name path keys id file status tag new reason n=0 nl=$'\n'
+  local name path keys id file status tag new reason layout d n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
@@ -1634,12 +1636,22 @@ sb_doc_fix() {
     done 4<<EOF
 $(sb_doc_status_drift)
 EOF
-    # task archive reads the tasks root as written, so it never runs where that root leaves the
-    # project. A task it refuses stays where it is, with the reason on stderr.
+    # task archive and the status move read the tasks root as written, so they never run where
+    # that root leaves the project. A task they refuse stays where it is, with the reason on stderr.
     case "$SB_DOC_LEAVES" in *tasks_root:*) continue ;; esac
+    layout="$(sb_task_layout)"
     while IFS=$'\t' read -r id file reason <&4; do
-      [ "$reason" = "to-archive" ] || continue
-      new="$( (sb_task_archive "$id" --project "$name") )"
+      [ -n "$file" ] || continue
+      if [ "$layout" = "status" ]; then
+        if [ "$reason" = "no-status" ]; then
+          printf '%s has no status of the five: left where it is\n' "$id" >&2
+          continue
+        fi
+        new="$( (sb_task_to_status "$id" "$name") )"
+      else
+        [ "$reason" = "to-archive" ] || continue
+        new="$( (sb_task_archive "$id" --project "$name") )"
+      fi
       new="${new%%"$nl"*}"
       [ -n "$new" ] || continue
       n=$((n + 1))
@@ -1647,6 +1659,15 @@ EOF
     done 4<<EOF
 $(sb_doc_layout_drift)
 EOF
+    [ "$layout" = "status" ] || continue
+    # A folder that holds anything, such as an archive README, stays.
+    for d in "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/ "$SB_P_DIR/$SB_TASKS_ROOT/archive/"; do
+      d="${d%/}"
+      [ -d "$d" ] && [ ! -L "$d" ] || continue
+      rmdir "$d" 2>/dev/null || continue
+      n=$((n + 1))
+      printf 'fixed: %s -> removed (%s)\n' "$(sb_rel "$d")" "$name"
+    done
   done 3<<EOF
 $1
 EOF

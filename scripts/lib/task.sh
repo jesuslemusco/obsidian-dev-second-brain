@@ -741,6 +741,22 @@ sb_task_relocate() {
   return "$rc"
 }
 
+# sb_task_to_status <ID> <project>: for the doctor's fix, move a task of a status project to the
+# folder of its status through sb_task_relocate, and print what it prints. Nothing when the task
+# is there already. Exit 5 when its status is none of the five.
+sb_task_to_status() {
+  local status dest
+  sb_need_task "$1" "$2"
+  status="$(sb_fm_get "$SB_T_FILE" status)" || status=""
+  case "$status" in
+    planned | in-progress | in-review | done | abandoned) ;;
+    *) sb_die 5 "$SB_T_ID has no status of the five: ${status:-none}" ;;
+  esac
+  dest="$(sb_task_status_dir "$status")"
+  [ "$dest" != "${SB_T_REL%/*}" ] || return 0
+  sb_task_relocate "$dest"
+}
+
 # Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
 # the year being today's, and date it in archived. Print its new path, then the move's links: lines.
 # A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat or status

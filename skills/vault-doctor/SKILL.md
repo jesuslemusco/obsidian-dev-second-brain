@@ -51,6 +51,11 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      `--fix` moves each task to the folder of its status.
    - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
      `<ID>:<status>` offender.
+   - The number is the row's count, less each offender that is not a task it moves:
+     `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive
+     project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.
+   - The count is above five: say that the doctor names only the first five, and name those. The
+     count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.
    - Then run `second-brain snapshot` before it.
    - With no such row, `--fix` needs no snapshot.
 4. Run `second-brain doctor --fix`. It prints one `fixed:` line per change, then the table.

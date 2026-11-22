@@ -263,6 +263,22 @@ line_is "vault-doctor fix: names the tasks it will archive or move" "$VD" \
   '   - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or'
 line_is "vault-doctor fix: the tasks are the to-archive and status offenders" "$VD" '     `<ID>:<status>` offender.'
 file_lacks "vault-doctor fix: no longer counts the archive alone" "$VD" 'Say how many tasks it will archive, the row'"'"'s count'
+line_is "vault-doctor fix: the number is the row's count, less what is no task it moves" "$VD" \
+  '   - The number is the row'"'"'s count, less each offender that is not a task it moves:'
+line_is "vault-doctor fix: archive:status is no task, as its task is counted already" "$VD" \
+  '     `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive'
+line_is "vault-doctor fix: nor the archive project's offenders --fix leaves" "$VD" \
+  '     project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.'
+line_is "vault-doctor fix: over five, the doctor names only the first five" "$VD" \
+  '   - The count is above five: say that the doctor names only the first five, and name those. The'
+line_is "vault-doctor fix: over five, the count is the most it moves and fixed: names each" "$VD" \
+  '     count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.'
+vd_name="$(lineno "$VD" '- Say how many tasks it will archive or move')"
+vd_num="$(lineno "$VD" '- The number is the row'"'"'s count')"
+vd_five="$(lineno "$VD" '- The count is above five')"
+vd_snap="$(lineno "$VD" 'Then run `second-brain snapshot` before it.')"
+is "vault-doctor fix: the number and the five come after the names and before the snapshot" \
+  "$((${vd_name:-0} < ${vd_num:-0} && ${vd_num:-0} < ${vd_five:-0} && ${vd_five:-0} < ${vd_snap:-0}))" "1"
 line_is "vault-doctor fix: compare proves a status move too" "$VD" \
   '   - After a move to the folders of their status, run it too. It lists the aliases of each moved'
 line_is "vault-doctor fix: the aliases go under the status folders" "$VD" \

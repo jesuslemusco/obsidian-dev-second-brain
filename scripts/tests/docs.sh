@@ -306,6 +306,14 @@ st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
 is "changelog: the status layout is under 0.10.0" \
   "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
+cv_line="$(lineno "$CG" '- The conventions note is at version 8: it names the status layout.')"
+is "changelog: the conventions note at version 8 is under 0.10.0" \
+  "$((${cv_line:-0} > ${st_top:-0} && ${cv_line:-0} < ${st_end:-0}))" "1"
+cv_text="$(awk -v n="${cv_line:-0}" 'n && NR == n { t = $0; next } n && NR > n && !d && /^  / { t = t " " substr($0, 3); next } NR > n { d = 1 } END { print t }' "$CG")"
+case "$cv_text" in
+  *'The doctor'"'"'s `conventions` check warns about an older note.'*) pass "changelog: the version 8 line says the doctor warns on an older note" ;;
+  *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
+esac
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

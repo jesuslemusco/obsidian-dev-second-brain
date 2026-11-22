@@ -21,6 +21,8 @@
 - In a status project, `doctor --fix` moves each task to the folder of its status, then removes
   the archive's empty folders. To switch a project that has tasks, set the key, then run
   `doctor --fix` once.
+- The conventions note is at version 8: it names the status layout. The doctor's `conventions`
+  check warns about an older note.
 
 ## 0.9.0 - 2026-11-21
 

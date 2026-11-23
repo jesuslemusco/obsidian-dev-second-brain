@@ -163,7 +163,8 @@ sb_doc_pr_texts() {
   printf '%s\n' \
     'none 1926705061 992' \
     '2 3779339813 1749' \
-    '3 949320718 1565'
+    '3 949320718 1565' \
+    '4 2439498398 1550'
 }
 
 # Return 0 when the vault's pull request note is older than the plugin's template. Sets

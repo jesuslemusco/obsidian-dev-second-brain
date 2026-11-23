@@ -14,12 +14,15 @@ claude/writing-style.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
-is "pull request format: the goal first, then the four headings, in order and bold" "$(grep '^## \*\*' "$vault/claude/pull-request.md" | tr '\n' '|')" \
-  "## **Goal**|## **What was changed?**|## **What was added?**|## **Dependencies:**|## **Risks:**|"
+is "pull request format: the goal first, then the four headings, in order, as bold lines" \
+  "$(awk '/^```/ { on = !on; next } on && /^\*\*[^*]+\*\*$/' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "**Goal**|**What was changed?**|**What was added?**|**Dependencies:**|**Risks:**|"
+is "pull request format: no line of the format is a markdown heading" \
+  "$(awk '/^```/ { on = !on; next } on && /^#/ { n++ } END { print n + 0 }' "$vault/claude/pull-request.md")" "0"
 is "pull request format: every bullet of the format starts with a bold label" \
   "$(awk '/^```/ { on = !on; next } on && /^- / { n++; if (/^- \*\*<part>:\*\* </) b++ } END { print b + 0 "/" n + 0 }' "$vault/claude/pull-request.md")" "4/4"
 is "pull request format: the goal is one or two lines, not a bullet" \
-  "$(awk '/^## \*\*Goal\*\*$/ { on = 1; next } /^## / { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
+  "$(awk '/^\*\*Goal\*\*$/ { on = 1; next } /^\*\*[^*]+\*\*$/ || /^```/ { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
   "<why this pull request exists, in one or two lines>"
 is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
   "- Write the description only from \`git log <target>..<source>\` and
@@ -32,7 +35,7 @@ is "pull request format: the rules, word for word" "$(section_of "$vault/claude/
 - Start each bullet with the part it is about, in bold: \`- **doctor:** warns on an old index\`.
 - Name the file, the command or the setting; leave out what the diff shows line by line.
 - Under a heading with nothing to say, write \`- **None.**\`"
-line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 3"
+line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 4"
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \

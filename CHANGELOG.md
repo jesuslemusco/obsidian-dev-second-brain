@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 - unreleased
+
+- The pull request format writes its five headings as bold lines with no `##`, as in `**Goal**`.
+  The note is at `pull_request_version: 4`, so the doctor's `pull-request` check warns about an
+  older note. `doctor --fix` replaces one that was never edited.
+
 ## 0.10.0 - 2026-11-22
 
 - A project can keep each task in the folder of its status: `task_layout: status` in the profile

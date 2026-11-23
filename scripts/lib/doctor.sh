@@ -1055,16 +1055,50 @@ sb_doc_check_task_location() {
     "move it with second-brain move to $to and tie it to its topic with a tag" 120
 }
 
+# Print each sprint the project's tasks name, once, and the folder sb_sprint_folder gives it, a tab
+# apart; the folder is empty when the pattern gives that sprint none.
+sb_doc_sprint_map() {
+  local id folder
+  printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' 'NF >= 12 && $4 != "-" && !seen[$4]++ { print $4 }' |
+    while IFS= read -r id; do
+      folder="$(sb_sprint_folder "$id" 2>/dev/null)" || folder=""
+      printf '%s\t%s\n' "$id" "$folder"
+    done
+}
+
+# sb_doc_sprint_drift <map>: for the rows of sb_doc_sprint_map, print id, file and the folder it
+# belongs in for each task of a sprint project not at <root>/<folder>/<ID>/README.md: backlog with
+# no sprint, else its sprint's folder. A task whose sprint gives no folder is left out.
+sb_doc_sprint_drift() {
+  printf '%s\n\034\n%s\n' "$1" "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" LC_ALL=C awk -F'\t' '
+    BEGIN { root = ENVIRON["SB_R"]; part = 1 }
+    $0 == "\034" { part = 2; next }
+    part == 1 { if (NF >= 2) folder[$1] = $2; next }
+    NF < 12 { next }
+    {
+      if ($4 == "-") want = "backlog"
+      else if (folder[$4] == "") next
+      else want = folder[$4]
+      if ($1 != root want "/" $2 "/README.md") print $2 "\t" $1 "\t" want
+    }'
+}
+
 # Print id, file and reason for each task out of the archive layout: open inside the archive, or
 # done or abandoned outside it for archive_after_days days or more. A done task's age counts from
 # the newest date it holds, of its status notes and its sprint id; with none it is never due, as
 # --fix moves no folder it cannot date.
 # In a status project: id, file and status for each task not at <root>/<status>/<ID>/README.md,
 # and id, file and no-status for a task with no status of the five.
+# In a sprint project: id, file and the folder it belongs in, backlog or its sprint's folder, for
+# each task not at <root>/<folder>/<ID>/README.md; none for a task whose sprint gives no folder.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
   local days layout
   layout="$(sb_task_layout)"
+  if [ "$layout" = "sprint" ]; then
+    sb_doc_sprint_drift "$(sb_doc_sprint_map)"
+    return 0
+  fi
   if [ "$layout" = "status" ]; then
     printf '%s\n' "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_S="$SB_TASK_STATUSES" LC_ALL=C awk -F'\t' '
       BEGIN { root = ENVIRON["SB_R"]; n = split(ENVIRON["SB_S"], s, " "); for (i = 1; i <= n; i++) five[s[i]] = 1 }
@@ -1103,28 +1137,67 @@ sb_doc_layout_drift() {
     }'
 }
 
-# Check that the tasks follow the profile's task_layout: no archive folder in a flat project; in an
-# archive project, no open task in the archive and no done one left out of it too long; in either,
-# no status folder that holds a task. In a status project, each task in the folder of its status,
-# and no task in the archive.
+# Check that the tasks follow the profile's task_layout. In a sprint project, each task in the folder
+# of its sprint, or in backlog/ with none, wherever it is, and a sprint_folder pattern that gives
+# each sprint of a task a folder, or with none a sprint ending today. task_layout: sprint with
+# sprints off is flat, and says so. In a flat project no archive folder; in an archive project no
+# open task in the archive and no done one left out of it too long. In a status project, each task
+# in the folder of its status, and no task in the archive. In these three, no group folder that
+# holds a task and is not the layout's own: status owns the five status folders, flat and archive
+# none, so a status folder, backlog/ or a sprint's folder is <folder>:<layout>.
 sb_doc_check_task_layout() {
-  local days layout s bad="" fix="" folders="" nl=$'\n' to="$SB_P_PATH/$SB_TASKS_ROOT" root="$SB_P_DIR/$SB_TASKS_ROOT"
-  local back
+  local days layout g s map bad="" fix="" folders="" nl=$'\n' to="$SB_P_PATH/$SB_TASKS_ROOT" root="$SB_P_DIR/$SB_TASKS_ROOT"
+  local back sback stat=0 other=0 nosprints=0
   layout="$(sb_task_layout)"
+  if [ "$layout" = "sprint" ]; then
+    map="$(sb_doc_sprint_map)"
+    if [ -n "$map" ]; then
+      case "$map$nl" in *$'\t'"$nl"*) bad="sprint_folder:invalid$nl" ;; esac
+    elif ! (sb_sprint_folder "$(sb_today)") >/dev/null 2>&1; then
+      bad="sprint_folder:invalid$nl"
+    fi
+    [ -z "$bad" ] || fix="set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name"
+    s="$(sb_doc_sprint_drift "$map" | awk -F'\t' '{ print $1 ":" $3 }')"
+    if [ -n "$s" ]; then
+      bad="$bad$s"
+      fix="${fix:+$fix; }run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+    fi
+    sb_doc_report warn task-layout "$SB_P_NAME" "$bad" "$fix"
+    return 0
+  fi
+  # Each group folder that holds a task and is not the layout's own, in the order of sb_task_groups.
+  while IFS= read -r g; do
+    [ -n "$g" ] || continue
+    s="${g##*/}"
+    if [ "$layout" = "status" ]; then
+      case " $SB_TASK_STATUSES " in *" $s "*) continue ;; esac
+    fi
+    case "$nl$SB_DOC_FILES" in *"$nl$g/"*) ;; *) continue ;; esac
+    folders="$folders$s:$layout$nl"
+    case " $SB_TASK_STATUSES " in *" $s "*) stat=1 ;; *) other=1 ;; esac
+  done <<EOF
+$(sb_task_groups "$root")
+EOF
   if [ "$layout" = "status" ]; then
     bad="$(sb_doc_layout_drift | awk -F'\t' '$3 != "no-status" { print $1 ":" $3 }')"
     case "$nl$SB_DOC_FILES" in *"$nl$root/archive/"*) bad="$bad${nl}archive:status" ;; esac
-    sb_doc_report warn task-layout "$SB_P_NAME" "$bad" \
+    sb_doc_report warn task-layout "$SB_P_NAME" "${bad:+$bad$nl}$folders" \
       "run second-brain doctor --fix to move each task to the folder of its status"
     return 0
   fi
-  for s in $SB_TASK_STATUSES; do
-    case "$nl$SB_DOC_FILES" in *"$nl$root/$s/"*) folders="$folders$s:$layout$nl" ;; esac
-  done
   back="set task_layout: status in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
+  sback="set task_layout: sprint in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
   if [ "$layout" != "archive" ]; then
-    [ ! -d "$root/archive" ] || bad="archive:flat$nl"
-    [ -z "$bad" ] || fix="set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+    # task_layout: sprint with sprints off reads as flat; uses_sprints: true is the way back.
+    if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "sprint" ]; then
+      nosprints=1
+      bad="task_layout:no-sprints$nl"
+      fix="set uses_sprints: true in the profile, or another task_layout"
+    fi
+    if [ -d "$root/archive" ]; then
+      bad="${bad}archive:flat$nl"
+      fix="${fix:+$fix; }set task_layout: archive in the profile, or move each task in $to/archive back to $to/<ID> with second-brain move"
+    fi
   else
     days="$(sb_setting "$SB_P_PATH" archive_after_days "")"
     case "$days" in *[!0-9]*) bad="archive_after_days:not-a-number$nl" ;; esac
@@ -1132,7 +1205,9 @@ sb_doc_check_task_layout() {
     [ -z "$bad" ] || fix="run second-brain doctor --fix to archive each done task; an open task in the archive goes back to $to/<ID> with second-brain move, or is set done; archive_after_days is a whole number"
     bad="${bad:+$bad$nl}"
   fi
-  [ -z "$folders" ] || fix="${fix:+$fix; }$back"
+  [ "$stat" -eq 0 ] || fix="${fix:+$fix; }$back"
+  # With sprints off the sprint layout is no way out: uses_sprints: true, in the fix above, is.
+  [ "$other" -eq 0 ] || [ "$nosprints" -eq 1 ] || fix="${fix:+$fix; }$sback"
   sb_doc_report warn task-layout "$SB_P_NAME" "$bad$folders" "$fix"
 }
 

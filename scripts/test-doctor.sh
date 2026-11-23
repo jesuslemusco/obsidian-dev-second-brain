@@ -1446,6 +1446,145 @@ is "task-layout --fix: the copy stays in the archive, and the task in its folder
 chk "task-layout --fix: the copy in the archive is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
 reset
 
+# ---------------------------------------------------------------- task-layout, the sprint folders
+# set_pattern <raw value>: write the profile's sprint_folder key, under task_layout, as it is given.
+set_pattern() {
+  SB_V="$1" awk '!/^sprint_folder:/ { print } /^task_layout:/ { print "sprint_folder: " ENVIRON["SB_V"] }' \
+    "$vault/$P/claude/profile.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$vault/$P/claude/profile.md"
+}
+# EX-1 is in sprint 2026-01-14; EX-2 and EX-3 are in none.
+layout sprint
+mkdir -p "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/backlog/EX-3"
+doc Example
+chk "task-layout: in a sprint project a task in its sprint's folder, or in backlog/ with none, is in its place" task-layout Example \
+  "ok | 0 | -"
+is "task-layout: no sprint drift when every task is in its place" "$(drift)" ""
+edit "$T/2026-01-14/EX-1/README.md" 's/^sprint: .*/sprint: "2026-12-04"/'
+mv "$T/2026-01-14/EX-1" "$T/backlog/EX-1"
+doc Example
+chk "task-layout: <ID>:<folder>, a task with sprint 2026-12-04 left in backlog/ warns as its id and that sprint's folder" \
+  task-layout Example "warn | 1 | EX-1:2026-12-04"
+is "task-layout: the sprint fix names --fix" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+is "task-layout: the sprint drift is the id, the file and the folder it belongs in" "$(drift)" \
+  "EX-1 backlog/EX-1/README.md 2026-12-04"
+mkdir -p "$T/2026-12-04"
+mv "$T/backlog/EX-1" "$T/2026-12-04/EX-1"
+mv "$T/backlog/EX-2" "$T/2026-12-04/EX-2"
+doc Example
+chk "task-layout: <ID>:backlog, a task with no sprint in a sprint folder warns as its id and backlog" task-layout Example \
+  "warn | 1 | EX-2:backlog"
+mkdir -p "$T/planned" "$T/archive/2025"
+mv "$T/2026-12-04/EX-1" "$T/EX-1"
+mv "$T/backlog/EX-3" "$T/planned/EX-3"
+mv "$T/2026-12-04/EX-2" "$T/archive/2025/EX-2"
+doc Example
+chk "task-layout: a task at the tasks root, in a status folder or in the archive warns, and no folder does" task-layout Example \
+  "warn | 3 | EX-1:2026-12-04, EX-3:backlog, EX-2:backlog"
+is "task-layout: the drift names each, with the folder it belongs in" "$(drift)" \
+  "EX-1 EX-1/README.md 2026-12-04${NL}EX-3 planned/EX-3/README.md backlog${NL}EX-2 archive/2025/EX-2/README.md backlog"
+reset
+# A renamed pattern: <n> of sprint 2026-01-14 is 1, as no note is earlier.
+layout sprint
+set_pattern '"sprint-<n>"'
+mkdir -p "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/backlog/EX-3"
+doc Example
+rc_is "task-layout: a warning in a sprint project leaves exit 0" 0
+chk "task-layout: with a renamed pattern a task in its sprint's old folder warns as the folder the pattern gives" task-layout Example \
+  "warn | 1 | EX-1:sprint-1"
+mkdir -p "$T/sprint-1"
+mv "$T/2026-01-14/EX-1" "$T/sprint-1/EX-1"
+doc Example
+chk "task-layout: in the folder the renamed pattern gives it is in its place" task-layout Example "ok | 0 | -"
+set_pattern '"Sprint <n>"'
+doc Example
+chk "task-layout: sprint_folder:invalid, a pattern that gives no folder name warns, and no task of that sprint is named" \
+  task-layout Example "warn | 1 | sprint_folder:invalid"
+is "task-layout: the pattern fix names the key" "$(fix_of task-layout)" \
+  "set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name"
+is "task-layout: no drift row for a task whose sprint gives no folder" "$(drift)" ""
+mv "$T/backlog/EX-2" "$T/sprint-1/EX-2"
+doc Example
+chk "task-layout: sprint_folder:invalid comes first, and the other tasks are still named" task-layout Example \
+  "warn | 2 | sprint_folder:invalid, EX-2:backlog"
+is "task-layout: the fix holds both" "$(fix_of task-layout)" \
+  "set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name; run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+mv "$T/sprint-1/EX-2" "$T/backlog/EX-2"
+edit "$T/sprint-1/EX-1/README.md" 's/^sprint: .*/sprint: ""/'
+mv "$T/sprint-1/EX-1" "$T/backlog/EX-1"
+set_pattern '"sprint"'
+doc Example
+chk "task-layout: sprint_folder:invalid, a pattern with no placeholder warns with no task in a sprint" task-layout Example \
+  "warn | 1 | sprint_folder:invalid"
+set_pattern '"sprint-<n>"'
+doc Example
+chk "task-layout: a valid pattern with no task in a sprint is ok" task-layout Example "ok | 0 | -"
+reset
+# task_layout: sprint with sprints off is the flat layout.
+layout sprint
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+rc_is "task-layout: task_layout:no-sprints leaves exit 0" 0
+chk "task-layout: task_layout:no-sprints, task_layout: sprint with uses_sprints: false warns" task-layout Example \
+  "warn | 1 | task_layout:no-sprints"
+is "task-layout: the no-sprints fix names both keys" "$(fix_of task-layout)" \
+  "set uses_sprints: true in the profile, or another task_layout"
+is "task-layout: no sprint drift with sprints off" "$(drift)" ""
+mkdir -p "$T/backlog"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: with sprints off a task in backlog/ warns as backlog:flat, after task_layout:no-sprints" task-layout Example \
+  "warn | 2 | task_layout:no-sprints, backlog:flat"
+is "task-layout: the fix with sprints off names the sprint keys alone" "$(fix_of task-layout)" \
+  "set uses_sprints: true in the profile, or another task_layout"
+reset
+# The group folders of the other layouts.
+mkdir -p "$T/backlog"
+doc Example
+chk "task-layout: an empty backlog/ in a flat project is not named" task-layout Example "ok | 0 | -"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: backlog:flat, a task moved by hand into backlog/ in a flat project warns" task-layout Example \
+  "warn | 1 | backlog:flat"
+is "task-layout: the backlog fix names the sprint layout and the way back" "$(fix_of task-layout)" \
+  "set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+is "task-layout: no drift for backlog/ in a flat project" "$(drift)" ""
+mv "$T/backlog/EX-2" "$T/EX-2"
+mkdir -p "$T/planned"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout: planned:flat, a task in planned/ in a flat project warns" task-layout Example "warn | 1 | planned:flat"
+mkdir -p "$T/sprint-12" "$T/2026-01-14"
+mv "$T/EX-1" "$T/sprint-12/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: a status folder, backlog/ and a sprint folder each warn in a flat project, in that order, and an empty one does not" \
+  task-layout Example "warn | 3 | planned:flat, backlog:flat, sprint-12:flat"
+is "task-layout: the fix names the status layout and the sprint layout" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move; set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+layout archive
+doc Example
+chk "task-layout: in an archive project backlog/ and a sprint folder warn as <folder>:archive" task-layout Example \
+  "warn | 3 | planned:archive, backlog:archive, sprint-12:archive"
+reset
+layout status
+mkdir -p "$T/in-progress" "$T/planned" "$T/backlog"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout: in a status project backlog/ holding a task warns as backlog:status, after the task" task-layout Example \
+  "warn | 2 | EX-2:done, backlog:status"
+is "task-layout: the status fix is unchanged" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {

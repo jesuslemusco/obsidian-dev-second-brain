@@ -213,6 +213,8 @@ filters_want() {
     "            - file.folder.split(\"/\").length == $(($2 + 2))" "        - and:" \
     "            - file.folder.split(\"/\").length == $(($2 + 1))" "            - or:"
   for s in planned in-progress in-review done abandoned; do printf '%s\n' "                - file.inFolder(\"$1/$s\")"; done
+  printf '%s\n' "        - and:" "            - file.folder.split(\"/\").length == $(($2 + 1))" \
+    "            - file.folder.split(\"/\")[$2] == aliases[0]"
 }
 is "board: the filters take a task in each status folder, one folder deeper than a flat task" \
   "$(filters_of "$vault/$P/tasks/tasks.base")" "$(filters_want "$P/tasks" 6)"

@@ -751,6 +751,64 @@ done
 doc Example
 chk "board: the status folders in a view's filters are not the board's own" board Example "warn | 1 | tasks.base:no-status-filter"
 reset
+# no_sprint_branch: the board's filters as 0.10.0 wrote them, with the archive and status branches
+# and no branch for a task in a group folder, the third and: of the filters.
+no_sprint_branch() {
+  awk '/^        - and:$/ { n++ } /^formulas:/ { n = 0 } n < 3 { print }' "$T/tasks.base" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$T/tasks.base"
+}
+# A task in a group folder, $P/tasks/<group>/<ID>, has five folder parts, and its ID is part 4,
+# counted from 0.
+is "board: a new board holds the branch that takes a task in a group folder whose name is its first alias" \
+  "$(awk '/^formulas:/ { exit } /^        - and:$/ { n++ } n == 3' "$T/tasks.base")" \
+  "$(printf '%s\n' "        - and:" '            - file.folder.split("/").length == 5' \
+    '            - file.folder.split("/")[4] == aliases[0]')"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+doc Example
+chk "board: a sprint project with the template's filters is ok" board Example "ok | 0 | -"
+edit "$T/tasks.base" 's/split("\/")\[4\] == aliases\[0\]/split("\/")[12] == aliases[0]/'
+is "board: the branch under another index" "$(grep -c 'split("/")\[12\] == aliases\[0\]' "$T/tasks.base")" "1"
+doc Example
+chk "board: the branch at any index counts" board Example "ok | 0 | -"
+reset
+no_sprint_branch
+is "board: the 0.10.0 filters take the archive and the five status folders, and no task by its alias" \
+  "$(grep -c 'file\.inFolder' "$T/tasks.base")/$(grep -c '== aliases\[0\]' "$T/tasks.base")" "7/0"
+doc Example
+chk "board: a flat project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Sprint/'
+doc Example
+rc_is "board: a missing sprint filter leaves exit 0" 0
+chk "board: a sprint project whose board has the 0.10.0 filters warns, in any letter case" board Example \
+  "warn | 1 | tasks.base:no-sprint-filter"
+is "board: the sprint fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the sprint filter share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-sprint-filter"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+chk "board: task_layout: sprint with sprints off is not asked for the sprint filter" board Example "ok | 0 | -"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+no_status_branch
+doc Example
+chk "board: a sprint project's 0.8.0 board warns the sprint filter alone, not the status filter" board Example \
+  "warn | 1 | tasks.base:no-sprint-filter"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+no_sprint_branch
+# The last view, All, takes a task by its alias as a filter of its own.
+printf '%s\n' "    filters:" "      and:" '        - file.folder.split("/")[4] == aliases[0]' >>"$T/tasks.base"
+doc Example
+chk "board: the branch in a view's filters is not the board's own" board Example "warn | 1 | tasks.base:no-sprint-filter"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.

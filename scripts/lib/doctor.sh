@@ -748,9 +748,21 @@ sb_doc_has_status_filter() {
     END { for (i = 1; i <= n; i++) if (!(st[i] in has)) exit 1; exit 0 }' "$1"
 }
 
+# Return 0 when a board file's own filters take a task in a group folder by its folder's name, a
+# line file.folder.split("/")[<digits>] == aliases[0]. The board cannot see whether a folder has a
+# README, so that branch takes a README one group folder down whose folder's name is its first
+# alias, as a task's id is.
+sb_doc_has_sprint_filter() {
+  LC_ALL=C awk '
+    { sub(/\r$/, "") }
+    /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
+    top && /file\.folder\.split\(["\047]\/["\047]\)\[[0-9]+\][ \t]*==[ \t]*aliases\[0\]/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$1"
+}
+
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
-# that a project with a subproject has the By subproject view, and that an archive or status
-# project's board takes the archived tasks or the status folders.
+# that a project with a subproject has the By subproject view, and that an archive, status or
+# sprint project's board takes the archived tasks, the status folders or the group folders.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -790,6 +802,11 @@ sb_doc_check_board() {
   # A board scaffolded before the status layout shows no task in a status folder.
   if [ "$(sb_task_layout)" = "status" ] && ! sb_doc_has_status_filter "$base"; then
     bad="${bad:+$bad$nl}tasks.base:no-status-filter"
+    fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
+  fi
+  # A board scaffolded before the sprint layout shows no task in backlog/ or in a sprint's folder.
+  if [ "$(sb_task_layout)" = "sprint" ] && ! sb_doc_has_sprint_filter "$base"; then
+    bad="${bad:+$bad$nl}tasks.base:no-sprint-filter"
     fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
   fi
   sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"

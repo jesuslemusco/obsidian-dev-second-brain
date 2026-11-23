@@ -147,7 +147,8 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - A sprint edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
   folder of its sprint.
 - To switch a project that has tasks, or to rename the folders with a new `sprint_folder`, set the
-  key, then run `second-brain doctor --fix` once. It also removes the folders it leaves empty.
+  key, then run `second-brain doctor --fix` once. It also removes each empty group folder, a
+  status folder too, whether or not a move emptied it.
 
 ## Spec-driven delivery
 

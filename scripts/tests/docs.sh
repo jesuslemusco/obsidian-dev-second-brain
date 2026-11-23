@@ -320,7 +320,9 @@ out_has "contract: sprint close: a next sprint's folder that is a task gives exi
 OUT="$(grep '^| `doctor \[' "$CS")"
 out_has "contract: doctor --fix moves each task to the folder of its sprint" \
   'In a sprint project it moves each task to the folder of its sprint, or to `backlog/` with none'
-out_has "contract: doctor --fix removes each group folder left empty" 'then removes each group folder left empty'
+out_has "contract: doctor --fix removes each empty group folder, emptied by a move or not" \
+  'then removes each empty group folder, a status folder too, whether or not a move emptied it,'
+out_lacks "contract: doctor --fix: not only the folders a move emptied" 'group folder left empty'
 OUT="$(grep '^| project | `board` ' "$CS")"
 out_has "contract: the board check names a sprint project's board with no sprint filter" \
   'For a project with `task_layout: sprint`, a board whose own filters have no line'
@@ -744,6 +746,13 @@ is "sprint open: the exits are under step 6 and the moves under step 7" \
 is "sprint plan: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
 under_011 "changelog: the sprint skill's open and plan moves, under 0.11.0" \
   'The sprint skill says the same of `sprint open` and of setting a task'"'"'s sprint in plan.'
+under_011 "changelog: doctor --fix removes each empty group folder, under 0.11.0" \
+  '  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not'
+file_lacks "changelog: doctor --fix: not only the folders a move emptied" "$CG" 'group folder it leaves empty'
+file_has "guide: doctor --fix removes each empty group folder" "$GS" \
+  'It also removes each empty group folder, a'
+line_is "guide: whether or not a move emptied it" "$GS" '  status folder too, whether or not a move emptied it.'
+file_lacks "guide: doctor --fix: not only the folders a move emptied" "$GS" 'removes the folders it leaves empty'
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

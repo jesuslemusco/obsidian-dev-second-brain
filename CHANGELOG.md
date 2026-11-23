@@ -30,8 +30,9 @@
   name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),
   and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).
 - In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to
-  `backlog/` with none, then removes each group folder it leaves empty, and the archive's empty
-  folders. To switch a project that has tasks, or to rename its sprint folders with a new
+  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not
+  a move emptied it, and the archive's empty folders.
+  To switch a project that has tasks, or to rename its sprint folders with a new
   `sprint_folder`, set the key, then run `doctor --fix` once.
 - The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too. The
   sprint skill and scrum-master say what a sprint project's close moves, and what to do when it

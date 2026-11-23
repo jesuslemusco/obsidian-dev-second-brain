@@ -125,4 +125,36 @@ sb task head BRD-1
 rc_is "lookup: the same id in backlog/ and a sprint folder is ambiguous, exit 4" 4
 rm -r "$BT/2026-12-04/BRD-1"
 
+# ---------------------------------------------------------------- backlog refused
+# backlog, in any letter case, is no task id and no alias in any layout, as archive and the five
+# status names are not. The message names the backlog folder, lowercased.
+board_tree() { find "$vault/$B" | sort; find "$vault/$B" -type f -exec cksum {} + | sort; }
+for layout in flat archive status sprint; do
+  edit "$BP" "s/^task_layout: .*\$/task_layout: $layout/"
+  board_tree >"$tmp/board.before"
+  sb task new Backlog --project Board
+  rc_is "backlog refused: task new Backlog gives exit 5 ($layout)" 5
+  err_has "backlog refused: the task id message names the backlog folder ($layout)" \
+    "backlog is the folder of the backlog tasks, not a task id"
+  for n in backlog BACKLOG bAcKlOg; do
+    sb task new "$n" --project Board
+    rc_is "backlog refused: task new $n gives exit 5 ($layout)" 5
+  done
+  sb task alias BRD-1 add backlog
+  rc_is "backlog refused: task alias BRD-1 add backlog gives exit 5 ($layout)" 5
+  err_has "backlog refused: the alias message names the backlog folder ($layout)" \
+    "backlog is the folder of the backlog tasks, not a task alias"
+  for n in Backlog BACKLOG; do
+    sb task alias BRD-4 add "$n"
+    rc_is "backlog refused: task alias BRD-4 add $n gives exit 5 ($layout)" 5
+  done
+  board_tree >"$tmp/board.after"
+  is "backlog refused: nothing written ($layout)" \
+    "$(cmp -s "$tmp/board.before" "$tmp/board.after" && printf same)" "same"
+done
+sb task new Backlog
+rc_is "backlog refused: task new Backlog, with no project, gives exit 5" 5
+err_has "backlog refused: it is refused before the project is looked for" \
+  "backlog is the folder of the backlog tasks, not a task id"
+
 result

@@ -432,13 +432,13 @@ sb_task_tag() {
   sb_task_topics "$SB_T_FILE"
 }
 
-# Return 0 when a name, lowercased, is archive or one of the five status folders, and print that
-# folder; such a name is no task id and no alias in any layout, since a file system that ignores
-# letter case would take it for that folder.
+# Return 0 when a name, lowercased, is archive, backlog or one of the five status folders, and print
+# that folder; such a name is no task id and no alias in any layout, since a file system that
+# ignores letter case would take it for that folder.
 sb_task_reserved() {
   local name s
   name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  for s in archive $SB_TASK_STATUSES; do
+  for s in archive backlog $SB_TASK_STATUSES; do
     if [ "$name" = "$s" ]; then
       printf '%s\n' "$s"
       return 0
@@ -448,11 +448,13 @@ sb_task_reserved() {
 }
 
 # sb_task_refuse_reserved <name> <task id|task alias>: exit 5 when the name is reserved, naming its
-# folder: the name as typed, the status lowercased. Archive keeps its own message.
+# folder: the name as typed, the status lowercased. Archive keeps its own message, and backlog names
+# its folder lowercased.
 sb_task_refuse_reserved() {
   local folder
   folder="$(sb_task_reserved "$1")" || return 0
   [ "$folder" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a $2"
+  [ "$folder" != "backlog" ] || sb_die 5 "backlog is the folder of the backlog tasks, not a $2"
   sb_die 5 "$1 is the folder of the $folder tasks, not a $2"
 }
 

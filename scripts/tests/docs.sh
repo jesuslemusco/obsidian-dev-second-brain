@@ -753,6 +753,20 @@ file_has "guide: doctor --fix removes each empty group folder" "$GS" \
   'It also removes each empty group folder, a'
 line_is "guide: whether or not a move emptied it" "$GS" '  status folder too, whether or not a move emptied it.'
 file_lacks "guide: doctor --fix: not only the folders a move emptied" "$GS" 'removes the folders it leaves empty'
+under_011 "changelog: a status project's --fix removes each empty group folder, under 0.11.0" \
+  '- In a status project, `doctor --fix` now also removes each empty group folder other than the'
+file_has "changelog: an empty status folder stays" "$CG" 'whether or not a move emptied it. An empty status folder stays.'
+line_is "guide: every --fix run in a status project removes the empty group folders" "$GS" \
+  '  Every run also removes the archive'"'"'s empty folders, and each empty group folder other than the'
+file_lacks "guide: no longer the archive's empty folders alone" "$GS" '  also removes the archive'"'"'s empty folders.'
+line_is "vault-doctor fix: a status project's --fix removes each empty group folder" "$VD" \
+  '   - In a status project, every `--fix` run also removes each empty group folder other than the'
+line_is "vault-doctor fix: such as a task folder that no-readme names, said before the run" "$VD" \
+  '     `no-readme` names, whether or not a move emptied it. Say so before it runs.'
+vd_sgr="$(lineno "$VD" '- In a sprint project, every `--fix` run also removes')"
+vd_tgr="$(lineno "$VD" '- In a status project, every `--fix` run also removes')"
+is "vault-doctor fix: the status project's removal is beside the sprint project's, before the snapshot" \
+  "$((${vd_sgr:-0} > 0 && ${vd_tgr:-0} == ${vd_sgr:-0} + 2 && ${vd_tgr:-0} < ${vd_snap:-0}))" "1"
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

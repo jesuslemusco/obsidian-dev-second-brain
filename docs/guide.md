@@ -127,8 +127,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - When a sprint closes, each task it abandons moves to `tasks/abandoned/<ID>/`.
 - A status edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
   folder of its status.
-- To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once. It
-  also removes the archive's empty folders.
+- To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once.
+  Every run also removes the archive's empty folders, and each empty group folder other than the
+  five status folders, such as an empty `backlog/`, a sprint's folder or a task folder with no
+  README, whether or not a move emptied it.
 
 ### Sprint folders
 

@@ -53,6 +53,9 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      the folder of its sprint, or to `backlog/`.
    - In a sprint project, every `--fix` run also removes each empty group folder, a status folder
      too, whether or not a move emptied it. Say so before it runs.
+   - In a status project, every `--fix` run also removes each empty group folder other than the
+     five status folders, such as an empty `backlog/`, a sprint's folder or a task folder that
+     `no-readme` names, whether or not a move emptied it. Say so before it runs.
    - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
      `<ID>:<status>` offender.
    - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.

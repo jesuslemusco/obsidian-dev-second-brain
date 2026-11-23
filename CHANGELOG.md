@@ -35,7 +35,7 @@
   `sprint_folder`, set the key, then run `doctor --fix` once.
 - The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too. The
   sprint skill and scrum-master say what a sprint project's close moves, and what to do when it
-  cannot.
+  cannot. The sprint skill says the same of `sprint open` and of setting a task's sprint in plan.
 - docs-keeper names `tasks/backlog/` and the sprint folders as a task's place in a sprint
   project. `vault-setup project` and `adopt` offer `task_layout: sprint`, and `sprint_folder` with
   it, and `adopt` offers the one `doctor --fix` run that moves the tasks already there.

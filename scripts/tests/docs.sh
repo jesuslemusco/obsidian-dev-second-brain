@@ -691,6 +691,45 @@ under_011 "changelog: vault-setup offers the sprint layout, under 0.11.0" \
   '`vault-setup project` and `adopt` offer `task_layout: sprint`'
 under_011 "changelog: vault-doctor fix counts a sprint project's moves, under 0.11.0" \
   '- The vault-doctor `fix` mode counts a sprint project'"'"'s moves as a bulk change'
+RM="$here/README.md"
+line_is "README: a ticket's note, in a sprint project" "$RM" \
+  '  status. A project that keeps each task in the folder of its sprint has it at'
+line_is "README: in a sprint's folder, or backlog/ in none" "$RM" \
+  '  `<project>/tasks/<sprint folder>/<ID>/README.md`, or `<project>/tasks/backlog/<ID>/README.md`'
+line_is "README: the first story's note, in a sprint project" "$RM" \
+  '`<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a'
+SP="$here/skills/sprint/SKILL.md"
+line_is "sprint open: exit 6 names a taken destination in a sprint project" "$SP" \
+  '   - Exit 6 with `the destination exists: <path>` or `the sprint folder is a task: <path>`, in a'
+line_is "sprint open: the folder a re-pointed task moves to, with nothing written" "$SP" \
+  '     project with `task_layout: sprint`: the folder a re-pointed task moves to is taken, and'
+line_is "sprint open: exit 5 names the sprint_folder pattern" "$SP" \
+  '   - Exit 5 that names the `sprint_folder` pattern: it gives the new sprint no folder name, and'
+line_is "sprint open: each re-pointed task moves in a sprint project" "$SP" \
+  '   - With `task_layout: sprint`, each re-pointed task also moves to the new sprint'"'"'s folder. After'
+line_is "sprint open: a failed move leaves the sprint open" "$SP" \
+  '   - A move that fails is named on stderr, and the call exits with its code. The sprint is open'
+line_is "sprint open: the doctor moves the task later" "$SP" \
+  '     `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.'
+line_is "sprint plan: task set moves the folder in a sprint project" "$SP" \
+  '   - With `task_layout: sprint`, each call also moves the task'"'"'s folder, to the sprint'"'"'s folder or'
+line_is "sprint plan: exit 6 there, as in open" "$SP" \
+  '   - Exit 6 there, as in open: the destination is taken, or the sprint'"'"'s folder is a task, and'
+line_is "sprint plan: a failed move keeps the sprint written" "$SP" \
+  '   - A move that fails exits as `second-brain move` does, with the sprint written:'
+sp_o6="$(lineno "$SP" '6. Run `second-brain sprint open')"
+sp_oe6="$(lineno "$SP" '   - Exit 6 with `the destination exists: <path>`')"
+sp_o7="$(lineno "$SP" '7. Report the note it created')"
+sp_omv="$(lineno "$SP" '   - With `task_layout: sprint`, each re-pointed task')"
+sp_o8="$(lineno "$SP" '8. A goal given or changed later')"
+sp_p5="$(lineno "$SP" '5. Set each answer:')"
+sp_pmv="$(lineno "$SP" '   - With `task_layout: sprint`, each call also moves')"
+sp_p6="$(lineno "$SP" '6. A task that does not exist yet')"
+is "sprint open: the exits are under step 6 and the moves under step 7" \
+  "$((${sp_o6:-0} < ${sp_oe6:-0} && ${sp_oe6:-0} < ${sp_o7:-0} && ${sp_o7:-0} < ${sp_omv:-0} && ${sp_omv:-0} < ${sp_o8:-0}))" "1"
+is "sprint plan: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
+under_011 "changelog: the sprint skill's open and plan moves, under 0.11.0" \
+  'The sprint skill says the same of `sprint open` and of setting a task'"'"'s sprint in plan.'
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

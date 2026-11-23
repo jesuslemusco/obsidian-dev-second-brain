@@ -11,6 +11,8 @@ sb scaffold project Board --path "$B" --keys BRD
 
 # layout_of: the task layout the helper reads from the profile of Board.
 layout_of() { (SB_ROOT="$vault" SB_P_PATH="$B" sb_task_layout); }
+# project_tree <folder>: every path in a folder, then the checksum of each file, to compare.
+project_tree() { find "$1" | sort; find "$1" -type f -exec cksum {} + | sort; }
 
 # ---------------------------------------------------------------- the sprint layout
 line_is "layout: a new profile uses sprints" "$BP" "uses_sprints: true"
@@ -128,10 +130,9 @@ rm -r "$BT/2026-12-04/BRD-1"
 # ---------------------------------------------------------------- backlog refused
 # backlog, in any letter case, is no task id and no alias in any layout, as archive and the five
 # status names are not. The message names the backlog folder, lowercased.
-board_tree() { find "$vault/$B" | sort; find "$vault/$B" -type f -exec cksum {} + | sort; }
 for layout in flat archive status sprint; do
   edit "$BP" "s/^task_layout: .*\$/task_layout: $layout/"
-  board_tree >"$tmp/board.before"
+  project_tree "$vault/$B" >"$tmp/board.before"
   sb task new Backlog --project Board
   rc_is "backlog refused: task new Backlog gives exit 5 ($layout)" 5
   err_has "backlog refused: the task id message names the backlog folder ($layout)" \
@@ -148,7 +149,7 @@ for layout in flat archive status sprint; do
     sb task alias BRD-4 add "$n"
     rc_is "backlog refused: task alias BRD-4 add $n gives exit 5 ($layout)" 5
   done
-  board_tree >"$tmp/board.after"
+  project_tree "$vault/$B" >"$tmp/board.after"
   is "backlog refused: nothing written ($layout)" \
     "$(cmp -s "$tmp/board.before" "$tmp/board.after" && printf same)" "same"
 done
@@ -192,7 +193,6 @@ exists "task new: the later tasks are in backlog/ too" "$JT/backlog/JN-6/README.
 # ---------------------------------------------------------------- join and leave a sprint
 # task set sprint=<id> moves the task to the folder of that sprint through move, so a link to it
 # follows; sprint= takes it back to backlog/. With no sprint_folder key a sprint's folder is its id.
-join_tree() { find "$vault/$J" | sort; find "$vault/$J" -type f -exec cksum {} + | sort; }
 printf '# Links\n\nSee [[%s|JN-1]].\n' "$J/tasks/backlog/JN-1/README" >"$vault/$J/links.md"
 sb task set JN-1 sprint=2026-12-04
 rc_is "join: task set sprint=<id>, exit 0" 0
@@ -260,13 +260,13 @@ out_has "leave: it goes back to backlog/" "$J/tasks/backlog/JN-3/README.md"
 # Anything at the destination, an empty folder, a file or a link, gives exit 6 with nothing written.
 cp "$JT/backlog/JN-4/README.md" "$tmp/JN-4.before"
 mkdir -p "$JT/2026-12-04/JN-4"
-join_tree >"$tmp/join.before"
+project_tree "$vault/$J" >"$tmp/join.before"
 sb task set JN-4 sprint=2026-12-04 next="Ship it"
 rc_is "taken: an empty folder at the destination gives exit 6" 6
 err_has "taken: the message names the destination" "the destination exists: $J/tasks/2026-12-04/JN-4"
 is "taken: the task's sprint key is unchanged, and no key is written" \
   "$(cmp -s "$tmp/JN-4.before" "$JT/backlog/JN-4/README.md" && printf same)" "same"
-join_tree >"$tmp/join.after"
+project_tree "$vault/$J" >"$tmp/join.after"
 is "taken: nothing written in the project" "$(cmp -s "$tmp/join.before" "$tmp/join.after" && printf same)" "same"
 rmdir "$JT/2026-12-04/JN-4"
 printf 'x\n' >"$JT/2026-12-04/JN-4"
@@ -360,11 +360,11 @@ exists "pattern: and back in backlog/ after" "$JT/backlog/JN-5/README.md"
 # sprint-4 at the tasks root, in the folder JN-5 left empty.
 mkdir -p "$JT/sprint-4"
 sed 's/^  - JN-6$/  - sprint-4/' "$JT/backlog/JN-6/README.md" >"$JT/sprint-4/README.md"
-join_tree >"$tmp/join.before"
+project_tree "$vault/$J" >"$tmp/join.before"
 sb task set JN-5 sprint=2026-12-04
 rc_is "pattern: a sprint folder that is a task gives exit 6" 6
 err_has "pattern: the message names the task in the way" "the sprint folder is a task: $J/tasks/sprint-4"
-join_tree >"$tmp/join.after"
+project_tree "$vault/$J" >"$tmp/join.after"
 is "pattern: nothing written for a sprint folder that is a task" \
   "$(cmp -s "$tmp/join.before" "$tmp/join.after" && printf same)" "same"
 rm -r "$JT/sprint-4"
@@ -372,11 +372,11 @@ rm -r "$JT/sprint-4"
 # written. 2026-10-23 has a note with no start, so its <start> is empty.
 bad_pattern() { # bad_pattern <desc> <pattern> <sprint id>
   set_pattern "$2"
-  join_tree >"$tmp/join.before"
+  project_tree "$vault/$J" >"$tmp/join.before"
   sb task set JN-5 sprint="$3" next="Not written"
   rc_is "invalid pattern: $1 gives exit 5" 5
   err_has "invalid pattern: $1, the message names the pattern" "sprint_folder pattern \"$2\""
-  join_tree >"$tmp/join.after"
+  project_tree "$vault/$J" >"$tmp/join.after"
   is "invalid pattern: $1, nothing written" "$(cmp -s "$tmp/join.before" "$tmp/join.after" && printf same)" "same"
 }
 bad_pattern "no placeholder" "sprint" 2026-12-04
@@ -416,13 +416,12 @@ sb task set CL-1 status=done
 exists "close: the four tasks are in the folder of their sprint" "$CT/2026-10-14/CL-4/README.md"
 printf '# Close links\n\nSee [[%s|CL-2]] and [[%s|CL-3]].\n' "$C/tasks/2026-10-14/CL-2/README" \
   "$C/tasks/2026-10-14/CL-3/README" >"$vault/$C/links.md"
-close_tree() { find "$vault/$C" | sort; find "$vault/$C" -type f -exec cksum {} + | sort; }
 # close_refused <desc> <code>: sprint close of the four tasks exits <code>, and writes nothing.
 close_refused() {
-  close_tree >"$tmp/close.before"
+  project_tree "$vault/$C" >"$tmp/close.before"
   sb sprint close Close --carry CL-2 --backlog CL-3 --abandon CL-4
   rc_is "close refused: $1 gives exit $2" "$2"
-  close_tree >"$tmp/close.after"
+  project_tree "$vault/$C" >"$tmp/close.after"
   is "close refused: $1, no task and no sprint note written" \
     "$(cmp -s "$tmp/close.before" "$tmp/close.after" && printf same)" "same"
 }

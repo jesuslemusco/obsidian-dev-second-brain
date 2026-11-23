@@ -308,10 +308,9 @@ sb_task_set() {
     dest="$(sb_task_sprint_dir "$sprint")" || exit $?
     if [ "$dest" = "${SB_T_REL%/*}" ]; then
       dest=""
+    elif [ -n "$sprint" ]; then
+      sb_task_sprint_dest_free "$dest"
     else
-      if [ -n "$sprint" ] && [ -f "$SB_ROOT/${dest%/*}/README.md" ]; then
-        sb_die 6 "the sprint folder is a task: ${dest%/*}"
-      fi
       sb_task_dest_free "$dest"
     fi
   fi
@@ -753,6 +752,14 @@ sb_task_sprint_dir() {
 sb_task_dest_free() {
   if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then sb_die 6 "the destination exists: $1"; fi
   return 0
+}
+
+# sb_task_sprint_dest_free <dest>: for the vault path dest of a task in a sprint's folder, exit 6
+# when that folder is a task, one with a README.md of its own, then as sb_task_dest_free does.
+# backlog/ is no sprint's folder: its README.md is in no task's way.
+sb_task_sprint_dest_free() {
+  [ ! -f "$SB_ROOT/${1%/*}/README.md" ] || sb_die 6 "the sprint folder is a task: ${1%/*}"
+  sb_task_dest_free "$1"
 }
 
 # sb_task_relocate <dest>: move the folder of the task in SB_T_FILE to the vault path dest through

@@ -444,10 +444,7 @@ EOF
         *) continue ;;
       esac
       [ "$dest" != "$(sb_rel "$dir")" ] || continue
-      if [ "$action" = "carry" ] && [ -f "$SB_ROOT/${dest%/*}/README.md" ]; then
-        sb_die 6 "the sprint folder is a task: ${dest%/*}"
-      fi
-      sb_task_dest_free "$dest"
+      if [ "$action" = "carry" ]; then sb_task_sprint_dest_free "$dest"; else sb_task_dest_free "$dest"; fi
       moves="$moves$file"$'\t'"$dest$nl"
     done <<EOF
 $plan

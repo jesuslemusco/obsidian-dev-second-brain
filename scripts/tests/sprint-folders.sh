@@ -512,4 +512,83 @@ exists "close: the folder it leaves empty stays" "$CT/2026-10-28"
 sb unresolved Close
 out_is "close: unresolved lists nothing after the second close" ""
 
+# ---------------------------------------------------------------- sprint open: the sprint layout
+# sprint open re-points each open task whose sprint has no note to the sprint it opens; in a sprint
+# project it moves each, through move, to the new sprint's folder once the keys are written, so a
+# link to it follows. Every destination is looked at before the sprint note is written.
+O="work/open"
+OT="$vault/$O/tasks"
+OP="$vault/$O/claude/profile.md"
+OS="$vault/$O/sprints/2026-12-04.md"
+sb scaffold project Open --path "$O" --keys OP
+edit "$OP" 's/^task_layout: flat$/task_layout: sprint/'
+for t in OP-1 OP-2 OP-3; do
+  sb task new "$t" --project Open --title "Open $t"
+  sb task set "$t" sprint=2026-11-20
+done
+sb task set OP-3 status=done
+exists "open: the tasks are in the folder of their sprint" "$OT/2026-11-20/OP-2/README.md"
+absent "open: and that sprint has no note" "$vault/$O/sprints/2026-11-20.md"
+printf '# Open links\n\nSee [[%s|OP-1]].\n' "$O/tasks/2026-11-20/OP-1/README" >"$vault/$O/links.md"
+# open_refused <desc> <code>: sprint open exits <code>, and writes no sprint note and no task.
+open_refused() {
+  project_tree "$vault/$O" >"$tmp/open.before"
+  sb sprint open Open --end 2026-12-04
+  rc_is "open refused: $1 gives exit $2" "$2"
+  absent "open refused: $1, no sprint note written" "$OS"
+  project_tree "$vault/$O" >"$tmp/open.after"
+  is "open refused: $1, no task and nothing else written" \
+    "$(cmp -s "$tmp/open.before" "$tmp/open.after" && printf same)" "same"
+}
+mkdir -p "$OT/2026-12-04/OP-2"
+open_refused "an empty folder where the re-pointed task would go" 6
+err_has "open refused: the message names the folder in the new sprint's folder" \
+  "the destination exists: $O/tasks/2026-12-04/OP-2"
+rm -r "$OT/2026-12-04"
+# The new sprint's folder is a task, 2026-12-04 at the tasks root, of no sprint.
+mkdir -p "$OT/2026-12-04"
+sed -e 's/^  - OP-3$/  - 2026-12-04/' -e '/^sprint: /d' "$OT/2026-11-20/OP-3/README.md" >"$OT/2026-12-04/README.md"
+open_refused "a new sprint's folder that is a task" 6
+err_has "open refused: the message names the task in the way" "the sprint folder is a task: $O/tasks/2026-12-04"
+rm -r "$OT/2026-12-04"
+edit "$OP" 's/^task_layout: sprint$/task_layout: sprint\
+sprint_folder: "sprint"/'
+open_refused "a sprint_folder pattern with no placeholder" 5
+err_has "open refused: the message names the pattern" 'sprint_folder pattern "sprint"'
+edit "$OP" '/^sprint_folder: /d'
+sb sprint open Open --end 2026-12-04
+rc_is "open: a re-pointed task in a sprint project, exit 0" 0
+out_is "open: the note's path, the re-pointed lines, then each moved task's path and links: lines" \
+  "$O/sprints/2026-12-04.md
+re-pointed: OP-1 from 2026-11-20 to 2026-12-04
+re-pointed: OP-2 from 2026-11-20 to 2026-12-04
+$O/tasks/2026-12-04/OP-1/README.md
+links: $O/links.md | 1
+$O/tasks/2026-12-04/OP-2/README.md"
+exists "open: the re-pointed task is in the new sprint's folder" "$OT/2026-12-04/OP-1/README.md"
+absent "open: and no longer in the folder of the sprint with no note" "$OT/2026-11-20/OP-1"
+line_is "open: its sprint is the new one" "$OT/2026-12-04/OP-1/README.md" 'sprint: "2026-12-04"'
+exists "open: the other re-pointed task is there too" "$OT/2026-12-04/OP-2/README.md"
+absent "open: and gone from its folder before" "$OT/2026-11-20/OP-2"
+exists "open: the done task is not re-pointed, and stays" "$OT/2026-11-20/OP-3/README.md"
+line_is "open: and keeps its sprint" "$OT/2026-11-20/OP-3/README.md" 'sprint: "2026-11-20"'
+line_is "open: the link followed the moved task" "$vault/$O/links.md" "See [[$O/tasks/2026-12-04/OP-1/README|OP-1]]."
+sb unresolved Open
+rc_is "open: unresolved runs after the moves, exit 0" 0
+out_is "open: unresolved lists nothing after the moves" ""
+# A sprint with no note shares <n> with the next sprint that gets one, so a task re-pointed to that
+# sprint is in its folder already: only its key is written.
+sb sprint close Open --backlog OP-1,OP-2
+edit "$OP" 's/^task_layout: sprint$/task_layout: sprint\
+sprint_folder: "sprint-<n>"/'
+sb task new OP-4 --project Open --title "Open OP-4"
+sb task set OP-4 sprint=2026-12-25
+out_has "open in place: a sprint with no note after one note is sprint-2" "$O/tasks/sprint-2/OP-4/README.md"
+sb sprint open Open --end 2026-12-18
+rc_is "open in place: a task already in the new sprint's folder, exit 0" 0
+out_is "open in place: it is re-pointed, and nothing moves" "$O/sprints/2026-12-18.md
+re-pointed: OP-4 from 2026-12-25 to 2026-12-18"
+exists "open in place: it stays in the folder" "$OT/sprint-2/OP-4/README.md"
+line_is "open in place: and its sprint is the new one" "$OT/sprint-2/OP-4/README.md" 'sprint: "2026-12-18"'
+
 result

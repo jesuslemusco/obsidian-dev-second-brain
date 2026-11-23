@@ -267,9 +267,11 @@ sb_board_set_sprint() {
 }
 
 # Open the next sprint: note, hub line and the board literal. Exit 6 while one is in progress.
+# Each open task whose sprint has no note is re-pointed to it; in a sprint project it then moves to
+# the new sprint's folder, every destination looked at before anything is written.
 sb_sprint_open() {
   local project="" end="" goal="" given=0 len anchor cur dir note hub alias uplink start line row
-  local known moved="" file tid old tab=$'\t'
+  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir code first=0
   local usage="usage: second-brain sprint open <project> [--end YYYY-MM-DD] [--goal G]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -304,6 +306,27 @@ sb_sprint_open() {
   fi
   note="$dir/$end.md"
   [ ! -e "$note" ] || sb_die 6 "the sprint note exists: $SB_P_PATH/$SB_SPRINTS_ROOT/$end.md"
+  # Open tasks that point at a sprint with no note follow the sprint being opened, whose note is
+  # known before it is written. In a sprint project each moves to the folder of that sprint, so each
+  # destination must be free before anything is written. A task already in it is not in its own way,
+  # and stays. A sprint folder that is a task, with a README.md of its own, is in the way too, and a
+  # pattern that names no sprint folder exits 5.
+  known="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '{ print $2 }')"
+  known="$known$nl$end"
+  layout="$(sb_task_layout)"
+  while IFS=$'\t' read -r file tid old; do
+    [ -n "$file" ] || continue
+    if printf '%s\n' "$known" | grep -qxF -- "$old"; then continue; fi
+    dest=""
+    if [ "$layout" = "sprint" ]; then
+      tdir="${file%/*}"
+      dest="$(SB_T_ID="${tdir##*/}" sb_task_sprint_dir "$end")" || exit $?
+      if [ "$dest" = "$(sb_rel "$tdir")" ]; then dest=""; else sb_task_sprint_dest_free "$dest"; fi
+    fi
+    plan="$plan$file$tab$tid$tab$old$tab$dest$nl"
+  done <<EOF
+$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan | awk -F'\t' '$4 != "-" && $3 != "done" && $3 != "abandoned" { print $1 "\t" $2 "\t" $4 }')
+EOF
   start="$(sb_date_add "$end" "$((1 - len))")"
   hub="$dir/README.md"
   alias="$(sb_fm_list "$hub" aliases 2>/dev/null | head -1)"
@@ -330,18 +353,32 @@ sb_sprint_open() {
     sb_fm_set "$SB_P_PROFILE" sprint_anchor_end "$end"
     sb_note "sprint_anchor_end in the profile is now $end"
   fi
-  # Open tasks that point at a sprint with no note follow the sprint being opened.
-  known="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '{ print $2 }')"
-  while IFS=$'\t' read -r file tid old; do
+  while IFS=$'\t' read -r file tid old dest; do
     [ -n "$file" ] || continue
-    if printf '%s\n' "$known" | grep -qxF -- "$old"; then continue; fi
     sb_fm_set "$file" sprint "$end" || continue
     moved="${moved}re-pointed: $tid from $old to $end"$'\n'
+    [ -z "$dest" ] || moves="$moves$file$tab$dest$nl"
   done <<EOF
-$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan | awk -F'\t' '$4 != "-" && $3 != "done" && $3 != "abandoned" { print $1 "\t" $2 "\t" $4 }')
+$plan
 EOF
   sb_rel "$note"
   printf '%s' "$moved"
+  # Now the keys are written, each re-pointed task moves. Each move runs in a subshell: one that
+  # fails is named on stderr, and the others still move. The exit is the first failing code.
+  while IFS=$'\t' read -r file dest; do
+    [ -n "$file" ] || continue
+    code=0
+    (
+      SB_T_FILE="$file"
+      SB_T_REL="$(sb_rel "$file")"
+      SB_T_ID="${dest##*/}"
+      sb_task_relocate "$dest"
+    ) </dev/null || code=$?
+    [ "$first" -ne 0 ] || first="$code"
+  done <<EOF
+$moves
+EOF
+  return "$first"
 }
 
 # Close the sprint in progress; every open task must be carried, sent to the backlog or abandoned.

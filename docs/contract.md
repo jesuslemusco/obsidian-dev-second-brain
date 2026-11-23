@@ -1299,8 +1299,10 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   read with no `offset` and no `limit`; a Bash command that runs grep, egrep, fgrep, rg, cat or
   sed.
 - A whole task note is also a `tasks/<folder>/<ID>/README.md` one group folder down, such as
-  `tasks/backlog/<ID>/README.md` or one in a sprint's folder. The hook cannot see whether a folder
-  has a README, so it takes any folder there but `archive`, in any letter case.
+  `tasks/backlog/<ID>/README.md` or one in a sprint's folder. The hook takes a status folder,
+  `backlog` or a folder with no `README.md` of its own, looked up in the letter case of the path.
+- A README in a folder inside a task, such as `tasks/<ID>/notes/README.md`, is no task note, and
+  neither is one directly in `archive`, in any letter case.
 - The warning is one JSON object whose `hookSpecificOutput.additionalContext` says what the call
   does, then the search and read rule. Otherwise it prints nothing.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last

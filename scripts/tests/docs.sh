@@ -131,8 +131,13 @@ line_is "contract: the search rule names a task note in a status folder" "$here/
   '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
 line_is "contract: the search rule names a task note one group folder down" "$here/docs/contract.md" \
   '- A whole task note is also a `tasks/<folder>/<ID>/README.md` one group folder down, such as'
-line_is "contract: in backlog/ or a sprint's folder, any folder but archive" "$here/docs/contract.md" \
-  '  `tasks/backlog/<ID>/README.md` or one in a sprint'"'"'s folder. The hook cannot see whether a folder'
+line_is "contract: in backlog/ or a sprint's folder" "$here/docs/contract.md" \
+  '  `tasks/backlog/<ID>/README.md` or one in a sprint'"'"'s folder. The hook takes a status folder,'
+line_is "contract: the hook takes a folder with no README of its own" "$here/docs/contract.md" \
+  '  `backlog` or a folder with no `README.md` of its own, looked up in the letter case of the path.'
+line_is "contract: a README in a folder inside a task is no task note" "$here/docs/contract.md" \
+  '- A README in a folder inside a task, such as `tasks/<ID>/notes/README.md`, is no task note, and'
+file_lacks "contract: the hook no longer takes any folder" "$here/docs/contract.md" 'The hook cannot see whether a folder'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
 file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'

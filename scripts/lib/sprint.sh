@@ -64,6 +64,53 @@ sb_sprint_length() {
   printf '%s\n' "$n"
 }
 
+# sb_sprint_folder <sprint id>: print the name of the folder of a sprint in the tasks folder of the
+# project in SB_P_PATH, from the profile's sprint_folder pattern, <end> with no key. In it <end> is
+# the sprint id; <start> its first day, the start key of its note, or with no note the id less
+# sprint_length_days plus one day, as sprint open counts it; and <n> one more than the count of the
+# project's sprint notes with an earlier id. Exit 5 naming the pattern when it has none of the
+# three, or gives no folder name: empty, a character outside letters, digits, dots, hyphens and
+# underscores, a dot or a hyphen first, or archive, backlog or a status name in any letter case.
+sb_sprint_folder() {
+  local id="$1" pattern name rows="" start="" n hit ok
+  pattern="$(sb_fm_get "$SB_ROOT/$SB_P_PATH/claude/profile.md" sprint_folder 2>/dev/null)" || pattern="<end>"
+  case "$pattern" in
+    *"<end>"* | *"<start>"* | *"<n>"*) ;;
+    *) sb_die 5 "the sprint_folder pattern \"$pattern\" has no <end>, <start> or <n>, so every sprint would share one folder" ;;
+  esac
+  case "$pattern" in
+    *"<start>"* | *"<n>"*)
+      [ ! -d "$SB_P_DIR/$SB_SPRINTS_ROOT" ] || rows="$(sb_sprint_files "$SB_P_DIR/$SB_SPRINTS_ROOT" | sb_sprint_scan)"
+      ;;
+  esac
+  # The start key of a note is put in last, so no text of it is read as a placeholder.
+  name=${pattern//<end>/"$id"}
+  case "$pattern" in
+    *"<n>"*)
+      n="$(printf '%s\n' "$rows" | LC_ALL=C SB_ID="$id" awk -F'\t' 'NF > 1 && ($2 "") < ENVIRON["SB_ID"] { c++ } END { print c + 1 }')"
+      name=${name//<n>/"$n"}
+      ;;
+  esac
+  case "$pattern" in
+    *"<start>"*)
+      # A note's empty start key is "-" in its scan row, and gives an empty <start>.
+      hit="$(printf '%s\n' "$rows" | LC_ALL=C SB_ID="$id" awk -F'\t' 'NF > 1 && ($2 "") == ENVIRON["SB_ID"] { print "x" $4; exit }')"
+      if [ -n "$hit" ]; then
+        start="${hit#x}"
+        [ "$start" != "-" ] || start=""
+      else
+        start="$(sb_date_add "$id" "$((1 - $(sb_sprint_length)))")"
+      fi
+      name=${name//<start>/"$start"}
+      ;;
+  esac
+  ok=1
+  case "$name" in '' | *[!A-Za-z0-9._-]* | .* | -*) ok=0 ;; esac
+  ! sb_task_reserved "$name" >/dev/null || ok=0
+  [ "$ok" -eq 1 ] || sb_die 5 "the sprint_folder pattern \"$pattern\" gives \"$name\" for sprint $id, no folder name: letters, digits, dots, hyphens and underscores, neither a dot nor a hyphen first, and not archive, backlog or a status"
+  printf '%s\n' "$name"
+}
+
 # Print the sprint in progress: id, start, end, days left, goal.
 sb_sprint_current() {
   local row

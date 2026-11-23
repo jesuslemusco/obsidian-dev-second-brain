@@ -195,9 +195,10 @@ sb_task_head() {
 }
 
 # Set or remove scalar properties of a task; status and its tag change together. In a status
-# project a status change then moves the task to the folder of its new status.
+# project a status change then moves the task to the folder of its new status, and in a sprint
+# project a sprint change to the folder of its new sprint, or to backlog/ for none.
 sb_task_set() {
-  local id="" project="" kv key value out="" n=0 i=0 status="" dest=""
+  local id="" project="" kv key value out="" n=0 i=0 status="" dest="" sprint="" has_sprint=0 layout
   local pairs
   pairs=()
   while [ $# -gt 0 ]; do
@@ -274,18 +275,43 @@ sb_task_set() {
   # In a status project a new status moves the task to the folder of that status once the keys are
   # written, so the destination is looked at first. The last status pair wins. The same status
   # moves nothing, and a folder that already is the destination is not in its own way.
+  # In a sprint project a sprint other than the task's own moves it the same way, to the folder of
+  # that sprint, or to backlog/ for none; there a status change moves nothing. The last sprint pair
+  # wins. A sprint folder that is a task, with a README.md of its own, is in the way too, and a
+  # pattern that names no sprint folder exits 5 before anything is written.
   status=""
+  sprint=""
+  has_sprint=0
   i=0
   while [ "$i" -lt "$n" ]; do
-    case "${pairs[$i]}" in status=*) status="${pairs[$i]#status=}" ;; esac
+    case "${pairs[$i]}" in
+      status=*) status="${pairs[$i]#status=}" ;;
+      sprint=*)
+        sprint="${pairs[$i]#sprint=}"
+        has_sprint=1
+        ;;
+    esac
     i=$((i + 1))
   done
-  if [ -n "$status" ] && [ "$(sb_task_layout)" = "status" ] &&
+  layout="$(sb_task_layout)"
+  if [ -n "$status" ] && [ "$layout" = "status" ] &&
     [ "$status" != "$(sb_fm_get "$SB_T_FILE" status)" ]; then
     dest="$(sb_task_status_dir "$status")"
     if [ "$dest" = "${SB_T_REL%/*}" ]; then
       dest=""
     else
+      sb_task_dest_free "$dest"
+    fi
+  fi
+  if [ "$has_sprint" -eq 1 ] && [ "$layout" = "sprint" ] &&
+    [ "$sprint" != "$(sb_fm_get "$SB_T_FILE" sprint)" ]; then
+    dest="$(sb_task_sprint_dir "$sprint")" || exit $?
+    if [ "$dest" = "${SB_T_REL%/*}" ]; then
+      dest=""
+    else
+      if [ -n "$sprint" ] && [ -f "$SB_ROOT/${dest%/*}/README.md" ]; then
+        sb_die 6 "the sprint folder is a task: ${dest%/*}"
+      fi
       sb_task_dest_free "$dest"
     fi
   fi
@@ -572,8 +598,8 @@ sb_topic_dir() {
   printf '%s\n' "$dir"
 }
 
-# Create a task folder and its README from the template, in planned/ in a status project; exit 6
-# when the folder exists or the id is a task in another folder.
+# Create a task folder and its README from the template, in planned/ in a status project and in
+# backlog/ in a sprint project; exit 6 when the folder exists or the id is a task in another folder.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
   local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" made d vdir
@@ -617,9 +643,13 @@ sb_task_new() {
   fi
   sb_need_project "$project"
   sb_need_profile
-  # In a status project a new task starts in planned/; in any other layout at the tasks root.
+  # In a status project a new task starts in planned/, in a sprint project in backlog/, as it has no
+  # sprint yet; in any other layout at the tasks root.
   vdir="$SB_P_PATH/$SB_TASKS_ROOT/$id"
-  [ "$(sb_task_layout)" != "status" ] || vdir="$(SB_T_ID="$id" sb_task_status_dir planned)"
+  case "$(sb_task_layout)" in
+    status) vdir="$(SB_T_ID="$id" sb_task_status_dir planned)" ;;
+    sprint) vdir="$(SB_T_ID="$id" sb_task_sprint_dir "")" ;;
+  esac
   dir="$SB_ROOT/$vdir"
   file="$dir/README.md"
   [ ! -e "$file" ] || sb_die 6 "the task already has a README: $vdir/README.md"
@@ -707,6 +737,15 @@ EOF
 # <project>/<tasks_root>/<status>/<ID>.
 sb_task_status_dir() {
   printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/$SB_T_ID"
+}
+
+# sb_task_sprint_dir <sprint id or empty>: print the vault path of the folder of the task in SB_T_ID
+# for a sprint, in the sprint layout: <project>/<tasks_root>/backlog/<ID> for no sprint, else
+# <project>/<tasks_root>/<the sprint's folder>/<ID>, named by sb_sprint_folder. Exit 5 as it does.
+sb_task_sprint_dir() {
+  local folder=backlog
+  if [ -n "$1" ]; then folder="$(sb_sprint_folder "$1")" || exit $?; fi
+  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$folder/$SB_T_ID"
 }
 
 # sb_task_dest_free <dest>: exit 6 when anything is at the vault path dest, a link included, even a

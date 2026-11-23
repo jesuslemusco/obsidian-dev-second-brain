@@ -1176,6 +1176,21 @@ for st in planned in-progress in-review done abandoned; do
 done
 guard Read '{"file_path":"'"$vault/$P"'/tasks/done/EX-1/notes/README.md"}'
 silent "search rule: a Read of a note below a task in a status folder"
+# The sprint layout: a task note one group folder down, in backlog/ or a sprint's folder by any name.
+for g in backlog 2026-12-04 sprint-12; do
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md"}'
+  warns "search rule: a Read of a whole task note in $g/"
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md","offset":1,"limit":20}'
+  silent "search rule: a ranged Read of a task note in $g/"
+done
+guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in backlog/"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/2026-12-04/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in a sprint's folder"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
+silent "search rule: a Read of a README directly in the archive, which is no group folder"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'
+silent "search rule: nor in Archive, in any letter case"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
 silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'

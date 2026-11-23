@@ -129,6 +129,10 @@ line_is "scrum-master: never closed twice" "$SM" \
   '  never closed again.'
 line_is "contract: the search rule names a task note in a status folder" "$here/docs/contract.md" \
   '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
+line_is "contract: the search rule names a task note one group folder down" "$here/docs/contract.md" \
+  '- A whole task note is also a `tasks/<folder>/<ID>/README.md` one group folder down, such as'
+line_is "contract: in backlog/ or a sprint's folder, any folder but archive" "$here/docs/contract.md" \
+  '  `tasks/backlog/<ID>/README.md` or one in a sprint'"'"'s folder. The hook cannot see whether a folder'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
 file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
@@ -502,6 +506,40 @@ under_011 "changelog: the index's sprint line is under 0.11.0" \
   '- The vault index names the sprint folders as a task'"'"'s place in a sprint project.'
 file_has "changelog: the index template is at version 7" "$CG" 'index template is now at `index_version: 7`'
 file_has "changelog: set index_version 7 once the task line is copied" "$CG" 'then set `index_version: 7`.'
+under_011 "changelog: a pattern with no folder name is under 0.11.0" \
+  '  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that'
+under_011 "changelog: task new and task set in a sprint project are under 0.11.0" \
+  '- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a'
+under_011 "changelog: task set's exit 6 is under 0.11.0" \
+  'destination or the sprint'"'"'s folder is a task. A status change moves nothing.'
+under_011 "changelog: sprint open and sprint close moves are under 0.11.0" \
+  '- `sprint open` moves each task it re-points to the new sprint'"'"'s folder. `sprint close` moves each'
+under_011 "changelog: done and abandoned tasks stay, under 0.11.0" \
+  'done and abandoned tasks stay in the closed sprint'"'"'s folder.'
+under_011 "changelog: the lookup in backlog/ and the group folders is under 0.11.0" \
+  '- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly'
+under_011 "changelog: task new and task alias refuse backlog, under 0.11.0" \
+  '`task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.'
+under_011 "changelog: the board's group folder branch is under 0.11.0" \
+  '- A new board'"'"'s filters take a task in a group folder. An existing board is not rewritten: in a'
+under_011 "changelog: tasks.base:no-sprint-filter is under 0.11.0" \
+  '  sprint project, the doctor'"'"'s `board` check warns on one without that branch,'
+under_011 "changelog: no-readme and task-location are under 0.11.0" \
+  '- The doctor'"'"'s `no-readme` check reads each folder under `backlog/` and a group folder, and'
+under_011 "changelog: task-layout's sprint rows are under 0.11.0" \
+  '  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder'
+under_011 "changelog: sprint_folder:invalid and task_layout:no-sprints are under 0.11.0" \
+  '  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),'
+under_011 "changelog: <folder>:<layout> is under 0.11.0" \
+  '  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).'
+under_011 "changelog: doctor --fix in a sprint project is under 0.11.0" \
+  '- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to'
+under_011 "changelog: turning the layout on with doctor --fix once is under 0.11.0" \
+  '  `sprint_folder`, set the key, then run `doctor --fix` once.'
+under_011 "changelog: the search rule's sprint line is under 0.11.0" \
+  '- The search rule warns on a whole Read of a task note in `backlog/` or a sprint'"'"'s folder too.'
+file_lacks "changelog: the sprint layout line describes, not points" "$CG" \
+  '`## 4. A task` in `docs/contract.md` and `### Sprint folders` in `docs/guide.md` say how.'
 OUT="$(check_line unresolved-links Fix)"
 out_has "checks unresolved-links: a task's link takes the path find prints" \
   'A task'"'"'s path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`'

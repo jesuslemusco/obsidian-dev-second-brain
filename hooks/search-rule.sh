@@ -75,7 +75,9 @@ END {
   what = ""
   if (tool == "read") {
     p = str("file_path")
-    if (hit(p) && p ~ /\/tasks\/((archive\/[0-9][0-9][0-9][0-9]|planned|in-progress|in-review|done|abandoned)\/)?[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
+    # A task note is one folder under tasks/, one under a group folder, such as a status folder,
+    # backlog/ or the folder of a sprint, or one under a year of the archive. archive is no group.
+    if (hit(p) && p ~ /\/tasks\/((archive\/[0-9][0-9][0-9][0-9]|[^\/]+)\/)?[^\/]+\/readme\.md$/ && p !~ /\/tasks\/archive\/[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
       what = "This Read takes a whole task note."
   } else if (tool == "grep") {
     p = str("path")

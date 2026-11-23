@@ -4,11 +4,36 @@
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile
   puts a task in a sprint at `<tasks_root>/<sprint folder>/<ID>/README.md`, and a task in no
-  sprint at `<tasks_root>/backlog/<ID>/README.md`. With `uses_sprints: false` it reads as `flat`.
-  `## 4. A task` in `docs/contract.md` and `### Sprint folders` in `docs/guide.md` say how.
+  sprint at `<tasks_root>/backlog/<ID>/README.md`. Nothing is archived. With `uses_sprints: false`
+  the key reads as `flat`.
 - `sprint_folder` in the profile names a sprint's folder: its end date with no key, or a pattern
   of `<end>`, `<start>` and `<n>`, such as `sprint-<n>`, as `### Profile frontmatter` in
-  `docs/contract.md` says.
+  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that
+  would move a task there exit 5, writing nothing.
+- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a
+  new `sprint` moves the folder to that sprint's folder, and `sprint=` moves it back to
+  `backlog/`, rewriting each link to it. It exits 6, writing nothing, when something is at the
+  destination or the sprint's folder is a task. A status change moves nothing.
+- `sprint open` moves each task it re-points to the new sprint's folder. `sprint close` moves each
+  task named in `--carry` to the next sprint's folder, and each named in `--backlog` to
+  `backlog/`; done and abandoned tasks stay in the closed sprint's folder. Both look at every
+  destination before they write, and exit 6 on a taken one.
+- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly
+  under the tasks root with no `README.md` of its own holds tasks, such as a sprint's folder.
+  `task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.
+- A new board's filters take a task in a group folder. An existing board is not rewritten: in a
+  sprint project, the doctor's `board` check warns on one without that branch,
+  `tasks.base:no-sprint-filter`.
+- The doctor's `no-readme` check reads each folder under `backlog/` and a group folder, and
+  `task-location` takes a task in one. `task-layout` names a task of a sprint project outside the
+  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder
+  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),
+  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).
+- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to
+  `backlog/` with none, then removes each group folder it leaves empty, and the archive's empty
+  folders. To switch a project that has tasks, or to rename its sprint folders with a new
+  `sprint_folder`, set the key, then run `doctor --fix` once.
+- The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too.
 - The conventions note is at version 9: it names the sprint layout. The doctor's `conventions`
   check warns about an older note.
 - The vault index names the sprint folders as a task's place in a sprint project. The plugin's

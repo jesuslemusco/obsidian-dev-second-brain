@@ -345,13 +345,15 @@ EOF
 }
 
 # Close the sprint in progress; every open task must be carried, sent to the backlog or abandoned.
-# Status notes with the reason are left to the caller.
+# In a sprint project a carried task moves to the next sprint's folder and a backlog task to
+# backlog/; in a status project an abandoned one to abandoned/. Status notes with the reason are
+# left to the caller.
 sb_sprint_close() {
   local project="" carry="" backlog="" abandon=""
   local row note id status start end goal len next plan problems action file tid title rest
   local done_ids="" carried_ids="" backlog_ids="" abandoned_ids="" text link nl=$'\n'
   local done_md="" carried_md="" backlog_md="" abandoned_md="" n_done=0 n_carried=0 n_backlog=0 n_abandoned=0
-  local moves="" dir dest first=0 code
+  local moves="" dir dest first=0 code layout
   local usage="usage: second-brain sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -425,14 +427,26 @@ EOF
     printf '%s\n' "$problems"
     sb_die 5 "sprint $id was not closed; fix the lists (problems listed above)"
   fi
-  # In a status project each task named in --abandon moves to abandoned/<ID>, so that folder must be
-  # free before anything is written. A task already in it is not in its own way, and stays.
-  if [ "$(sb_task_layout)" = "status" ]; then
+  # In a status project each task named in --abandon moves to abandoned/<ID>. In a sprint project
+  # each --carry task moves to the folder of the next sprint and each --backlog task to backlog/,
+  # while a done or abandoned task, and one named in --abandon, stays in the closed sprint's folder.
+  # So each destination must be free before anything is written. A task already in it is not in its
+  # own way, and stays. A next sprint's folder that is a task, with a README.md of its own, is in the
+  # way too, and a pattern that names no sprint folder exits 5.
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ] || [ "$layout" = "sprint" ]; then
     while IFS=$'\t' read -r action file tid title rest; do
-      [ "$action" = "abandon" ] || continue
       dir="${file%/*}"
-      dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned)"
+      case "$layout:$action" in
+        status:abandon) dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned)" ;;
+        sprint:carry) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "$next")" || exit $? ;;
+        sprint:backlog) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "")" || exit $? ;;
+        *) continue ;;
+      esac
       [ "$dest" != "$(sb_rel "$dir")" ] || continue
+      if [ "$action" = "carry" ] && [ -f "$SB_ROOT/${dest%/*}/README.md" ]; then
+        sb_die 6 "the sprint folder is a task: ${dest%/*}"
+      fi
       sb_task_dest_free "$dest"
       moves="$moves$file"$'\t'"$dest$nl"
     done <<EOF

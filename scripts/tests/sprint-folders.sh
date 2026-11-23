@@ -396,4 +396,121 @@ err_has "invalid pattern: the message names the name it gives" '"In-Progress"'
 SB_PAT_SET=0 pattern_is
 exists "invalid pattern: the task is still in backlog/" "$JT/backlog/JN-5/README.md"
 
+# ---------------------------------------------------------------- sprint close: the sprint layout
+# At close a done or abandoned task, and one named in --abandon, stays in the closed sprint's
+# folder; each --carry task moves to the next sprint's folder and each --backlog task to backlog/,
+# through move, once the sprint note is written, so the note's links follow. Every destination is
+# looked at before anything is written.
+C="work/close"
+CT="$vault/$C/tasks"
+CP="$vault/$C/claude/profile.md"
+CS="$vault/$C/sprints/2026-10-14.md"
+sb scaffold project Close --path "$C" --keys CL
+edit "$CP" 's/^task_layout: flat$/task_layout: sprint/'
+sb sprint open Close --end 2026-10-14
+for t in CL-1 CL-2 CL-3 CL-4; do
+  sb task new "$t" --project Close --title "Close $t"
+  sb task set "$t" sprint=2026-10-14
+done
+sb task set CL-1 status=done
+exists "close: the four tasks are in the folder of their sprint" "$CT/2026-10-14/CL-4/README.md"
+printf '# Close links\n\nSee [[%s|CL-2]] and [[%s|CL-3]].\n' "$C/tasks/2026-10-14/CL-2/README" \
+  "$C/tasks/2026-10-14/CL-3/README" >"$vault/$C/links.md"
+close_tree() { find "$vault/$C" | sort; find "$vault/$C" -type f -exec cksum {} + | sort; }
+# close_refused <desc> <code>: sprint close of the four tasks exits <code>, and writes nothing.
+close_refused() {
+  close_tree >"$tmp/close.before"
+  sb sprint close Close --carry CL-2 --backlog CL-3 --abandon CL-4
+  rc_is "close refused: $1 gives exit $2" "$2"
+  close_tree >"$tmp/close.after"
+  is "close refused: $1, no task and no sprint note written" \
+    "$(cmp -s "$tmp/close.before" "$tmp/close.after" && printf same)" "same"
+}
+mkdir -p "$CT/2026-10-28/CL-2"
+close_refused "an empty folder where the carried task would go" 6
+err_has "close refused: the message names the folder in the next sprint's folder" \
+  "the destination exists: $C/tasks/2026-10-28/CL-2"
+rm -r "$CT/2026-10-28"
+mkdir -p "$CT/backlog/CL-3"
+close_refused "an empty folder where the backlog task would go" 6
+err_has "close refused: the message names the folder in backlog/" "the destination exists: $C/tasks/backlog/CL-3"
+rmdir "$CT/backlog/CL-3"
+# The next sprint's folder is a task, 2026-10-28 at the tasks root, of no sprint.
+mkdir -p "$CT/2026-10-28"
+sed -e 's/^  - CL-4$/  - 2026-10-28/' -e '/^sprint: /d' "$CT/2026-10-14/CL-4/README.md" >"$CT/2026-10-28/README.md"
+close_refused "a next sprint's folder that is a task" 6
+err_has "close refused: the message names the task in the way" "the sprint folder is a task: $C/tasks/2026-10-28"
+rm -r "$CT/2026-10-28"
+edit "$CP" 's/^task_layout: sprint$/task_layout: sprint\
+sprint_folder: "sprint"/'
+close_refused "a sprint_folder pattern with no placeholder" 5
+err_has "close refused: the message names the pattern" 'sprint_folder pattern "sprint"'
+edit "$CP" '/^sprint_folder: /d'
+sb sprint close Close --carry CL-2 --backlog CL-3 --abandon CL-4
+rc_is "close: --carry, --backlog and --abandon in a sprint project, exit 0" 0
+out_is "close: the six summary lines, then each moved task's path and links: lines" "sprint: 2026-10-14
+done: CL-1
+carried: CL-2
+backlog: CL-3
+abandoned: CL-4
+next: 2026-10-28
+$C/tasks/2026-10-28/CL-2/README.md
+links: $C/links.md | 1
+links: $C/sprints/2026-10-14.md | 1
+$C/tasks/backlog/CL-3/README.md
+links: $C/links.md | 1
+links: $C/sprints/2026-10-14.md | 1"
+exists "close: the done task stays in the closed sprint's folder" "$CT/2026-10-14/CL-1/README.md"
+exists "close: the --abandon task stays in the closed sprint's folder" "$CT/2026-10-14/CL-4/README.md"
+line_is "close: and it is abandoned" "$CT/2026-10-14/CL-4/README.md" "status: abandoned"
+exists "close: the carried task is in the next sprint's folder" "$CT/2026-10-28/CL-2/README.md"
+absent "close: and no longer in the closed sprint's folder" "$CT/2026-10-14/CL-2"
+line_is "close: the carried task's sprint is the next" "$CT/2026-10-28/CL-2/README.md" 'sprint: "2026-10-28"'
+is "close: carried_from names the closed sprint" \
+  "$(SB_ROOT="$vault"; sb_fm_list "$CT/2026-10-28/CL-2/README.md" carried_from)" "2026-10-14"
+exists "close: the backlog task is in backlog/" "$CT/backlog/CL-3/README.md"
+absent "close: and no longer in the closed sprint's folder" "$CT/2026-10-14/CL-3"
+file_lacks "close: the backlog task has no sprint" "$CT/backlog/CL-3/README.md" "sprint:"
+line_is "close: the sprint note lists the done task" "$CS" "- [[$C/tasks/2026-10-14/CL-1/README|CL-1]] - Close CL-1"
+line_is "close: its link to the carried task leads to its new path" "$CS" \
+  "- [[$C/tasks/2026-10-28/CL-2/README|CL-2]] - Close CL-2"
+line_is "close: its link to the backlog task leads into backlog/" "$CS" \
+  "- [[$C/tasks/backlog/CL-3/README|CL-3]] - Close CL-3"
+line_is "close: it lists the abandoned task" "$CS" "- [[$C/tasks/2026-10-14/CL-4/README|CL-4]] - Close CL-4"
+line_is "close: the counts are as before" "$CS" "Counts: done 1, carried over 1, backlog 1, abandoned 1."
+line_is "close: another note's links follow too" "$vault/$C/links.md" \
+  "See [[$C/tasks/2026-10-28/CL-2/README|CL-2]] and [[$C/tasks/backlog/CL-3/README|CL-3]]."
+sb unresolved Close
+rc_is "close: unresolved runs after the moves, exit 0" 0
+out_is "close: unresolved names none of the four tasks" ""
+# A task already where it would go is not in its own way and moves nothing: CL-5 is in the next
+# sprint's folder by hand, and CL-6 in backlog/. CL-2 is carried from the sprint before.
+sb sprint open Close
+for t in CL-5 CL-6; do
+  sb task new "$t" --project Close --title "Close $t"
+  sb task set "$t" sprint=2026-10-28
+done
+mkdir -p "$CT/2026-11-11"
+mv "$CT/2026-10-28/CL-5" "$CT/2026-11-11/CL-5"
+mv "$CT/2026-10-28/CL-6" "$CT/backlog/CL-6"
+sb sprint close Close --carry CL-5 --backlog CL-2,CL-6
+rc_is "close: tasks already where they go, exit 0" 0
+out_is "close: only the task that is not where it goes moves" "sprint: 2026-10-28
+done: -
+carried: CL-5
+backlog: CL-6, CL-2
+abandoned: -
+next: 2026-11-11
+$C/tasks/backlog/CL-2/README.md
+links: $C/links.md | 1
+links: $C/sprints/2026-10-14.md | 1
+links: $C/sprints/2026-10-28.md | 1"
+exists "close: the carried task already in the next sprint's folder stays" "$CT/2026-11-11/CL-5/README.md"
+line_is "close: and its sprint is the next" "$CT/2026-11-11/CL-5/README.md" 'sprint: "2026-11-11"'
+exists "close: the backlog task already in backlog/ stays" "$CT/backlog/CL-6/README.md"
+exists "close: a carried task sent to the backlog is in backlog/" "$CT/backlog/CL-2/README.md"
+exists "close: the folder it leaves empty stays" "$CT/2026-10-28"
+sb unresolved Close
+out_is "close: unresolved lists nothing after the second close" ""
+
 result

@@ -97,6 +97,16 @@ sb task head BRD-6
 rc_is "lookup: task head reads no task directly in archive/, exit 1" 1
 sb find sprint-12 --project Board
 rc_is "lookup: a sprint folder is no task, exit 1" 1
+# backlog/ with a README of its own still holds tasks, and its README is no task.
+printf '# Backlog hub\n\nThe tasks of no sprint.\n' >"$BT/backlog/README.md"
+sb board Board All
+is "lookup: a README in backlog/ leaves the board a row for each task" "$(lines "$OUT")" "5"
+out_lacks "lookup: the board has no row for the README of backlog/" "Backlog hub"
+sb task head backlog --project Board
+rc_is "lookup: the README of backlog/ is no task, exit 1" 1
+sb find BRD-1
+out_is "lookup: find still sees the task in backlog/ with a README there" "$B/tasks/backlog/BRD-1/README.md"
+rm "$BT/backlog/README.md"
 sb task tag BRD-3 add stacking
 sb topic Board stacking
 out_is "lookup: topic lists a tagged task in a sprint folder" "$B/tasks/sprint-12/BRD-3/README.md"

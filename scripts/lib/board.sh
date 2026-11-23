@@ -3,6 +3,9 @@
 
 # The five status folders of a tasks folder in the status layout, in this order.
 SB_TASK_STATUSES="planned in-progress in-review done abandoned"
+# The folder names of a tasks folder that are never a task, so no task id: archive, the five status
+# folders and backlog. Each but archive is a group folder by name, whatever it holds, in this order.
+SB_TASK_RESERVED="archive $SB_TASK_STATUSES backlog"
 
 # Print the task layout of the project in SB_P_PATH: flat, archive, status or sprint, from
 # task_layout in any letter case. Another value, or no key, is flat. sprint is flat too when the
@@ -21,29 +24,29 @@ sb_task_layout() {
 # line: the five status folders in the order of SB_TASK_STATUSES, then backlog, then the others
 # sorted, those that are there. In every layout. A folder directly inside the tasks folder with no
 # README.md of its own holds tasks, such as a sprint's folder, 2026-12-04 or sprint-12; one with a
-# README.md is a task. The five and backlog are no task id, so they hold tasks with a README too.
-# archive keeps its own rule, archive/<YYYY>/<ID>/, and is no group folder.
+# README.md is a task. The names of SB_TASK_RESERVED are no task id, so the five and backlog hold
+# tasks with a README too. archive keeps its own rule, archive/<YYYY>/<ID>/, and is no group folder.
 sb_task_groups() {
   local d s
-  for s in $SB_TASK_STATUSES backlog; do
-    [ ! -d "$1/$s" ] || printf '%s\n' "$1/$s"
+  for s in $SB_TASK_RESERVED; do
+    [ "$s" = archive ] || [ ! -d "$1/$s" ] || printf '%s\n' "$1/$s"
   done
   for d in "$1"/*/; do
     d="${d%/}"
     [ -d "$d" ] || continue
-    for s in archive backlog $SB_TASK_STATUSES; do [ "${d##*/}" != "$s" ] || continue 2; done
+    for s in $SB_TASK_RESERVED; do [ "${d##*/}" != "$s" ] || continue 2; done
     [ -f "$d/README.md" ] || printf '%s\n' "$d"
   done | LC_ALL=C sort
 }
 
 # Print the task READMEs of a tasks folder, one absolute path per line: those directly inside it,
 # then those in each group folder, <group>/<ID>/README.md, in the order of sb_task_groups, then
-# the archived ones, archive/<YYYY>/<ID>/README.md. In every layout. The folder archive, backlog
-# and the status folders are never a task.
+# the archived ones, archive/<YYYY>/<ID>/README.md. In every layout. A folder named in
+# SB_TASK_RESERVED is never a task.
 sb_task_files() {
   local f g s
   for f in "$1"/*/README.md; do
-    for s in archive backlog $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
+    for s in $SB_TASK_RESERVED; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
     [ -f "$f" ] && printf '%s\n' "$f"
   done
   while IFS= read -r g; do
@@ -57,12 +60,12 @@ EOF
 }
 
 # Print the README of one task folder of a tasks folder: directly inside it, in a group folder, in
-# the order of sb_task_groups, or archived, in that order; nothing when it has none. The folder
-# archive, backlog and the status folders are never a task.
+# the order of sb_task_groups, or archived, in that order; nothing when it has none. A folder
+# named in SB_TASK_RESERVED is never a task.
 sb_task_readme() {
   local f g s
   f="$1/$2/README.md"
-  for s in archive backlog $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || f=""; done
+  for s in $SB_TASK_RESERVED; do [ "$f" != "$1/$s/README.md" ] || f=""; done
   [ -z "$f" ] || [ ! -f "$f" ] || printf '%s\n' "$f"
   while IFS= read -r g; do
     [ -n "$g" ] || continue

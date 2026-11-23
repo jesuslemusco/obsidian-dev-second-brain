@@ -4,45 +4,72 @@
 # The five status folders of a tasks folder in the status layout, in this order.
 SB_TASK_STATUSES="planned in-progress in-review done abandoned"
 
-# Print the task layout of the project in SB_P_PATH: flat, archive or status, from task_layout in
-# any letter case. Another value, or no key, is flat.
+# Print the task layout of the project in SB_P_PATH: flat, archive, status or sprint, from
+# task_layout in any letter case. Another value, or no key, is flat. sprint is flat too when the
+# profile turns sprints off with uses_sprints: false.
 sb_task_layout() {
   local layout
   layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
   case "$layout" in
     archive | status) printf '%s\n' "$layout" ;;
+    sprint) if sb_uses_sprints "$SB_P_PATH"; then printf 'sprint\n'; else printf 'flat\n'; fi ;;
     *) printf 'flat\n' ;;
   esac
 }
 
+# Print the group folders of a tasks folder, the folders that hold tasks, one absolute path per
+# line: the five status folders in the order of SB_TASK_STATUSES, then backlog, then the others
+# sorted, those that are there. In every layout. A folder directly inside the tasks folder with no
+# README.md of its own holds tasks, such as a sprint's folder, 2026-12-04 or sprint-12; one with a
+# README.md is a task. The five and backlog are no task id, so they hold tasks with a README too.
+# archive keeps its own rule, archive/<YYYY>/<ID>/, and is no group folder.
+sb_task_groups() {
+  local d s
+  for s in $SB_TASK_STATUSES backlog; do
+    [ ! -d "$1/$s" ] || printf '%s\n' "$1/$s"
+  done
+  for d in "$1"/*/; do
+    d="${d%/}"
+    [ -d "$d" ] || continue
+    for s in archive backlog $SB_TASK_STATUSES; do [ "${d##*/}" != "$s" ] || continue 2; done
+    [ -f "$d/README.md" ] || printf '%s\n' "$d"
+  done | LC_ALL=C sort
+}
+
 # Print the task READMEs of a tasks folder, one absolute path per line: those directly inside it,
-# then those in each status folder, <status>/<ID>/README.md, in the order of SB_TASK_STATUSES, then
-# the archived ones, archive/<YYYY>/<ID>/README.md. In every layout. The folder archive and the
-# status folders are never a task.
+# then those in each group folder, <group>/<ID>/README.md, in the order of sb_task_groups, then
+# the archived ones, archive/<YYYY>/<ID>/README.md. In every layout. The folder archive, backlog
+# and the status folders are never a task.
 sb_task_files() {
-  local f s
+  local f g s
   for f in "$1"/*/README.md; do
-    for s in archive $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
+    for s in archive backlog $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
     [ -f "$f" ] && printf '%s\n' "$f"
   done
-  for s in $SB_TASK_STATUSES; do
-    for f in "$1/$s"/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
-  done
+  while IFS= read -r g; do
+    [ -n "$g" ] || continue
+    for f in "$g"/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
+  done <<EOF
+$(sb_task_groups "$1")
+EOF
   for f in "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
   return 0
 }
 
-# Print the README of one task folder of a tasks folder: directly inside it, in a status folder or
-# archived, in that order; nothing when it has none. The folder archive and the status folders are
-# never a task.
+# Print the README of one task folder of a tasks folder: directly inside it, in a group folder, in
+# the order of sb_task_groups, or archived, in that order; nothing when it has none. The folder
+# archive, backlog and the status folders are never a task.
 sb_task_readme() {
-  local f s
+  local f g s
   f="$1/$2/README.md"
-  for s in archive $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || f=""; done
+  for s in archive backlog $SB_TASK_STATUSES; do [ "$f" != "$1/$s/README.md" ] || f=""; done
   [ -z "$f" ] || [ ! -f "$f" ] || printf '%s\n' "$f"
-  for s in $SB_TASK_STATUSES; do
-    [ ! -f "$1/$s/$2/README.md" ] || printf '%s\n' "$1/$s/$2/README.md"
-  done
+  while IFS= read -r g; do
+    [ -n "$g" ] || continue
+    [ ! -f "$g/$2/README.md" ] || printf '%s\n' "$g/$2/README.md"
+  done <<EOF
+$(sb_task_groups "$1")
+EOF
   for f in "$1"/archive/[0-9][0-9][0-9][0-9]/"$2"/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
   return 0
 }

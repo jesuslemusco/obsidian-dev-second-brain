@@ -323,6 +323,13 @@ joins() {
 }
 SB_PAT_SET=0 pattern_is
 joins "no sprint_folder key" 2026-12-04 2026-12-04
+# An empty sprint_folder key reads as no key, as every profile key with an empty value does.
+set_pattern ""
+line_is "pattern: the empty key is in the profile" "$JP" 'sprint_folder: ""'
+joins "an empty sprint_folder key, as no key" 2026-12-04 2026-12-04
+edit "$JP" 's/^sprint_folder: ""$/sprint_folder:/'
+line_is "pattern: the bare key is in the profile" "$JP" 'sprint_folder:'
+joins "a sprint_folder key with no value, as no key" 2026-12-04 2026-12-04
 set_pattern "<end>"
 line_is "pattern: the key is in the profile" "$JP" 'sprint_folder: "<end>"'
 joins "<end>" 2026-12-04 2026-12-04
@@ -372,7 +379,6 @@ bad_pattern() { # bad_pattern <desc> <pattern> <sprint id>
   join_tree >"$tmp/join.after"
   is "invalid pattern: $1, nothing written" "$(cmp -s "$tmp/join.before" "$tmp/join.after" && printf same)" "same"
 }
-bad_pattern "an empty pattern" "" 2026-12-04
 bad_pattern "no placeholder" "sprint" 2026-12-04
 bad_pattern "a reserved name with no placeholder" "Backlog" 2026-12-04
 bad_pattern "an unknown placeholder alone" "<N>" 2026-12-04

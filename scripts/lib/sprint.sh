@@ -65,15 +65,18 @@ sb_sprint_length() {
 }
 
 # sb_sprint_folder <sprint id>: print the name of the folder of a sprint in the tasks folder of the
-# project in SB_P_PATH, from the profile's sprint_folder pattern, <end> with no key. In it <end> is
-# the sprint id; <start> its first day, the start key of its note, or with no note the id less
-# sprint_length_days plus one day, as sprint open counts it; and <n> one more than the count of the
-# project's sprint notes with an earlier id. Exit 5 naming the pattern when it has none of the
+# project in SB_P_PATH, from the profile's sprint_folder pattern, <end> with no key or an empty one.
+# <end> is the sprint id; <start> its first day, the start key of its note, or with no note the id
+# less sprint_length_days plus one day, as sprint open counts it; and <n> one more than the count of
+# the project's sprint notes with an earlier id. Exit 5 naming the pattern when it has none of the
 # three, or gives no folder name: empty, a character outside letters, digits, dots, hyphens and
 # underscores, a dot or a hyphen first, or archive, backlog or a status name in any letter case.
 sb_sprint_folder() {
   local id="$1" pattern name rows="" start="" n hit ok
-  pattern="$(sb_fm_get "$SB_ROOT/$SB_P_PATH/claude/profile.md" sprint_folder 2>/dev/null)" || pattern="<end>"
+  # An empty key is no key, as for every profile key. It is read as written, not through sb_setting,
+  # so a slash at either end is kept and refused, as one in the middle is.
+  pattern="$(sb_fm_get "$SB_ROOT/$SB_P_PATH/claude/profile.md" sprint_folder 2>/dev/null)" || pattern=""
+  [ -n "$pattern" ] || pattern="<end>"
   case "$pattern" in
     *"<end>"* | *"<start>"* | *"<n>"*) ;;
     *) sb_die 5 "the sprint_folder pattern \"$pattern\" has no <end>, <start> or <n>, so every sprint would share one folder" ;;

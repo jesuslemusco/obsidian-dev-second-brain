@@ -40,7 +40,8 @@ moves nothing, renames nothing and rewrites no note body.
 ## 3. Fill the profile
 
 - Fill the frontmatter keys as steps 3 to 6 of `## project <name>` in `SKILL.md` say.
-- No sprints: skip `sprint_length_days` and `sprint_anchor_end`.
+- No sprints: skip `sprint_length_days` and `sprint_anchor_end`, and offer no `sprint` for
+  `task_layout`.
 - The working directory is inside one of the repositories: propose its parent folder as
   `repos_root`.
 - With `task_layout: archive`, the done tasks already there stay where they are. The doctor's
@@ -53,6 +54,11 @@ moves nothing, renames nothing and rewrites no note body.
 - Offer that run, as a bulk move, and make it only on a yes: `second-brain snapshot`, then
   `second-brain doctor <project> --fix`, then `second-brain compare`. A task with no status of the
   five stays where it is.
+- With `task_layout: sprint`, the tasks already there stay where they are until
+  `second-brain doctor <project> --fix` runs once. The doctor's `task-layout` row names each task
+  outside the folder of its sprint, or `backlog/` with no sprint.
+- Offer that run the same way. It also removes each group folder it leaves empty, a status folder
+  too.
 - Ask how a deployment is confirmed. Write the answer in the opening paragraph of `## Docs`.
 - For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
   `repo.md` says.
@@ -69,8 +75,9 @@ Run `second-brain doctor <project>`. From its rows and from section 1, list what
 Fix none of it here.
 
 - A task not at `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` in a status
-  folder, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived: `task-location` when it
-  has `type: task`, section 1 when it has no frontmatter yet.
+  folder, `<tasks_root>/<folder>/<ID>/README.md` in `backlog/` or another group folder, or
+  `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived: `task-location` when it has
+  `type: task`, section 1 when it has no frontmatter yet.
 - A task folder with no README: `no-readme`.
 - Tasks that do not follow `task_layout`, such as an `archive` folder under the tasks root of a
   `flat` project: `task-layout`.

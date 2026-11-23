@@ -24,12 +24,22 @@ Step 0 of `SKILL.md` has run.
    - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is
      taken, and nothing was written. Show that folder to the user: it is theirs to move away or
      delete. Then run the call again.
+   - Exit 6, with `task_layout: sprint`: the folder a task in `--carry` or `--backlog` moves to is
+     taken, or the next sprint's folder is a task, and nothing was written. Show that path to the
+     user, as above. Then run the call again.
+   - Exit 5 that names the `sprint_folder` pattern, with `task_layout: sprint`: it gives the next
+     sprint no folder name, and nothing was written. The pattern in the profile is the user's to
+     fix. Then run the call again.
 6. The same call closes the sprint note. Do not edit it, as `## Rules` in `SKILL.md` says.
    - With `task_layout: status`, the call also moves each task in `--abandon` into `abandoned/`.
      After the six summary lines it prints each moved task's new README path and its `links:` lines.
+   - With `task_layout: sprint`, it moves each task in `--carry` to the next sprint's folder and
+     each in `--backlog` into `backlog/`, and prints their paths the same way. A done or abandoned
+     task, and one in `--abandon`, stays in the closed sprint's folder.
    - A move that fails is named on stderr, and the call exits with its code. The sprint is closed
      all the same: never run the call again. Tell the user the task and the reason:
      `second-brain doctor --fix` moves it to `abandoned/` once the reason is handled.
+     In a sprint project it moves it to the next sprint's folder, or `backlog/`, instead.
 7. Add one status note per touched task, with the reason:
    `second-brain task note <ID> "<text>" --project <project> --session <session id>`
    - carry: `Carried from 2026-01-14 to 2026-01-28: <reason>`. The second id is the summary's

@@ -368,8 +368,8 @@ line_is "index template: a task note's place names the sprint folders" "$VI" \
 
 # ---------------------------------------------------------------- the status layout in the skill text and the changelog
 ST="$here/skills/story-tracker/SKILL.md"
-line_is "story-tracker: task_layout takes status" "$ST" \
-  '   - `task_layout` is `flat`, `archive` or `status`. A profile with no such line is `flat`.'
+line_is "story-tracker: task_layout takes status and sprint" "$ST" \
+  '   - `task_layout` is `flat`, `archive`, `status` or `sprint`. A profile with no such line is'
 file_lacks "story-tracker: task_layout is no longer flat or archive alone" "$ST" '`task_layout` is `flat` or `archive`'
 line_is "story-tracker: a status project's folder follows the status, with nothing to archive" "$ST" \
   '   - With `status`, a story'"'"'s folder follows its status, so there is nothing to archive and'
@@ -427,8 +427,8 @@ line_is "vault-setup adopt: doctor --fix runs once" "$AD" \
 file_has "vault-setup adopt: the run is a bulk move, made on a yes" "$AD" '- Offer that run, as a bulk move, and make it only on a yes:'
 file_has "vault-setup adopt: a task's place in a status folder" "$AD" '`<tasks_root>/<status>/<ID>/README.md` in a status'
 VS="$here/skills/vault-setup/SKILL.md"
-line_is "vault-setup: the task_layout row offers status" "$VS" \
-  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, or each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes | `archive`, `flat` or `status` |'
+line_is "vault-setup: the task_layout row offers status and sprint" "$VS" \
+  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes, or each task lives in the folder of its sprint, or `<tasks_root>/backlog/<ID>/` in none, and moves when its sprint changes | `archive`, `flat`, `status` or `sprint` |'
 file_lacks "vault-setup: task_layout is no longer archive or flat alone" "$VS" '| `archive` or `flat` |'
 VD="$here/skills/vault-doctor/SKILL.md"
 line_is "vault-doctor fix: a status move by --fix is a bulk change" "$VD" \
@@ -560,6 +560,137 @@ line_is "contract: a depends_on link holds the README's vault path" "$here/docs/
   '  - "[[<vault path of its README, no .md>|<other ID>]]"'
 file_lacks "contract: a depends_on link no longer builds the flat path" "$here/docs/contract.md" \
   '[[<project>/<tasks_root>/<other ID>/README|'
+
+# ---------------------------------------------------------------- the sprint layout in the skills, the agents and the changelog
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: sprint with sprints off is flat" "$ST" \
+  '     `flat`, and so is `sprint` with `uses_sprints: false`.'
+line_is "story-tracker: a sprint project's folder follows its sprint, with nothing to archive" "$ST" \
+  '   - With `sprint`, a story'"'"'s folder follows its sprint, so there is nothing to archive and'
+file_has "story-tracker: a new story is in backlog/" "$ST" 'A new story is in `<tasks_root>/backlog/<ID>/`;'
+file_has "story-tracker: task set moves a story to the folder of its sprint" "$ST" \
+  '`second-brain task set <ID> sprint=<id>` moves it to the folder of that sprint, and'
+line_is "story-tracker: a status change moves nothing in a sprint project" "$ST" \
+  '     `sprint=` back to `backlog/`. A status change moves nothing.'
+line_is "story-tracker: an archived story in a sprint project is left to the doctor" "$ST" \
+  '  - With `task_layout: sprint`, ask nothing and move nothing: the doctor'"'"'s `task-layout` row'
+line_is "story-tracker: doctor --fix moves it to the folder of its sprint" "$ST" \
+  '    names it, and `second-brain doctor --fix` moves it to the folder of its sprint, or `backlog/`.'
+line_is "story-tracker: a sprint project's story path is the one find prints" "$ST" \
+  '  - So is one in a `sprint` project, which changes when the story'"'"'s sprint does.'
+line_is "docs-keeper: a task's place names the sprint folders" "$DK" \
+  '  With `task_layout: sprint`, it is `<tasks_root>/<sprint folder>/<ID>/README.md` in a sprint,'
+line_is "docs-keeper: or backlog/ in none" "$DK" '  or `<tasks_root>/backlog/<ID>/README.md` in none.'
+SM="$here/agents/scrum-master.md"
+line_is "scrum-master: a sprint project's close moves the carried and backlog tasks" "$SM" \
+  '- With `task_layout: sprint`, the close moves each carried task to the next sprint'"'"'s folder and'
+file_has "scrum-master: done and abandoned tasks stay" "$SM" 'Done and abandoned tasks stay in the'
+file_has "scrum-master: a taken destination or a bad pattern is the user's" "$SM" \
+  'A taken destination, or a `sprint_folder` that gives the next sprint no'
+CL="$here/skills/sprint/close.md"
+line_is "sprint close: exit 6 is a taken destination in a sprint project" "$CL" \
+  '   - Exit 6, with `task_layout: sprint`: the folder a task in `--carry` or `--backlog` moves to is'
+line_is "sprint close: or the next sprint's folder is a task" "$CL" \
+  '     taken, or the next sprint'"'"'s folder is a task, and nothing was written. Show that path to the'
+line_is "sprint close: exit 5 names the sprint_folder pattern" "$CL" \
+  '   - Exit 5 that names the `sprint_folder` pattern, with `task_layout: sprint`: it gives the next'
+line_is "sprint close: a sprint project's close moves the carried and backlog tasks" "$CL" \
+  '   - With `task_layout: sprint`, it moves each task in `--carry` to the next sprint'"'"'s folder and'
+file_has "sprint close: done, abandoned and --abandon tasks stay" "$CL" \
+  'task, and one in `--abandon`, stays in the closed sprint'"'"'s folder.'
+line_is "sprint close: the doctor moves a failed move later, in a sprint project" "$CL" \
+  '     In a sprint project it moves it to the next sprint'"'"'s folder, or `backlog/`, instead.'
+cl_s5="$(lineno "$CL" '5. Exit 5 names the problem')"
+cl_sp6="$(lineno "$CL" '   - Exit 6, with `task_layout: sprint`')"
+cl_sp5="$(lineno "$CL" '   - Exit 5 that names the `sprint_folder` pattern')"
+cl_s6="$(lineno "$CL" '6. The same call closes the sprint note.')"
+cl_spmv="$(lineno "$CL" '   - With `task_layout: sprint`, it moves each task')"
+cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
+is "sprint close: a sprint project's exits are under step 5 and its moves under step 6" \
+  "$((${cl_s5:-0} < ${cl_sp6:-0} && ${cl_sp6:-0} < ${cl_sp5:-0} && ${cl_sp5:-0} < ${cl_s6:-0} && ${cl_s6:-0} < ${cl_spmv:-0} && ${cl_spmv:-0} < ${cl_s7:-0}))" "1"
+VS="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: no sprints offers no sprint layout" "$VS" '     no `sprint` for `task_layout`.'
+file_has "vault-setup: the sprint_folder row" "$VS" \
+  '| `sprint_folder` | with `sprint` only: how a sprint'"'"'s folder is named, its end date with none, or a pattern of `<end>`, `<start>` and `<n>`'
+AD="$here/skills/vault-setup/adopt.md"
+line_is "vault-setup adopt: a sprint project's tasks wait for doctor --fix" "$AD" \
+  '- With `task_layout: sprint`, the tasks already there stay where they are until'
+line_is "vault-setup adopt: the row names each task outside the folder of its sprint" "$AD" \
+  '  outside the folder of its sprint, or `backlog/` with no sprint.'
+file_has "vault-setup adopt: the run removes the emptied group folders" "$AD" \
+  'It also removes each group folder it leaves empty'
+file_has "vault-setup adopt: a task's place in backlog/ or a group folder" "$AD" \
+  '`<tasks_root>/<folder>/<ID>/README.md` in `backlog/` or another group folder'
+OUT="$(check_line board Means)"
+out_has "checks board: names a sprint project's board with no group folder branch" \
+  'the project has `task_layout: sprint`, with sprints on, and the board'"'"'s own `filters` block has no line `file.folder.split("/")[<digits>] == aliases[0]`'
+out_has "checks board: the row for it" '(`tasks.base:no-sprint-filter`)'
+OUT="$(check_line board Why)"
+out_has "checks board: says why the group folder branch matters" \
+  'Without the group folder branch, Obsidian shows no task in `backlog/` or a sprint'"'"'s folder'
+OUT="$(check_line board Fix)"
+out_has "checks board: the sprint filter's fix" '`no-sprint-filter`: the same replacement'
+OUT="$(check_line no-readme Means)"
+out_has "checks no-readme: backlog and a group folder are no task folder" '`backlog` and a group folder;'
+out_has "checks no-readme: reads each folder under backlog/ or a group folder" \
+  'one directly under a status folder, `backlog` or a group folder'
+out_has "checks no-readme: what a group folder is" \
+  'A group folder is, in a sprint project, each folder directly under the tasks root with no README'
+out_has "checks no-readme: backlog/ and a group folder need no README" 'Neither does `backlog` or a group folder.'
+OUT="$(check_line no-readme Fix)"
+out_has "checks no-readme: task new writes into backlog/ in a sprint project" \
+  'or `<tasks root>/backlog/<ID>/` in a sprint project'
+out_has "checks no-readme: then task set moves it to the folder of its sprint" \
+  '`second-brain task set <ID> sprint=<id>`, with the sprint the user names, then moves it to the folder of that sprint'
+OUT="$(check_line task-location Means)"
+out_has "checks task-location: a task's place in backlog/ or a group folder" \
+  '`<tasks root>/<folder>/<ID>/README.md` in `backlog` or another group folder'
+OUT="$(check_line task-location Fix)"
+out_has "checks task-location: a sprint project's task goes to backlog/" \
+  'In a sprint project, move it to `<project path>/<tasks root>/backlog/<ID>/README.md`'
+out_has "checks task-location: then the doctor moves it to the folder of its sprint" \
+  '`second-brain doctor --fix` moves it to the folder of its sprint'
+OUT="$(check_line task-layout Means)"
+out_has "checks task-layout: a group folder in another layout" '(`<folder>:<layout>`, as `backlog:flat` or `2026-10-14:status`)'
+out_has "checks task-layout: sprint with sprints off" '(`task_layout:no-sprints`)'
+out_has "checks task-layout: a task out of the folder of its sprint" '(`<ID>:<folder>`'
+out_has "checks task-layout: a pattern that gives no folder name" '(`sprint_folder:invalid`)'
+OUT="$(check_line task-layout Why)"
+out_has "checks task-layout: says why a sprint project's folders matter" 'With `sprint`, the folder shows a task'"'"'s sprint'
+OUT="$(check_line task-layout Fix)"
+out_has "checks task-layout: doctor --fix moves a task to the folder of its sprint" \
+  '`<ID>:<folder>`: `second-brain doctor --fix` moves each task to the folder of its sprint, or to `backlog/` with none'
+out_has "checks task-layout: and removes the group folders it empties" 'then removes each group folder it leaves empty'
+out_has "checks task-layout: an invalid pattern is the user's to fix" '`sprint_folder:invalid`: ask the user for a pattern'
+out_has "checks task-layout: no-sprints asks whether the project runs sprints" \
+  '`task_layout:no-sprints`: ask whether the project runs sprints'
+out_has "checks task-layout: on a yes the profile takes sprint" \
+  'set `task_layout: sprint` in the profile, with `uses_sprints: true` when sprints are off'
+VD="$here/skills/vault-doctor/SKILL.md"
+line_is "vault-doctor fix: a sprint move by --fix is a bulk change" "$VD" \
+  '   - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to'
+line_is "vault-doctor fix: names each <ID>:<folder> offender" "$VD" \
+  '   - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.'
+line_is "vault-doctor fix: sprint_folder:invalid is no task" "$VD" \
+  '   - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither'
+line_is "vault-doctor fix: compare proves a sprint move too" "$VD" \
+  '   - After a move to the folders of their sprint, run it too. It lists the aliases of each moved'
+vd_sname="$(lineno "$VD" '- In a sprint project, name each')"
+vd_smove="$(lineno "$VD" '- After a move to the folders of their sprint')"
+is "vault-doctor fix: the sprint names come after the others and before the snapshot" \
+  "$((${vd_name:-0} < ${vd_sname:-0} && ${vd_sname:-0} < ${vd_snap:-0}))" "1"
+is "vault-doctor fix: the sprint move's compare comes after the status move's and before the broken-link line" \
+  "$((${vd_move:-0} < ${vd_smove:-0} && ${vd_smove:-0} < ${vd_broke:-0}))" "1"
+under_011 "changelog: story-tracker asks nothing in a sprint project, under 0.11.0" \
+  'Nothing is archived, and story-tracker asks'
+under_011 "changelog: the sprint skill and scrum-master, under 0.11.0" \
+  'sprint skill and scrum-master say what a sprint project'"'"'s close moves'
+under_011 "changelog: docs-keeper names the sprint folders, under 0.11.0" \
+  '- docs-keeper names `tasks/backlog/` and the sprint folders as a task'"'"'s place in a sprint'
+under_011 "changelog: vault-setup offers the sprint layout, under 0.11.0" \
+  '`vault-setup project` and `adopt` offer `task_layout: sprint`'
+under_011 "changelog: vault-doctor fix counts a sprint project's moves, under 0.11.0" \
+  '- The vault-doctor `fix` mode counts a sprint project'"'"'s moves as a bulk change'
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.0 - unreleased
+
+- A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile
+  puts a task in a sprint at `<tasks_root>/<sprint folder>/<ID>/README.md`, and a task in no
+  sprint at `<tasks_root>/backlog/<ID>/README.md`. With `uses_sprints: false` it reads as `flat`.
+  `## 4. A task` in `docs/contract.md` and `### Sprint folders` in `docs/guide.md` say how.
+- `sprint_folder` in the profile names a sprint's folder: its end date with no key, or a pattern
+  of `<end>`, `<start>` and `<n>`, such as `sprint-<n>`, as `### Profile frontmatter` in
+  `docs/contract.md` says.
+- The conventions note is at version 9: it names the sprint layout. The doctor's `conventions`
+  check warns about an older note.
+- The vault index names the sprint folders as a task's place in a sprint project. The plugin's
+  index template is now at `index_version: 7`, so the doctor's `index` check warns. Copy the task
+  bullet under `## Rules for notes that most often go wrong` from `templates/vault-index.md.tmpl`
+  into your vault's `CLAUDE.md`, then set `index_version: 7`.
+
 ## 0.10.0 - 2026-11-22
 
 - A project can keep each task in the folder of its status: `task_layout: status` in the profile

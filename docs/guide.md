@@ -130,6 +130,25 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once. It
   also removes the archive's empty folders.
 
+### Sprint folders
+
+- `task_layout: sprint` in the profile keeps each task in the folder of its sprint, and a task in
+  no sprint in `tasks/backlog/<ID>/`, as `## 4. A task` in `docs/contract.md` says. It needs a
+  project that runs sprints.
+- A sprint's folder is named by `sprint_folder` in the profile: by default its end date, as in
+  `tasks/2026-10-14/`, or a pattern such as `sprint-<n>`, as `### Profile frontmatter` in
+  `docs/contract.md` says.
+- A new story starts in `tasks/backlog/<ID>/`.
+- When it joins a sprint, `second-brain task set` moves the folder to that sprint's folder, and
+  every link to it follows. When it leaves, the folder goes back to `tasks/backlog/<ID>/`.
+- When a sprint opens, each task it re-points to the new sprint moves to that sprint's folder.
+- When a sprint closes, each carried task moves to the next sprint's folder, and each task sent to
+  the backlog to `tasks/backlog/<ID>/`. Done and abandoned tasks stay where they are.
+- A sprint edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
+  folder of its sprint.
+- To switch a project that has tasks, or to rename the folders with a new `sprint_folder`, set the
+  key, then run `second-brain doctor --fix` once. It also removes the folders it leaves empty.
+
 ## Spec-driven delivery
 
 - Start one with `/odsb:spec EX-2`, or with the request under

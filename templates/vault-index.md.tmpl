@@ -1,5 +1,5 @@
 ---
-index_version: 6
+index_version: 7
 ---
 
 # Vault index for Claude
@@ -40,6 +40,7 @@ index_version: 6
   `outline` and a ranged read, and a whole note last.
 - A task note is always `<project>/tasks/<TICKET-ID>/README.md`, under `tasks/archive/<YYYY>/`
   once archived, or under `tasks/<status>/` in a project with `task_layout: status`.
+  With `task_layout: sprint`, it is under the folder of its sprint, or `tasks/backlog/` in none.
 - Never file a task note inside the topic it is about. Tie it to the topic with a tag that is the
   folder path, lowercased, and to its subproject with the `subproject` property.
 - A bare `[[Alias]]` does not resolve. Links carry a path:

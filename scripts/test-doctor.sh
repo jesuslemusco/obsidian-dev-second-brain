@@ -1445,6 +1445,30 @@ is "task-layout --fix: the copy stays in the archive, and the task in its folder
   "$(ls "$T/archive/2025/EX-2")/$(cmp -s "$tmp/EX-2.before" "$T/done/EX-2/README.md" && printf same)" "README.md/same"
 chk "task-layout --fix: the copy in the archive is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
 reset
+# A fix from a sprint folder and backlog/ in a status project: each task goes to the folder of its
+# status, then each empty group folder other than the five status folders goes, so no-readme names
+# none. An empty status folder is the layout's own, and stays.
+layout status
+mkdir -p "$T/planned" "$T/in-review" "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout --fix: the setup is a status project with tasks in backlog/ and a sprint folder" task-layout Example \
+  "warn | 4 | EX-2:done, EX-1:in-progress, backlog:status, 2026-01-14:status"
+doc Example --fix
+rc_is "task-layout --fix: exit 0 with tasks in backlog/ and a sprint folder of a status project" 0
+is "task-layout --fix: in a status project the folders the moves leave empty, backlog/ and a sprint folder, are removed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)
+fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: $P/tasks/backlog -> removed (Example)
+fixed: $P/tasks/2026-01-14 -> removed (Example)"
+is "task-layout --fix: in a status project an empty status folder stays" "$(LC_ALL=C ls "$T" | tr '\n' ' ')" \
+  "README.md done in-progress in-review planned tasks.base "
+chk "task-layout --fix: a fix from a sprint folder in a status project leaves no no-readme row" no-readme Example "ok | 0 | -"
+chk "task-layout --fix: and task-layout ok" task-layout Example "ok | 0 | -"
+reset
 
 # ---------------------------------------------------------------- task-layout, the sprint folders
 # set_pattern <raw value>: write the profile's sprint_folder key, under task_layout, as it is given.

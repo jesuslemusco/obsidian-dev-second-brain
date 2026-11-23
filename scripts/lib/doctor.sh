@@ -1734,10 +1734,11 @@ sb_doc_fix_pull_request() {
 # Replace an old, never edited pull request note, make the status/ tag follow the status on each
 # task where they disagree, then fix each task the task-layout check names; print each change. In
 # an archive project each done or abandoned task is archived, and an open task is never moved. In
-# a status project each task goes to the folder of its status, then each empty year folder of the
-# archive is removed, and the archive when it is empty. In a sprint project each task goes to the
-# folder of its sprint, or to backlog/ with none, then each empty group folder is removed, in the
-# order of sb_task_groups, then the archive's as in a status project.
+# a status project each task goes to the folder of its status, then each empty group folder other
+# than the five status folders, such as backlog/ or a sprint's folder, is removed, in the order of
+# sb_task_groups, then each empty year folder of the archive, and the archive when it is empty. In a
+# sprint project each task goes to the folder of its sprint, or to backlog/ with none, then each
+# empty group folder is removed, a status folder too, then the archive's as in a status project.
 sb_doc_fix() {
   local name path keys id file status tag new reason layout d groups n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
@@ -1785,10 +1786,13 @@ $(sb_doc_layout_drift)
 EOF
     [ "$layout" = "status" ] || [ "$layout" = "sprint" ] || continue
     # A folder that holds anything, such as an archive README or a task, stays; a link is no folder.
-    groups=""
-    [ "$layout" = "status" ] || groups="$(sb_task_groups "$SB_P_DIR/$SB_TASKS_ROOT")"
+    # A status project keeps its five status folders, empty or not.
+    groups="$(sb_task_groups "$SB_P_DIR/$SB_TASKS_ROOT")"
     while IFS= read -r d; do
       [ -n "$d" ] && [ -d "$d" ] && [ ! -L "$d" ] || continue
+      if [ "$layout" = "status" ]; then
+        case " $SB_TASK_STATUSES " in *" ${d##*/} "*) continue ;; esac
+      fi
       rmdir "$d" 2>/dev/null || continue
       n=$((n + 1))
       printf 'fixed: %s -> removed (%s)\n' "$(sb_rel "$d")" "$name"

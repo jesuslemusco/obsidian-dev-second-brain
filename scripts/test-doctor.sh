@@ -1462,6 +1462,15 @@ doc Example
 chk "task-layout: in a sprint project a task in its sprint's folder, or in backlog/ with none, is in its place" task-layout Example \
   "ok | 0 | -"
 is "task-layout: no sprint drift when every task is in its place" "$(drift)" ""
+mkdir -p "$T/2026-11-20"
+doc Example
+chk "no-readme: in a sprint project backlog/, a sprint folder that holds a task and an empty one need no README" \
+  no-readme Example "ok | 0 | -"
+mkdir -p "$T/backlog/EX-8" "$T/2026-01-14/EX-9"
+doc Example
+chk "no-readme: in a sprint project a folder in backlog/ or in a sprint folder with no README warns" no-readme Example \
+  "warn | 2 | EX-8, EX-9"
+rmdir "$T/backlog/EX-8" "$T/2026-01-14/EX-9" "$T/2026-11-20"
 edit "$T/2026-01-14/EX-1/README.md" 's/^sprint: .*/sprint: "2026-12-04"/'
 mv "$T/2026-01-14/EX-1" "$T/backlog/EX-1"
 doc Example
@@ -1548,6 +1557,7 @@ reset
 mkdir -p "$T/backlog"
 doc Example
 chk "task-layout: an empty backlog/ in a flat project is not named" task-layout Example "ok | 0 | -"
+chk "no-readme: backlog/ needs no README, empty, in a flat project too" no-readme Example "ok | 0 | -"
 mv "$T/EX-2" "$T/backlog/EX-2"
 doc Example
 chk "task-layout: backlog:flat, a task moved by hand into backlog/ in a flat project warns" task-layout Example \
@@ -1555,6 +1565,21 @@ chk "task-layout: backlog:flat, a task moved by hand into backlog/ in a flat pro
 is "task-layout: the backlog fix names the sprint layout and the way back" "$(fix_of task-layout)" \
   "set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
 is "task-layout: no drift for backlog/ in a flat project" "$(drift)" ""
+chk "no-readme: backlog/ holding a task in a flat project is task-layout's alone" no-readme Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+chk "task-layout: with sprints off a task in backlog/ of a flat project still warns backlog:flat" task-layout Example \
+  "warn | 1 | backlog:flat"
+is "task-layout: with sprints off the way to the sprint layout turns sprints on too" "$(fix_of task-layout)" \
+  "set uses_sprints: true and task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+layout archive
+doc Example
+chk "task-layout: with sprints off a task in backlog/ of an archive project warns backlog:archive" task-layout Example \
+  "warn | 1 | backlog:archive"
+is "task-layout: and its way to the sprint layout turns sprints on too" "$(fix_of task-layout)" \
+  "set uses_sprints: true and task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+layout flat
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: true/'
 mv "$T/backlog/EX-2" "$T/EX-2"
 mkdir -p "$T/planned"
 mv "$T/EX-3" "$T/planned/EX-3"
@@ -1568,6 +1593,8 @@ chk "task-layout: a status folder, backlog/ and a sprint folder each warn in a f
   task-layout Example "warn | 3 | planned:flat, backlog:flat, sprint-12:flat"
 is "task-layout: the fix names the status layout and the sprint layout" "$(fix_of task-layout)" \
   "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move; set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: in a flat project a group folder that holds a task needs no README, and an empty one is still named" \
+  no-readme Example "warn | 1 | 2026-01-14"
 layout archive
 doc Example
 chk "task-layout: in an archive project backlog/ and a sprint folder warn as <folder>:archive" task-layout Example \

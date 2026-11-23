@@ -996,18 +996,34 @@ EOF
 }
 
 # Check that every task folder holds a README with something in it: each folder directly under the
-# tasks root but the archive and the five status folders, each one directly under a status folder,
-# and each one directly under a year of the archive. In every layout.
+# tasks root but the archive, the five status folders, backlog and the group folders of the layout,
+# each one directly under a status folder, backlog or such a group folder, and each one directly
+# under a year of the archive. In every layout. The group folders of the layout are each one
+# sb_task_groups lists in a sprint project, and in another layout each one that holds a task, which
+# task-layout names as <folder>:<layout>.
 sb_doc_check_no_readme() {
-  local d s rel bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT"
+  local d g s rel layout groups="" bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT"
+  layout="$(sb_task_layout)"
   set -- "$root"/*/
-  for s in $SB_TASK_STATUSES; do set -- "$@" "$root/$s"/*/; done
+  for s in $SB_TASK_STATUSES backlog; do set -- "$@" "$root/$s"/*/; done
+  while IFS= read -r g; do
+    [ -n "$g" ] || continue
+    case " $SB_TASK_RESERVED " in *" ${g##*/} "*) continue ;; esac
+    if [ "$layout" != "sprint" ]; then
+      case "$nl$SB_DOC_FILES" in *"$nl$g/"*) ;; *) continue ;; esac
+    fi
+    groups="$groups$g$nl"
+    set -- "$@" "$g"/*/
+  done <<EOF
+$(sb_task_groups "$root")
+EOF
   set -- "$@" "$root"/archive/[0-9][0-9][0-9][0-9]/*/
   for d in "$@"; do
     [ -d "$d" ] || continue
     d="${d%/}"
     rel="${d#"$root"/}"
-    case " archive $SB_TASK_STATUSES " in *" $rel "*) continue ;; esac
+    case " $SB_TASK_RESERVED " in *" $rel "*) continue ;; esac
+    case "$nl$groups" in *"$nl$d$nl"*) continue ;; esac
     [ -s "$d/README.md" ] || bad="$bad${d##*/}$nl"
   done
   sb_doc_report warn no-readme "$SB_P_NAME" "$bad" "write its README from the task template, or move the folder out of the tasks root"
@@ -1186,7 +1202,10 @@ EOF
     return 0
   fi
   back="set task_layout: status in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
-  sback="set task_layout: sprint in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
+  # With sprints off, task_layout: sprint alone reads as flat: the way to it turns sprints on too.
+  s="set task_layout: sprint"
+  sb_uses_sprints "$SB_P_PATH" || s="set uses_sprints: true and task_layout: sprint"
+  sback="$s in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
   if [ "$layout" != "archive" ]; then
     # task_layout: sprint with sprints off reads as flat; uses_sprints: true is the way back.
     if [ "$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')" = "sprint" ]; then
@@ -1206,7 +1225,7 @@ EOF
     bad="${bad:+$bad$nl}"
   fi
   [ "$stat" -eq 0 ] || fix="${fix:+$fix; }$back"
-  # With sprints off the sprint layout is no way out: uses_sprints: true, in the fix above, is.
+  # With task_layout: sprint and sprints off, uses_sprints: true, in the fix above, is that way.
   [ "$other" -eq 0 ] || [ "$nosprints" -eq 1 ] || fix="${fix:+$fix; }$sback"
   sb_doc_report warn task-layout "$SB_P_NAME" "$bad$folders" "$fix"
 }

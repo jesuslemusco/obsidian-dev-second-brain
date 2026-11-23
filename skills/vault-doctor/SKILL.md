@@ -50,13 +50,17 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:
      `--fix` moves each task to the folder of its status.
    - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to
-     the folder of its sprint, or to `backlog/`, and removes each group folder it leaves empty.
+     the folder of its sprint, or to `backlog/`.
+   - In a sprint project, every `--fix` run also removes each empty group folder, a status folder
+     too, whether or not a move emptied it. Say so before it runs.
    - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
      `<ID>:<status>` offender.
    - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.
    - The number is the row's count, less each offender that is not a task it moves:
      `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive
      project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.
+   - In an archive project, a `<folder>:archive` offender, such as `backlog:archive`, is no task
+     either.
    - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither
      is a `<folder>:status` offender, whose tasks the row counts as `<ID>:<status>` too.
    - The count is above five: say that the doctor names only the first five, and name those. The

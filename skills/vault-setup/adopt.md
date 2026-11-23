@@ -57,8 +57,8 @@ moves nothing, renames nothing and rewrites no note body.
 - With `task_layout: sprint`, the tasks already there stay where they are until
   `second-brain doctor <project> --fix` runs once. The doctor's `task-layout` row names each task
   outside the folder of its sprint, or `backlog/` with no sprint.
-- Offer that run the same way. It also removes each group folder it leaves empty, a status folder
-  too.
+- Offer that run the same way. It also removes each empty group folder, a status folder too,
+  whether or not a move emptied it.
 - Ask how a deployment is confirmed. Write the answer in the opening paragraph of `## Docs`.
 - For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
   `repo.md` says.

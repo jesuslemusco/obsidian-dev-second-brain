@@ -617,8 +617,10 @@ line_is "vault-setup adopt: a sprint project's tasks wait for doctor --fix" "$AD
   '- With `task_layout: sprint`, the tasks already there stay where they are until'
 line_is "vault-setup adopt: the row names each task outside the folder of its sprint" "$AD" \
   '  outside the folder of its sprint, or `backlog/` with no sprint.'
-file_has "vault-setup adopt: the run removes the emptied group folders" "$AD" \
-  'It also removes each group folder it leaves empty'
+file_has "vault-setup adopt: the run removes each empty group folder" "$AD" \
+  'It also removes each empty group folder, a status folder too,'
+line_is "vault-setup adopt: whether or not a move emptied it" "$AD" '  whether or not a move emptied it.'
+file_lacks "vault-setup adopt: not only the folders a move emptied" "$AD" 'group folder it leaves empty'
 file_has "vault-setup adopt: a task's place in backlog/ or a group folder" "$AD" \
   '`<tasks_root>/<folder>/<ID>/README.md` in `backlog/` or another group folder'
 OUT="$(check_line board Means)"
@@ -660,7 +662,9 @@ out_has "checks task-layout: says why a sprint project's folders matter" 'With `
 OUT="$(check_line task-layout Fix)"
 out_has "checks task-layout: doctor --fix moves a task to the folder of its sprint" \
   '`<ID>:<folder>`: `second-brain doctor --fix` moves each task to the folder of its sprint, or to `backlog/` with none'
-out_has "checks task-layout: and removes the group folders it empties" 'then removes each group folder it leaves empty'
+out_has "checks task-layout: and removes each empty group folder, emptied by a move or not" \
+  'then removes each empty group folder, a status folder too, whether or not a move emptied it'
+out_lacks "checks task-layout: not only the folders a move emptied" 'group folder it leaves empty'
 out_has "checks task-layout: an invalid pattern is the user's to fix" '`sprint_folder:invalid`: ask the user for a pattern'
 out_has "checks task-layout: no-sprints asks whether the project runs sprints" \
   '`task_layout:no-sprints`: ask whether the project runs sprints'
@@ -671,6 +675,16 @@ line_is "vault-doctor fix: a sprint move by --fix is a bulk change" "$VD" \
   '   - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to'
 line_is "vault-doctor fix: names each <ID>:<folder> offender" "$VD" \
   '   - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.'
+line_is "vault-doctor fix: an archive project's <folder>:archive is no task" "$VD" \
+  '   - In an archive project, a `<folder>:archive` offender, such as `backlog:archive`, is no task'
+vd_far="$(lineno "$VD" '- In an archive project, a `<folder>:archive` offender')"
+is "vault-doctor fix: <folder>:archive comes after the archive project's list and before the five" \
+  "$((${vd_num:-0} < ${vd_far:-0} && ${vd_far:-0} < ${vd_five:-0}))" "1"
+line_is "vault-doctor fix: a sprint project's --fix removes each empty group folder" "$VD" \
+  '   - In a sprint project, every `--fix` run also removes each empty group folder, a status folder'
+line_is "vault-doctor fix: whether or not a move emptied it, said before the run" "$VD" \
+  '     too, whether or not a move emptied it. Say so before it runs.'
+file_lacks "vault-doctor fix: not only the folders a move emptied" "$VD" 'group folder it leaves empty'
 line_is "vault-doctor fix: sprint_folder:invalid is no task" "$VD" \
   '   - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither'
 line_is "vault-doctor fix: compare proves a sprint move too" "$VD" \

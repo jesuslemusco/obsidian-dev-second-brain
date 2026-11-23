@@ -266,12 +266,34 @@ sb_board_set_sprint() {
   return "$rc"
 }
 
+# sb_sprint_relocate_all <moves>: move each task of moves, one row of the task's README.md and its
+# destination's vault path, tab-separated, per line, through sb_task_relocate. Each move runs in a
+# subshell: one that fails is named on stderr, and the others still move. The exit is the first
+# failing code.
+sb_sprint_relocate_all() {
+  local file dest code first=0
+  while IFS=$'\t' read -r file dest; do
+    [ -n "$file" ] || continue
+    code=0
+    (
+      SB_T_FILE="$file"
+      SB_T_REL="$(sb_rel "$file")"
+      SB_T_ID="${dest##*/}"
+      sb_task_relocate "$dest"
+    ) </dev/null || code=$?
+    [ "$first" -ne 0 ] || first="$code"
+  done <<EOF
+$1
+EOF
+  return "$first"
+}
+
 # Open the next sprint: note, hub line and the board literal. Exit 6 while one is in progress.
 # Each open task whose sprint has no note is re-pointed to it; in a sprint project it then moves to
 # the new sprint's folder, every destination looked at before anything is written.
 sb_sprint_open() {
   local project="" end="" goal="" given=0 len anchor cur dir note hub alias uplink start line row
-  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir code first=0
+  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir
   local usage="usage: second-brain sprint open <project> [--end YYYY-MM-DD] [--goal G]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -363,22 +385,8 @@ $plan
 EOF
   sb_rel "$note"
   printf '%s' "$moved"
-  # Now the keys are written, each re-pointed task moves. Each move runs in a subshell: one that
-  # fails is named on stderr, and the others still move. The exit is the first failing code.
-  while IFS=$'\t' read -r file dest; do
-    [ -n "$file" ] || continue
-    code=0
-    (
-      SB_T_FILE="$file"
-      SB_T_REL="$(sb_rel "$file")"
-      SB_T_ID="${dest##*/}"
-      sb_task_relocate "$dest"
-    ) </dev/null || code=$?
-    [ "$first" -ne 0 ] || first="$code"
-  done <<EOF
-$moves
-EOF
-  return "$first"
+  # Now the keys are written, each re-pointed task moves.
+  sb_sprint_relocate_all "$moves"
 }
 
 # Close the sprint in progress; every open task must be carried, sent to the backlog or abandoned.
@@ -390,7 +398,7 @@ sb_sprint_close() {
   local row note id status start end goal len next plan problems action file tid title rest
   local done_ids="" carried_ids="" backlog_ids="" abandoned_ids="" text link nl=$'\n'
   local done_md="" carried_md="" backlog_md="" abandoned_md="" n_done=0 n_carried=0 n_backlog=0 n_abandoned=0
-  local moves="" dir dest first=0 code layout
+  local moves="" dir dest layout
   local usage="usage: second-brain sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -540,22 +548,8 @@ EOF
   sb_fm_status_tag "$note" done
   printf 'sprint: %s\ndone: %s\ncarried: %s\nbacklog: %s\nabandoned: %s\nnext: %s\n' \
     "$id" "${done_ids:--}" "${carried_ids:--}" "${backlog_ids:--}" "${abandoned_ids:--}" "$next"
-  # Now the sprint note is written, so the move rewrites its links too. Each move runs in a subshell:
-  # one that fails is named on stderr, and the others still move. The exit is the first failing code.
-  while IFS=$'\t' read -r file dest; do
-    [ -n "$file" ] || continue
-    code=0
-    (
-      SB_T_FILE="$file"
-      SB_T_REL="$(sb_rel "$file")"
-      SB_T_ID="${dest##*/}"
-      sb_task_relocate "$dest"
-    ) </dev/null || code=$?
-    [ "$first" -ne 0 ] || first="$code"
-  done <<EOF
-$moves
-EOF
-  return "$first"
+  # Now the sprint note is written, so the move rewrites its links too.
+  sb_sprint_relocate_all "$moves"
 }
 
 # Dispatch the sprint subcommands.

@@ -52,10 +52,13 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to
      the folder of its sprint, or to `backlog/`.
    - In a sprint project, every `--fix` run also removes each empty group folder, a status folder
-     too, whether or not a move emptied it. Say so before it runs.
+     too, whether or not a move emptied it: each empty folder directly under the tasks root. An
+     empty folder inside one, such as `backlog/<ID>/`, stays. Say so before it runs.
    - In a status project, every `--fix` run also removes each empty group folder other than the
-     five status folders, such as an empty `backlog/`, a sprint's folder or a task folder that
-     `no-readme` names, whether or not a move emptied it. Say so before it runs.
+     five status folders, whether or not a move emptied it: an empty folder directly under the
+     tasks root, such as an empty `backlog/`, a sprint's folder or a task folder with no README
+     there. An empty status folder stays, and so does an empty folder inside one, such as
+     `planned/<ID>/`. Say so before it runs.
    - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
      `<ID>:<status>` offender.
    - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.

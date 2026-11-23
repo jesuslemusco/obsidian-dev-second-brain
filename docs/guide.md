@@ -128,9 +128,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - A status edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
   folder of its status.
 - To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once.
-  Every run also removes the archive's empty folders, and each empty group folder other than the
-  five status folders, such as an empty `backlog/`, a sprint's folder or a task folder with no
-  README, whether or not a move emptied it.
+  Every run also removes the archive's empty folders, and each empty folder directly under the
+  tasks root other than the five status folders, such as an empty `backlog/`, a sprint's folder or
+  a task folder with no README there, whether or not a move emptied it. An empty status folder
+  stays, and so does an empty folder inside one, such as `planned/<ID>/`.
 
 ### Sprint folders
 

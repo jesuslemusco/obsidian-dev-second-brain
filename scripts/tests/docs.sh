@@ -684,8 +684,10 @@ is "vault-doctor fix: <folder>:archive comes after the archive project's list an
   "$((${vd_num:-0} < ${vd_far:-0} && ${vd_far:-0} < ${vd_five:-0}))" "1"
 line_is "vault-doctor fix: a sprint project's --fix removes each empty group folder" "$VD" \
   '   - In a sprint project, every `--fix` run also removes each empty group folder, a status folder'
-line_is "vault-doctor fix: whether or not a move emptied it, said before the run" "$VD" \
-  '     too, whether or not a move emptied it. Say so before it runs.'
+line_is "vault-doctor fix: a sprint project's empty folders directly under the tasks root" "$VD" \
+  '     too, whether or not a move emptied it: each empty folder directly under the tasks root. An'
+line_is "vault-doctor fix: an empty folder inside one stays, said before the run" "$VD" \
+  '     empty folder inside one, such as `backlog/<ID>/`, stays. Say so before it runs.'
 file_lacks "vault-doctor fix: not only the folders a move emptied" "$VD" 'group folder it leaves empty'
 line_is "vault-doctor fix: sprint_folder:invalid is no task" "$VD" \
   '   - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither'
@@ -755,18 +757,32 @@ line_is "guide: whether or not a move emptied it" "$GS" '  status folder too, wh
 file_lacks "guide: doctor --fix: not only the folders a move emptied" "$GS" 'removes the folders it leaves empty'
 under_011 "changelog: a status project's --fix removes each empty group folder, under 0.11.0" \
   '- In a status project, `doctor --fix` now also removes each empty group folder other than the'
-file_has "changelog: an empty status folder stays" "$CG" 'whether or not a move emptied it. An empty status folder stays.'
-line_is "guide: every --fix run in a status project removes the empty group folders" "$GS" \
-  '  Every run also removes the archive'"'"'s empty folders, and each empty group folder other than the'
+file_has "changelog: a status project's --fix removes an empty folder directly under the tasks root" "$CG" \
+  '  five status folders, whether or not a move emptied it: an empty folder directly under the tasks'
+file_has "changelog: such as a task folder with no README there" "$CG" \
+  'a sprint'"'"'s folder or a task folder with no README there. An'
+file_has "changelog: an empty status folder stays, and an empty folder inside one" "$CG" \
+  '  empty status folder stays, and so does an empty folder inside one, such as `planned/<ID>/`.'
+file_lacks "changelog: no task folder below the tasks root's top" "$CG" \
+  '  README, whether or not a move emptied it. An empty status folder stays.'
+line_is "guide: every --fix run in a status project removes each empty folder directly under the tasks root" "$GS" \
+  '  Every run also removes the archive'"'"'s empty folders, and each empty folder directly under the'
+line_is "guide: such as a task folder with no README there" "$GS" \
+  '  a task folder with no README there, whether or not a move emptied it. An empty status folder'
+line_is "guide: an empty folder inside a status folder stays" "$GS" \
+  '  stays, and so does an empty folder inside one, such as `planned/<ID>/`.'
 file_lacks "guide: no longer the archive's empty folders alone" "$GS" '  also removes the archive'"'"'s empty folders.'
 line_is "vault-doctor fix: a status project's --fix removes each empty group folder" "$VD" \
   '   - In a status project, every `--fix` run also removes each empty group folder other than the'
-line_is "vault-doctor fix: such as a task folder that no-readme names, said before the run" "$VD" \
-  '     `no-readme` names, whether or not a move emptied it. Say so before it runs.'
+line_is "vault-doctor fix: a status project's empty folders directly under the tasks root" "$VD" \
+  '     five status folders, whether or not a move emptied it: an empty folder directly under the'
+line_is "vault-doctor fix: an empty folder inside a status folder stays, said before the run" "$VD" \
+  '     `planned/<ID>/`. Say so before it runs.'
+file_lacks "vault-doctor fix: no task folder that no-readme names" "$VD" 'a task folder that'
 vd_sgr="$(lineno "$VD" '- In a sprint project, every `--fix` run also removes')"
 vd_tgr="$(lineno "$VD" '- In a status project, every `--fix` run also removes')"
 is "vault-doctor fix: the status project's removal is beside the sprint project's, before the snapshot" \
-  "$((${vd_sgr:-0} > 0 && ${vd_tgr:-0} == ${vd_sgr:-0} + 2 && ${vd_tgr:-0} < ${vd_snap:-0}))" "1"
+  "$((${vd_sgr:-0} > 0 && ${vd_tgr:-0} == ${vd_sgr:-0} + 3 && ${vd_tgr:-0} < ${vd_snap:-0}))" "1"
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"

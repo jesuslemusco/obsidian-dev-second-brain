@@ -35,8 +35,9 @@
   To switch a project that has tasks, or to rename its sprint folders with a new
   `sprint_folder`, set the key, then run `doctor --fix` once.
 - In a status project, `doctor --fix` now also removes each empty group folder other than the
-  five status folders, such as an empty `backlog/`, a sprint's folder or a task folder with no
-  README, whether or not a move emptied it. An empty status folder stays.
+  five status folders, whether or not a move emptied it: an empty folder directly under the tasks
+  root, such as an empty `backlog/`, a sprint's folder or a task folder with no README there. An
+  empty status folder stays, and so does an empty folder inside one, such as `planned/<ID>/`.
 - The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too. The
   sprint skill and scrum-master say what a sprint project's close moves, and what to do when it
   cannot. The sprint skill says the same of `sprint open` and of setting a task's sprint in plan.

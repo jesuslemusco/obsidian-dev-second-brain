@@ -343,9 +343,9 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
+is "changelog: the newest section is 0.11.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.11.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
-st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
+st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
 is "changelog: the status layout is under 0.10.0" \
   "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"

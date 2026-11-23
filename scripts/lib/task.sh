@@ -805,6 +805,20 @@ sb_task_to_status() {
   sb_task_relocate "$dest"
 }
 
+# sb_task_to_sprint <ID> <project>: for the doctor's fix, move a task of a sprint project to the
+# folder of its sprint, or to backlog/ with none, through sb_task_relocate, and print what it
+# prints. Nothing when the task is there already. Exit 5 when its sprint gives no folder name, and
+# 6 when the destination is taken, or the sprint's folder is a task, with a README.md of its own.
+sb_task_to_sprint() {
+  local sprint dest
+  sb_need_task "$1" "$2"
+  sprint="$(sb_fm_get "$SB_T_FILE" sprint)" || sprint=""
+  dest="$(sb_task_sprint_dir "$sprint")" || exit $?
+  [ "$dest" != "${SB_T_REL%/*}" ] || return 0
+  [ -z "$sprint" ] || sb_task_sprint_dest_free "$dest"
+  sb_task_relocate "$dest"
+}
+
 # Move a done or abandoned task to archive/<YYYY>/<ID>/ in its tasks folder through the move code,
 # the year being today's, and date it in archived. Print its new path, then the move's links: lines.
 # A task is archived once: exit 6 when it is in the archive already, exit 5 in a flat or status

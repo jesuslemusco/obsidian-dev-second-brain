@@ -1735,9 +1735,11 @@ sb_doc_fix_pull_request() {
 # task where they disagree, then fix each task the task-layout check names; print each change. In
 # an archive project each done or abandoned task is archived, and an open task is never moved. In
 # a status project each task goes to the folder of its status, then each empty year folder of the
-# archive is removed, and the archive when it is empty.
+# archive is removed, and the archive when it is empty. In a sprint project each task goes to the
+# folder of its sprint, or to backlog/ with none, then each empty group folder is removed, in the
+# order of sb_task_groups, then the archive's as in a status project.
 sb_doc_fix() {
-  local name path keys id file status tag new reason layout d n=0 nl=$'\n'
+  local name path keys id file status tag new reason layout d groups n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
@@ -1753,8 +1755,9 @@ sb_doc_fix() {
     done 4<<EOF
 $(sb_doc_status_drift)
 EOF
-    # task archive and the status move read the tasks root as written, so they never run where
-    # that root leaves the project. A task they refuse stays where it is, with the reason on stderr.
+    # task archive and the status and sprint moves read the tasks root as written, so they never run
+    # where that root leaves the project. A task they refuse stays where it is, with the reason on
+    # stderr.
     case "$SB_DOC_LEAVES" in *tasks_root:*) continue ;; esac
     layout="$(sb_task_layout)"
     while IFS=$'\t' read -r id file reason <&4; do
@@ -1765,6 +1768,8 @@ EOF
           continue
         fi
         new="$( (sb_task_to_status "$id" "$name") )"
+      elif [ "$layout" = "sprint" ]; then
+        new="$( (sb_task_to_sprint "$id" "$name") )"
       else
         [ "$reason" = "to-archive" ] || continue
         new="$( (sb_task_archive "$id" --project "$name") )"
@@ -1778,8 +1783,18 @@ EOF
     done 4<<EOF
 $(sb_doc_layout_drift)
 EOF
-    [ "$layout" = "status" ] || continue
-    # A folder that holds anything, such as an archive README, stays.
+    [ "$layout" = "status" ] || [ "$layout" = "sprint" ] || continue
+    # A folder that holds anything, such as an archive README or a task, stays; a link is no folder.
+    groups=""
+    [ "$layout" = "status" ] || groups="$(sb_task_groups "$SB_P_DIR/$SB_TASKS_ROOT")"
+    while IFS= read -r d; do
+      [ -n "$d" ] && [ -d "$d" ] && [ ! -L "$d" ] || continue
+      rmdir "$d" 2>/dev/null || continue
+      n=$((n + 1))
+      printf 'fixed: %s -> removed (%s)\n' "$(sb_rel "$d")" "$name"
+    done <<EOF
+$groups
+EOF
     for d in "$SB_P_DIR/$SB_TASKS_ROOT"/archive/[0-9][0-9][0-9][0-9]/ "$SB_P_DIR/$SB_TASKS_ROOT/archive/"; do
       d="${d%/}"
       [ -d "$d" ] && [ ! -L "$d" ] || continue

@@ -225,7 +225,8 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   A name that misleads, repeated code or code against the conventions around it is a follow-up,
   unless it is a defect in another way, such as one a user would hit or a rule of the repo names.
   `## Defects and follow-ups` in `agents/reviewer.md` draws the line.
-- The build's end lists the follow-ups, and you can have one fixed then.
+- When the build finishes or stops, it lists the follow-ups so far, and you can have one fixed
+  then.
 - A task that fails goes back to its `implementer` with its defects, in a fix loop of at most five
   rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
   session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.

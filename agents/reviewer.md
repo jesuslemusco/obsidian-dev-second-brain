@@ -98,8 +98,8 @@ Sort each finding as a defect or a follow-up. Only a defect fails the task.
   `second-brain task note <story> "Follow-up: <task>: <what could be better, at file:line> - <the change you propose>" --session <id>`.
   - `<task>` is the task it is on, as `## Findings on a finished branch` says in user and branch
     mode. One that no task covers names `build`.
-  - A follow-up fails nothing and goes to no fix round. The build lists it for the owner at its
-    end.
+  - A follow-up fails nothing and goes to no fix round. The build lists it for the owner when it
+    finishes or stops.
 
 ## Baseline mode
 

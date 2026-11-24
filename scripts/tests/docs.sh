@@ -1994,7 +1994,8 @@ in_df "reviewer: a follow-up is a status note, never an issue" '- Log a follow-u
 in_df "reviewer: the follow-up note's text" \
   '`second-brain task note <story> "Follow-up: <task>: <what could be better, at file:line> - <the change you propose>" --session <id>`.'
 in_df "reviewer: a follow-up no task covers names build" 'One that no task covers names `build`.'
-in_df "reviewer: a follow-up fails nothing" '  - A follow-up fails nothing and goes to no fix round. The build lists it for the owner at its'
+in_df "reviewer: a follow-up fails nothing" '  - A follow-up fails nothing and goes to no fix round. The build lists it for the owner when it'
+in_df "reviewer: the build lists it when it finishes or stops" '    finishes or stops.'
 line_is "reviewer: step 8 logs each defect" "$RV" '8. Log each defect in the story, with how to fix it, before you reply:'
 line_is "reviewer: and each follow-up" "$RV" '   - Log each follow-up too, before you reply, as `## Defects and follow-ups` says.'
 file_lacks "reviewer: no finding goes in with spec issue alone" "$RV" 'Log a finding that has a task with `spec issue`'
@@ -2027,8 +2028,8 @@ line_is "contract: only defects count and go to the fix loop" "$CT" \
 file_has "contract: a follow-up is a status note" "$CT" \
   '`task note <ID> "Follow-up: <task>: <what, at file:line> - <the change it proposes>"`. One that'
 line_is "contract: a follow-up fails nothing" "$CT" '- A follow-up changes no issue count, fails no task and goes to no fix round.'
-file_has "contract: the build lists the follow-ups" "$CT" \
-  '- When the build finishes, the skill lists each follow-up of the build, oldest first: the'
+file_has "contract: the build lists the follow-ups when it finishes or stops" "$CT" \
+  '- When the build finishes or stops, the skill lists each follow-up of the build so far, oldest'
 file_has "contract: a follow-up is a story-level note" "$CT" '  follow-up a review logs. A task'"${q}"'s progress is in `build.json` alone.'
 line_is "contract: issues counts defects" "$CT" \
   '- `verdict` is `PASS`, `FAIL` or `BLOCKED`, `issues` the number of defects, and `checks` one'
@@ -2050,14 +2051,26 @@ df_fu="$(lineno "$BM" '   - Then list the follow-ups of the build')"
 df_fn="$(lineno "$BM" '7. Read `finish.md`, next to this file')"
 is "spec build: the follow-ups come after the rulings, before finish.md" \
   "$((${df_ru:-0} < ${df_fu:-0} && ${df_fu:-0} < ${df_fn:-0}))" "1"
-line_is "spec build: lists each follow-up oldest first" "$BM" \
-  'When the build finishes, show the owner each follow-up of this build, as written, oldest first.'
+line_is "spec build: lists each follow-up when the build finishes or stops" "$BM" \
+  'When the build finishes or stops, show the owner each follow-up of this build so far, as written,'
+line_is "spec build: oldest first" "$BM" 'oldest first.'
+is "spec build: lists the follow-ups at the finish and at a stop" \
+  "$(grep -c '^   - Then list the follow-ups of the build, as `### The list of follow-ups` says\.$' "$BM")" "2"
+fs_stop="$(awk '/^## 7\. When the build stops$/ { on = 1 } on && /^   - Then list the follow-ups of the build/ { print NR; exit }' "$BM")"
+fs_rul="$(awk '/^## 7\. When the build stops$/ { on = 1 } on && /^   - Then list the rulings of the build/ { print NR; exit }' "$BM")"
+fs_two="$(awk '/^## 7\. When the build stops$/ { on = 1 } on && /^2\. / { print NR; exit }' "$BM")"
+is "spec build: a stop lists the follow-ups after the rulings, in item 1" \
+  "$((${fs_rul:-0} < ${fs_stop:-0} && ${fs_stop:-0} < ${fs_two:-0}))" "1"
 line_is "spec build: the follow-ups are the newer notes" "$BM" \
   '- They are the `Follow-up: <task>:` status notes newer than the newest'
 line_is "spec build: the same follow-up is listed once" "$BM" '- List the same text once, even when two reviews logged it.'
 line_is "spec build: says when there are none" "$BM" '- None: say the build has no follow-ups.'
-file_has "spec build: a follow-up fixed is a ruling to fix its task" "$BM" \
-  '`## 2. Ask the owner` in `finish.md` says. It is a ruling to fix its task, as item 3 of'
+line_is "spec build: a follow-up fixed is a ruling to fix its task" "$BM" \
+  '- The owner can have one fixed: it is a ruling to fix its task, as item 3 of'
+line_is "spec build: at a stop the owner says so in its answer" "$BM" \
+  '- At a stop, the owner says so in the answer item 3 there asks for. At the finish, in the'
+line_is "spec build: at the finish in the free-text answer" "$BM" \
+  '  free-text answer of its question, as `## 2. Ask the owner` in `finish.md` says.'
 line_is "spec build: one on build goes on the last task" "$BM" '  `## 7. When the build stops` says. One on `build` goes on the last task in order.'
 file_has "spec build: the README gets each follow-up" "$BM" '  follow-up a review logs.'
 file_has "spec finish: the owner can have a follow-up fixed" "$FN" \
@@ -2068,7 +2081,8 @@ is "spec finish: that comes before the owner does" "$((${df_ff:-0} < ${df_od:-0}
 file_has "guide: a review sorts defects and follow-ups" "$GD" \
   '- A review sorts each finding as a defect, which fails the task, or a follow-up, which does not.'
 file_has "guide: points to the line" "$GD" '  `## Defects and follow-ups` in `agents/reviewer.md` draws the line.'
-line_is "guide: the build's end lists them" "$GD" '- The build'"${q}"'s end lists the follow-ups, and you can have one fixed then.'
+line_is "guide: the build lists them when it finishes or stops" "$GD" \
+  '- When the build finishes or stops, it lists the follow-ups so far, and you can have one fixed'
 file_has "guide: a PASS with an open defect never counts" "$GD" 'a PASS with an open defect never counts, as'
 file_has "changelog: a review sorts defects and follow-ups" "$CG" \
   '- `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in'
@@ -2076,8 +2090,8 @@ file_has "changelog: what stays a defect" "$CG" \
   'against the conventions around it is a follow-up. It stays a defect when a check fails on it, a'
 file_has "changelog: only a defect fails a task" "$CG" \
   '- Only a defect fails a task, counts in the verdict'"${q}"'s `issues` and goes to the fix loop. A'
-file_has "changelog: the build's end lists the follow-ups" "$CG" \
-  'follow-up is a `Follow-up: <task>:` status note on the story, and the build'"${q}"'s end lists each one'
+file_has "changelog: the build lists the follow-ups when it finishes or stops" "$CG" \
+  'follow-up is a `Follow-up: <task>:` status note on the story. When the build finishes or stops,'
 df_line="$(lineno "$CG" '- `reviewer` sorts each finding as a defect or a follow-up')"
 df_top="$(lineno "$CG" '## 0.12.0 - ')"
 df_end="$(lineno "$CG" '## 0.11.0 - ')"

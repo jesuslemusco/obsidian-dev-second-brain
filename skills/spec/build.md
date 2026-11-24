@@ -497,6 +497,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
    - A stop in `## 6. When every task passed` names its step in place of the task: the user
      check or the branch review.
    - Then list the rulings of the build, as `### The list of rulings` says.
+   - Then list the follow-ups of the build, as `### The list of follow-ups` says.
 2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block or the cap
    wrote it already. A block writes it before it sets `blocked`, so a new session never takes an
    older ruling for this stop.
@@ -600,16 +601,18 @@ first: yours and the owner's.
 
 ### The list of follow-ups
 
-When the build finishes, show the owner each follow-up of this build, as written, oldest first.
+When the build finishes or stops, show the owner each follow-up of this build so far, as written,
+oldest first.
 
 - They are the `Follow-up: <task>:` status notes newer than the newest
   `Build: started on <branch> at <short hash>.` note. A new session finds them as
   `### The rulings of this build` says.
 - List the same text once, even when two reviews logged it.
 - None: say the build has no follow-ups.
-- The owner can have one fixed, in the free-text answer of the finish question, as
-  `## 2. Ask the owner` in `finish.md` says. It is a ruling to fix its task, as item 3 of
+- The owner can have one fixed: it is a ruling to fix its task, as item 3 of
   `## 7. When the build stops` says. One on `build` goes on the last task in order.
+- At a stop, the owner says so in the answer item 3 there asks for. At the finish, in the
+  free-text answer of its question, as `## 2. Ask the owner` in `finish.md` says.
 
 ## Rules
 

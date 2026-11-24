@@ -1332,9 +1332,10 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   `task note <ID> "Follow-up: <task>: <what, at file:line> - <the change it proposes>"`. One that
   no task covers names `build`.
 - A follow-up changes no issue count, fails no task and goes to no fix round.
-- When the build finishes, the skill lists each follow-up of the build, oldest first: the
-  `Follow-up:` status notes newer than its newest `Build: started on <branch> at <short hash>.`
-  note. The owner can have one fixed then, as a ruling to fix its task.
+- When the build finishes or stops, the skill lists each follow-up of the build so far, oldest
+  first: the `Follow-up:` status notes newer than its newest
+  `Build: started on <branch> at <short hash>.` note. The owner can have one fixed then, as a
+  ruling to fix its task.
 - `agents/reviewer.md` holds two short worked examples: a FAIL with its findings, and a PASS with
   its evidence.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. Its reply ends with one

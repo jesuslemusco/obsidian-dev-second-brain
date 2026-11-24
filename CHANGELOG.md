@@ -14,8 +14,8 @@
   user would hit it, it makes a doc wrong, or a requirement, a design decision or a rule written
   in the repo names it. Every other finding is a defect.
 - Only a defect fails a task, counts in the verdict's `issues` and goes to the fix loop. A
-  follow-up is a `Follow-up: <task>:` status note on the story, and the build's end lists each one
-  for the owner, who can have one fixed then.
+  follow-up is a `Follow-up: <task>:` status note on the story. When the build finishes or stops,
+  it lists each one so far for the owner, who can have one fixed then.
 
 ## 0.11.0 - 2026-11-23
 

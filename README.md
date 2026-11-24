@@ -16,8 +16,8 @@ It can also build a story from a spec you approve, one task at a time, each test
   ticket sits inside a folder named for that parent, such as
   `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
   or epics.
-- **Releases.** Claude plans a release with you: its goals, epics and stories, in the project's
-  planned-releases note. It writes each story only once you approve the draft.
+- **Planning.** Claude refines the epics and stories with you, and plans each release's goals,
+  epics and stories in the project's planned-releases note. It writes only what you approve.
 - **Sprints.** Claude opens a sprint, plans it, and closes it with the open work carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
@@ -62,7 +62,7 @@ Claude loads most skills when your request matches one, so you seldom type them.
 type a skill's name, as in the headings below. Which requests load which skill is under
 `## What to say` in `docs/guide.md`.
 
-### `/odsb:story-track`
+### `/odsb:story-tracker`
 
 Drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
 
@@ -82,20 +82,24 @@ Update EX-2: the sort is merged, move it to in review.
 
 ### `/odsb:scrum-master`
 
-Plans the sprints and releases with you, and checks the board. It has three workflows, each a
-file of its own in `skills/scrum-master/`, read only when it runs.
+Refines the stories and plans the sprints and releases with you, and checks the board. It has
+four workflows, each a file of its own in `skills/scrum-master/`, read only when it runs.
 
+- `refinement`: drafts or refines an epic and its stories, or one story, with you. Each story has
+  a summary, a description, up to four acceptance criteria, its parent and the tasks it waits on.
+  It writes nothing until you approve the draft, and shows a change you ask for again first. Then
+  story-tracker writes each story.
 - `sprint-planning`: opens a sprint, picks its stories, and closes it with the open work carried
   over. A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md`
   says.
 - `release-planning`: sets a release's goals, epics and stories with you, in the project's
-  planned-releases note. Each story has a summary, a description, up to four acceptance criteria,
-  its parent and the tasks it waits on. It writes nothing until you approve the draft, and shows
-  a change you ask for again first. Then `story-track` writes each story.
+  planned-releases note, once you approve it. A story or epic that does not exist yet goes through
+  refinement first.
 - `organize-board`: runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
 
 ```
+Refine EX-1 for the Example project: split it into stories.
 Plan the 0.2.0 release for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
 /odsb:scrum-master sprint-planning Example
@@ -171,7 +175,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-track` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
@@ -293,9 +297,9 @@ A project can give its stories its own shape. Copy `templates/task-readme.md.tmp
 same name, and edit it there.
 
 - `second-brain task new` fills the project's README template in place of the plugin's.
-- `story-track` fills the project's ticket text template for a draft or ticket text.
+- story-tracker fills the project's ticket text template for a draft or ticket text.
 - A project with no template of its own gets the plugin's.
-- The helper and `story-track` write some frontmatter keys and sections of the README template.
+- The helper and story-tracker write some frontmatter keys and sections of the README template.
   The doctor's `task-template` check warns when the project's template lacks one.
 - What a project's template must keep is under `### A project's own templates` in
   `docs/contract.md`.

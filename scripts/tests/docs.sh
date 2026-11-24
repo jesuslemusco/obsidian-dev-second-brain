@@ -1975,6 +1975,8 @@ file_has "contract: the hook takes a folder named for a task found elsewhere" "$
   '- With no `<parent>/README.md`, it is one when `<parent>` is named for a task found elsewhere in'
 file_has "contract: the hook runs one find for it" "$CC" \
   '  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder'
+file_has "contract: the shell runs that find, and no path is text a shell reads" "$CC" \
+  '- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a'
 under_011 "changelog: the folder named for a task is under 0.11.0" \
   '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
 

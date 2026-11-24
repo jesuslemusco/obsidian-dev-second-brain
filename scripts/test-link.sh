@@ -1246,6 +1246,32 @@ silent "search rule: a README in a folder with no README, named for no task, is 
 guard Read '{"file_path":"'"$TD"'/in-review/billing/EX-4/README.md"}'
 warns "search rule: a folder with no README named for an alias of a task holds tasks"
 rm -r "$TD/done" "$TD/backlog" "$TD/2026-12-04" "$TD/archive" "$TD/2026-12-11" "$TD/planned" "$TD/in-review"
+# A path is never shell text: in a project folder whose name holds a quote, a $(...), a backquote,
+# a semicolon or a blank, the hook takes the child note as it does in a plain one, writes nothing
+# on stderr, and runs nothing. A command it ran would leave a file in the folder it runs from, or
+# in the vault, where the hook goes first.
+mkdir -p "$tmp/hookcwd"
+cd "$tmp/hookcwd" || exit 2
+# jpath <path>: a path as a JSON string's text.
+jpath() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+for name in "plain" "x'q" "x'; touch pwned1; 'q" 'x"q' 'x"; touch pwned2; "q' 'x$(touch pwned3)q' \
+  'x`touch pwned4`q' 'x;touch pwned5;q' 'x y'; do
+  W="$vault/work/$name/tasks"
+  mkdir -p "$W/2026-12-11/A" "$W/done/A/B" "$W/done/C/D"
+  printf -- '---\naliases:\n  - A\ntype: task\n---\n' >"$W/2026-12-11/A/README.md"
+  printf -- '---\naliases:\n  - B\ntype: task\n---\n' >"$W/done/A/B/README.md"
+  printf -- '---\naliases:\n  - D\ntype: task\n---\n' >"$W/done/C/D/README.md"
+  guard Read '{"file_path":"'"$(jpath "$W/done/A/B/README.md")"'"}'
+  warns "search rule, path [$name]: a child in a folder named for a task found elsewhere"
+  is "search rule, path [$name]: nothing on stderr" "$ERR" ""
+  guard Read '{"file_path":"'"$(jpath "$W/done/C/D/README.md")"'"}'
+  silent "search rule, path [$name]: a README in a folder named for no task"
+  is "search rule, path [$name]: nothing on stderr there either" "$ERR" ""
+  rm -r "$vault/work/$name"
+done
+is "search rule: no command ran from a path, here or in the vault, where the hook runs" \
+  "$(ls -A "$tmp/hookcwd"; cd "$vault" && ls -d pwned* 2>/dev/null)" ""
+cd "$here" || exit 2
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
 silent "search rule: a Read of a README directly in the archive, which is no group folder"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'

@@ -1381,7 +1381,10 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Edit and Write are never matched. A ranged Read, or a Read of another note, passes in silence.
 - It loads no library, starts one awk, and reads a long command in one pass. A Read one level
   deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder
-  for its READMEs. With no vault, or with input it cannot read, it prints nothing.
+  for its READMEs, then the awk again over what it lists.
+- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a
+  shell reads, so a quote, a `$(...)`, a backquote or a `;` in a folder name runs nothing.
+- With no vault, or with input it cannot read, it prints nothing.
 
 ## 10. Writing rules for every file in this repo
 

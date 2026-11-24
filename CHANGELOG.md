@@ -35,6 +35,7 @@
   while a check it started still runs.
 - `reviewer` grades code quality on a failing task too, so that one fix round answers every
   finding. A re-review still grades the quality of the fix's commits alone.
+- The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
 
 ## 0.11.0 - 2026-11-23
 

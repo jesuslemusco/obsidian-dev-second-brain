@@ -51,6 +51,10 @@
 - The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
   closes an order whose condition holds, never one whose condition does not, and never changes a
   condition without the owner. The finish closes only the orders whose condition holds.
+- A build agent ends each check with `echo "check ended: exit $?"`, rarer in a check's output than
+  a bare `exit:`. Its wait reads the file with `grep -qs`, and ends too on a notice that the check
+  ended, as when the harness stops one that never writes the line. A call may move to the
+  background after 3 minutes.
 - `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
   that stands in for the repo's, such as a git worktree of it. The checks run there, and a
   `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.

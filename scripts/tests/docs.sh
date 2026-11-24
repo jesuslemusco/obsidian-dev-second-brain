@@ -1111,16 +1111,25 @@ for f in "$BM" "$here/docs/contract.md"; do
 done
 file_has "contract: implementer and reviewer run each check in the foreground" "$here/docs/contract.md" \
   '- `implementer` and `reviewer` run each check in the foreground, with the Bash tool'"'"'s longest'
-file_has "contract: a background agent's call moves after 3 minutes" "$here/docs/contract.md" \
-  '- In a background agent, such as each one the skill launches, a call moves to the background'
-file_has "contract: the exit line goes on a line of its own" "$here/docs/contract.md" \
-  '- Each check'"'"'s command is followed by `echo "exit: $?"` on a line of its own. A check that'
-file_lacks "contract: the exit line is never added to the command's own line" "$here/docs/contract.md" \
-  '; echo "exit: $?"'
+file_has "contract: a background agent's call may move after 3 minutes" "$here/docs/contract.md" \
+  '- In a background agent, such as each one the skill launches, a call may move to the background'
+file_has "contract: the end line goes on a line of its own" "$here/docs/contract.md" \
+  '- Each check'"'"'s command is followed by `echo "check ended: exit $?"` on a line of its own, a marker'
+file_has "contract: a marker rarer than a bare exit" "$here/docs/contract.md" \
+  '  rarer than a bare `exit:` in a check'"'"'s output. A check that outlasts its call moves to the'
+file_lacks "contract: the end line is never added to the command's own line" "$here/docs/contract.md" \
+  '; echo "check ended: exit $?"'
+file_lacks "contract: no bare exit marker is left" "$here/docs/contract.md" 'echo "exit: $?"'
 file_has "contract: a message may move a check to the background" "$here/docs/contract.md" \
-  '  outlasts its call moves to the background and still runs. A message that reaches the agent'
+  '  background and still runs. A message that reaches the agent may move it there too.'
 file_has "contract: the agent waits in calls under 3 minutes" "$here/docs/contract.md" \
   '- The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds'
+file_has "contract: a notice that the check ended ends the wait" "$here/docs/contract.md" \
+  '  the `check ended:` line, or a notice says the check ended. A check the harness stops never'
+line_is "contract: the wait reads with grep -qs" "$here/docs/contract.md" \
+  '- The wait reads the file with `grep -qs`, so a file not written yet is no error.'
+file_has "changelog: the rarer end line, grep -qs and the notice" "$here/CHANGELOG.md" \
+  '- A build agent ends each check with `echo "check ended: exit $?"`, rarer in a check'"'"'s output than'
 file_has "contract: no agent replies while a check it started runs" "$here/docs/contract.md" \
   '- No agent replies while a check it started still runs: once it replies, the notice may never'
 file_has "contract: fix rounds 1 to 3 still resume the same implementer" "$here/docs/contract.md" \
@@ -1135,25 +1144,33 @@ for ag in implementer reviewer; do
   file_lacks "$ag: runs no check in the background" "$AF" 'run_in_background: true'
   file_has "$ag: runs each check in the foreground, with the longest timeout" "$AF" \
     '`timeout: 600000`, 10 minutes. Never with `run_in_background`.'
-  line_is "$ag: a background agent's call moves after 3 minutes" "$AF" \
-    '- In a background agent, a call moves to the background after 3 minutes, whatever its timeout.'
-  file_has "$ag: puts the exit line on a line of its own" "$AF" \
-    '- Put `echo "exit: $?"` on a line of its own after each check'"'"'s command, so that its output'
-  file_lacks "$ag: never adds the exit line to the command's own line" "$AF" '; echo "exit: $?"'
+  line_is "$ag: a background agent's call may move after 3 minutes" "$AF" \
+    '- In a background agent, a call may move to the background after 3 minutes, whatever its timeout.'
+  file_has "$ag: puts the end line on a line of its own" "$AF" \
+    '- Put `echo "check ended: exit $?"` on a line of its own after each check'"'"'s command, so that its'
+  file_lacks "$ag: never adds the end line to the command's own line" "$AF" '; echo "check ended: exit $?"'
+  file_lacks "$ag: no bare exit marker is left" "$AF" 'echo "exit: $?"'
+  file_lacks "$ag: no wait on a bare exit line" "$AF" "grep -q '^exit: '"
   file_has "$ag: a check moved to the background still runs" "$AF" \
     '- A check that outlasts its call moves to the background and still runs. A message that reaches'
   file_has "$ag: a message may move it there too" "$AF" '  you while it runs may move it there too.'
   file_lacks "$ag: no claim that a message always moves it" "$AF" 'moves it there too'
-  file_has "$ag: waits for it in the foreground" "$AF" \
-    '`for i in $(seq 17); do grep -q '"'"'^exit: '"'"' "<file>" && break; sleep 10; done`. It returns'
+  file_has "$ag: waits for it in the foreground, with grep -qs" "$AF" \
+    '`for i in $(seq 17); do grep -qs '"'"'^check ended: exit '"'"' "<file>" && break; sleep 10; done`. It'
+  file_has "$ag: a notice that the check ended ends the wait" "$AF" \
+    '- A notice that the check ended ends the wait too, such as when the harness stops it. Read the'
+  file_has "$ag: a check the harness stops never writes the line" "$AF" \
+    '  file then: a check the harness stops never writes its `check ended:` line.'
   # The wait must return before a background agent's call moves, at 180 seconds.
-  wl="$(grep -m1 -F 'grep -q '"'"'^exit: '"'"'' "$AF")"
+  wl="$(grep -m1 -F 'grep -qs '"'"'^check ended: exit '"'"'' "$AF")"
   wn="$(printf '%s\n' "$wl" | sed -n 's/.*\$(seq \([0-9][0-9]*\)).*/\1/p')"
   ws="$(printf '%s\n' "$wl" | sed -n 's/.*sleep \([0-9][0-9]*\);.*/\1/p')"
   is "$ag: the wait loop's count times its sleep stays under 180 seconds" \
     "$(( ${wn:-999} * ${ws:-999} < 180 ))" "1"
-  file_has "$ag: a check with no exit line is no pass" "$AF" \
-    '- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One'
+  file_has "$ag: a check with no end line is no pass" "$AF" \
+    '- A check with no `check ended:` line has not finished, whatever its output shows: it is no pass.'
+  file_has "$ag: one the harness stops failed" "$AF" \
+    '  One stopped before that line, such as at a time limit or by the harness, failed.'
   file_has "$ag: never replies while a check it started runs" "$AF" \
     '- Never reply while a check you started still runs. Once you reply, its notice may never reach'
 done
@@ -1188,8 +1205,8 @@ file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
 file_has "implementer: runs each test and check in the foreground" "$IM" \
   '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
-line_is "implementer: the exit line is not compared with expected" "$IM" \
-  '  - The `exit:` line you add after the command is not part of what it prints.'
+line_is "implementer: the end line is not compared with expected" "$IM" \
+  '  - The `check ended:` line you add after the command is not part of what it prints.'
 line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
   '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \

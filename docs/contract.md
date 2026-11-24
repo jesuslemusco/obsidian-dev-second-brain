@@ -1354,13 +1354,15 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   timeout, 10 minutes, and never with `run_in_background`. A check is a `validation run`, a
   task's `Check`, an `implementer` test or a `reviewer` step run with Bash. A server a step needs
   is no check.
-- In a background agent, such as each one the skill launches, a call moves to the background
+- In a background agent, such as each one the skill launches, a call may move to the background
   after 3 minutes, whatever its timeout.
-- Each check's command is followed by `echo "exit: $?"` on a line of its own. A check that
-  outlasts its call moves to the background and still runs. A message that reaches the agent
-  may move it there too.
+- Each check's command is followed by `echo "check ended: exit $?"` on a line of its own, a marker
+  rarer than a bare `exit:` in a check's output. A check that outlasts its call moves to the
+  background and still runs. A message that reaches the agent may move it there too.
 - The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds
-  the `exit:` line. Until then it is no pass, and one stopped before that line failed.
+  the `check ended:` line, or a notice says the check ended. A check the harness stops never
+  writes that line. Until then it is no pass, and one stopped before that line failed.
+- The wait reads the file with `grep -qs`, so a file not written yet is no error.
 - No agent replies while a check it started still runs: once it replies, the notice may never
   reach it, and its work waits unreported.
 - `implementer` writes a test that fails for its task's requirement first, then makes it pass.

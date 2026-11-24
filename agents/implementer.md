@@ -54,7 +54,7 @@ for the files it names, and the repo's `each task` checks, which are quick and r
 
 - `- task:` is the task's `Check`, as written. Run its command from `repo_path`, with stdin from
   `/dev/null`, and compare what it prints with its `expected:`.
-  - The `exit:` line you add after the command is not part of what it prints.
+  - The `check ended:` line you add after the command is not part of what it prints.
   - A step that is not a command: take it with your tools, as it says. `none`: your test is the
     task's check.
   - A step that needs a tool you do not have, such as a browser or a skill, is not yours to take.
@@ -64,18 +64,20 @@ for the files it names, and the repo's `each task` checks, which are quick and r
   Each row it prints is one result.
 - Run each test and check in the foreground, with the Bash tool's longest timeout:
   `timeout: 600000`, 10 minutes. Never with `run_in_background`.
-- In a background agent, a call moves to the background after 3 minutes, whatever its timeout.
-- Put `echo "exit: $?"` on a line of its own after each check's command, so that its output
-  shows when it ended. On the command's own line, a `#` comment or a heredoc can keep it from
-  running.
+- In a background agent, a call may move to the background after 3 minutes, whatever its timeout.
+- Put `echo "check ended: exit $?"` on a line of its own after each check's command, so that its
+  output shows when it ended. On the command's own line, a `#` comment or a heredoc can keep it
+  from running.
 - A check that outlasts its call moves to the background and still runs. A message that reaches
   you while it runs may move it there too. The call's result names its output file.
 - Wait for it in the foreground, with the same timeout:
-  `for i in $(seq 17); do grep -q '^exit: ' "<file>" && break; sleep 10; done`. It returns
-  within 3 minutes. Run it again until the file holds the `exit:` line, then read the file for
-  the result.
-- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One
-  stopped before that line, such as at a time limit, failed.
+  `for i in $(seq 17); do grep -qs '^check ended: exit ' "<file>" && break; sleep 10; done`. It
+  returns within 3 minutes. Run it again until the file holds the `check ended:` line, then read
+  the file for the result.
+- A notice that the check ended ends the wait too, such as when the harness stops it. Read the
+  file then: a check the harness stops never writes its `check ended:` line.
+- A check with no `check ended:` line has not finished, whatever its output shows: it is no pass.
+  One stopped before that line, such as at a time limit or by the harness, failed.
 - Never reply while a check you started still runs. Once you reply, its notice may never reach
   you.
 - A check fails: fix the cause in your change, then run it again. Never change a test or a check

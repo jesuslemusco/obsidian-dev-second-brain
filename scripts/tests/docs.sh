@@ -2899,6 +2899,14 @@ is "skills: no file outside the changelog names the sprint skill, the scrum-mast
 file_has "index template: names the scrum-master for planning" "$here/templates/vault-index.md.tmpl" \
   '`scrum-master` refines the stories and plans the sprints and releases'
 file_lacks "index template: no scrum-master agent" "$here/templates/vault-index.md.tmpl" 'Agents: `scrum-master`'
+file_has "index template: names the build skill for building a story" "$here/templates/vault-index.md.tmpl" \
+  '`build`'
+line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
+  '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
+line_is "index template: still at version 8, unreleased" "$here/templates/vault-index.md.tmpl" 'index_version: 8'
+file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
+file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
+  '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
 file_lacks "README: no scrum-master agent row" "$here/README.md" '| `scrum-master` |'
 for w in refinement sprint-planning release-planning organize-board; do
   file_has "README: names the $w workflow" "$here/README.md" "- \`$w\`: "

@@ -24,10 +24,11 @@
   story set to done goes to `docs-keeper`, then to the profile's `achievements_skill`, as the
   agent's story finish did.
 - The doctor's `sprints` fixes name the scrum-master skill.
-- The vault index names the scrum-master skill, and no `sprint` skill or scrum-master agent. The
-  plugin's index template is now at `index_version: 8`, so the doctor's `index` check warns. Copy
-  the bullet that starts `- Call a plugin skill or agent` under `## In every session` from
-  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 8`.
+- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or
+  scrum-master agent. The plugin's index template is now at `index_version: 8`, so the doctor's
+  `index` check warns. Copy the bullet that starts `- Call a plugin skill or agent` under
+  `## In every session` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`,
+  then set `index_version: 8`.
 - A note, a skill or a settings rule of your own that names `odsb:sprint` or the scrum-master
   agent: change it to the `odsb:scrum-master` skill.
 - `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,

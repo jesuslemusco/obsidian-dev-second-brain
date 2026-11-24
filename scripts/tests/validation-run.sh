@@ -4,8 +4,6 @@
 . "$(dirname "$0")/lib.sh"
 
 sb scaffold vault
-# The build step of the spec skill, which docs.sh reads too.
-BM="$here/skills/spec/build.md"
 
 # ---------------------------------------------------------------- validation run
 sb help
@@ -240,13 +238,9 @@ line_is "contract: so is an unknown one, so a typo never drops a check" "$CT" \
 file_has "contract: documents validation run" "$CT" '| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--path <dir>] [--json]` |'
 file_has "contract: validation takes --path" "$CT" '| `validation <project> <repo> [--path <dir>] [--json]` |'
 file_has "contract: a worktree is checked in place" "$CT" '  take `--path <worktree>`, so the checks run on the branch under review, not on the repo'"'"'s'
-file_has "contract: the fix loop's rounds" "$CT" '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
-file_has "contract: the build-wide run has no agent" "$CT" '- When every task has passed, the skill runs `validation run <project> <repo> --when each-build`'
-file_has "guide: each task is reviewed right after it is built" "$here/docs/guide.md" '- Each task is reviewed right after it is built, before the next one starts, so no task builds on'
 file_has "guide: names validation run" "$here/docs/guide.md" '`second-brain validation run <project> <repo> --when each-task`'
 file_has "changelog: validation takes --path" "$here/CHANGELOG.md" '- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder'
 file_has "changelog: names validation run" "$here/CHANGELOG.md" 'The new `second-brain validation run <project> <repo> [--when each-task|each-build|release]'
-file_has "changelog: names the fix loop" "$here/CHANGELOG.md" '- The fix loop has five rounds: three on the same `implementer`, then two on a fresh one on the'
 VT="$here/templates/validation-repo.md.tmpl"
 file_has "validation template: asks for the command in backticks" "$VT" 'the command in backticks, then what it proves.>'
 file_has "validation template: asks when each check runs" "$VT" '- <Each line ends with when it runs: when: each task, when: each build, or when: release'
@@ -259,68 +253,40 @@ RV="$here/agents/reviewer.md"
 file_has "reviewer: runs the checks only through validation run" "$RV" \
   '- Run the checks under `### Checks` only through'
 file_has "reviewer: never runs a release check" "$RV" '- Never run a `release` check or step: only the owner asks for one.'
-file_has "reviewer: a task review runs only its each-task checks" "$RV" \
-  '4. Run the task'"'"'s `Check`, the checks with `--when each-task`, and each user step whose `when:` is'
-file_has "reviewer: requirements first" "$RV" '3. Requirements first.'
-file_has "reviewer: then code quality" "$RV" '6. Then code quality, in the diff alone.'
-rq_line="$(lineno "$RV" '3. Requirements first.')"
-cq_line="$(lineno "$RV" '6. Then code quality, in the diff alone.')"
+file_has "reviewer: a story review runs the each-build checks" "$RV" \
+  '   the checks with `--when each-build`, and each user step whose `when:` is `each task` or'
+file_has "reviewer: requirements first" "$RV" '4. Requirements first.'
+file_has "reviewer: then code quality" "$RV" '7. Then code quality, in the change step 3 reads alone'
+rq_line="$(lineno "$RV" '4. Requirements first.')"
+cq_line="$(lineno "$RV" '7. Then code quality, in the change step 3 reads alone')"
 is "reviewer: requirements before code quality" "$((${rq_line:-0} < ${cq_line:-0}))" "1"
-file_has "reviewer: a re-review reads only the fix" "$RV" \
-  '- `fails` above 0: a re-review. The diff holds only the fix'"'"'s commits, and `## Issues` only the'
-line_is "reviewer: has a user mode" "$RV" "## User mode"
-line_is "reviewer: has a branch mode" "$RV" "## Branch mode"
-file_has "reviewer: the branch review reads the whole change" "$RV" '2. Read the whole change: `git -C "<repo_path>" diff <base>...HEAD`.'
-file_has "reviewer: a finished branch's finding goes on its task" "$RV" \
-  '- The task is the one whose `- Files:` line in `tasks.md` holds the finding'"'"'s file. Several: the'
+file_has "reviewer: a re-review reads only the fix" "$RV" '`git -C "<worktree>" diff <hash>..HEAD`, the fix'"'"'s commits alone.'
 IM="$here/agents/implementer.md"
-line_is "implementer: takes a fix message" "$IM" "## A fix message"
-file_has "implementer: fetches its packet again on a fix" "$IM" \
-  '- Run `second-brain spec packet <ID> <task> --project "<project>"` again, and check where you are'
+line_is "implementer: takes a story fix" "$IM" "### A story fix"
 file_has "implementer: a fix runs the checks again before it commits" "$IM" \
-  '`## 2. Check` says, commit with the message'"'"'s last line and reply as `## 4. Report` says.'
+  '- Fix each, with its proposed fix or a better one, as `## 1. Build test-first` says. Then take'
 # Who runs which check: the contract, the guide, the build and the changelog say the same.
 CT="$here/docs/contract.md"
 file_has "contract: says who runs which check" "$CT" \
-  '- **Who runs which check.** `implementer` runs its task'"'"'s checks before it commits. `reviewer`'
-file_has "contract: and the skill runs the each-build checks once" "$CT" \
-  'runs them again in the task'"'"'s review. The skill runs the `each build` checks once, at the end.'
+  '- **Who runs which check.** `implementer` runs its test and the repo'"'"'s `each task` checks before'
+file_has "contract: and the reviewer runs the each-build checks in each review" "$CT" \
+  '  it commits. `reviewer` runs the `each build` checks and the `each task` and `each build` user'
 line_is "contract: implementer writes a failing test first" "$CT" \
-  '- `implementer` writes a test that fails for its task'"'"'s requirement first, then makes it pass.'
-line_is "contract: a task with nothing to test says why" "$CT" \
-  '- A task with nothing to test, such as a doc change, gets no test, and the reply says why.'
-line_is "contract: implementer's checks are its packet's" "$CT" \
-  '- Its checks are the ones under its packet'"'"'s `## Checks`: the task'"'"'s `Check`, and the repo'"'"'s'
+  '- `implementer` writes a test that fails for the story'"'"'s criterion first, then makes it pass.'
+line_is "contract: a change with nothing to test says why" "$CT" \
+  '- A change with nothing to test, such as a doc change, gets no test, and the reply says why.'
+line_is "contract: implementer's checks are its test and the each-task ones" "$CT" \
+  '- Its checks are its own test and the repo'"'"'s `each task` checks, through'
 line_is "contract: it commits only when they pass" "$CT" '- It commits only when they all pass, and names each result in its reply.'
 line_is "contract: it runs no other build-wide check, no release check and no user step" "$CT" \
   '- It runs no other `each build` check, no `release` check and no user step.'
 line_is "contract: the suite that holds its own test is allowed" "$CT" '  even an `each build` one.'
-line_is "contract: a step implementer has no tool for is skipped" "$CT" \
-  '- A task `Check` that is a step its tools cannot take, such as a browser or a skill step, is'
-line_is "contract: it still commits, and the review takes the step" "$CT" \
-  '  reported as `Check: <step> - skipped - needs <tool>`. It still commits, and the review takes'
 file_lacks "contract: no longer says implementer runs no check" "$CT" '`implementer` runs no check'
-file_has "contract: the reviewer runs the task's checks again" "$CT" \
-  '- It runs the task'"'"'s `Check` and the `each task` checks again, through'
 file_has "contract: implementer's reply names each check's result" "$CT" \
   '`Check:` line with the result of each check it ran.'
-GD="$here/docs/guide.md"
-file_has "guide: implementer builds test-first" "$GD" '- `implementer` builds each task test-first. It writes a test that fails for the task'"'"'s'
-file_has "guide: says who runs which check" "$GD" \
-  '- Who runs which check: `implementer` runs the task'"'"'s `Check` and the repo'"'"'s `each task` checks'
-line_is "guide: the reviewer runs them again" "$GD" \
-  '- `reviewer` runs those checks again in the task'"'"'s review, with the `each task` user steps.'
-file_has "guide: the full validation still runs once at the end" "$GD" \
-  '- When every task has passed, the helper runs the repo'"'"'s checks once, with no agent.'
-line_is "spec build: never skips the review on its check lines" "$BM" \
+file_has "build: never skips the review on its check lines" "$here/skills/build/story.md" \
   '   - Its `Test:` and `Check:` lines are its own report. The review runs the checks again: never'
-line_is "spec phases: implementer runs the task's check before it commits" "$here/skills/spec/phases.md" \
-  '- `implementer` builds each task test-first and runs its `- Check:` before it commits. `reviewer`'
-file_lacks "spec phases: no longer says reviewer runs every check" "$here/skills/spec/phases.md" '`reviewer` runs every check'
-file_has "spec phases: a task's check is its narrowest command" "$here/skills/spec/phases.md" \
-  'narrowest command that runs the task'"'"'s test, such as one test file, not every suite.'
 file_has "changelog: names the test-first build" "$here/CHANGELOG.md" '- `implementer` builds each task test-first.'
-file_has "changelog: names the packet's Checks part" "$here/CHANGELOG.md" '- The packet'"'"'s new `## Checks` part names those checks'
 
 # ---------------------------------------------------------------- result
 result

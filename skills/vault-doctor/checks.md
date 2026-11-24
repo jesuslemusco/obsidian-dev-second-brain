@@ -219,7 +219,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: two sprints are in progress, one is in progress past its end date, or a task's `sprint` names a sprint with no note.
 - Why: the `Current sprint` view filters on one sprint id, so the tasks of any other sprint show on no sprint list.
-- Fix: close the extra or overdue sprint with `/odsb:sprint close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/odsb:sprint open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
+- Fix: close the extra or overdue sprint with `/odsb:scrum-master close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/odsb:scrum-master open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
 
 ### unresolved-links
 

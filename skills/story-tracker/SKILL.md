@@ -233,5 +233,5 @@ it only on a yes.
 - Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log.
 - Write absolute dates in notes. Never "yesterday" or "last week".
 - Say "ticket" and "tracker". The tracker's name is the profile's `tracker`.
-- Leave `sprint` and `carried_from` to the sprint skill unless the user asks.
+- Leave `sprint` and `carried_from` to the scrum-master skill unless the user asks.
 - Keep story state in the vault only: never in Claude's memory or the code repo.

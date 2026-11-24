@@ -37,8 +37,9 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
 specs:    spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)
           spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>
           spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"
-          validation <project> [repo] | validation new <project> <repo>
+          validation <project> [repo] [--path DIR] | validation new <project> <repo>
           validation run <project> <repo> [--when each-task|each-build|release] [--timeout S]
+              [--path DIR]   (DIR stands in for the repo's folder, such as a git worktree)
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]
           sprint set <project> goal=<text> committed=<n>

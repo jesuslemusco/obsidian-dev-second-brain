@@ -51,6 +51,9 @@
 - The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
   closes an order whose condition holds, never one whose condition does not, and never changes a
   condition without the owner. The finish closes only the orders whose condition holds.
+- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
+  that stands in for the repo's, such as a git worktree of it. The checks run there, and a
+  `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.
 
 ## 0.11.0 - 2026-11-23
 

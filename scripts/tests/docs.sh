@@ -1678,5 +1678,14 @@ for l in '- A spec build agent that goes idle with no report, such as one that s
   is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
 done
 
+# ---------------------------------------------------------------- the orders note indents with a tab
+BM="$here/skills/spec/build.md"
+line_is "spec build: the orders note's nested item is indented with a tab" "$BM" \
+  "$(printf '\t')- Now: <what works on it: you, an agent by its name, or a check that runs>."
+line_is "spec build: the template says to indent with a tab" "$BM" \
+  'The note, with each `<...>` filled. A nested item is indented with a tab, as the vault'"'"'s writing'
+is "spec build: no nested item of the orders note is indented with spaces" \
+  "$(awk '/^# <project> lead memory$/ { on = 1 } on && /^\`\`\`$/ { on = 0 } on && /^ +- /' "$BM" | wc -l | tr -d ' ')" "0"
+
 # ---------------------------------------------------------------- result
 result

@@ -60,16 +60,16 @@ commits, the files already in the task folder.
 
 ## 3. Create the story
 
-Show the owner the text from section 1 first, and write nothing until they approve it, as
-`## 3. The approval` in `skills/scrum-master/refinement.md` says. A change they ask for is shown
-again before it is written.
+Show the owner the text from section 1 first, and write nothing until they approve it:
 
-A story refinement got approved is approved already. Write it from that text, as
-`planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
-has not started, so step 6 waits until it does.
+- Show it whole, then ask with AskUserQuestion whether to write it or change it. The owner says
+  what to change in the free-text answer.
+- A change: make it, show the changed text again, then ask again.
+- Only the owner's approval counts. Never take a change, a question or silence for one.
+- No AskUserQuestion, as in a subagent: show the text, end with the question, and write nothing.
 
-A story whose text the owner approves here gets the same note in step 5, before the note on where
-it stands, as Step 2 of `skills/build/SKILL.md` needs.
+A story the scrum-master's refinement got approved is approved already. Write it from that text,
+as `planned`. Work on it has not started, so step 6 waits until it does.
 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root
@@ -102,5 +102,8 @@ it stands, as Step 2 of `skills/build/SKILL.md` needs.
    - Code verification holds what section 2 confirmed, with the ref.
    - Approach / Key decisions, Changes and Verification fill in as the work proceeds.
    - Add no section the README lacks: a project's own template may leave some out.
-5. `second-brain task note EX-123 "<where the story stands>" --session <session id from SKILL.md>`.
+5. Every story written here was approved, here or in refinement: first
+   `second-brain task note EX-123 "Planned: the owner approved this text." --session <session id from SKILL.md>`.
+   - Work on it has started: then
+     `second-brain task note EX-123 "<where the story stands>" --session <session id from SKILL.md>`.
 6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.

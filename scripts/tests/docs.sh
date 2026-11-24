@@ -59,8 +59,7 @@ file_lacks "story-tracker: no longer tells Claude not to start it" "$ST" 'Do not
 file_has "story-tracker: a session that cannot start an agent names docs-keeper" "$ST" 'When the session cannot start an agent, say so and'
 file_has "sprint close: reports done tasks with unticked docs through the helper" "$here/skills/scrum-master/sprint-planning.md" '`second-brain task docs <done ids> --project <project>`'
 file_lacks "sprint close: no Grep" "$here/skills/scrum-master/sprint-planning.md" 'Grep'
-file_has "story-tracker: a done story's achievement comes after the docs-keeper hand-off" "$here/skills/story-tracker/SKILL.md" \
-  '- The story is set to `done`: after the docs-keeper hand-off, log its achievement when Step 0'"'"'s'
+file_lacks "story-tracker: a done story logs no achievement" "$here/skills/story-tracker/SKILL.md" 'achievement'
 file_has "sprint close: does not start docs-keeper" "$here/skills/scrum-master/sprint-planning.md" 'Do not start it here: the close only reports.'
 file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
@@ -81,8 +80,11 @@ file_lacks "story-tracker status: no Grep over the READMEs" "$here/skills/story-
 file_has "sprint close: asks once whether to archive the sprint's done tasks" "$CL" 'once whether to archive those tasks now'
 file_has "sprint close: it archives through the helper" "$CL" '`second-brain task archive <ID> --project <project>`'
 file_has "sprint close: never archives without a yes" "$CL" 'Never archive a task without that yes.'
-is "sprint close: the archive question comes after the achievements and before the report" \
-  "$(($(lineno "$CL" '8. Run `second-brain profile') < $(lineno "$CL" '9. `task_layout: archive`') && $(lineno "$CL" '9. `task_layout: archive`') < $(lineno "$CL" '10. Report the summary')))" "1"
+is "sprint close: the archive question comes after the status notes and before the report" \
+  "$(($(lineno "$CL" '7. Add one status note per touched task') < $(lineno "$CL" '8. `task_layout: archive`') && $(lineno "$CL" '8. `task_layout: archive`') < $(lineno "$CL" '9. Report the summary')))" "1"
+file_lacks "sprint close: logs no achievement" "$CL" 'achievement'
+file_has "sprint close: the archive question reads Step 0's profile keys" "$CL" \
+  '8. `task_layout: archive` in Step 0'"'"'s `second-brain profile <project> --keys`, and a `done:` or'
 file_has "sprint-planning: its rules allow task archive after a yes at close" "$here/skills/scrum-master/sprint-planning.md" 'a yes at close, `second-brain task archive`'
 file_has "vault-setup: the profile interview asks for task_layout" "$here/skills/vault-setup/SKILL.md" '| `task_layout` |'
 file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKILL.md" '| `archive_after_days` | with `archive` only'
@@ -95,7 +97,6 @@ file_has "vault-setup subproject: sets it through task set" "$here/skills/vault-
 file_has "docs-keeper: the path task head prints wins" "$DK" 'The `path:` line wins over the path'
 file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/archive/<YYYY>/<ID>/README.md` once'
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
-file_has "story-tracker: the achievement's story path comes from task head" "$here/skills/story-tracker/SKILL.md" '`path:` line of `second-brain task head <ID> --project <project>`, and its sprint note when'
 line_is "sprint close: exit 6 is a taken abandoned folder in a status project" "$CL" \
   '   - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is'
 line_is "sprint close: exit 6 wrote nothing, and the folder is the user's" "$CL" \
@@ -2630,9 +2631,14 @@ file_has "reviewer: logs each story defect with its round" "$RV" \
 file_has "reviewer: a story follow-up names no task" "$RV" '    `Follow-up: <what could be better, at file:line> - <the change you propose>`.'
 file_has "reviewer: uncommitted changes fail a story too" "$RV" '- In task and story mode, uncommitted changes are a finding, and the verdict is FAIL.'
 # story-tracker writes the approval note in start mode too
-file_has "story-tracker create: a story approved in start mode gets the approval note" \
-  "$here/skills/story-tracker/create.md" 'A story whose text the owner approves here gets the same note in step 5, before the note on where'
-file_has "contract: so does the contract" "$CT" '- A story whose text the owner approves in start mode gets the same note, before the note on'
+line_is "story-tracker create: every story it writes gets the approval note first" \
+  "$here/skills/story-tracker/create.md" '5. Every story written here was approved, here or in refinement: first'
+file_has "story-tracker create: the approval note's exact text" "$here/skills/story-tracker/create.md" \
+  '`second-brain task note EX-123 "Planned: the owner approved this text." --session'
+is "story-tracker create: the approval note is one rule, in step 5" \
+  "$(grep -c 'Planned: the owner approved this text.' "$here/skills/story-tracker/create.md")" "1"
+file_has "contract: one rule for the approval note" "$CT" \
+  '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
 # The contract, the guide, the README and the changelog describe the flow
 file_has "contract: the build skill" "$CT" '- **The `build` skill builds approved stories.** It takes one story, or an epic'"${q}"'s open stories in'
 file_has "contract: a worktree of its own" "$CT" '- Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo'"${q}"'s'
@@ -2826,15 +2832,95 @@ file_lacks "scrum-master: no daily status" "$SMS" 'daily status'
 is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
 file_has "story-tracker: the start row takes refinement's stories" "$STS" \
   'or the scrum-master'"'"'s refinement hands over a story the owner approved |'
-file_has "story-tracker: a done story's achievement goes to the profile's skill" "$STS" \
-  '  - Invoke that skill with the Skill tool, by that exact name. Hand it the story'"'"'s README, the'
+line_is "story-tracker: it may edit notes and run ls -d" "$STS" \
+  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
+line_is "scrum-master: it may edit and write notes, call story-tracker with an id and run ls -d" "$SMS" \
+  'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker *) Bash(second-brain *) Bash(ls -d *)'
+# The commands the two skills' text runs, other than the helper: ls -d has a pattern, git -C has
+# none and prompts, as a -c setting before its subcommand can run a program. Read line by line, so
+# no glob in a command expands.
+seen_ls=0
+seen_git=0
+while IFS= read -r c; do
+  case "$c" in
+    'ls -d '*) seen_ls=1 ;;
+    'git -C '*) seen_git=1 ;;
+  esac
+done <<CMDS
+$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git -C|ls -d) [^`]*`' | tr -d '`')
+CMDS
+is "allowed-tools: the skills' text runs ls -d" "$seen_ls" "1"
+is "allowed-tools: the skills' text runs git -C" "$seen_git" "1"
+for f in "$STS" "$SMS"; do
+  sk="$(basename "$(dirname "$f")")"
+  tools="$(sed -n 's/^allowed-tools: //p' "$f")"
+  case " $tools " in
+    *' Bash(ls -d *) '*) pass "allowed-tools: $sk may run the topic folder check" ;;
+    *) fail "allowed-tools: $sk may run the topic folder check" "got: $tools" ;;
+  esac
+  case "$tools" in
+    *'Bash(git'*) fail "allowed-tools: $sk has no git pattern, so its git commands prompt" "got: $tools" ;;
+    *) pass "allowed-tools: $sk has no git pattern, so its git commands prompt" ;;
+  esac
+  extra="$(printf '%s\n' "$tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)' -e 'Bash(ls -d *)')"
+  is "allowed-tools: $sk has no other command pattern" "$extra" ""
+done
+file_has "contract: a git -C pattern never qualifies" "$here/docs/contract.md" \
+  '- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path'
+file_has "contract: a skill call with an id needs the prefix form" "$here/docs/contract.md" \
+  '`Skill(odsb:<that skill> *)`. `Skill(<name>)` matches only a call with no arguments, and the'
+file_has "story-tracker create: the topic folder check is ls -d" "$STD/create.md" '`ls -d "<vault>/<project path>/<topics_root>/<folder>"`'
 file_has "story-tracker: the sprint keys are the scrum-master's" "$STS" \
   '- Leave `sprint` and `carried_from` to the scrum-master'"'"'s sprint-planning unless the user asks.'
 STC="$STD/create.md"
-file_has "story-tracker create: a new story waits for the owner's approval" "$STC" \
-  '`## 3. The approval` in `skills/scrum-master/refinement.md` says. A change they ask for is shown'
+line_is "story-tracker create: a new story waits for the owner's approval" "$STC" \
+  'Show the owner the text from section 1 first, and write nothing until they approve it:'
+line_is "story-tracker create: a change is shown again" "$STC" '- A change: make it, show the changed text again, then ask again.'
+line_is "story-tracker create: only the owner's approval counts" "$STC" \
+  '- Only the owner'"'"'s approval counts. Never take a change, a question or silence for one.'
+file_lacks "story-tracker create: no pointer into another skill's folder" "$STC" 'skills/scrum-master/'
 line_is "story-tracker create: a story refinement got approved is approved already" "$STC" \
-  'A story refinement got approved is approved already. Write it from that text, as'
+  'A story the scrum-master'"'"'s refinement got approved is approved already. Write it from that text,'
+for f in refinement release-planning; do
+  file_has "$f: asks for the approval as story-tracker's create.md says" "$here/skills/scrum-master/$f.md" \
+    'as `## 3. Create the story` in'
+  file_lacks "$f: does not restate the approval rules" "$here/skills/scrum-master/$f.md" 'Only the owner'"'"'s approval counts.'
+done
+file_has "scrum-master: release-planning reads create.md too" "$here/skills/scrum-master/SKILL.md" \
+  '- refinement and release-planning also read story-tracker'"'"'s'
+file_has "contract: the approval rules have one home" "$here/docs/contract.md" \
+  '- Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.'
+is "story-tracker create: the approval comes before step 1" \
+  "$(($(lineno "$STC" 'Show the owner the text from section 1 first') < $(lineno "$STC" '1. `second-brain task new EX-123')))" "1"
+SMW="$here/skills/scrum-master/sprint-planning.md"
+line_is "sprint-planning: a close request comes first" "$SMW" \
+  '1. The user asks to close the sprint, with one in progress: `## Close`.'
+line_is "sprint-planning: a close with no sprint says so and stops" "$SMW" \
+  '2. The user asks to close the sprint, with none in progress: say no sprint is in progress, and'
+line_is "sprint-planning: it opens one only when asked" "$SMW" \
+  '   stop. Go to `## Open` only when the user asks for a new sprint.'
+line_is "sprint-planning: an ended sprint closes only when nothing else is asked" "$SMW" \
+  '4. The sprint'"'"'s days left are 0 or less, and the request asks for nothing else, such as a pick:'
+is "sprint-planning: the close checks come before open" \
+  "$(($(lineno "$SMW" '2. The user asks to close the sprint, with none') < $(lineno "$SMW" '3. No sprint in progress: `## Open`')))" "1"
+file_lacks "sprint-planning: no achievement" "$SMW" 'achievement'
+line_is "vault-setup: asks nothing for achievements_skill" "$here/skills/vault-setup/SKILL.md" \
+  '   - Ask nothing for `achievements_skill`. When the profile lacks it, write'
+line_is "vault-setup: writes it empty" "$here/skills/vault-setup/SKILL.md" \
+  '     `achievements_skill: ""`: no skill reads it until the plugin'"'"'s achievements skill, which is'
+file_lacks "vault-setup: no interview row for achievements_skill" "$here/skills/vault-setup/SKILL.md" '| `achievements_skill` |'
+line_is "refinement: asks for the approval without showing the draft again" "$here/skills/scrum-master/refinement.md" \
+  '  `create.md` says, without showing the draft again.'
+file_has "contract: a story that refinement got approved gets the note too" "$here/docs/contract.md" \
+  '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
+line_is "profile template: achievements_skill waits for the achievements skill" "$here/templates/profile.md.tmpl" \
+  '- `achievements_skill:` waits for the plugin'"'"'s achievements skill, which is planned. No skill'
+file_lacks "profile template: no story is handed to it" "$here/templates/profile.md.tmpl" 'hand it to'
+file_has "contract: only an achievements skill tracks achievements" "$here/docs/contract.md" \
+  '  reads it until then. Only that skill tracks achievements.'
+file_has "contract: a close with no sprint stops" "$here/docs/contract.md" \
+  '- A request to close the sprint goes to its close. With no sprint in progress, it says so and'
+file_lacks "README: no achievement is logged" "$here/README.md" 'achievement'
 absent "skills: the sprint skill is gone" "$here/skills/sprint"
 absent "agents: the scrum-master agent is gone" "$here/agents/scrum-master.md"
 line_is "refinement: nothing is written before the approval" "$SMF" \
@@ -2944,9 +3030,27 @@ under_012 "changelog: refinement is under 0.12.0" '- `refinement` drafts or refi
 under_012 "changelog: release-planning is under 0.12.0" '- `release-planning` sets a release'"'"'s goals, epics and stories with you'
 under_012 "changelog: organize-board is under 0.12.0" '- `organize-board` is the agent'"'"'s hygiene pass'
 under_012 "changelog: no daily status, under 0.12.0" '- The daily status is gone.'
-under_012 "changelog: story-tracker's approval and achievement, under 0.12.0" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
+under_012 "changelog: story-tracker's approval, under 0.12.0" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
+under_012 "changelog: no achievements logged, under 0.12.0" '- story-tracker and the sprint close no longer log achievements'
+under_012 "changelog: a close with no sprint stops, under 0.12.0" '- A sprint close asked for with no sprint in progress says so and stops.'
+under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
 under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
 under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
+
+# ---------------------------------------------------------------- a description with a colon and a blank is quoted
+for f in "$here"/skills/*/SKILL.md "$here"/agents/*.md; do
+  d="$(awk 'NR == 1 && $0 == "---" { on = 1; next } on && $0 == "---" { exit } on && /^description: / { sub(/^description: /, ""); print; exit }' "$f")"
+  n="${f#"$here"/}"
+  case "$d" in
+    *': '*)
+      case "$d" in
+        \"*\" | \'*\') pass "frontmatter: $n quotes its description, which holds a colon and a blank" ;;
+        *) fail "frontmatter: $n quotes its description, which holds a colon and a blank" "got: $d" ;;
+      esac ;;
+    '') fail "frontmatter: $n has a description" ;;
+    *) pass "frontmatter: $n has a description with no colon and blank" ;;
+  esac
+done
 
 # ---------------------------------------------------------------- result
 result

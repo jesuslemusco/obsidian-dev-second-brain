@@ -21,8 +21,15 @@
 - The daily status is gone. story-tracker's status gives the active stories, a standup and the
   stories of the sprint.
 - story-tracker's start mode shows a new story's text, and writes it only once you approve it. A
-  story set to done goes to `docs-keeper`, then to the profile's `achievements_skill`, as the
-  agent's story finish did.
+  story set to done goes to `docs-keeper`.
+- story-tracker and the sprint close no longer log achievements: only an achievements skill tracks
+  them. `achievements_skill` stays in the profile, and no skill reads it until the plugin's
+  achievements skill, which is planned.
+- A sprint close asked for with no sprint in progress says so and stops. It opens a sprint only
+  when you ask for one.
+- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and
+  story-tracker may edit notes. Both may run `ls -d` with no prompt. Their git commands still
+  prompt: a pattern for `git -C <path>` would let a `-c` setting run a program.
 - The doctor's `sprints` fixes name the scrum-master skill.
 - The vault index names the scrum-master skill and the build skill, and no `sprint` skill or
   scrum-master agent. The plugin's index template is now at `index_version: 8`, so the doctor's

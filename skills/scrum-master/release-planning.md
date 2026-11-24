@@ -38,11 +38,9 @@ Draft the release in this chat:
 
 - Show the draft, and end it with the line `What's wrong or missing?` as plain text. Then stop for
   the owner's answer.
-- Then ask with AskUserQuestion whether to approve the draft or change it. The owner says what to
-  change in the free-text answer.
+- Then ask for the approval as `## 3. Create the story` in story-tracker's `create.md` says, at
+  the path `## Workflows` in `SKILL.md` gives.
 - A change: make it in the draft, show each part it changed again in full, then ask again.
-- Only the owner's approval counts. Never take a change, a question or silence for one.
-- No AskUserQuestion, as in a subagent: show the draft, end with the question, and write nothing.
 
 ## 4. Write
 

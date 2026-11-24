@@ -139,7 +139,7 @@ tags:
 ```
 
 - `base_branch` is the branch a new story's branch is cut from, as
-  `## Branch check (start, update, recall)` in `skills/scrum-master/story-track.md` says.
+  `## Branch check (start, update, recall)` in `skills/story-track/SKILL.md` says.
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `parent_label` is the word for the project's parent stories: `feature`, in any letter case, or
@@ -213,9 +213,8 @@ tags:
   task's, then its subproject's, then the profile's.
 - A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`
   skill fall back to.
-- When work starts on a story with no `delivery` of its own, the `story-track` workflow weighs it
-  and writes the story's own, as `## Spec-driven stories` in `skills/scrum-master/story-track.md`
-  says.
+- When work starts on a story with no `delivery` of its own, the `story-track` skill weighs it
+  and writes the story's own, as `## Spec-driven stories` in `skills/story-track/SKILL.md` says.
 - `spec_home` is where a story's spec lives. `vault`: `spec/` next to the task's `README.md`.
   `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
 - The story's repo is the first repo of its subproject, else the project's first repo, in the
@@ -974,8 +973,7 @@ rule: find and read notes with `second-brain find`, `search`, `task head` and `o
   of a word, matched without letter case and printed with the key as the index spells it. It is
   `none` when the branch names none.
 - `story` is there only with a ticket: the vault path of its task README, found by its folder and
-  then by its aliases, with its `status` and `next`; or
-  `none - run scrum-master story-track start`.
+  then by its aliases, with its `status` and `next`; or `none - run story-track start`.
 - The block always ends with the `rule` line, the search and read rule of the index.
 - Anywhere else it prints nothing.
 - Anything that fails while the block is built leaves the block out, and the command still exits
@@ -1094,8 +1092,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - `task new` fills the project's `task-readme.md.tmpl`.
 - `spec link` reads the section text of both the project's and the plugin's, so a story made
   before the project had its own template still takes its link alone.
-- The `story-track` workflow fills the project's `ticket-description.md.tmpl` for ticket text, as
-  `skills/scrum-master/story-track.md` says.
+- The `story-track` skill fills the project's `ticket-description.md.tmpl` for ticket text, as
+  `skills/story-track/SKILL.md` says.
 - A project's template takes the placeholders of the plugin's. Any other is left unfilled, so
   `task new` exits 5 and names the template.
 - A project's `task-readme.md.tmpl` opens with frontmatter. When the README filled from it has
@@ -1130,38 +1128,39 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Agents call skills through the Skill tool as `odsb:<name>`.
 - A skill names a project's parent stories by its `parent_label`: features or epics. The
   frontmatter key it writes stays `epic`.
-- **The scrum-master skill** is the plugin's skill for the work in the vault: each ticket, each
-  sprint, each release and the board. It is a skill, not an agent: planning is a talk with the
-  owner, and only the owner's session can ask.
-- Its `SKILL.md` is its readme: the table of its four workflows and their files, the context
-  step, and the rules they share. It holds nothing one workflow alone needs.
-- Each workflow is a file of its own in the skill's folder, read only when it runs:
-  `story-track.md`, `sprint-planning.md`, `release-planning.md` and `organize-board.md`.
-- A file a workflow reads for one step is named for it, such as `story-track-create.md`, and is
-  read only in that step.
-- No workflow has a daily status.
-- `story-track` handles one ticket at a time: draft, start, update, recall, status and
-  environment set.
+- **Two skills keep the work.** `story-track` owns each ticket. `scrum-master` plans the sprints
+  and releases, and checks the board. Each has its own `description`, as ticket requests come
+  often and must pick their skill alone.
+- Each `SKILL.md` is its skill's readme. It holds the context step, the rules each run needs and
+  a table that routes each mode or workflow to its file in the same folder. Each file is read only
+  when its mode or workflow runs.
+- Neither skill has a daily status.
+- **`story-track`** handles one ticket at a time: draft, start, update, recall, status and
+  environment set. It runs as `/odsb:story-track`. Its files are `create.md`, `status.md` and
+  `env-split.md`.
+- Its start mode shows a new story's text and writes it only on the owner's approval. A change the
+  owner asks for is shown again before it is written.
+- A story release-planning got approved is approved already, and gets the status note
+  `Planned: the owner approved this text.`
+- A story it sets to `done` goes to `docs-keeper`, as below. Then it logs the story's achievement
+  through the profile's `achievements_skill`, when it names one.
+- **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
+  skill. Its three workflows are `sprint-planning.md`, `release-planning.md` and
+  `organize-board.md`.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
 - `release-planning` sets a release's goals, epics and stories with the owner, in the project's
   planned-releases note (section 3).
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
-- Each new story of a release's draft has the shape of section 1 of
-  `skills/scrum-master/story-track-create.md`, with at most 4 acceptance criteria, its parent and
-  the tasks it waits on.
+- Each new story of a release's draft has the shape of section 1 of `skills/story-track/create.md`,
+  with at most 4 acceptance criteria, its parent and the tasks it waits on.
 - The skill shows the owner the whole draft and writes nothing until the owner approves it.
 - A change the owner asks for is made in the draft and shown again. It is written only once the
   owner approves it.
-- On the approval it creates each new epic, then each story, through the start mode of
-  `story-track`, which writes the task note. Then it links each story to the tasks it waits on
-  with `task dep`, links the stories in the epic's list, and writes the release into the
+- On the approval it creates each new epic, then each story, through the `story-track` skill's
+  start mode, which writes the task note. Then it links each story to the tasks it waits on with
+  `task dep`, links the stories in the epic's list, and writes the release into the
   planned-releases note.
-- `story-track`'s start mode shows a new story's text and writes it only on the owner's approval,
-  in the same way. A story release-planning got approved is approved already, and gets the status
-  note `Planned: the owner approved this text.`
-- A story `story-track` sets to `done` goes to `docs-keeper`, as below. Then it logs the story's
-  achievement through the profile's `achievements_skill`, when it names one.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:

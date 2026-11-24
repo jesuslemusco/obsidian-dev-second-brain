@@ -653,10 +653,10 @@ OLD='obsidian-dev-second-brain:'
 N="$vault/$P/docs/rename.md"
 doc
 chk "old-namespace: ok on a fresh vault" old-namespace vault "ok | 0 | -"
-printf '%s\n' '---' "next: \"Run /${OLD}sprint open\"" '---' '# Rename' '' \
+printf '%s\n' '---' "next: \"Run /${OLD}scrum-master open\"" '---' '# Rename' '' \
   "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
   '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
-  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}sprint" '' \
+  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}scrum-master" '' \
   '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}reviewer" \
   '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}reviewer." >"$N"
 printf '%s\n' '# Changes' '' "- ${OLD}spec stopped working." >"$vault/$P/docs/CHANGELOG.md"

@@ -2,6 +2,8 @@
 
 ## 0.12.0 - unreleased
 
+- The test workflow runs the doctor tests as four parallel jobs: `test-doctor.sh --shard <n>/4`.
+
 ## 0.11.0 - 2026-11-23
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile

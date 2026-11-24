@@ -1647,8 +1647,10 @@ file_has "spec build: each task's issue count is noted before the user and branc
 line_is "spec build: the ask and the fresh reviewer are judged against those counts" "$BM" \
   '   - Item 5'"'"'s ask and item 6'"'"'s fresh `reviewer` take no new count: they are judged against these.'
 file_has "spec build: the user and branch reviews review every task" "$BM" '   and the branch review review every task.'
+cn_note="$(lineno "$BM" 'Item 1 there notes each task'"'"'s issue count')"
+cn_fail="$(lineno "$BM" '   - FAIL: it logged each defect it could tie to a task.')"
 is "spec build: the count is noted before the review's result is taken" \
-  "$(($(lineno "$BM" 'Item 1 there notes each task'"'"'s issue count') < $(lineno "$BM" '   - FAIL: it logged each finding it could tie to a task.')))" "1"
+  "$((${cn_note:-0} < ${cn_fail:-0}))" "1"
 file_lacks "spec build: no new issue told by its day" "$BM" 'with a new issue in'
 file_has "spec build: a new session reads the rulings from the story's note" "$BM" \
   '- A new session finds them there: `second-brain outline <note>`, with `<note>` the `path:` that'
@@ -1926,11 +1928,18 @@ file_lacks "reviewer: a FAIL no longer skips the code quality pass" "$RV" 'skip 
 file_lacks "reviewer: a bundle task with a finding still gets the quality pass" "$RV" 'for each task with no finding yet'
 line_is "reviewer: a FAIL still runs step 6" "$RV" \
   '   is FAIL. Still run step 6, so that one fix round answers every defect.'
-file_has "reviewer: code quality runs on a FAIL too" "$RV" \
-  '6. Then code quality, in the diff alone, on a FAIL too. On a re-review the diff is the fix'"${q}"'s'
-line_is "reviewer: a re-review grades the fix's commits alone" "$RV" '   commits: grade those alone. Each of these is a finding, sorted as'
+file_lacks "reviewer: the FAIL rule is said once, in step 5" "$RV" 'on a FAIL too'
+file_has "reviewer: a re-review grades the fix's commits alone" "$RV" \
+  '6. Then code quality, in the diff alone. On a re-review the diff is the fix'"${q}"'s commits: grade'
+line_is "reviewer: the quality pass sorts each finding" "$RV" \
+  '   those alone. Each of these is a finding, sorted as `## Defects and follow-ups` says:'
+q5_line="$(lineno "$RV" 'Still run step 6')"
+q6_line="$(lineno "$RV" '6. Then code quality, in the diff alone.')"
+q8_line="$(lineno "$RV" '8. Log each defect in the story')"
 is "reviewer: step 5's FAIL comes before the quality pass" \
-  "$(($(lineno "$RV" 'Still run step 6') < $(lineno "$RV" '6. Then code quality, in the diff alone,') && $(lineno "$RV" '6. Then code quality, in the diff alone,') < $(lineno "$RV" '8. Log each defect in the story')))" "1"
+  "$((${q5_line:-0} < ${q6_line:-0} && ${q6_line:-0} < ${q8_line:-0}))" "1"
+line_is "reviewer: branch mode uses the list in step 6" "$RV" \
+  '4. Then code quality across the change, by the list in step 6 of `## Task mode`.'
 line_is "reviewer: a bundle grades each task's quality" "$RV" \
   '4. Step 6, code quality, in its own diff, for each task, one with a finding too.'
 is "reviewer: the worked FAIL still runs step 6" "$(example_of 'A FAIL' | grep -c 'step 6 still runs')" "1"
@@ -1958,8 +1967,11 @@ GD="$here/docs/guide.md"
 RV="$here/agents/reviewer.md"
 q="'"
 line_is "reviewer: has the defects and follow-ups section" "$RV" '## Defects and follow-ups'
+df_gr="$(linex "$RV" '## Grading')"
+df_hd="$(linex "$RV" '## Defects and follow-ups')"
+df_bm="$(linex "$RV" '## Baseline mode')"
 is "reviewer: the section comes after grading, before the modes" \
-  "$(($(linex "$RV" '## Grading') < $(linex "$RV" '## Defects and follow-ups') && $(linex "$RV" '## Defects and follow-ups') < $(linex "$RV" '## Baseline mode')))" "1"
+  "$((${df_gr:-0} < ${df_hd:-0} && ${df_hd:-0} < ${df_bm:-0}))" "1"
 DF="$(section_of "$RV" 'Defects and follow-ups')"
 in_df() { case "$DF" in *"$2"*) pass "$1" ;; *) fail "$1" "missing: $2" ;; esac; }
 in_df "reviewer: only a defect fails the task" 'Sort each finding as a defect or a follow-up. Only a defect fails the task.'
@@ -1983,7 +1995,6 @@ in_df "reviewer: the follow-up note's text" \
   '`second-brain task note <story> "Follow-up: <task>: <what could be better, at file:line> - <the change you propose>" --session <id>`.'
 in_df "reviewer: a follow-up no task covers names build" 'One that no task covers names `build`.'
 in_df "reviewer: a follow-up fails nothing" '  - A follow-up fails nothing and goes to no fix round. The build lists it for the owner at its'
-file_has "reviewer: the quality pass sorts each finding" "$RV" '   commits: grade those alone. Each of these is a finding, sorted as'
 line_is "reviewer: step 8 logs each defect" "$RV" '8. Log each defect in the story, with how to fix it, before you reply:'
 line_is "reviewer: and each follow-up" "$RV" '   - Log each follow-up too, before you reply, as `## Defects and follow-ups` says.'
 file_lacks "reviewer: no finding goes in with spec issue alone" "$RV" 'Log a finding that has a task with `spec issue`'
@@ -1992,8 +2003,14 @@ file_has "reviewer: a task review's findings are issues and notes" "$RV" 'Your f
 line_is "reviewer: a follow-up is not counted in issues" "$RV" '     one.'
 file_has "reviewer: a follow-up never stops a PASS" "$RV" 'A step that could not be run is never a PASS. A follow-up never stops one.'
 line_is "reviewer: may write a follow-up note" "$RV" '- `second-brain spec issue` and a follow-up'"${q}"'s `task note` are your only writes to the vault.'
-is "reviewer: the worked FAIL's repeated line is a defect, since a requirement names it" \
-  "$(example_of 'A FAIL' | grep -c 'a defect, since the requirement names it')" "1"
+is "reviewer: the worked FAIL credits its repeat to step 6" \
+  "$(example_of 'A FAIL' | grep -c '  lines 85 and 86: code repeated where it could be shared.')" "1"
+is "reviewer: the worked FAIL sorts the repeat as a follow-up" \
+  "$(example_of 'A FAIL' | grep -c 'No requirement or rule names the repeat, so it is a follow-up.')" "1"
+is "reviewer: the worked FAIL logs the repeat with task note" "$(example_of 'A FAIL' | grep -c '^  `task note`, to cut it.$')" "1"
+file_lacks "reviewer: the worked FAIL no longer finds nothing more" "$RV" 'It finds nothing more.'
+case "$(json_of 'A FAIL')" in *'"verdict": "FAIL", "issues": 1,'*) pass "reviewer: the worked FAIL counts no follow-up" ;;
+  *) fail "reviewer: the worked FAIL counts no follow-up" "in: $(json_of 'A FAIL')" ;; esac
 is "reviewer: the worked PASS logs a follow-up with task note" "$(example_of 'A PASS' | grep -c 'so it is a follow-up. It goes in with `task note`,')" "1"
 case "$(json_of 'A PASS')" in *'"verdict": "PASS", "issues": 0,'*) pass "reviewer: the worked PASS still passes with its follow-up" ;;
   *) fail "reviewer: the worked PASS still passes with its follow-up" "in: $(json_of 'A PASS')" ;; esac
@@ -2021,12 +2038,18 @@ file_has "spec build: points to the line between the kinds" "$BM" \
 file_has "spec build: only a defect fails a task" "$BM" \
   '`agents/reviewer.md` says. Only a defect counts in `issues`, fails a task and goes to the fix'
 line_is "spec build: a follow-up changes no count" "$BM" 'loop. A follow-up is a `Follow-up:` status note: it changes no issue count.'
+df_rv="$(linex "$BM" '### Reading a verdict')"
+df_ks="$(lineno "$BM" 'A review sorts each finding as a defect')"
+df_b4="$(linex "$BM" '## 4. The baseline')"
 is "spec build: the kinds are named in the verdict reading" \
-  "$(($(linex "$BM" '### Reading a verdict') < $(lineno "$BM" 'A review sorts each finding as a defect') && $(lineno "$BM" 'A review sorts each finding as a defect') < $(linex "$BM" '## 4. The baseline')))" "1"
+  "$((${df_rv:-0} < ${df_ks:-0} && ${df_ks:-0} < ${df_b4:-0}))" "1"
 line_is "spec build: has the list of follow-ups" "$BM" '### The list of follow-ups'
 line_is "spec build: the finish lists the follow-ups" "$BM" '   - Then list the follow-ups of the build, as `### The list of follow-ups` says.'
+df_ru="$(lineno "$BM" '   - Then list the rulings of the build')"
+df_fu="$(lineno "$BM" '   - Then list the follow-ups of the build')"
+df_fn="$(lineno "$BM" '7. Read `finish.md`, next to this file')"
 is "spec build: the follow-ups come after the rulings, before finish.md" \
-  "$(($(lineno "$BM" '   - Then list the rulings of the build') < $(lineno "$BM" '   - Then list the follow-ups of the build') && $(lineno "$BM" '   - Then list the follow-ups of the build') < $(lineno "$BM" '7. Read `finish.md`, next to this file')))" "1"
+  "$((${df_ru:-0} < ${df_fu:-0} && ${df_fu:-0} < ${df_fn:-0}))" "1"
 line_is "spec build: lists each follow-up oldest first" "$BM" \
   'When the build finishes, show the owner each follow-up of this build, as written, oldest first.'
 line_is "spec build: the follow-ups are the newer notes" "$BM" \
@@ -2039,8 +2062,9 @@ line_is "spec build: one on build goes on the last task" "$BM" '  `## 7. When th
 file_has "spec build: the README gets each follow-up" "$BM" '  follow-up a review logs.'
 file_has "spec finish: the owner can have a follow-up fixed" "$FN" \
   '  follow-up fixed, as `### The list of follow-ups` there says.'
-is "spec finish: that comes before the owner does" \
-  "$(($(lineno "$FN" 'follow-up fixed, as `### The list of follow-ups`') < $(lineno "$FN" '  - The owner does: first')))" "1"
+df_ff="$(lineno "$FN" 'follow-up fixed, as `### The list of follow-ups`')"
+df_od="$(lineno "$FN" '  - The owner does: first')"
+is "spec finish: that comes before the owner does" "$((${df_ff:-0} < ${df_od:-0}))" "1"
 file_has "guide: a review sorts defects and follow-ups" "$GD" \
   '- A review sorts each finding as a defect, which fails the task, or a follow-up, which does not.'
 file_has "guide: points to the line" "$GD" '  `## Defects and follow-ups` in `agents/reviewer.md` draws the line.'
@@ -2055,8 +2079,10 @@ file_has "changelog: only a defect fails a task" "$CG" \
 file_has "changelog: the build's end lists the follow-ups" "$CG" \
   'follow-up is a `Follow-up: <task>:` status note on the story, and the build'"${q}"'s end lists each one'
 df_line="$(lineno "$CG" '- `reviewer` sorts each finding as a defect or a follow-up')"
+df_top="$(lineno "$CG" '## 0.12.0 - ')"
+df_end="$(lineno "$CG" '## 0.11.0 - ')"
 is "changelog: the follow-ups are under 0.12.0" \
-  "$((${df_line:-0} > $(lineno "$CG" '## 0.12.0 - ') && ${df_line:-0} < $(lineno "$CG" '## 0.11.0 - ')))" "1"
+  "$((${df_line:-0} > ${df_top:-0} && ${df_line:-0} < ${df_end:-0}))" "1"
 
 # ---------------------------------------------------------------- the build catches an agent with no report, and checks on the owner's orders
 BM="$here/skills/spec/build.md"

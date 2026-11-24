@@ -131,9 +131,8 @@ several tasks in place of one, as `### A bundle` says.
    - Start the project as `### Set up and start` says when a step needs it.
 5. An acceptance check not met, an issue not answered, or a check or step that fails: the verdict
    is FAIL. Still run step 6, so that one fix round answers every defect.
-6. Then code quality, in the diff alone, on a FAIL too. On a re-review the diff is the fix's
-   commits: grade those alone. Each of these is a finding, sorted as
-   `## Defects and follow-ups` says:
+6. Then code quality, in the diff alone. On a re-review the diff is the fix's commits: grade
+   those alone. Each of these is a finding, sorted as `## Defects and follow-ups` says:
    - A name that misleads, or code repeated where it could be shared.
    - An error or an edge case the change leaves unhandled.
    - A new path with no test, where the design's testing asks for one.
@@ -191,7 +190,7 @@ The caller gives the user mode's lines, and the base: the commit the build start
 2. Read the whole change: `git -C "<repo_path>" diff <base>...HEAD`.
 3. Requirements first: grade each acceptance check, and whether the tasks fit together, as
    `## Grading` says, with the file and line that show it.
-4. Then code quality across the change, as step 6 of `## Task mode` says.
+4. Then code quality across the change, by the list in step 6 of `## Task mode`.
 5. Run no check and no user step: the build ran them.
 6. Log each finding as `## Findings on a finished branch` says.
 
@@ -279,13 +278,15 @@ that exists, and a heading in it when it points to one section.
   "as `docs/billing/refunds.md` says" of one section there, and names no heading.
 - One pointer misses, so the check is not met. The commit message says every pointer names its
   heading: a claim, not evidence.
-- Line 87 repeats half of lines 85 and 86. No acceptance check names it, but the requirement keeps
-  only text that changes what Claude does: a defect, since the requirement names it.
-- The check is not met, yet step 6 still runs on the diff. It finds nothing more.
-- Each goes in with `spec issue` and its fix: name the heading at line 96, and cut line 87.
+- The check is not met, yet step 6 still runs on the diff. It finds that line 87 repeats half of
+  lines 85 and 86: code repeated where it could be shared.
+- No requirement or rule names the repeat, so it is a follow-up. It fails nothing, and `issues`
+  counts line 96 alone.
+- Line 96 goes in with `spec issue` and its fix, to name the heading. Line 87 goes in with
+  `task note`, to cut it.
 
 ```json
-{"verdict": "FAIL", "issues": 2, "checks": [
+{"verdict": "FAIL", "issues": 1, "checks": [
   {"check": "every added pointer names its path, and its heading for one section", "met": false, "evidence": "line 96 names no heading"},
   {"check": "the task's Check", "met": true, "evidence": "make docs-check printed 0 failed"}
 ]}

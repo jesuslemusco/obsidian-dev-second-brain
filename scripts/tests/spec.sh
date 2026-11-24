@@ -12,7 +12,7 @@ BM="$here/skills/spec/build.md"
 sb help
 out_has "help: lists spec" "spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)"
 out_has "help: lists spec tick and packet" "spec tick <ID> <task> | spec packet <ID> <task>"
-out_has "help: lists validation" "validation <project> [repo] | validation new <project> <repo>"
+out_has "help: lists validation" "validation <project> [repo] [--path DIR] | validation new <project> <repo>"
 S="work/specs"
 SPF="$vault/$S/claude/profile.md"
 mkdir -p "$tmp/scode/spec-app" "$tmp/scode/spec-infra"
@@ -454,7 +454,7 @@ file_has "spec build: commits the tick of a repo spec" "$BM" 'commit -m "<ID> <t
 file_has "spec build: a session resumes the build from build.json" "$BM" \
   'It prints a line: the build resumes, from the states `build.json` in the story'"'"'s folder'
 file_has "reviewer: a BLOCKED verdict" "$here/agents/reviewer.md" '- `BLOCKED`: a step could not be run'
-file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'Read nothing outside `repo_path`'
+file_has "implementer: reads nothing outside the repo" "$here/agents/implementer.md" 'In task mode, read nothing outside `repo_path`'
 file_has "spec skill: a reopened phase voids later approvals" "$here/skills/spec/SKILL.md" 'only when it is newer than every `reopened` note'
 file_has "spec build: commits a repo spec before the build" "$BM" 'commit -m "<ID>: spec"'
 

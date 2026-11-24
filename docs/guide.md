@@ -25,6 +25,7 @@ skill next to it:
 | Open a new sprint for the Mobile project. | `scrum-master` |
 | Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
+| Build the approved stories of EX-1. | `build` |
 | Implement EX-2 spec-driven, starting with its requirements. | `spec` |
 
 - Any skill runs by name: `/odsb:<skill>`.
@@ -196,6 +197,31 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `docs/contract.md`. A story or epic that does not exist yet goes through `refinement` first.
 - `organize-board` runs the doctor on the project and says what each failing row means. It changes
   nothing without asking. `/odsb:vault-doctor fix` makes the repairs.
+
+## Building a story
+
+- Build one with `/odsb:build EX-2`, or an epic's stories with `/odsb:build EX-1`, or with the
+  request under [What to say](#what-to-say).
+- Only a story whose text you approved is built. story-tracker writes the note that says so when
+  it starts a story, and refinement has it written on each story you approve, new or not, as
+  Step 2 of `skills/build/SKILL.md` says.
+- Each story is built in a git worktree of its own, next to the repo's folder. The
+  `implementer` and the `reviewer` work there, and the checks run there:
+  `second-brain validation run <project> <repo> --path <worktree>`.
+- `implementer` builds the story test-first, and checks its whole change against the story's
+  criteria and the reviewer's list of defects before it commits.
+- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks
+  and user steps, and grades the code. A defect fails the story. A follow-up does not: the build
+  lists it for you when it finishes or stops.
+- A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
+  on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
+- Once the build has started, Claude asks you only for the short list under
+  `## 8. When to ask the owner` in `skills/build/story.md`.
+- Once a story passed, its worktree is removed, after Claude shows you any ignored file in it,
+  such as a `.env`. The branch stays, and waits for your go to merge.
+- Progress is kept in the story's status notes, so a new session goes on where the build stopped.
+- The build keeps your orders in the same note a spec build does, with a check on them, as
+  `skills/build/lead.md` says.
 
 ## Spec-driven delivery
 

@@ -31,10 +31,11 @@
   story-tracker may edit notes. Both may run `ls -d` with no prompt. Their git commands still
   prompt: a pattern for `git -C <path>` would let a `-c` setting run a program.
 - The doctor's `sprints` fixes name the scrum-master skill.
-- The vault index names the scrum-master skill, and no `sprint` skill or scrum-master agent. The
-  plugin's index template is now at `index_version: 8`, so the doctor's `index` check warns. Copy
-  the bullet that starts `- Call a plugin skill or agent` under `## In every session` from
-  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 8`.
+- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or
+  scrum-master agent. The plugin's index template is now at `index_version: 8`, so the doctor's
+  `index` check warns. Copy the bullet that starts `- Call a plugin skill or agent` under
+  `## In every session` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`,
+  then set `index_version: 8`.
 - A note, a skill or a settings rule of your own that names `odsb:sprint` or the scrum-master
   agent: change it to the `odsb:scrum-master` skill.
 - `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
@@ -58,6 +59,26 @@
 - The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
   closes an order whose condition holds, never one whose condition does not, and never changes a
   condition without the owner. The finish closes only the orders whose condition holds.
+- A build agent ends each check with `echo "check ended: exit $?"`, rarer in a check's output than
+  a bare `exit:`. Its wait reads the file with `grep -qs`, and ends too on a notice that the check
+  ended, as when the harness stops one that never writes the line. A call may move to the
+  background after 3 minutes.
+- A new `build` skill builds approved stories: one story, or an epic's open stories in the order
+  their `depends_on` sets. Each one is built in a git worktree of its own, `<repo path>-<ID>`, by
+  one `implementer`, and graded by a fresh `reviewer` against its acceptance criteria and the
+  repo's `validation.md`, until one passes or the fix rounds run out. A passed story waits for the
+  owner's go to merge, and its worktree is removed.
+- It builds only a story whose status notes hold `Planned: the owner approved this text.`.
+  story-tracker now writes that note for a story approved in start mode too.
+- A story build keeps its progress in the story's status notes: a `Build: review <n>` note after
+  each verdict, and the reviewer's `Defect <n>:` and `Follow-up:` notes. It keeps the owner's
+  orders note and the lead's check in `skills/build/lead.md`.
+- `implementer` and `reviewer` have a story mode, beside the spec task mode. Before it commits,
+  the implementer checks its whole change against the story's criteria and the reviewer's
+  `## Defects and follow-ups`.
+- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
+  that stands in for the repo's, such as a git worktree of it. The checks run there, and a
+  `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.
 
 ## 0.11.0 - 2026-11-23
 

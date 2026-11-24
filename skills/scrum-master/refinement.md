@@ -59,6 +59,9 @@ then each story in order.
      `SKILL.md` names, and a Read leaves them as written.
 2. Each story or epic that exists and changed: invoke the story-tracker skill with its id, to
    update it with the approved change.
+   - Each story of the draft that exists, changed or approved as it is, and has no status note
+     `Planned: the owner approved this text.`: have story-tracker write it, with that id, in the
+     same call or one of its own.
 3. Link each story to each task it waits on: `second-brain task dep <ID> add <other ID>`. A link
    the owner dropped: `second-brain task dep <ID> remove <other ID>`.
 4. In each epic's list, link each story as `[[<its path, no .md>|<ID>]]`, with the path

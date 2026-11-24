@@ -1498,14 +1498,14 @@ EOF
   return "$bad"
 }
 
-# second-brain validation <project> [repo] [--json] | validation new <project> <repo> |
-# validation run <project> <repo> [--when W] [--timeout S] [--json]
+# second-brain validation <project> [repo] [--path DIR] [--json] | validation new <project> <repo> |
+# validation run <project> <repo> [--when W] [--timeout S] [--path DIR] [--json]
 cmd_validation() {
   local new=0 run=0 a project="" repo="" row name home file show state rstate n=0 json=0
-  local when=each-build level=2 limit=1800 rpath rrow
-  local usage="usage: second-brain validation <project> [repo] [--json]"
+  local when=each-build level=2 limit=1800 rpath rrow at="" hasat=0
+  local usage="usage: second-brain validation <project> [repo] [--path <dir>] [--json]"
   usage="$usage | validation new <project> <repo>"
-  usage="$usage | validation run <project> <repo> [--when each-task|each-build|release] [--timeout <seconds>] [--json]"
+  usage="$usage | validation run <project> <repo> [--when each-task|each-build|release] [--timeout <seconds>] [--path <dir>] [--json]"
   case "${1:-}" in
     new) new=1; shift ;;
     run) run=1; shift ;;
@@ -1526,6 +1526,14 @@ cmd_validation() {
         shift 2
         continue
         ;;
+      --path)
+        [ "$new" -eq 0 ] || sb_die 5 "$usage"
+        [ $# -ge 2 ] && [ -n "$2" ] || sb_die 5 "--path needs a folder"
+        at="$2"
+        hasat=1
+        shift 2
+        continue
+        ;;
       -*) sb_die 5 "$usage" ;;
     esac
     n=$((n + 1))
@@ -1534,6 +1542,7 @@ cmd_validation() {
   done
   if [ "$new" -eq 1 ] || [ "$run" -eq 1 ]; then [ "$n" -eq 2 ] || sb_die 5 "$usage"; fi
   [ "$n" -ge 1 ] && [ "$n" -le 2 ] || sb_die 5 "$usage"
+  [ "$hasat" -eq 0 ] || [ "$n" -eq 2 ] || sb_die 5 "$usage"
   if [ "$run" -eq 1 ]; then
     case "$when" in
       each-task) level=1 ;;
@@ -1565,6 +1574,18 @@ EOF
   IFS=$'\t' read -r name home file show state rstate <<EOF
 $row
 EOF
+  # --path stands in for the repo's recorded folder, such as a git worktree of it: a repo home's
+  # file is read from there, and the checks run there.
+  if [ "$hasat" -eq 1 ]; then
+    [ -d "$at" ] || sb_die 1 "the folder is missing: $(sb_path_out "$at")"
+    at="$(cd "$at" && pwd)"
+    if [ "$home" = "repo" ]; then
+      file="$at/validation.md"
+      show="$(sb_path_out "$file")"
+      state="$(sb_val_state "$file" "$name")"
+      rstate=ok
+    fi
+  fi
   [ "$state" != "unknown" ] || sb_die 1 "no location is recorded for $name: set repos_root or repo_paths in $SB_P_PATH/claude/profile.md"
   if [ "$home" = "repo" ] && [ "$rstate" != "ok" ]; then
     sb_die 1 "the folder of $name is missing: $(sb_path_out "${file%/validation.md}")"
@@ -1578,11 +1599,15 @@ EOF
     no-section) sb_die 1 "$show has no ## $name section: run second-brain validation new \"$SB_P_NAME\" $name" ;;
   esac
   if [ "$run" -eq 1 ]; then
-    rrow="$(sb_spec_repo_row "$name")"
-    IFS=$'\t' read -r name rpath rstate <<EOF
+    if [ "$hasat" -eq 1 ]; then
+      rpath="$at"
+    else
+      rrow="$(sb_spec_repo_row "$name")"
+      IFS=$'\t' read -r name rpath rstate <<EOF
 $rrow
 EOF
-    sb_spec_need_folder "$name" "$rpath" "$rstate"
+      sb_spec_need_folder "$name" "$rpath" "$rstate"
+    fi
     sb_val_run "$name" "$file" "$show" "$rpath" "$level" "$limit" "$json"
     return $?
   fi

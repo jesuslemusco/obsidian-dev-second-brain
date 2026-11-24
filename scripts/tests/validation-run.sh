@@ -10,6 +10,8 @@ BM="$here/skills/spec/build.md"
 # ---------------------------------------------------------------- validation run
 sb help
 out_has "help: lists validation run" "validation run <project> <repo> [--when each-task|each-build|release] [--timeout S]"
+out_has "help: the validation run line itself names --path" "validation run <project> <repo> [--when each-task|each-build|release] [--timeout S] [--path DIR]"
+out_has "help: and what --path stands for" "(DIR stands in for the repo's folder, such as a git worktree)"
 RN="work/runs"
 mkdir -p "$tmp/rcode/run-app" "$tmp/tmpr"
 : >"$tmp/rcode/run-app/marker.txt"
@@ -206,6 +208,70 @@ sb validation run Runs run-app
 rc_is "validation run: a repo whose folder is missing exits 1" 1
 err_has "validation run: and says so" "the folder of run-app is missing"
 mv "$tmp/rcode/run-app.away" "$tmp/rcode/run-app"
+# --path stands in for the repo's folder, such as a git worktree of it: the checks run there.
+mkdir -p "$tmp/rtree"
+cat >"$RVF" <<'EOF'
+## run-app
+
+### Checks
+
+- `pwd -P >where.txt` - names the folder it runs from - when: each task
+EOF
+sb validation run Runs run-app --when each-task --path "$tmp/rtree"
+rc_is "validation run --path: exits 0" 0
+is "validation run --path: the check runs from the folder it names" "$(cat "$tmp/rtree/where.txt" 2>/dev/null)" "$(cd "$tmp/rtree" && pwd -P)"
+absent "validation run --path: not from the repo's recorded folder" "$tmp/rcode/run-app/where.txt"
+sb validation run Runs run-app --path "$tmp/rtree/../rtree" --when each-task
+rc_is "validation run --path: a path with .. in it is taken, flags in any order" 0
+mv "$tmp/rcode/run-app" "$tmp/rcode/run-app.away"
+rm -f "$tmp/rtree/where.txt"
+sb validation run Runs run-app --when each-task --path "$tmp/rtree"
+rc_is "validation run --path: the repo's own folder may be missing" 0
+exists "validation run --path: and the check still runs in the folder named" "$tmp/rtree/where.txt"
+mv "$tmp/rcode/run-app.away" "$tmp/rcode/run-app"
+sb validation run Runs run-app --path "$tmp/no-such-tree"
+rc_is "validation run --path: a folder that is not there exits 1" 1
+err_has "validation run --path: and names it" "the folder is missing: $(shown "$tmp/no-such-tree")"
+sb validation run Runs run-app --path
+rc_is "validation run --path: no value exits 5" 5
+sb validation run Runs run-app --path ""
+rc_is "validation run --path: an empty value exits 5" 5
+sb validation run Runs --path "$tmp/rtree"
+rc_is "validation run --path: no repo exits 5" 5
+sb validation Runs --path "$tmp/rtree"
+rc_is "validation --path: no repo exits 5" 5
+sb validation new Runs run-app --path "$tmp/rtree"
+rc_is "validation new: takes no --path, exit 5" 5
+sb validation Runs run-app --path "$tmp/rtree"
+rc_is "validation --path: a vault home exits 0" 0
+is "validation --path: a vault home's file is the vault's" "$(printf '%s\n' "$OUT" | head -1)" "path: $RN/claude/validation.md"
+# A repo home's validation.md is read from the folder --path names: the branch's own checks.
+WN="work/trees"
+mkdir -p "$tmp/wcode/tree-app" "$tmp/wtree"
+sb scaffold project Trees --path "$WN" --keys WT
+edit "$vault/$WN/claude/profile.md" "s|^repos: \\[\\]\$|repos: [tree-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/wcode\"|; s|^validation_home: vault\$|validation_home: repo|"
+printf '%s\n' '# tree-app validation' '' '## tree-app' '' '### Checks' '' '- `echo recorded` - the recorded folder'"'"'s check - when: each task' >"$tmp/wcode/tree-app/validation.md"
+printf '%s\n' '# tree-app validation' '' '## tree-app' '' '### Checks' '' '- `echo tree` - the tree'"'"'s check - when: each task' >"$tmp/wtree/validation.md"
+sb validation Trees tree-app --path "$tmp/wtree"
+rc_is "validation --path: a repo home exits 0" 0
+is "validation --path: a repo home's file is the one in the folder named" "$(printf '%s\n' "$OUT" | head -1)" "path: $(shown "$tmp/wtree")/validation.md"
+out_has "validation --path: with its own checks" "echo tree"
+out_lacks "validation --path: not the recorded folder's" "echo recorded"
+sb validation run Trees tree-app --when each-task --path "$tmp/wtree"
+rc_is "validation run --path: a repo home exits 0" 0
+is "validation run --path: runs the checks of the folder named" "$(rows "$OUT")" "echo tree|pass|0"
+sb validation run Trees tree-app --when each-task
+is "validation run: without --path, the recorded folder's checks" "$(rows "$OUT")" "echo recorded|pass|0"
+rm -f "$tmp/wtree/validation.md"
+sb validation Trees tree-app --path "$tmp/wtree"
+rc_is "validation --path: a folder with no validation.md exits 1" 1
+err_has "validation --path: and points to validation new" "no validation.md for tree-app"
+edit "$vault/$WN/claude/profile.md" 's|^repos_root: .*$|repos_root: ""|'
+printf '%s\n' '# tree-app validation' '' '## tree-app' '' '### Checks' '' '- `echo tree` - the tree'"'"'s check - when: each task' >"$tmp/wtree/validation.md"
+sb validation run Trees tree-app --when each-task --path "$tmp/wtree"
+rc_is "validation run --path: a repo with no recorded location still runs in the folder named" 0
+sb validation run Trees tree-app --when each-task
+rc_is "validation run: and without --path, no location exits 1" 1
 if [ -n "$ODIR" ]; then export TMPDIR="$ODIR"; else unset TMPDIR; fi
 CT="$here/docs/contract.md"
 file_has "contract: a check's first code span is its command" "$CT" "- Under \`### Checks\` a bullet's first inline code span is its command:"
@@ -213,12 +279,15 @@ file_has "contract: each bullet ends with when it runs" "$CT" '  `when: each tas
 line_is "contract: a bullet with no when is each build" "$CT" '- A bullet with no `when:` is `each build`.'
 line_is "contract: so is an unknown one, so a typo never drops a check" "$CT" \
   '- Any other value is unknown and counts as `each build`, so a typo never drops a check.'
-file_has "contract: documents validation run" "$CT" '| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--json]` |'
+file_has "contract: documents validation run" "$CT" '| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--path <dir>] [--json]` |'
+file_has "contract: validation takes --path" "$CT" '| `validation <project> <repo> [--path <dir>] [--json]` |'
+file_has "contract: a worktree is checked in place" "$CT" '  take `--path <worktree>`, so the checks run on the branch under review, not on the repo'"'"'s'
 file_has "contract: the fix loop's rounds" "$CT" '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
 file_has "contract: the build-wide run has no agent" "$CT" '- When every task has passed, the skill runs `validation run <project> <repo> --when each-build`'
 file_has "contract: a task's fails come from its history" "$CT" '- A task'"'"'s `fails` is the number of `failed` review states in its history, from every session.'
 file_has "guide: each task is reviewed right after it is built" "$here/docs/guide.md" '- Each task is reviewed right after it is built, before the next one starts, so no task builds on'
 file_has "guide: names validation run" "$here/docs/guide.md" '`second-brain validation run <project> <repo> --when each-task`'
+file_has "changelog: validation takes --path" "$here/CHANGELOG.md" '- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder'
 file_has "changelog: names validation run" "$here/CHANGELOG.md" 'The new `second-brain validation run <project> <repo> [--when each-task|each-build|release]'
 file_has "changelog: names the fix loop" "$here/CHANGELOG.md" '- The fix loop has five rounds: three on the same `implementer`, then two on a fresh one on the'
 VT="$here/templates/validation-repo.md.tmpl"

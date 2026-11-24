@@ -1112,16 +1112,25 @@ for f in "$BM" "$here/docs/contract.md"; do
 done
 file_has "contract: implementer and reviewer run each check in the foreground" "$here/docs/contract.md" \
   '- `implementer` and `reviewer` run each check in the foreground, with the Bash tool'"'"'s longest'
-file_has "contract: a background agent's call moves after 3 minutes" "$here/docs/contract.md" \
-  '- In a background agent, such as each one the skill launches, a call moves to the background'
-file_has "contract: the exit line goes on a line of its own" "$here/docs/contract.md" \
-  '- Each check'"'"'s command is followed by `echo "exit: $?"` on a line of its own. A check that'
-file_lacks "contract: the exit line is never added to the command's own line" "$here/docs/contract.md" \
-  '; echo "exit: $?"'
+file_has "contract: a background agent's call may move after 3 minutes" "$here/docs/contract.md" \
+  '- In a background agent, such as each one the skill launches, a call may move to the background'
+file_has "contract: the end line goes on a line of its own" "$here/docs/contract.md" \
+  '- Each check'"'"'s command is followed by `echo "check ended: exit $?"` on a line of its own, a marker'
+file_has "contract: a marker rarer than a bare exit" "$here/docs/contract.md" \
+  '  rarer than a bare `exit:` in a check'"'"'s output. A check that outlasts its call moves to the'
+file_lacks "contract: the end line is never added to the command's own line" "$here/docs/contract.md" \
+  '; echo "check ended: exit $?"'
+file_lacks "contract: no bare exit marker is left" "$here/docs/contract.md" 'echo "exit: $?"'
 file_has "contract: a message may move a check to the background" "$here/docs/contract.md" \
-  '  outlasts its call moves to the background and still runs. A message that reaches the agent'
+  '  background and still runs. A message that reaches the agent may move it there too.'
 file_has "contract: the agent waits in calls under 3 minutes" "$here/docs/contract.md" \
   '- The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds'
+file_has "contract: a notice that the check ended ends the wait" "$here/docs/contract.md" \
+  '  the `check ended:` line, or a notice says the check ended. A check the harness stops never'
+line_is "contract: the wait reads with grep -qs" "$here/docs/contract.md" \
+  '- The wait reads the file with `grep -qs`, so a file not written yet is no error.'
+file_has "changelog: the rarer end line, grep -qs and the notice" "$here/CHANGELOG.md" \
+  '- A build agent ends each check with `echo "check ended: exit $?"`, rarer in a check'"'"'s output than'
 file_has "contract: no agent replies while a check it started runs" "$here/docs/contract.md" \
   '- No agent replies while a check it started still runs: once it replies, the notice may never'
 file_has "contract: fix rounds 1 to 3 still resume the same implementer" "$here/docs/contract.md" \
@@ -1136,25 +1145,33 @@ for ag in implementer reviewer; do
   file_lacks "$ag: runs no check in the background" "$AF" 'run_in_background: true'
   file_has "$ag: runs each check in the foreground, with the longest timeout" "$AF" \
     '`timeout: 600000`, 10 minutes. Never with `run_in_background`.'
-  line_is "$ag: a background agent's call moves after 3 minutes" "$AF" \
-    '- In a background agent, a call moves to the background after 3 minutes, whatever its timeout.'
-  file_has "$ag: puts the exit line on a line of its own" "$AF" \
-    '- Put `echo "exit: $?"` on a line of its own after each check'"'"'s command, so that its output'
-  file_lacks "$ag: never adds the exit line to the command's own line" "$AF" '; echo "exit: $?"'
+  line_is "$ag: a background agent's call may move after 3 minutes" "$AF" \
+    '- In a background agent, a call may move to the background after 3 minutes, whatever its timeout.'
+  file_has "$ag: puts the end line on a line of its own" "$AF" \
+    '- Put `echo "check ended: exit $?"` on a line of its own after each check'"'"'s command, so that its'
+  file_lacks "$ag: never adds the end line to the command's own line" "$AF" '; echo "check ended: exit $?"'
+  file_lacks "$ag: no bare exit marker is left" "$AF" 'echo "exit: $?"'
+  file_lacks "$ag: no wait on a bare exit line" "$AF" "grep -q '^exit: '"
   file_has "$ag: a check moved to the background still runs" "$AF" \
     '- A check that outlasts its call moves to the background and still runs. A message that reaches'
   file_has "$ag: a message may move it there too" "$AF" '  you while it runs may move it there too.'
   file_lacks "$ag: no claim that a message always moves it" "$AF" 'moves it there too'
-  file_has "$ag: waits for it in the foreground" "$AF" \
-    '`for i in $(seq 17); do grep -q '"'"'^exit: '"'"' "<file>" && break; sleep 10; done`. It returns'
+  file_has "$ag: waits for it in the foreground, with grep -qs" "$AF" \
+    '`for i in $(seq 17); do grep -qs '"'"'^check ended: exit '"'"' "<file>" && break; sleep 10; done`. It'
+  file_has "$ag: a notice that the check ended ends the wait" "$AF" \
+    '- A notice that the check ended ends the wait too, such as when the harness stops it. Read the'
+  file_has "$ag: a check the harness stops never writes the line" "$AF" \
+    '  file then: a check the harness stops never writes its `check ended:` line.'
   # The wait must return before a background agent's call moves, at 180 seconds.
-  wl="$(grep -m1 -F 'grep -q '"'"'^exit: '"'"'' "$AF")"
+  wl="$(grep -m1 -F 'grep -qs '"'"'^check ended: exit '"'"'' "$AF")"
   wn="$(printf '%s\n' "$wl" | sed -n 's/.*\$(seq \([0-9][0-9]*\)).*/\1/p')"
   ws="$(printf '%s\n' "$wl" | sed -n 's/.*sleep \([0-9][0-9]*\);.*/\1/p')"
   is "$ag: the wait loop's count times its sleep stays under 180 seconds" \
     "$(( ${wn:-999} * ${ws:-999} < 180 ))" "1"
-  file_has "$ag: a check with no exit line is no pass" "$AF" \
-    '- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One'
+  file_has "$ag: a check with no end line is no pass" "$AF" \
+    '- A check with no `check ended:` line has not finished, whatever its output shows: it is no pass.'
+  file_has "$ag: one the harness stops failed" "$AF" \
+    '  One stopped before that line, such as at a time limit or by the harness, failed.'
   file_has "$ag: never replies while a check it started runs" "$AF" \
     '- Never reply while a check you started still runs. Once you reply, its notice may never reach'
 done
@@ -1189,8 +1206,8 @@ file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
 file_has "implementer: runs each test and check in the foreground" "$IM" \
   '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
-line_is "implementer: the exit line is not compared with expected" "$IM" \
-  '  - The `exit:` line you add after the command is not part of what it prints.'
+line_is "implementer: the end line is not compared with expected" "$IM" \
+  '  - The `check ended:` line you add after the command is not part of what it prints.'
 line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
   '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \
@@ -1202,7 +1219,7 @@ line_is "implementer: it reports it skipped and leaves it to the review" "$IM" \
 line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
   '- A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,'
 line_is "implementer: commits only when every check passed or was skipped" "$IM" \
-  '- Commit only when every check under `## Checks` passed or was skipped. A row `validation run`'
+  '- Commit only when every check passed or was skipped: in task mode each under `## Checks`, in'
 file_has "implementer: never changes a test so that it passes" "$IM" \
   'Never change a test or a check'
 is "implementer: checks before it commits" \
@@ -1722,12 +1739,12 @@ file_has "spec finish: and the story goes back in progress first" "$FN" \
 is "spec finish: that answer comes before any other is a keep" \
   "$(($(lineno "$FN" '- Say too that the owner can reverse a ruling') < $(lineno "$FN" '- Do only what the owner picks.')))" "1"
 file_has "implementer: follows a ruling line" "$IM" \
-  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+  "- A \`Ruling:\` line is the launching skill's ruling on what the story or spec left open: follow it."
 file_has "implementer: and one on a task of its bundle" "$IM" \
   "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
 file_has "implementer: puts a BLOCKED as one question" "$IM" 'stop with `BLOCKED:` and say what, as one question the'
 file_has "reviewer: follows a ruling line" "$RV" \
-  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+  "- A \`Ruling:\` line is the launching skill's ruling on what the story or spec left open: follow it."
 file_has "reviewer: and one on a task of its bundle" "$RV" \
   "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
 for f in "$IM" "$RV"; do
@@ -1799,7 +1816,7 @@ file_has "reviewer: grades each check it runs" "$RV" '   `each task`, and grade 
 file_has "reviewer: the branch review grades each acceptance check" "$RV" \
   '3. Requirements first: grade each acceptance check, and whether the tasks fit together, as'
 file_has "reviewer: ends with one JSON block" "$RV" \
-  'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The `spec` skill'
+  'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The skill that'
 file_has "reviewer: the skill reads the block alone" "$RV" \
   'reads your verdict from that block alone: a block it cannot read is no verdict.'
 for k in '- `verdict`: `PASS`, `FAIL` or `BLOCKED`, as item 4 says.' \
@@ -1996,7 +2013,7 @@ line_is "reviewer: a defect no task covers goes in the reply" "$RV" '- A defect 
 file_has "reviewer: a task review's findings are issues and notes" "$RV" 'Your findings are in the story, through `spec issue` and `task note`.'
 line_is "reviewer: a follow-up is not counted in issues" "$RV" '     one.'
 file_has "reviewer: a follow-up never stops a PASS" "$RV" 'A step that could not be run is never a PASS. A follow-up never stops one.'
-line_is "reviewer: may write a follow-up note" "$RV" '- `second-brain spec issue` and a follow-up'"${q}"'s `task note` are your only writes to the vault.'
+line_is "reviewer: may write a follow-up note" "$RV" '- `second-brain spec issue`, and the `task note` of a story'"${q}"'s defect or of a follow-up, are your'
 is "reviewer: the worked FAIL credits its repeat to step 6" \
   "$(example_of 'A FAIL' | grep -c '  lines 85 and 86: code repeated where it could be shared.')" "1"
 is "reviewer: the worked FAIL sorts the repeat as a follow-up" \
@@ -2238,7 +2255,7 @@ line_is "spec build: an answer at a stop that sends the build on is an order" "$
 file_has "spec build: the owner stopping closes the build's orders" "$BM" \
   "     from it. Take the build${q}s orders to \`## Done\`, as \`### The owner${q}s open orders\` says."
 line_is "contract: the orders note is an optional file of the project" "$CT" \
-  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a spec build writes (section 9)"
+  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a build writes (section 9)"
 file_has "contract: an agent with no report" "$CT" '- **An agent with no report.** An agent can go idle before its report, such as on a reply that'
 file_has "contract: one message, then the next reply is final" "$CT" \
   '- A check that still runs is waited for. With none, the skill sends the agent one message to'
@@ -2251,7 +2268,7 @@ file_has "contract: the lead's check" "$CT" \
 file_has "contract: at the pace of the profile's lead_check_minutes" "$CT" '  `lead_check_minutes` says (section 3). Of each order it tests the `Done when:` condition, and'
 line_is "contract: the profile example has lead_check_minutes" "$CT" 'lead_check_minutes: 20'
 file_has "contract: lead_check_minutes is described with the profile keys" "$CT" \
-  '- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on'
+  '- `lead_check_minutes` is how many minutes the lead of a build waits between two checks on its'
 file_has "contract: it takes the values that space the checks through the hour" "$CT" \
   '  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,'
 file_has "contract: the template leaves it out" "$CT" \
@@ -2306,8 +2323,10 @@ lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep
   | grep -vE 'timeout(: 600000`)?(,| of) 10 minutes')"
 is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
 lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
-is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \
-  'skills/spec/build.md:'"$(linex "$BM" '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.')"':     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+lc_ex='     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+is "the lead's check: the only cron lines are the two checks' example for the default" "$lc_cron" \
+  'skills/build/lead.md:'"$(linex "$here/skills/build/lead.md" "$lc_ex")"":$lc_ex
+skills/spec/build.md:$(linex "$BM" "$lc_ex"):$lc_ex"
 lc_min="$(awk '/^## 0\.11\.0 - / { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
 is "the lead's check: the changelog's 0.11.0 lines and the guide name no minutes" "$lc_min" ""
 line_is "the lead's check: the start links to the renamed heading" "$BM" \
@@ -2424,6 +2443,311 @@ dw_line="$(lineno "$CG" '- Each order in `lead-agent-task-memory.md` has a `Done
 dw_top="$(lineno "$CG" '## 0.12.0 - ')"
 dw_end="$(lineno "$CG" '## 0.11.0 - ')"
 is "changelog: the done-when lines are under 0.12.0" "$((${dw_line:-0} > ${dw_top:-0} && ${dw_line:-0} < ${dw_end:-0}))" "1"
+
+# ---------------------------------------------------------------- the build skill builds each approved story in a worktree of its own
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+BL="$here/skills/build/lead.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RM="$here/README.md"
+RV="$here/agents/reviewer.md"
+q="'"
+for f in "$BS" "$BY" "$BL"; do
+  exists "build skill: ${f##*/} exists" "$f"
+  file_has "build skill: ${f##*/} carries the conventions pointer" "$f" 'Conventions: before writing notes, run `second-brain conventions` and follow it.'
+  file_lacks "build skill: ${f##*/} uses no spec command" "$f" 'spec status'
+  file_lacks "build skill: ${f##*/} logs no spec issue" "$f" 'spec issue'
+  file_lacks "build skill: ${f##*/} fetches no packet" "$f" 'spec packet'
+  file_lacks "build skill: ${f##*/} keeps nothing in build.json" "$f" 'build.json'
+  file_lacks "build skill: ${f##*/} points into no spec file, which is retired next" "$f" 'skills/spec/'
+done
+line_is "build skill: its name" "$BS" 'name: build'
+line_is "build skill: it may read, edit and write the orders note, and run the helper" "$BS" \
+  'allowed-tools: Read Edit Write Bash(second-brain *)'
+bs_tools="$(sed -n 's/^allowed-tools: //p' "$BS")"
+case "$bs_tools" in
+  *'Bash(git'*) fail "allowed-tools: build has no git pattern, so its git commands prompt" "got: $bs_tools" ;;
+  *) pass "allowed-tools: build has no git pattern, so its git commands prompt" ;;
+esac
+is "allowed-tools: build has no other command pattern" \
+  "$(printf '%s\n' "$bs_tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)')" ""
+is "build skill: its text runs git -C, which prompts" "$(grep -c '`git -C "<path>" worktree add' "$BY")" "2"
+bs_desc="$(sed -n 's/^description: //p' "$BS")"
+is "build skill: its description is under 200 characters" "$(( ${#bs_desc} < 200 ))" "1"
+case "$bs_desc" in *worktree*implementer*reviewer*) pass "build skill: its description names the worktree and both agents" ;;
+  *) fail "build skill: its description names the worktree and both agents" "in: $bs_desc" ;; esac
+line_is "build skill: the context comes first" "$BS" '1. Your first tool call is `second-brain context`.'
+for f in story.md lead.md; do
+  is "build skill: its files table routes to $f" "$(grep -c "^| \`\${CLAUDE_SKILL_DIR}/$f\` | " "$BS")" "1"
+done
+file_has "build skill: an epic's stories are those that name it" "$BS" '- An epic'"${q}"'s stories are the tasks its README links whose `epic`, as'
+line_is "build skill: only the open stories" "$BS" '- Take the open stories: `status` `planned` or `in-progress`. Leave the `in-review`, `done` and'
+file_has "build skill: in the order depends_on sets" "$BS" '- A story goes after each story of the run it waits on, as the `depends_on` cell of'
+line_is "build skill: a ring stops" "$BS" '- Stories that wait on each other in a ring: stop, and show the ring.'
+file_has "build skill: approved means the approval note" "$BS" \
+  '- A story is approved when its status notes hold `Planned: the owner approved this text.` Read'
+line_is "build skill: no note, no build, and refinement is offered" "$BS" \
+  '- A story with no such note is not built. Say so, and offer `/odsb:scrum-master refinement` for'
+line_is "build skill: one story at a time" "$BS" '- One story at a time, and one agent at a time.'
+# One story's build
+line_is "story build: the worktree is named for the repo and the story" "$BY" \
+  '- `<worktree>` is `<path>-<ID>`: a folder next to the repo'"${q}"'s, named for the repo and the story.'
+for c in '`git -C "<path>" worktree list --porcelain`' \
+  '`git -C "<path>" worktree add "<worktree>" <branch>`' \
+  '`git -C "<path>" worktree add -b <branch> "<worktree>" <from>`' \
+  '`second-brain validation "<project>" <repo> --path "<worktree>"`' \
+  '`git -C "<path>" worktree remove "<worktree>"`'; do
+  file_has "story build: runs $c" "$BY" "$c"
+done
+line_is "story build: a worktree removed only without --force" "$BY" \
+  '   - Then `git -C "<path>" worktree remove "<worktree>"`. Never pass `--force`. It fails, as on a'
+file_has "story build: the branch stays" "$BY" 'The branch stays, with'
+for n in 'Build: started on <branch> at <short hash>.' 'Build: resumed on <branch> at <short hash>.' \
+  'Build: review <n> passed at <short hash>.' 'Build: review <n> failed at <short hash>: <k> defects.' \
+  'Build: review <n> blocked at <short hash>.' 'Build: stopped: <why>.' \
+  'Build: finished; review <n> passed, the branch is at <short hash>.'; do
+  file_has "story build: writes the note $n" "$BY" "\"$n\""
+done
+line_is "story build: fails come from the status notes" "$BY" \
+  '- `fails` is the number of `Build: review <m> failed at <hash>` notes of this build.'
+# The counts read the notes, so each shape is the same, word for word, in the contract and in the
+# file that writes it.
+while IFS='|' read -r nf shape; do
+  [ -n "$shape" ] || continue
+  file_has "contract: lists the note shape $shape" "$CT" "  - \`$shape\`"
+  file_has "${nf##*/}: writes the note shape $shape" "$nf" "$shape"
+done <<NOTES
+$BY|Build: started on <branch> at <short hash>.
+$BY|Build: resumed on <branch> at <short hash>.
+$BY|Build: baseline skipped: the branch starts at <base> on <base ref>.
+$BY|Build: the baseline passed at <short hash>.
+$BY|Build: review <n> passed at <short hash>.
+$BY|Build: review <n> failed at <short hash>: <k> defects.
+$BY|Build: review <n> failed at <short hash>: the owner ruled a fix.
+$BY|Build: review <n> blocked at <short hash>.
+$BY|Build: review <n> gave no verdict at <short hash>.
+$BY|Build: stopped: <why>.
+$BY|Build: the owner ruled: <the ruling, as written>.
+$BY|Build: finished; review <n> passed, the branch is at <short hash>.
+$BY|Ruling: <the question> - <the decision and why>
+$RV|Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>
+$BY|Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>
+$RV|Follow-up: <what could be better, at file:line> - <the change you propose>
+NOTES
+file_has "contract: the notes of a build and the counts they give" "$CT" \
+  '- The notes of a build are those newer than its newest `Build: started on` note. Its `fails` is'
+file_has "story build: the follow-up list reads the reviewer's shape" "$BY" '- They are the `Follow-up:` notes of this build.'
+file_has "story build: a fix reads the reviewer's defect shape" "$BY" 'Its defects are the story'"${q}"'s Defect <m>: status notes.'
+file_has "implementer: a story fix reads the same defect shape" "$IM" 'Read the story'"${q}"'s `Defect <m>:` status notes'
+file_has "contract: a new build never reuses the worktree path" "$CT" \
+  '- A new build never reuses that path: when anything is there already, the skill says what it is'
+file_has "story build: a new build stops on anything at the worktree path" "$BY" \
+  '   - A new build, and anything is at `<worktree>`, a worktree or a folder: say what is there, from'
+line_is "story build: never reuses or deletes it" "$BY" \
+  '     that list or `ls -A "<worktree>"`, and stop. Never reuse it, and never delete it.'
+file_has "story build: a resumed build says it goes on in its own worktree" "$BY" \
+  '     `branch refs/heads/<branch>`. Say that you go on in it, at its `<short hash>`, then go on.'
+file_has "story build: the steps before the start note ask as they say" "$BY" \
+  '- The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the'
+file_has "story build: the round is one more than the reviews so far" "$BY" \
+  '- `<n>`, the round of the next review, is one more than the number of `Build: review <m>` notes'
+file_has "story build: never counts a round from memory" "$BY" 'They are newest first.'
+line_is "story build: the implementer on opus" "$BY" '  - `odsb:implementer`: `model: "opus"`. It builds the story, and takes fix rounds 1 to 3.'
+line_is "story build: from fix round 4 on fable" "$BY" '  - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.'
+line_is "story build: the reviewer on opus" "$BY" '  - `odsb:reviewer`, in story or baseline mode: `model: "opus"`.'
+line_is "story build: the implementer's name" "$BY" '  - The build and fix rounds 1 to 3: `name: "<ID>-implementer"`.'
+line_is "story build: and from round 4" "$BY" '  - From fix round 4 on: `name: "<ID>-implementer-2"`.'
+for l in '  - `Mode: story.`' '  - `Story: <ID>, project <project>.`' '  - `Repo: <repo>.`' \
+  '  - `Worktree: <worktree>.`' '  - `Branch: <branch>.`' '  - `Base: <base>.`' '  - `Round: <n>.`'; do
+  line_is "story build: a prompt line $l" "$BY" "$l"
+done
+line_is "story build: the fix message names the failed review" "$BY" \
+  '  - `Fix: review <m> failed. Its defects are the story'"${q}"'s Defect <m>: status notes.`, with `<m>`'
+line_is "story build: the fix message's review is the newest failed one" "$BY" \
+  '    from the newest `Build: review <m> failed at <hash>` note.'
+line_is "story build: a re-review names the review it follows" "$BY" \
+  '  - A re-review: `Last failed: review <m> at <hash>.`, from the newest'
+line_is "story build: has an agent with no report" "$BY" '### An agent with no report'
+file_has "story build: counts only a process under the worktree" "$BY" '`<worktree>`: another build'"${q}"'s tests may run in another worktree.'
+file_has "story build: a repeated notice is no new event" "$BY" \
+  'notice that repeats a reply you took already is no new event: it changes no state, and gets no'
+line_is "story build: a PASS logs no defect" "$BY" '     holds no `Defect <n>:` note too.'
+file_has "story build: a post-pass fix comes back through the worktree" "$BY" '  may be gone. Then `## 2. The worktree`, as for a resumed build, and `### The fix loop`.'
+file_has "build skill: an in-review story is built again only on a ruling to fix it" "$BS" \
+  '- A story named alone that is `in-review` has passed: say so. Build it again only on the owner'"${q}"'s'
+file_has "story build: a FAIL logs one defect or more" "$BY" \
+  '   - A `FAIL` has `issues` 1 or more. In story mode the story holds one `Defect <n>:` note or'
+line_is "story build: the cap" "$BY" '1. `fails` 6 or more, right after a FAIL: the cap is reached. Stop, as'
+line_is "story build: rounds 1 to 3 go to the same implementer" "$BY" \
+  '   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<ID>-implementer`, and wait'
+line_is "story build: a fresh one gets the fix line too" "$BY" \
+  '     `implementer` in its place, with the build'"${q}"'s prompt and the fix message'"${q}"'s first line, its'
+line_is "story build: round 4 on the stronger model" "$BY" \
+  '   - `fails` 4: launch a fresh `implementer` on the stronger model, named from round 4 on, with'
+file_has "story build: the merge waits for the owner's go" "$BY" \
+  '4. The merge: say that `<branch>` passed its review and waits for the owner'"${q}"'s go to merge, as the'
+line_is "story build: and merges nothing" "$BY" \
+  '   project'"${q}"'s git flow says. Merge nothing here: a merge is an outside effect, item 3 of'
+bm6="$(lineno "$BY" '4. The merge: say that')"
+bm7="$(lineno "$BY" '5. Remove the worktree.')"
+is "story build: the worktree goes after the merge step" "$(( ${bm6:-0} > 0 && ${bm6:-0} < ${bm7:-0} ))" "1"
+is "story build: the stop list has six items" \
+  "$(awk '/^## 8\. When to ask the owner/ { on = 1; next } /^### / { on = 0 } on && /^[0-9]+\. /' "$BY" | grep -c '')" "6"
+line_is "story build: a ruling never changes a criterion" "$BY" \
+  '   - A ruling never changes, adds or drops an acceptance criterion. One that would is a story too'
+line_is "story build: has the list of rulings" "$BY" '### The list of rulings'
+line_is "story build: has the list of follow-ups" "$BY" '### The list of follow-ups'
+is "story build: lists the rulings and follow-ups at the finish and at a stop" \
+  "$(grep -c '`### The list of follow-ups` says' "$BY")" "2"
+file_has "story build: the follow-ups are read from the status notes" "$BY" \
+  '- Every session reads them from `## Status notes`, as the top of this file says: the reviews'
+file_has "story build: a release check only on the owner's ask, in the worktree" "$BY" \
+  '`second-brain validation run "<project>" <repo> --when release --path "<worktree>"`, with the'
+# The lead's orders and check
+line_is "build lead: the orders note" "$BL" '`<project path>/claude/lead-agent-task-memory.md`. It tells the lead'"${q}"'s check, and a new session,'
+file_has "build lead: each order has a done-when line" "$BL" '- `Done when:` is one condition that a command, a file or a branch state shows to hold or not.'
+file_has "build lead: the build's own order is done when each story finished" "$BL" \
+  '  - The order that ran the build, in no other words: each story of the run holds a'
+line_is "build lead: the check's prompt names lead.md of the build skill" "$BL" \
+  '     `Check on the open orders of <ID>, as the lead'"${q}"'s check in lead.md of the build skill says.`'
+file_has "build lead: the pace is lead_check_minutes" "$BL" '   - Its pace is the `lead_check_minutes` line of `second-brain profile "<project>" --keys`: 10,'
+line_is "build lead: the check takes no outside action" "$BL" '5. The check never pushes, merges or takes another outside action.'
+line_is "build lead: never closes an order whose condition fails" "$BL" \
+  '   - Never close an order whose condition does not hold, and never change a condition to close'
+file_has "build lead: the note template has the done-when item" "$BL" "$(printf '\t- Done when: <one condition that a command, a file or a branch state shows>.')"
+# The agents' story mode
+line_is "implementer: has a story mode" "$IM" '## Story mode'
+line_is "implementer: checks its own change" "$IM" '### Check it yourself'
+line_is "implementer: takes a story fix" "$IM" '### A story fix'
+file_has "implementer: reads the story's parts" "$IM" '`## Acceptance criteria` and `## Approach / Key decisions`.'
+file_has "implementer: runs the each-task checks in the worktree" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`.'
+file_has "implementer: reads the reviewer's defects list before it commits" "$IM" \
+  '- Read `## Defects and follow-ups` and step 6 of `## Task mode` in the reviewer'"${q}"'s agent file. Its'
+file_has "implementer: finds the reviewer's file at the plugin's path" "$IM" \
+  'path is what `printf '"${q}"'%s\n'"${q}"' "${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md"` prints. Fix each defect'
+file_has "implementer: a story fix reads the failed review's defects" "$IM" '- Read the story'"${q}"'s `Defect <m>:` status notes, with a ranged read of `## Status notes`. Each is'
+line_is "reviewer: has a story mode" "$RV" '## Story mode'
+is "reviewer: story mode comes before the spec modes" "$(( $(linex "$RV" '## Story mode') < $(linex "$RV" '## Baseline mode') ))" "1"
+line_is "reviewer: a worktree line sets the repo path" "$RV" '- A prompt with a `Worktree:` line: `<repo_path>` is that worktree.'
+file_has "reviewer: a worktree line adds --path to each validation" "$RV" \
+  '- A prompt with a `Worktree:` line: add `--path "<worktree>"` to each `validation` and'
+file_has "reviewer: a first review reads the story's whole change" "$RV" '`git -C "<worktree>" diff <base>...HEAD`.'
+file_has "reviewer: a re-review reads the fix's commits alone" "$RV" '`git -C "<worktree>" diff <hash>..HEAD`, the fix'"${q}"'s commits alone.'
+line_is "reviewer: a first review grades each acceptance criterion" "$RV" '   - A first review: each acceptance criterion of the story.'
+file_has "reviewer: story mode runs the each-build checks" "$RV" '   the checks with `--when each-build`, and each user step whose `when:` is `each task` or'
+file_has "reviewer: logs each story defect with its round" "$RV" \
+  '`second-brain task note <story> "Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>" --session <id>`.'
+file_has "reviewer: a story follow-up names no task" "$RV" '    `Follow-up: <what could be better, at file:line> - <the change you propose>`.'
+file_has "reviewer: uncommitted changes fail a story too" "$RV" '- In task and story mode, uncommitted changes are a finding, and the verdict is FAIL.'
+# story-tracker writes the approval note in start mode too
+line_is "story-tracker create: every story it writes gets the approval note first" \
+  "$here/skills/story-tracker/create.md" '5. Every story written here was approved, here or in refinement: first'
+file_has "story-tracker create: the approval note's exact text" "$here/skills/story-tracker/create.md" \
+  '`second-brain task note EX-123 "Planned: the owner approved this text." --session'
+is "story-tracker create: the approval note is one rule, in step 5" \
+  "$(grep -c 'Planned: the owner approved this text.' "$here/skills/story-tracker/create.md")" "1"
+file_has "contract: one rule for the approval note" "$CT" \
+  '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
+# The contract, the guide, the README and the changelog describe the flow
+file_has "contract: the build skill" "$CT" '- **The `build` skill builds approved stories.** It takes one story, or an epic'"${q}"'s open stories in'
+file_has "contract: a worktree of its own" "$CT" '- Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo'"${q}"'s'
+file_has "contract: the story's progress is in its status notes" "$CT" '- The story'"${q}"'s progress is in its status notes, never in `build.json`. The counts read them, so'
+file_has "contract: a passed story waits for the owner's go" "$CT" '- A passed story waits for the owner'"${q}"'s go to merge, as the project'"${q}"'s git flow says: the skill'
+file_has "contract: the spec build keeps its own copy until it is retired" "$CT" \
+  '  retired, `skills/spec/build.md` keeps its own copy of these rules for a spec build.'
+file_has "contract: story mode" "$CT" '- **Story mode.** In a story build, a prompt with `Mode: story.` gives each agent the story, its'
+file_has "contract: the implementer checks its change first" "$CT" '- Before it commits, it checks its whole change against the story'"${q}"'s criteria, and against'
+line_is "guide: has Building a story" "$GD" '## Building a story'
+file_has "guide: the build request is under What to say" "$GD" '| Build the approved stories of EX-1. | `build` |'
+file_has "guide: a worktree of its own" "$GD" '- Each story is built in a git worktree of its own, next to the repo'"${q}"'s folder. The'
+line_is "README: has the build section" "$RM" '### `/odsb:build`'
+file_has "README: points to the guide's Building a story" "$RM" '`## Building a story` in `docs/guide.md`'
+file_has "README: names the build skill on the implementer row" "$RM" '| `build`, and `spec` during a build. |'
+file_has "changelog: the build skill" "$CG" '- A new `build` skill builds approved stories: one story, or an epic'"${q}"'s open stories in the order'
+file_has "changelog: the agents' story mode" "$CG" '- `implementer` and `reviewer` have a story mode, beside the spec task mode. Before it commits,'
+bk_line="$(lineno "$CG" '- A new `build` skill builds approved stories')"
+bk_top="$(lineno "$CG" '## 0.12.0 - ')"
+bk_end="$(lineno "$CG" '## 0.11.0 - ')"
+is "changelog: the build skill is under 0.12.0" "$(( ${bk_line:-0} > ${bk_top:-0} && ${bk_line:-0} < ${bk_end:-0} ))" "1"
+
+# ---------------------------------------------------------------- a story build resumes, relaunches and cleans up without losing its place
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RF="$here/skills/scrum-master/refinement.md"
+q="'"
+# A resume after a blocked review, or one with no verdict, reviews again.
+file_has "story build: a resume after a blocked review goes to Review it" "$BY" \
+  '  3. Its newest review note is `Build: review <m> blocked`, for a stop the owner answered, as'
+r3="$(lineno "$BY" '  3. Its newest review note is `Build: review <m> blocked`')"
+r4="$(lineno "$BY" '  4. Commits on the branch since the hash of its newest review note')"
+r1="$(lineno "$BY" '  1. Its newest `Build:` note is `Build: stopped: <why>.`')"
+is "story build: after the unanswered stop, before the commits rung" "$(( ${r1:-0} > 0 && ${r1:-0} < ${r3:-0} && ${r3:-0} < ${r4:-0} ))" "1"
+# A fresh reviewer gets a round of its own.
+file_has "story build: a block with no verdict is noted first" "$BY" \
+  '`second-brain task note <ID> "Build: review <n> gave no verdict at <short hash>."`. The'
+file_has "story build: the fresh reviewer takes the next round" "$BY" \
+  'its place, with the same prompt but the next round, `<n>` plus one, as `## 1` counts it.'
+file_has "contract: lists the no-verdict note" "$CT" '  - `Build: review <n> gave no verdict at <short hash>.`'
+# The owner's fix after a pass takes its hash from the branch.
+file_has "story build: the owner's fix note takes the branch's hash" "$BY" \
+  'with `<short hash>` what `git -C "<path>" rev-parse --short <branch>` prints: the worktree'
+# A worktree is removed only once its ignored files are shown.
+file_has "story build: lists the ignored files before the removal" "$BY" \
+  '   - First run `git -C "<worktree>" status --porcelain --ignored`. Each `!!` path is an ignored'
+file_has "story build: and goes on only on the owner's word" "$BY" \
+  '     file the removal deletes, such as a `.env`. Show the owner each one, and go on only on their'
+file_lacks "story build: no claim that a removal keeps every file" "$BY" 'nothing that is not committed, or the command fails'
+file_has "story build: removal deletes ignored files" "$BY" '- `git worktree remove` refuses a worktree with a change, but deletes its ignored files. Removing'
+file_has "contract: the removal lists ignored files first" "$CT" \
+  '- `git worktree remove` refuses a worktree with a change, but deletes its ignored files, such as a'
+file_has "contract: the worktree goes as soon as the story passed" "$CT" \
+  '  merges nothing. It removes the worktree as soon as the story passed, with `git worktree remove`,'
+file_has "guide: the worktree goes once the story passed" "$GD" '- Once a story passed, its worktree is removed, after Claude shows you any ignored file in it,'
+# A session cut off before the removal ends it next time.
+file_has "build skill: an in-review story with its worktree left ends the build" "$BS" \
+  '- An `in-review` story with a `Build: finished` note whose worktree is still there, on its branch'
+file_has "build skill: reads story.md, then removes the leftover worktree" "$BS" \
+  '  `story.md` names them: its session ended before the worktree went. Read `story.md`, then'
+line_is "build skill: by item 5 alone, and back to Step 1" "$BS" \
+  '  remove the worktree as item 5 of `## 6. When the story passed` says, and go on with Step 1.'
+file_lacks "build skill: never jumps out of Step 1 to the next story" "$BS" 'items 5 to 7 of'
+file_has "story build: a no-verdict resume follows no stop" "$BY" \
+  '     item 1 shows, or `Build: review <m> gave no verdict`: `### Review it`.'
+file_has "contract: a cut-off session ends the removal" "$CT" \
+  '- A session can end after a story passed and before its worktree is removed. An `in-review` story'
+# A fresh implementer on a fix round takes the fix.
+file_has "implementer: a prompt with a Fix line takes the story fix" "$IM" \
+  '   - A prompt with a `Fix: review <m> failed` line, as a fresh `implementer` gets on a fix round:'
+file_has "implementer: the story fix covers a prompt too" "$IM" \
+  'A message that starts with `Fix: review <m> failed`, or a story prompt with that line, names a'
+file_has "implementer: a fresh one reads the story first" "$IM" \
+  '- A fresh `implementer`, launched with that line: read the story and the code first, as steps 2'
+file_has "contract: a fresh implementer takes the fix from its prompt" "$CT" \
+  'fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and'
+# The commit and read rules are scoped to their mode.
+file_has "implementer: the commit message is task mode's last line" "$IM" \
+  '- In task mode, commit with the message the prompt'"${q}"'s last line gives. In story mode, give each'
+file_lacks "implementer: no unscoped commit-message rule" "$IM" '- Commit with the message the prompt'"${q}"'s last line gives.'
+file_has "implementer: stages the worktree's files in story mode" "$IM" \
+  '- Stage the files by name: `git -C "<repo_path>" add <file>...`, or with `git -C "<worktree>"` in'
+file_has "implementer: the packet-only read rule is task mode's" "$IM" \
+  '- In task mode, read nothing outside `repo_path` but your packets: not the vault, not the spec,'
+# Refinement has the approval note written on each story of the draft.
+file_has "refinement: each existing story of the draft gets the approval note" "$RF" \
+  '   - Each story of the draft that exists, changed or approved as it is, and has no status note'
+file_has "refinement: story-tracker writes it" "$RF" '     `Planned: the owner approved this text.`: have story-tracker write it, with that id, in the'
+file_has "contract: refinement writes the note on existing stories" "$CT" \
+  '- Refinement writes it too on each story of an approved draft that exists and lacks it, changed'
+file_has "guide: refinement writes the note on new and existing stories" "$GD" \
+  '  it starts a story, and refinement has it written on each story you approve, new or not, as'
+file_has "README: an existing story approved as it is" "$here/README.md" '  refinement, as it is or changed.'
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"
@@ -2629,6 +2953,15 @@ for f in "$STS" "$SMS"; do
   extra="$(printf '%s\n' "$tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)' -e 'Bash(ls -d *)')"
   is "allowed-tools: $sk has no other command pattern" "$extra" ""
 done
+# No skill pre-approves git: a -c setting can make any git command run a program.
+for f in "$here"/skills/*/SKILL.md; do
+  sk="$(basename "$(dirname "$f")")"
+  case "$(sed -n 's/^allowed-tools: //p' "$f")" in
+    *'Bash(git'*) fail "allowed-tools: $sk, like every skill, has no git pattern" "got: $(sed -n 's/^allowed-tools: //p' "$f")" ;;
+    *) pass "allowed-tools: $sk, like every skill, has no git pattern" ;;
+  esac
+done
+is "allowed-tools: the every-skill git check reads each skill" "$(ls "$here"/skills/*/SKILL.md | grep -c '')" "$(ls -d "$here"/skills/*/ | grep -c '')"
 file_has "contract: a git -C pattern never qualifies" "$here/docs/contract.md" \
   '- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path'
 file_has "contract: a skill call with an id needs the prefix form" "$here/docs/contract.md" \
@@ -2675,8 +3008,8 @@ line_is "vault-setup: writes it empty" "$here/skills/vault-setup/SKILL.md" \
 file_lacks "vault-setup: no interview row for achievements_skill" "$here/skills/vault-setup/SKILL.md" '| `achievements_skill` |'
 line_is "refinement: asks for the approval without showing the draft again" "$here/skills/scrum-master/refinement.md" \
   '  `create.md` says, without showing the draft again.'
-file_has "contract: a story that refinement got approved" "$here/docs/contract.md" \
-  '- A story that refinement got approved is approved already, and gets the status note'
+file_has "contract: a story that refinement got approved gets the note too" "$here/docs/contract.md" \
+  '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
 line_is "profile template: achievements_skill waits for the achievements skill" "$here/templates/profile.md.tmpl" \
   '- `achievements_skill:` waits for the plugin'"'"'s achievements skill, which is planned. No skill'
 file_lacks "profile template: no story is handed to it" "$here/templates/profile.md.tmpl" 'hand it to'
@@ -2749,6 +3082,14 @@ is "skills: no file outside the changelog names the sprint skill, the scrum-mast
 file_has "index template: names the scrum-master for planning" "$here/templates/vault-index.md.tmpl" \
   '`scrum-master` refines the stories and plans the sprints and releases'
 file_lacks "index template: no scrum-master agent" "$here/templates/vault-index.md.tmpl" 'Agents: `scrum-master`'
+file_has "index template: names the build skill for building a story" "$here/templates/vault-index.md.tmpl" \
+  '`build`'
+line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
+  '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
+line_is "index template: still at version 8, unreleased" "$here/templates/vault-index.md.tmpl" 'index_version: 8'
+file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
+file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
+  '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
 file_lacks "README: no scrum-master agent row" "$here/README.md" '| `scrum-master` |'
 for w in refinement sprint-planning release-planning organize-board; do
   file_has "README: names the $w workflow" "$here/README.md" "- \`$w\`: "

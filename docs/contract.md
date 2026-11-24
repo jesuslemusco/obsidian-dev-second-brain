@@ -81,7 +81,7 @@ index_version: 8
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
   claude/writing-style.md       optional; the project's own writing style, which wins
-  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a spec build writes (section 9)
+  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a build writes (section 9)
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -227,8 +227,9 @@ tags:
 - A missing or empty value passes to the next level. At the profile it means the default:
   `direct`, `vault` and `vault`.
 - The first value found decides. One that is not allowed means the default.
-- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on
-  its open orders, as `### The lead's check` in `skills/spec/build.md` says. It is 10, 12, 15,
+- `lead_check_minutes` is how many minutes the lead of a build waits between two checks on its
+  open orders, as `### The lead's check` in `skills/spec/build.md` and `## The lead's check` in
+  `skills/build/lead.md` say. It is 10, 12, 15,
   20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,
   or any other value, is 20.
 - `templates/profile.md.tmpl` leaves the key out. The doctor's `delivery` check warns on a value
@@ -326,6 +327,9 @@ tags:
 - A bullet is its first line and the indented lines under it, up to a blank line, a nested item
   or the next bullet. A nested item is part of no check.
 - A section is written when something is under its heading. One with nothing is `empty`.
+- A story built in a git worktree of its own is checked there: `validation` and `validation run`
+  take `--path <worktree>`, so the checks run on the branch under review, not on the repo's
+  recorded folder.
 
 ### Planned releases
 
@@ -677,8 +681,8 @@ Rules that hold for every command:
 | `spec status <ID> <task> <state> [--commit <hash>] [--session S] [--project P]` | `<task>: <state>` | sets the field of `build.json` that `state` belongs to, and adds the state to the task's `history`, with its commit when `--commit` names one. `todo`, `building` and `built` are build states; `in-review`, `passed` and `failed` are review states. `blocked` sets the review when it is `in-review`, else the build. `--commit` adds a hash to the task's commits once. Adds no status note. A README `## Build` section moves into `build.json`, as section 4 says, with `note: moved ## Build of <README path> into <build.json path>` on stderr. Exit 5 for another state or a `--commit` that is not hex. The new `build.json` is written next to the old one, then moved in its place. Exit 1 when `tasks.md` is missing, neither it nor `build.json` has the task, or `build.json` is not a JSON object with a `tasks` array |
 | `spec issue <ID> <task> "<issue>" --fix "<fix>" [--session S] [--project P]` | `<task>: issue` | adds the issue to the task in `build.json`, with its time, session and `round` (section 4). Adds no status note, and moves a README `## Build` section as `spec status` does. Exit 5 without both texts; exit 1 as `spec status` does |
 | `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
-| `validation <project> <repo> [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
-| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-task` takes `each task`, `each-build` takes `each task` and `each build`, and `release` takes all three. `--when` is `each-build` by default. The repo and its section are found as `validation <project> <repo>` finds them. Each command runs through bash, one at a time, from the repo's root, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each build`, and every run names it on stderr as `note: unknown when: <value>, read as each build: <the bullet's text>`. A skipped row's command is the bullet's text, on one line, and its exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing. Exit 5 for another `--when`, or a `--timeout` that is not a whole number above 0. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
+| `validation <project> <repo> [--path <dir>] [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--path` names a folder that stands in for the repo's recorded one, such as a git worktree of it: a `repo` home's file is `<dir>/validation.md`, and the recorded location is not needed. A `vault` home's file is the same with it or without it. Exit 1 when `<dir>` is not a folder. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
+| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--path <dir>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-task` takes `each task`, `each-build` takes `each task` and `each build`, and `release` takes all three. `--when` is `each-build` by default. The repo and its section are found as `validation <project> <repo>` finds them, with its `--path` too. Each command runs through bash, one at a time, from the repo's root, or from `<dir>` with `--path`, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each build`, and every run names it on stderr as `note: unknown when: <value>, read as each build: <the bullet's text>`. A skipped row's command is the bullet's text, on one line, and its exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing, or `<dir>` with `--path`. Exit 5 for another `--when`, a `--timeout` that is not a whole number above 0, or a `--path` with no value. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
@@ -1150,8 +1154,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
   The scrum-master's refinement and release planning read them there.
-- A story that refinement got approved is approved already, and gets the status note
-  `Planned: the owner approved this text.`
+- Every story whose text the owner approved, in start mode or in refinement, gets the status note
+  `Planned: the owner approved this text.` first. The `build` skill builds only a story with that
+  note.
+- Refinement writes it too on each story of an approved draft that exists and lacks it, changed
+  or not: the owner may approve a story as it is.
 - A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
   does the sprint close: only an achievements skill tracks them.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
@@ -1176,6 +1183,63 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   that section and the `## Epics` lines.
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
+- **The `build` skill builds approved stories.** It takes one story, or an epic's open stories in
+  the order their `depends_on` sets, and builds each in turn in the owner's session. Its files
+  are `SKILL.md`, `story.md`, for one story's build, and `lead.md`, for the orders note and the
+  lead's check.
+- A story is approved when its status notes hold `Planned: the owner approved this text.` One
+  with no such note is not built: the skill offers `refinement`, and leaves out each story that
+  waits on it.
+- Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo's
+  folder, on the story's branch. Its `implementer` and its `reviewer` work there, in story mode,
+  and each `validation` and `validation run` they run takes `--path <worktree>`.
+- A new build never reuses that path: when anything is there already, the skill says what it is
+  and stops. A resumed build goes on in its own worktree, the repo's worktree on the story's
+  branch, and says so. It never deletes what it finds.
+- A branch that does not start on the base branch gets a baseline first: `reviewer` in baseline
+  mode, in the worktree.
+- One `implementer` builds the story. Then a fresh `reviewer` grades it. A FAIL sends the review's
+  defects back to the same `implementer`, and a fresh `reviewer` grades the fix, until one passes
+  or the cap stops the build for the owner.
+- In a story build, `reviewer` runs on `opus`. The `implementer`'s rounds are a spec build's: 1 to
+  3 on the same agent, `<ID>-implementer`, then a fresh one on `fable`, `<ID>-implementer-2`. A
+  sixth failed review stops the build.
+- The story's progress is in its status notes, never in `build.json`. The counts read them, so
+  each note has one of these shapes, word for word:
+  - `Build: started on <branch> at <short hash>.`
+  - `Build: resumed on <branch> at <short hash>.`
+  - `Build: baseline skipped: the branch starts at <base> on <base ref>.`
+  - `Build: the baseline passed at <short hash>.`
+  - `Build: review <n> passed at <short hash>.`
+  - `Build: review <n> failed at <short hash>: <k> defects.`
+  - `Build: review <n> failed at <short hash>: the owner ruled a fix.`
+  - `Build: review <n> blocked at <short hash>.`
+  - `Build: review <n> gave no verdict at <short hash>.`
+  - `Build: stopped: <why>.`
+  - `Build: the owner ruled: <the ruling, as written>.`
+  - `Build: finished; review <n> passed, the branch is at <short hash>.`
+  - `Ruling: <the question> - <the decision and why>`
+  - `Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>`, which `reviewer`
+    writes.
+  - `Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>`, for the
+    owner's ruling to fix the story.
+  - `Follow-up: <what could be better, at file:line> - <the change you propose>`, which
+    `reviewer` writes.
+- The notes of a build are those newer than its newest `Build: started on` note. Its `fails` is
+  the number of its `Build: review <n> failed at` notes, from every session. The round of its
+  next review, `<n>`, is one more than the number of its `Build: review <n>` notes.
+- A passed story waits for the owner's go to merge, as the project's git flow says: the skill
+  merges nothing. It removes the worktree as soon as the story passed, with `git worktree remove`,
+  never with `--force`, and the branch stays.
+- `git worktree remove` refuses a worktree with a change, but deletes its ignored files, such as a
+  `.env`. So the skill first lists them, the `!!` paths of `git status --porcelain --ignored`,
+  and removes a worktree that holds one only on the owner's word.
+- A session can end after a story passed and before its worktree is removed. An `in-review` story
+  with a `Build: finished` note whose worktree is still there goes on with that removal.
+- It keeps the owner's orders note, the lead's check with each order's `Done when:`, the rule for
+  an agent with no report, a repeated notice taken as no event, the rulings, and the lists of
+  rulings and follow-ups at a finish or a stop, as a spec build does. Until the spec flow is
+  retired, `skills/spec/build.md` keeps its own copy of these rules for a spec build.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:
@@ -1364,13 +1428,15 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   timeout, 10 minutes, and never with `run_in_background`. A check is a `validation run`, a
   task's `Check`, an `implementer` test or a `reviewer` step run with Bash. A server a step needs
   is no check.
-- In a background agent, such as each one the skill launches, a call moves to the background
+- In a background agent, such as each one the skill launches, a call may move to the background
   after 3 minutes, whatever its timeout.
-- Each check's command is followed by `echo "exit: $?"` on a line of its own. A check that
-  outlasts its call moves to the background and still runs. A message that reaches the agent
-  may move it there too.
+- Each check's command is followed by `echo "check ended: exit $?"` on a line of its own, a marker
+  rarer than a bare `exit:` in a check's output. A check that outlasts its call moves to the
+  background and still runs. A message that reaches the agent may move it there too.
 - The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds
-  the `exit:` line. Until then it is no pass, and one stopped before that line failed.
+  the `check ended:` line, or a notice says the check ended. A check the harness stops never
+  writes that line. Until then it is no pass, and one stopped before that line failed.
+- The wait reads the file with `grep -qs`, so a file not written yet is no error.
 - No agent replies while a check it started still runs: once it replies, the notice may never
   reach it, and its work waits unreported.
 - `implementer` writes a test that fails for its task's requirement first, then makes it pass.
@@ -1419,6 +1485,25 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   other check.
 - A re-review reads only the fix's commits and the findings they answer, as the packet holds them.
   It grades the code quality of the fix's commits alone.
+- **Story mode.** In a story build, a prompt with `Mode: story.` gives each agent the story, its
+  project, the repo, its git worktree, its branch, the base and the session id, and no packet.
+- `implementer` reads the story's `## Description`, `## Acceptance criteria` and
+  `## Approach / Key decisions`, builds it test-first in the worktree, runs its test and the
+  `each task` checks with `--path <worktree>`, and commits there.
+- Before it commits, it checks its whole change against the story's criteria, and against
+  `## Defects and follow-ups` and step 6 of `## Task mode` in `agents/reviewer.md`. It fixes
+  what it finds, so that the story passes its first review.
+- `reviewer` reads the story the same way, and the change from the base, or on a re-review the
+  fix's commits alone. It grades each acceptance criterion, or on a re-review each defect the
+  fix answers. Then it runs the `each build` checks, and the `each task` and `each build` user
+  steps, in the worktree, and grades the code.
+- It logs each defect and each follow-up as a status note, `<n>` its round, in the shapes the
+  `build` skill's list above gives.
+- A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
+  fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and
+  takes the fix the same way.
+- A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`
+  and `validation run` with `--path <worktree>`.
 - `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
   to what they are given.
 - `implementer` replies with a `Commit:` line, one line on what it built, a `Test:` line, and a

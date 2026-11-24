@@ -73,7 +73,18 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
    - Pass the date from 3 or 5 as `--end`.
    - It creates the note, adds the hub line and rewrites the board's sprint id.
    - Exit 6: a sprint is still in progress. Go back to 1.
+   - Exit 6 with `the destination exists: <path>` or `the sprint folder is a task: <path>`, in a
+     project with `task_layout: sprint`: the folder a re-pointed task moves to is taken, and
+     nothing was written. Show that path to the user: it is theirs to move away or delete. Then
+     run the call again.
+   - Exit 5 that names the `sprint_folder` pattern: it gives the new sprint no folder name, and
+     nothing was written. The pattern in the profile is the user's to fix. Then run the call again.
 7. Report the note it created and each `re-pointed:` line it prints.
+   - With `task_layout: sprint`, each re-pointed task also moves to the new sprint's folder. After
+     the `re-pointed:` lines it prints each moved task's new README path and its `links:` lines.
+   - A move that fails is named on stderr, and the call exits with its code. The sprint is open
+     all the same: never run the call again. Tell the user the task and the reason:
+     `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.
 8. A goal given or changed later: `second-brain sprint set <project> goal="<goal>"`.
 9. Go to plan.
 
@@ -88,6 +99,13 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 5. Set each answer:
    - Joining: `second-brain task set <ID> sprint=<id> --project <project>`.
    - Leaving: `second-brain task set <ID> sprint= --project <project>`.
+   - With `task_layout: sprint`, each call also moves the task's folder, to the sprint's folder or
+     back to `backlog/`, and prints its new README path and its `links:` lines after the keys.
+   - Exit 6 there, as in open: the destination is taken, or the sprint's folder is a task, and
+     nothing was written. Show that path to the user, then set that task again. Exit 5 that names
+     the `sprint_folder` pattern: as in open.
+   - A move that fails exits as `second-brain move` does, with the sprint written:
+     `second-brain doctor --fix` moves the task once the reason is handled.
 6. A task that does not exist yet: create it through the story-tracker skill, with the Skill tool
    as `odsb:story-tracker`. Then set its sprint as in 5.
 7. Run `second-brain board <project> "Current sprint"` and show the list back.

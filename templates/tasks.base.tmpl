@@ -15,6 +15,9 @@ filters:
                 - file.inFolder("{{TASKS_PATH}}/in-review")
                 - file.inFolder("{{TASKS_PATH}}/done")
                 - file.inFolder("{{TASKS_PATH}}/abandoned")
+        - and:
+            - file.folder.split("/").length == {{STATUS_DEPTH}}
+            - file.folder.split("/")[{{TASK_DEPTH}}] == aliases[0]
 formulas:
   task: file.asLink(aliases[0])
   topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))

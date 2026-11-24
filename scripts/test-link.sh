@@ -1176,6 +1176,36 @@ for st in planned in-progress in-review done abandoned; do
 done
 guard Read '{"file_path":"'"$vault/$P"'/tasks/done/EX-1/notes/README.md"}'
 silent "search rule: a Read of a note below a task in a status folder"
+# The sprint layout: a task note one group folder down, in backlog/ or a sprint's folder by any name.
+for g in backlog 2026-12-04 sprint-12; do
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md"}'
+  warns "search rule: a Read of a whole task note in $g/"
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md","offset":1,"limit":20}'
+  silent "search rule: a ranged Read of a task note in $g/"
+done
+guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in backlog/"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/2026-12-04/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in a sprint's folder"
+# A folder with a README.md of its own is a task, not a group folder: a README in a folder inside it
+# is no task note. The folder's README is looked up in the letter case of the path.
+mkdir -p "$vault/$P/tasks/EX-9/notes" "$vault/$P/tasks/Ex-Notes/notes" "$vault/$P/tasks/backlog/EX-1"
+printf -- '---\naliases:\n  - EX-9\ntype: task\n---\n' >"$vault/$P/tasks/EX-9/README.md"
+printf -- '---\naliases:\n  - Ex-Notes\ntype: task\n---\n' >"$vault/$P/tasks/Ex-Notes/README.md"
+: >"$vault/$P/tasks/backlog/README.md"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/EX-9/notes/README.md"}'
+silent "search rule: a Read of a README in a folder inside a task at the tasks root"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/Ex-Notes/notes/README.md"}'
+silent "search rule: the task's README is found in the letter case of the path"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/EX-9/README.md"}'
+warns "search rule: the task itself is still a whole task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/README.md"}'
+warns "search rule: backlog/ is a group folder even with a README of its own"
+rm -r "$vault/$P/tasks/EX-9" "$vault/$P/tasks/Ex-Notes" "$vault/$P/tasks/backlog"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
+silent "search rule: a Read of a README directly in the archive, which is no group folder"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'
+silent "search rule: nor in Archive, in any letter case"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
 silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'

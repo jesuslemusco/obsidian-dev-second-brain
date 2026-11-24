@@ -28,8 +28,8 @@ function tail2(p,   n, a) {
   return (n > 1 ? a[n - 1] : "") "/" a[n]
 }
 # The string value of the first "<key>", with its escapes undone, every backslash made a slash and
-# blanks for line breaks, in lower case; empty when there is none.
-function str(k,   r) {
+# blanks for line breaks, in lower case, or as written when keep is set; empty when there is none.
+function str(k, keep,   r) {
   if (!match(s, "\"" k "\"[ \t\r\n]*:[ \t\r\n]*\"")) return ""
   r = substr(s, RSTART + RLENGTH)
   r = substr(r, 1, index(r, "\"") - 1)
@@ -38,7 +38,25 @@ function str(k,   r) {
   gsub(/\\/, "", r)
   gsub("\037", "\"", r)
   gsub("\036", "/", r)
-  return tolower(r)
+  return keep ? r : tolower(r)
+}
+# 1 when a README read as a task note, p in lower case and raw as written, is one: directly in a
+# folder under tasks/ or under a year of the archive, or in a folder under a group folder. A group
+# folder is a status folder, backlog, or a folder with no README.md of its own, such as the folder
+# of a sprint, looked up on disk in the letter case of the path. A folder with a README.md is a
+# task, so a README in a folder inside it is no task note. archive is no group folder.
+function tasknote(p, raw,   a, n, g, f, line) {
+  n = split(p, a, "/")
+  if (a[n - 2] == "tasks") return 1
+  if (a[n - 4] == "tasks" && a[n - 3] == "archive" && a[n - 2] ~ /^[0-9][0-9][0-9][0-9]$/) return 1
+  if (a[n - 3] != "tasks") return 0
+  g = a[n - 2]
+  if (g == "archive") return 0
+  if (g ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  f = raw
+  sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
+  if ((getline line < f) >= 0) { close(f); return 0 }
+  return 1
 }
 # A regex that matches the text itself: each character but a letter or a digit stands in brackets,
 # or after a backslash where brackets would not hold it.
@@ -75,7 +93,7 @@ END {
   what = ""
   if (tool == "read") {
     p = str("file_path")
-    if (hit(p) && p ~ /\/tasks\/((archive\/[0-9][0-9][0-9][0-9]|planned|in-progress|in-review|done|abandoned)\/)?[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
+    if (hit(p) && p ~ /\/readme\.md$/ && tasknote(p, str("file_path", 1)) && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
       what = "This Read takes a whole task note."
   } else if (tool == "grep") {
     p = str("path")

@@ -820,6 +820,64 @@ done
 doc Example
 chk "board: the status folders in a view's filters are not the board's own" board Example "warn | 1 | tasks.base:no-status-filter"
 reset
+# no_sprint_branch: the board's filters as 0.10.0 wrote them, with the archive and status branches
+# and no branch for a task in a group folder, the third and: of the filters.
+no_sprint_branch() {
+  awk '/^        - and:$/ { n++ } /^formulas:/ { n = 0 } n < 3 { print }' "$T/tasks.base" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$T/tasks.base"
+}
+# A task in a group folder, $P/tasks/<group>/<ID>, has five folder parts, and its ID is part 4,
+# counted from 0.
+is "board: a new board holds the branch that takes a task in a group folder whose name is its first alias" \
+  "$(awk '/^formulas:/ { exit } /^        - and:$/ { n++ } n == 3' "$T/tasks.base")" \
+  "$(printf '%s\n' "        - and:" '            - file.folder.split("/").length == 5' \
+    '            - file.folder.split("/")[4] == aliases[0]')"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+doc Example
+chk "board: a sprint project with the template's filters is ok" board Example "ok | 0 | -"
+edit "$T/tasks.base" 's/split("\/")\[4\] == aliases\[0\]/split("\/")[12] == aliases[0]/'
+is "board: the branch under another index" "$(grep -c 'split("/")\[12\] == aliases\[0\]' "$T/tasks.base")" "1"
+doc Example
+chk "board: the branch at any index counts" board Example "ok | 0 | -"
+reset
+no_sprint_branch
+is "board: the 0.10.0 filters take the archive and the five status folders, and no task by its alias" \
+  "$(grep -c 'file\.inFolder' "$T/tasks.base")/$(grep -c '== aliases\[0\]' "$T/tasks.base")" "7/0"
+doc Example
+chk "board: a flat project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: archive/'
+doc Example
+chk "board: an archive project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
+doc Example
+chk "board: a status project is not asked for the sprint filter" board Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: Sprint/'
+doc Example
+rc_is "board: a missing sprint filter leaves exit 0" 0
+chk "board: a sprint project whose board has the 0.10.0 filters warns, in any letter case" board Example \
+  "warn | 1 | tasks.base:no-sprint-filter"
+is "board: the sprint fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
+doc Example
+chk "board: the sprint finding and the sprint filter share one row" board Example \
+  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-sprint-filter"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+chk "board: task_layout: sprint with sprints off is not asked for the sprint filter" board Example "ok | 0 | -"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+no_status_branch
+doc Example
+chk "board: a sprint project's 0.8.0 board warns the sprint filter alone, not the status filter" board Example \
+  "warn | 1 | tasks.base:no-sprint-filter"
+reset
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+no_sprint_branch
+# The last view, All, takes a task by its alias as a filter of its own.
+printf '%s\n' "    filters:" "      and:" '        - file.folder.split("/")[4] == aliases[0]' >>"$T/tasks.base"
+doc Example
+chk "board: the branch in a view's filters is not the board's own" board Example "warn | 1 | tasks.base:no-sprint-filter"
+reset
 
 # ---------------------------------------------------------------- paths that leave the vault
 # A project outside the vault, with a mark in every file the doctor could open there.
@@ -1098,6 +1156,10 @@ edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
 doc Example
 is "task-location: in a status project the fix names the folder of the task's status" "$(fix_of task-location)" \
   "move it with second-brain move to $P/tasks/<status>/<ID>/README.md, with the task's status, and tie it to its topic with a tag"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+doc Example
+is "task-location: in a sprint project the fix names backlog/, from where doctor --fix moves a task with a sprint" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/backlog/<ID>/README.md, from where second-brain doctor --fix moves a task with a sprint to its sprint's folder, and tie it to its topic with a tag"
 reset
 stray "$P/tasks/EX-3.md" '"task"'
 doc Example
@@ -1455,6 +1517,333 @@ case "$ERR" in *"several tasks match EX-2"*) pass "task-layout --fix: stderr say
 is "task-layout --fix: the copy stays in the archive, and the task in its folder is unchanged" \
   "$(ls "$T/archive/2025/EX-2")/$(cmp -s "$tmp/EX-2.before" "$T/done/EX-2/README.md" && printf same)" "README.md/same"
 chk "task-layout --fix: the copy in the archive is still named" task-layout Example "warn | 2 | EX-2:done, archive:status"
+reset
+# A fix from a sprint folder and backlog/ in a status project: each task goes to the folder of its
+# status, then each empty group folder other than the five status folders goes, so no-readme names
+# none. An empty status folder is the layout's own, and stays.
+layout status
+mkdir -p "$T/planned" "$T/in-review" "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout --fix: the setup is a status project with tasks in backlog/ and a sprint folder" task-layout Example \
+  "warn | 4 | EX-2:done, EX-1:in-progress, backlog:status, 2026-01-14:status"
+doc Example --fix
+rc_is "task-layout --fix: exit 0 with tasks in backlog/ and a sprint folder of a status project" 0
+is "task-layout --fix: in a status project the folders the moves leave empty, backlog/ and a sprint folder, are removed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)
+fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: $P/tasks/backlog -> removed (Example)
+fixed: $P/tasks/2026-01-14 -> removed (Example)"
+is "task-layout --fix: in a status project an empty status folder stays" "$(LC_ALL=C ls "$T" | tr '\n' ' ')" \
+  "README.md done in-progress in-review planned tasks.base "
+chk "task-layout --fix: a fix from a sprint folder in a status project leaves no no-readme row" no-readme Example "ok | 0 | -"
+chk "task-layout --fix: and task-layout ok" task-layout Example "ok | 0 | -"
+reset
+
+# ---------------------------------------------------------------- task-layout, the sprint folders
+# set_pattern <raw value>: write the profile's sprint_folder key, under task_layout, as it is given.
+set_pattern() {
+  SB_V="$1" awk '!/^sprint_folder:/ { print } /^task_layout:/ { print "sprint_folder: " ENVIRON["SB_V"] }' \
+    "$vault/$P/claude/profile.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$vault/$P/claude/profile.md"
+}
+# EX-1 is in sprint 2026-01-14; EX-2 and EX-3 are in none.
+layout sprint
+mkdir -p "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/backlog/EX-3"
+doc Example
+chk "task-layout: in a sprint project a task in its sprint's folder, or in backlog/ with none, is in its place" task-layout Example \
+  "ok | 0 | -"
+is "task-layout: no sprint drift when every task is in its place" "$(drift)" ""
+mkdir -p "$T/2026-11-20"
+doc Example
+chk "no-readme: in a sprint project backlog/, a sprint folder that holds a task and an empty one need no README" \
+  no-readme Example "ok | 0 | -"
+mkdir -p "$T/backlog/EX-8" "$T/2026-01-14/EX-9"
+doc Example
+chk "no-readme: in a sprint project a folder in backlog/ or in a sprint folder with no README warns" no-readme Example \
+  "warn | 2 | EX-8, EX-9"
+rmdir "$T/backlog/EX-8" "$T/2026-01-14/EX-9" "$T/2026-11-20"
+edit "$T/2026-01-14/EX-1/README.md" 's/^sprint: .*/sprint: "2026-12-04"/'
+mv "$T/2026-01-14/EX-1" "$T/backlog/EX-1"
+doc Example
+chk "task-layout: <ID>:<folder>, a task with sprint 2026-12-04 left in backlog/ warns as its id and that sprint's folder" \
+  task-layout Example "warn | 1 | EX-1:2026-12-04"
+is "task-layout: the sprint fix names --fix" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+is "task-layout: the sprint drift is the id, the file and the folder it belongs in" "$(drift)" \
+  "EX-1 backlog/EX-1/README.md 2026-12-04"
+mkdir -p "$T/2026-12-04"
+mv "$T/backlog/EX-1" "$T/2026-12-04/EX-1"
+mv "$T/backlog/EX-2" "$T/2026-12-04/EX-2"
+doc Example
+chk "task-layout: <ID>:backlog, a task with no sprint in a sprint folder warns as its id and backlog" task-layout Example \
+  "warn | 1 | EX-2:backlog"
+mkdir -p "$T/planned" "$T/archive/2025"
+mv "$T/2026-12-04/EX-1" "$T/EX-1"
+mv "$T/backlog/EX-3" "$T/planned/EX-3"
+mv "$T/2026-12-04/EX-2" "$T/archive/2025/EX-2"
+doc Example
+chk "task-layout: a task at the tasks root, in a status folder or in the archive warns, and no folder does" task-layout Example \
+  "warn | 3 | EX-1:2026-12-04, EX-3:backlog, EX-2:backlog"
+is "task-layout: the drift names each, with the folder it belongs in" "$(drift)" \
+  "EX-1 EX-1/README.md 2026-12-04${NL}EX-3 planned/EX-3/README.md backlog${NL}EX-2 archive/2025/EX-2/README.md backlog"
+reset
+# A renamed pattern: <n> of sprint 2026-01-14 is 1, as no note is earlier.
+layout sprint
+set_pattern '"sprint-<n>"'
+mkdir -p "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/backlog/EX-3"
+doc Example
+rc_is "task-layout: a warning in a sprint project leaves exit 0" 0
+chk "task-layout: with a renamed pattern a task in its sprint's old folder warns as the folder the pattern gives" task-layout Example \
+  "warn | 1 | EX-1:sprint-1"
+mkdir -p "$T/sprint-1"
+mv "$T/2026-01-14/EX-1" "$T/sprint-1/EX-1"
+doc Example
+chk "task-layout: in the folder the renamed pattern gives it is in its place" task-layout Example "ok | 0 | -"
+set_pattern '"Sprint <n>"'
+doc Example
+chk "task-layout: sprint_folder:invalid, a pattern that gives no folder name warns, and no task of that sprint is named" \
+  task-layout Example "warn | 1 | sprint_folder:invalid"
+is "task-layout: the pattern fix names the key" "$(fix_of task-layout)" \
+  "set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name"
+is "task-layout: no drift row for a task whose sprint gives no folder" "$(drift)" ""
+mv "$T/backlog/EX-2" "$T/sprint-1/EX-2"
+doc Example
+chk "task-layout: sprint_folder:invalid comes first, and the other tasks are still named" task-layout Example \
+  "warn | 2 | sprint_folder:invalid, EX-2:backlog"
+is "task-layout: the fix holds both" "$(fix_of task-layout)" \
+  "set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name; run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+mv "$T/sprint-1/EX-2" "$T/backlog/EX-2"
+edit "$T/sprint-1/EX-1/README.md" 's/^sprint: .*/sprint: ""/'
+mv "$T/sprint-1/EX-1" "$T/backlog/EX-1"
+set_pattern '"sprint"'
+doc Example
+chk "task-layout: sprint_folder:invalid, a pattern with no placeholder warns with no task in a sprint" task-layout Example \
+  "warn | 1 | sprint_folder:invalid"
+set_pattern '"sprint-<n>"'
+doc Example
+chk "task-layout: a valid pattern with no task in a sprint is ok" task-layout Example "ok | 0 | -"
+reset
+# task_layout: sprint with sprints off is the flat layout.
+layout sprint
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+rc_is "task-layout: task_layout:no-sprints leaves exit 0" 0
+chk "task-layout: task_layout:no-sprints, task_layout: sprint with uses_sprints: false warns" task-layout Example \
+  "warn | 1 | task_layout:no-sprints"
+is "task-layout: the no-sprints fix names both keys" "$(fix_of task-layout)" \
+  "set uses_sprints: true in the profile, or another task_layout"
+is "task-layout: no sprint drift with sprints off" "$(drift)" ""
+mkdir -p "$T/backlog"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: with sprints off a task in backlog/ warns as backlog:flat, after task_layout:no-sprints" task-layout Example \
+  "warn | 2 | task_layout:no-sprints, backlog:flat"
+is "task-layout: the fix with sprints off names the sprint keys alone" "$(fix_of task-layout)" \
+  "set uses_sprints: true in the profile, or another task_layout"
+reset
+# The group folders of the other layouts.
+mkdir -p "$T/backlog"
+doc Example
+chk "task-layout: an empty backlog/ in a flat project is not named" task-layout Example "ok | 0 | -"
+chk "no-readme: backlog/ needs no README, empty, in a flat project too" no-readme Example "ok | 0 | -"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: backlog:flat, a task moved by hand into backlog/ in a flat project warns" task-layout Example \
+  "warn | 1 | backlog:flat"
+is "task-layout: the backlog fix names the sprint layout and the way back" "$(fix_of task-layout)" \
+  "set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+is "task-layout: no drift for backlog/ in a flat project" "$(drift)" ""
+chk "no-readme: backlog/ holding a task in a flat project is task-layout's alone" no-readme Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: false/'
+doc Example
+chk "task-layout: with sprints off a task in backlog/ of a flat project still warns backlog:flat" task-layout Example \
+  "warn | 1 | backlog:flat"
+is "task-layout: with sprints off the way to the sprint layout turns sprints on too" "$(fix_of task-layout)" \
+  "set uses_sprints: true and task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+layout archive
+doc Example
+chk "task-layout: with sprints off a task in backlog/ of an archive project warns backlog:archive" task-layout Example \
+  "warn | 1 | backlog:archive"
+is "task-layout: and its way to the sprint layout turns sprints on too" "$(fix_of task-layout)" \
+  "set uses_sprints: true and task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+layout flat
+edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*/uses_sprints: true/'
+mv "$T/backlog/EX-2" "$T/EX-2"
+mkdir -p "$T/planned"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout: planned:flat, a task in planned/ in a flat project warns" task-layout Example "warn | 1 | planned:flat"
+mkdir -p "$T/sprint-12" "$T/2026-01-14"
+mv "$T/EX-1" "$T/sprint-12/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+doc Example
+chk "task-layout: a status folder, backlog/ and a sprint folder each warn in a flat project, in that order, and an empty one does not" \
+  task-layout Example "warn | 3 | planned:flat, backlog:flat, sprint-12:flat"
+is "task-layout: the fix names the status layout and the sprint layout" "$(fix_of task-layout)" \
+  "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move; set task_layout: sprint in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
+chk "no-readme: in a flat project a group folder that holds a task needs no README, and an empty one is still named" \
+  no-readme Example "warn | 1 | 2026-01-14"
+layout archive
+doc Example
+chk "task-layout: in an archive project backlog/ and a sprint folder warn as <folder>:archive" task-layout Example \
+  "warn | 3 | planned:archive, backlog:archive, sprint-12:archive"
+reset
+layout status
+mkdir -p "$T/in-progress" "$T/planned" "$T/backlog"
+mv "$T/EX-1" "$T/in-progress/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/planned/EX-3"
+doc Example
+chk "task-layout: in a status project backlog/ holding a task warns as backlog:status, after the task" task-layout Example \
+  "warn | 2 | EX-2:done, backlog:status"
+is "task-layout: the status fix is unchanged" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status"
+reset
+
+# ---------------------------------------------------------------- task-layout --fix, the sprint folders
+# A fix from a flat project: one with sprints and an archive, left from the time it archived tasks,
+# switched to task_layout: sprint. EX-1 is in sprint 2026-01-14; EX-2, archived, and EX-3 are in
+# none. The links between the tasks lead into the archive and out of it.
+layout archive
+sb task dep EX-3 add EX-1
+sb task dep EX-1 add EX-2
+sb task archive EX-2
+layout flat
+doc Example
+chk "task-layout --fix: the sprint setup is a flat project with an archive" task-layout Example "warn | 1 | archive:flat"
+layout sprint
+doc Example
+chk "task-layout --fix: switched to the sprint layout, each task warns with the folder it belongs in" task-layout Example \
+  "warn | 3 | EX-1:2026-01-14, EX-3:backlog, EX-2:backlog"
+doc Example --fix
+rc_is "task-layout --fix: exit 0 in a flat project switched to the sprint layout" 0
+is "task-layout --fix: a fix from a flat project prints one fixed line per task moved, then one per folder removed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/2026-01-14/EX-1/README.md (Example)
+fixed: EX-3 -> $P/tasks/backlog/EX-3/README.md (Example)
+fixed: EX-2 -> $P/tasks/backlog/EX-2/README.md (Example)
+fixed: $P/tasks/archive/2026 -> removed (Example)
+fixed: $P/tasks/archive -> removed (Example)"
+is "task-layout --fix: a task with a sprint is in its sprint's folder, every other in backlog/, and the archive is gone" \
+  "$(LC_ALL=C ls "$T" | tr '\n' ' ')/$(cd "$T" && LC_ALL=C ls -d -- */*/README.md | tr '\n' ' ')" \
+  "2026-01-14 README.md backlog tasks.base /2026-01-14/EX-1/README.md backlog/EX-2/README.md backlog/EX-3/README.md "
+is "task-layout --fix: a task out of the archive loses its archived key, in the sprint layout too" \
+  "$(grep -c '^archived:' "$T/backlog/EX-2/README.md" || true)" "0"
+is "task-layout --fix: the links follow the moves to the sprint folders" \
+  "$(grep -h -e '2026-01-14/EX-1/README|EX-1' -e 'backlog/EX-2/README|EX-2' "$T/backlog/EX-3/README.md" "$T/2026-01-14/EX-1/README.md" | wc -l | tr -d ' ')" "2"
+doc Example
+chk "task-layout --fix: after a fix from a flat project the next doctor shows task-layout ok" task-layout Example "ok | 0 | -"
+sb unresolved Example
+is "task-layout --fix: after the sprint moves unresolved lists nothing" "$RC/$OUT" "0/"
+doc Example --fix
+is "task-layout --fix: in the sprint layout nothing is left to move or remove" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+reset
+# A fix from a status project switched to task_layout: sprint: every status folder goes, in-review/
+# too, left empty by an earlier status move, and compare lists the moved paths alone.
+layout status
+doc Example --fix
+sb task set EX-3 status=in-review
+sb task set EX-3 status=planned
+doc Example
+chk "task-layout --fix: the status setup is in its place, with in-review/ left empty" task-layout Example "ok | 0 | -"
+is "task-layout --fix: the status setup has its folders" "$(LC_ALL=C ls "$T" | tr '\n' ' ')" \
+  "README.md done in-progress in-review planned tasks.base "
+sb snapshot before-sprint
+rc_is "task-layout --fix: a snapshot is taken before the fix" 0
+layout sprint
+doc Example --fix
+rc_is "task-layout --fix: exit 0 in a status project switched to the sprint layout" 0
+is "task-layout --fix: a fix from a status project moves each task, then removes each status folder" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-3 -> $P/tasks/backlog/EX-3/README.md (Example)
+fixed: EX-1 -> $P/tasks/2026-01-14/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/backlog/EX-2/README.md (Example)
+fixed: $P/tasks/planned -> removed (Example)
+fixed: $P/tasks/in-progress -> removed (Example)
+fixed: $P/tasks/in-review -> removed (Example)
+fixed: $P/tasks/done -> removed (Example)"
+is "task-layout --fix: no status folder is left" "$(LC_ALL=C ls "$T" | tr '\n' ' ')" "2026-01-14 README.md backlog tasks.base "
+sb compare before-sprint
+rc_is "task-layout --fix: compare exits 1, as the moves differ" 1
+is "task-layout --fix: compare with a snapshot taken before lists only the moves, each alias removed at its old path and added at its new" \
+  "$OUT" "snapshot: .second-brain/snapshots/before-sprint
+aliases added:
+  EX-1	$P/tasks/2026-01-14/EX-1/README.md
+  EX-2	$P/tasks/backlog/EX-2/README.md
+  EX-3	$P/tasks/backlog/EX-3/README.md
+aliases removed:
+  EX-1	$P/tasks/in-progress/EX-1/README.md
+  EX-2	$P/tasks/done/EX-2/README.md
+  EX-3	$P/tasks/planned/EX-3/README.md"
+doc Example
+chk "task-layout --fix: after a fix from a status project the next doctor shows task-layout ok" task-layout Example "ok | 0 | -"
+reset
+# A renamed pattern: each task moves to the folder its sprint's new name gives, and the folder of
+# the old name, emptied, goes. backlog/, which still holds tasks, stays.
+layout sprint
+mkdir -p "$T/backlog" "$T/2026-01-14"
+mv "$T/EX-1" "$T/2026-01-14/EX-1"
+mv "$T/EX-2" "$T/backlog/EX-2"
+mv "$T/EX-3" "$T/backlog/EX-3"
+set_pattern '"sprint-<n>"'
+doc Example
+chk "task-layout --fix: the renamed pattern names the task of the old folder" task-layout Example "warn | 1 | EX-1:sprint-1"
+doc Example --fix
+rc_is "task-layout --fix: exit 0 with a renamed pattern" 0
+is "task-layout --fix: a renamed pattern moves the task to the folder of the new name, and removes the old one" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/sprint-1/EX-1/README.md (Example)
+fixed: $P/tasks/2026-01-14 -> removed (Example)"
+is "task-layout --fix: with a renamed pattern the old folder is gone and backlog/ stays" \
+  "$(LC_ALL=C ls "$T" | tr '\n' ' ')/$(ls "$T/backlog" | tr '\n' ' ')" "README.md backlog sprint-1 tasks.base /EX-2 EX-3 "
+doc Example
+chk "task-layout --fix: after a renamed pattern's fix the next doctor shows task-layout ok" task-layout Example "ok | 0 | -"
+reset
+# A taken destination: that task stays where it is, with the reason on stderr; the others still
+# move, and the folder they empty goes. The folder that holds the destination is not empty, and stays.
+layout sprint
+mkdir -p "$T/planned" "$T/2026-01-14/EX-1"
+mv "$T/EX-3" "$T/planned/EX-3"
+cp "$T/EX-1/README.md" "$tmp/EX-1.before"
+doc Example --fix
+rc_is "task-layout --fix: a task whose sprint folder destination is taken leaves exit 0" 0
+is "task-layout --fix: the tasks it can move, and the folder they empty, are fixed" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-2 -> $P/tasks/backlog/EX-2/README.md (Example)
+fixed: EX-3 -> $P/tasks/backlog/EX-3/README.md (Example)
+fixed: $P/tasks/planned -> removed (Example)"
+case "$ERR" in *"the destination exists: $P/tasks/2026-01-14/EX-1"*) pass "task-layout --fix: stderr names the taken sprint folder destination" ;;
+  *) fail "task-layout --fix: stderr names the taken sprint folder destination" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the task whose destination is taken stays unchanged, and the destination stays empty" \
+  "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)/$(ls -A "$T/2026-01-14/EX-1")" "same/"
+chk "task-layout --fix: the task it could not move is still named" task-layout Example "warn | 1 | EX-1:2026-01-14"
+# A sprint folder that is a task, one with a README of its own, is taken too.
+rmdir "$T/2026-01-14/EX-1" "$T/2026-01-14"
+mkdir -p "$T/sprint-1"
+sed 's/^  - EX-2$/  - sprint-1/' "$T/backlog/EX-2/README.md" >"$T/sprint-1/README.md"
+set_pattern '"sprint-<n>"'
+doc Example
+chk "task-layout --fix: the setup has a task whose folder is the sprint folder" task-layout Example \
+  "warn | 2 | EX-1:sprint-1, sprint-1:backlog"
+cp "$T/sprint-1/README.md" "$tmp/sprint-1.before"
+doc Example --fix
+case "$ERR" in *"the sprint folder is a task: $P/tasks/sprint-1"*) pass "task-layout --fix: stderr says the sprint folder is a task" ;;
+  *) fail "task-layout --fix: stderr says the sprint folder is a task" "in stderr: $ERR" ;; esac
+is "task-layout --fix: the task in the way still moves to backlog/, and nothing is moved inside it" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')/$(cmp -s "$tmp/sprint-1.before" "$T/backlog/sprint-1/README.md" && printf same)/$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" \
+  "fixed: sprint-1 -> $P/tasks/backlog/sprint-1/README.md (Example)/same/same"
+doc Example --fix
+is "task-layout --fix: once the folder is free, the next fix moves the task into it" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/sprint-1/EX-1/README.md (Example)"
 reset
 
 # ---------------------------------------------------------------- topic-tags

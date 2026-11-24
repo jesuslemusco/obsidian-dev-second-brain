@@ -2,6 +2,57 @@
 
 ## 0.11.0 - unreleased
 
+- A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile
+  puts a task in a sprint at `<tasks_root>/<sprint folder>/<ID>/README.md`, and a task in no
+  sprint at `<tasks_root>/backlog/<ID>/README.md`. Nothing is archived, and story-tracker asks
+  nothing. With `uses_sprints: false` the key reads as `flat`.
+- `sprint_folder` in the profile names a sprint's folder: its end date with no key, or a pattern
+  of `<end>`, `<start>` and `<n>`, such as `sprint-<n>`, as `### Profile frontmatter` in
+  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that
+  would move a task there exit 5, writing nothing.
+- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a
+  new `sprint` moves the folder to that sprint's folder, and `sprint=` moves it back to
+  `backlog/`, rewriting each link to it. It exits 6, writing nothing, when something is at the
+  destination or the sprint's folder is a task. A status change moves nothing.
+- `sprint open` moves each task it re-points to the new sprint's folder. `sprint close` moves each
+  task named in `--carry` to the next sprint's folder, and each named in `--backlog` to
+  `backlog/`; done and abandoned tasks stay in the closed sprint's folder. Both look at every
+  destination before they write, and exit 6 on a taken one.
+- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly
+  under the tasks root with no `README.md` of its own holds tasks, such as a sprint's folder.
+  `task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.
+- A new board's filters take a task in a group folder. An existing board is not rewritten: in a
+  sprint project, the doctor's `board` check warns on one without that branch,
+  `tasks.base:no-sprint-filter`.
+- The doctor's `no-readme` check reads each folder under `backlog/` and a group folder, and
+  `task-location` takes a task in one. `task-layout` names a task of a sprint project outside the
+  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder
+  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),
+  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).
+- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to
+  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not
+  a move emptied it, and the archive's empty folders.
+  To switch a project that has tasks, or to rename its sprint folders with a new
+  `sprint_folder`, set the key, then run `doctor --fix` once.
+- In a status project, `doctor --fix` now also removes each empty group folder other than the
+  five status folders, whether or not a move emptied it: an empty folder directly under the tasks
+  root, such as an empty `backlog/`, a sprint's folder or a task folder with no README there. An
+  empty status folder stays, and so does an empty folder inside one, such as `planned/<ID>/`.
+- The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too. The
+  sprint skill and scrum-master say what a sprint project's close moves, and what to do when it
+  cannot. The sprint skill says the same of `sprint open` and of setting a task's sprint in plan.
+- docs-keeper names `tasks/backlog/` and the sprint folders as a task's place in a sprint
+  project. `vault-setup project` and `adopt` offer `task_layout: sprint`, and `sprint_folder` with
+  it, and `adopt` offers the one `doctor --fix` run that moves the tasks already there.
+- The vault-doctor `fix` mode counts a sprint project's moves as a bulk change, with a snapshot
+  before it and `compare` after it. Its checks say what each new `board`, `no-readme`,
+  `task-location` and `task-layout` row means, and how to fix it.
+- The conventions note is at version 9: it names the sprint layout. The doctor's `conventions`
+  check warns about an older note.
+- The vault index names the sprint folders as a task's place in a sprint project. The plugin's
+  index template is now at `index_version: 7`, so the doctor's `index` check warns. Copy the task
+  bullet under `## Rules for notes that most often go wrong` from `templates/vault-index.md.tmpl`
+  into your vault's `CLAUDE.md`, then set `index_version: 7`.
 - The pull request format writes its five headings as bold lines with no `##`, as in `**Goal**`.
   The note is at `pull_request_version: 4`, so the doctor's `pull-request` check warns about an
   older note. `doctor --fix` replaces one that was never edited.

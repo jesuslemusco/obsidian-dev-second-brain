@@ -165,7 +165,8 @@ what is still owed.
   - A pull request's checks passed: in `<path>`, `gh pr checks <number>` exits 0.
   - A line in a file of the repo: `grep -qxF "<line>" "<path>/<file>"` exits 0.
   - The order that ran the build, in no other words: the story holds a `Finish:` status note newer
-    than its newest `Build: started` note, read as `### The rulings of this build` says.
+    than the newest `Build: started on <branch> at <short hash>.` note, read from `## Status notes`
+    as `### The rulings of this build` says.
 - Never change or drop a `Done when:` line without the owner, even when it looks out of reach. A
   condition the owner gives replaces it, and their words join the order's.
 
@@ -272,6 +273,10 @@ with no report and no notice that wakes you.
 
 `reviewer`'s reply ends with a JSON block, as `## Verdict` in `agents/reviewer.md` says. Take its
 verdict from that block alone, never from the words before it.
+
+A review sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in
+`agents/reviewer.md` says. Only a defect counts in `issues`, fails a task and goes to the fix
+loop. A follow-up is a `Follow-up:` status note: it changes no issue count.
 
 1. Before a review's first launch, but the baseline's, note the issue count of each task it
    reviews: the length of its `issues` in `second-brain spec status <ID> --json`. The user check
@@ -493,7 +498,7 @@ A resumed build with every task passed comes straight here.
    - Read its verdict as `### Reading a verdict` says. Item 1 there notes each task's issue count
      before its first launch.
    - BLOCKED: stop, as `## 7. When the build stops` says.
-   - FAIL: it logged each finding it could tie to a task. Log each finding its reply lists on the
+   - FAIL: it logged each defect it could tie to a task. Log each defect its reply lists on the
      last task in order, with a ruling, and with the fix you propose:
      `second-brain spec issue <ID> <task> "<the finding>" --fix "<the fix you propose>"`.
    - Now no task's issue count is above the one item 1 of `### Reading a verdict` noted: the FAIL
@@ -507,6 +512,7 @@ A resumed build with every task passed comes straight here.
 5. `second-brain task note <ID> "Build: finished; every task passed review, the branch is at <short hash>."`.
 6. Show the owner `second-brain spec status <ID>` and the final validation result.
    - Then list the rulings of the build, as `### The list of rulings` says.
+   - Then list the follow-ups of the build, as `### The list of follow-ups` says.
 7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
    takes it from there.
    - Once `finish.md` is done, test each order of the build: take each whose `Done when:` holds
@@ -521,6 +527,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
    - A stop in `## 6. When every task passed` names its step in place of the task: the user
      check or the branch review.
    - Then list the rulings of the build, as `### The list of rulings` says.
+   - Then list the follow-ups of the build, as `### The list of follow-ups` says.
 2. `second-brain task note <ID> "Build: stopped at <task>: <why>."`, unless a block or the cap
    wrote it already. A block writes it before it sets `blocked`, so a new session never takes an
    older ruling for this stop.
@@ -624,11 +631,28 @@ first: yours and the owner's.
   stop, as item 3 of `## 7. When the build stops` says. At the finish, in the free-text answer of
   its question, as `## 2. Ask the owner` in `finish.md` says.
 
+### The list of follow-ups
+
+When the build finishes or stops, show the owner each follow-up of this build so far, as written,
+oldest first.
+
+- They are the `Follow-up: <task>:` status notes newer than the newest
+  `Build: started on <branch> at <short hash>.` note.
+- Every session reads them from `## Status notes`, as `### The rulings of this build` says: the
+  reviews write them, and no reply holds them.
+- List the same text once, even when two reviews logged it.
+- None: say the build has no follow-ups.
+- The owner can have one fixed: it is a ruling to fix its task, as item 3 of
+  `## 7. When the build stops` says. One on `build` goes on the last task in order.
+- At a stop, the owner says so in the answer item 3 there asks for. At the finish, in the
+  free-text answer of its question, as `## 2. Ask the owner` in `finish.md` says.
+
 ## Rules
 
 - You keep track of the build: set each state with `spec status` as the agents report it.
 - A task's progress is in `build.json` alone. The README gets the story-level notes above: the
-  build started, stopped and why, and finished, and each ruling, the owner's and yours.
+  build started, stopped and why, and finished, each ruling, the owner's and yours, and each
+  follow-up a review logs.
 - Only a reviewer's PASS, read from its JSON block, ticks a task. Never on the implementer's word.
 - The packet is the implementer's whole context. Never give it the other tasks or this
   conversation. A bundle's run gets its own tasks' packets alone.

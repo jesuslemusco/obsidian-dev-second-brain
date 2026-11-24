@@ -6,8 +6,16 @@
   and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
   while a check it started still runs.
 - `reviewer` grades code quality on a failing task too, so that one fix round answers every
-  finding. A re-review still grades the quality of the fix's commits alone.
+  defect. A re-review still grades the quality of the fix's commits alone.
 - The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
+- `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in
+  `agents/reviewer.md` says. A name that misleads, code repeated where it could be shared, or code
+  against the conventions around it is a follow-up. It stays a defect when a check fails on it, a
+  user would hit it, it makes a doc wrong, or a requirement, a design decision or a rule written
+  in the repo names it. Every other finding is a defect.
+- Only a defect fails a task, counts in the verdict's `issues` and goes to the fix loop. A
+  follow-up is a `Follow-up: <task>:` status note on the story. When the build finishes or stops,
+  it lists each one so far for the owner, who can have one fixed then.
 - Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a
   file or a branch state can test, such as `git merge-base --is-ancestor <branch> release/<version>`
   exiting 0. The lead writes it from the owner's words when it takes the order, and asks the owner

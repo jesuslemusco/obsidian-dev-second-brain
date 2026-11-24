@@ -453,7 +453,6 @@ edit "$vault/claude/pull-request.md" "s/^pull_request_version: .*/pull_request_v
 doc
 chk "pull-request: a version too long to compare counts as newer" pull-request vault "ok | 0 | -"
 is "pull-request: such a version gives no shell error" "$ERR" ""
-reset
 fi
 
 # ---------------------------------------------------------------- index rows and version
@@ -573,7 +572,6 @@ fi
 printf '# Mine\n\n@~/elsewhere/CLAUDE.md\nsee @%s/CLAUDE.md\n' "$vault" >"$home/CLAUDE.md"
 doc
 chk "import: another file does not count" import vault "warn | 1 | CLAUDE.md"
-reset
 fi
 
 # ---------------------------------------------------------------- global-rules
@@ -604,7 +602,6 @@ case "$(fix_of global-rules vault)" in
   *"remove an @ import of a project's file"*) pass "global-rules: an import gets its own fix" ;;
   *) fail "global-rules: an import gets its own fix" "fix: $(fix_of global-rules vault)" ;;
 esac
-reset
 fi
 
 # ---------------------------------------------------------------- links, double-registration
@@ -659,7 +656,6 @@ doc
 chk "foreign: a link to a vault item that is name-mismatch or duplicate is left to links" foreign vault \
   "warn | 2 | skills/outer:link to $oOuter, agents/solo.md:file"
 chk "foreign: links names the name-mismatch and the duplicates" links vault "fail | 3 | odd:name-mismatch, twin:duplicate, twin:duplicate"
-reset
 fi
 
 # ---------------------------------------------------------------- sizes
@@ -695,7 +691,6 @@ n_index="$(awk 'END { print NR }' "$vault/CLAUDE.md")"
 chk "always-loaded-size: both files over their limit" always-loaded-size vault "warn | 2 | index:$n_index, CLAUDE.md:41"
 chk "descriptions: a 250-character and a folded description warn" descriptions vault "warn | 2 | long-desc:250, folded:268"
 chk "skill-size: a 200-line SKILL.md warns" skill-size vault "warn | 1 | long-skill:200"
-reset
 fi
 
 # ---------------------------------------------------------------- old-namespace
@@ -763,7 +758,6 @@ symlink "$vault/CLAUDE.md" "$home/CLAUDE.md"
 doc
 chk "old-namespace: a link directory CLAUDE.md that is the index is read once, as the vault's note" old-namespace vault \
   "warn | 1 | CLAUDE.md:$n_index"
-reset
 fi
 
 # ---------------------------------------------------------------- profile, board
@@ -930,7 +924,6 @@ no_sprint_branch
 printf '%s\n' "    filters:" "      and:" '        - file.folder.split("/")[4] == aliases[0]' >>"$T/tasks.base"
 doc Example
 chk "board: the branch in a view's filters is not the board's own" board Example "warn | 1 | tasks.base:no-sprint-filter"
-reset
 fi
 
 # ---------------------------------------------------------------- paths that leave the vault
@@ -1007,7 +1000,6 @@ edit "$vault/CLAUDE.md" "s#| $P |#| projects//example |#"
 printf '%s\n' '[[gone-for-good]]' >"$vault/$P/docs/broken.md"
 doc
 chk "a row written with a doubled slash: the project is checked under the folded path" unresolved-links Example "warn | 1 | docs/broken.md:1"
-reset
 fi
 
 # ---------------------------------------------------------------- hubs
@@ -1042,7 +1034,6 @@ sb scaffold project Long --path projects/long --keys LG --topics-root a-rather-l
 rm "$vault/projects/long/a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
 doc Long
 chk "hubs: a long path is printed whole" hubs Long "warn | 1 | a-rather-long-folder-for-the-docs/of-the-long-project/README.md"
-reset
 fi
 
 # ---------------------------------------------------------------- placeholders
@@ -1081,7 +1072,6 @@ chk "placeholders: frontmatter, fenced code and another template's placeholder a
 sb scaffold subproject Example infra --repos example-infra
 doc Example
 chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
-reset
 fi
 
 # ---------------------------------------------------------------- task-template
@@ -1118,7 +1108,6 @@ chk "task-template: a template with no aliases warns, as each story made from it
 { printf '\357\273\277'; awk '{ printf "%s\r\n", $0 }' "$here/templates/task-readme.md.tmpl"; } >"$TT"
 doc Example
 chk "task-template: a BOM and CRLF line endings are read" task-template Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- task frontmatter and status
@@ -1147,7 +1136,6 @@ edit "$T/EX-2/README.md" 's/^  - status\/done$/  - status\/active/'
 edit "$T/EX-3/README.md" '/^  - status\/active$/d'
 doc Example
 chk "status-tag: a tag that disagrees and a tag that is missing warn" status-tag Example "warn | 2 | EX-2, EX-3"
-reset
 fi
 
 # ---------------------------------------------------------------- yaml traps
@@ -1174,7 +1162,6 @@ reset
 edit "$T/EX-1/README.md" 's/^sprint: "2026-01-14"$/sprint: 2026-01-14/'
 doc Example
 chk "yaml-traps: an unquoted sprint id" yaml-traps Example "fail | 1 | EX-1:sprint"
-reset
 fi
 
 # ---------------------------------------------------------------- alias-unique, no-readme
@@ -1207,7 +1194,6 @@ mkdir -p "$T/EX-7/notes" "$T/EX-8"
 : >"$T/EX-8/README.md"
 doc Example
 chk "no-readme: a task folder with no README, or an empty one, warns" no-readme Example "warn | 2 | EX-7, EX-8"
-reset
 fi
 
 # ---------------------------------------------------------------- task-location
@@ -1282,7 +1268,6 @@ chk "task-location: the project inside gets its own misfiled task" task-location
 chk "index: a project inside another is a row like any other" index vault "ok | 0 | -"
 doc Example
 chk "task-location: the project inside is left alone when the doctor is run for one project" task-location Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- roots written another way
@@ -1432,7 +1417,6 @@ doc Example --fix
 is "task-layout --fix: nothing is moved through a tasks root that leaves the project" \
   "$(printf '%s\n' "$OUT" | head -1)/$(ls "$O/tasks" | tr '\n' ' ')" "fixed: nothing/EX-2 OUTMARK-1 tasks.base "
 rm -r "$O/tasks/EX-2"
-reset
 fi
 
 # ---------------------------------------------------------------- task-layout, the status folders
@@ -1515,7 +1499,6 @@ chk "task-layout: each status folder that holds a task warns in an archive proje
   "warn | 2 | in-progress:archive, done:archive"
 is "task-layout: the fix names the status layout and the way back, in an archive project" "$(fix_of task-layout)" \
   "set task_layout: status in the profile, or move each task in <folder> back to $P/tasks/<ID> with second-brain move"
-reset
 fi
 
 # ---------------------------------------------------------------- task-layout --fix, the status folders
@@ -1623,7 +1606,6 @@ is "task-layout --fix: in a status project an empty status folder stays" "$(LC_A
   "README.md done in-progress in-review planned tasks.base "
 chk "task-layout --fix: a fix from a sprint folder in a status project leaves no no-readme row" no-readme Example "ok | 0 | -"
 chk "task-layout --fix: and task-layout ok" task-layout Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- task-layout, the sprint folders
@@ -1791,7 +1773,6 @@ chk "task-layout: in a status project backlog/ holding a task warns as backlog:s
   "warn | 2 | EX-2:done, backlog:status"
 is "task-layout: the status fix is unchanged" "$(fix_of task-layout)" \
   "run second-brain doctor --fix to move each task to the folder of its status"
-reset
 fi
 
 # ---------------------------------------------------------------- task-layout --fix, the sprint folders
@@ -1930,7 +1911,6 @@ is "task-layout --fix: the task in the way still moves to backlog/, and nothing 
 doc Example --fix
 is "task-layout --fix: once the folder is free, the next fix moves the task into it" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
   "fixed: EX-1 -> $P/tasks/sprint-1/EX-1/README.md (Example)"
-reset
 fi
 
 # ---------------------------------------------------------------- task-layout, the child folders
@@ -2040,7 +2020,6 @@ doc Example
 chk "task-location: a task note inside a task whose epic names another task warns" task-location Example \
   "warn | 1 | tasks/abandoned/EX-1/notes/README.md"
 rm -r "$T/abandoned/EX-1/notes"
-reset
 fi
 
 # A child whose epic names no single task stays where it is, and the doctor names it in the
@@ -2079,7 +2058,6 @@ layout flat
 doc Example
 chk "children: parent_label:invalid is named in a flat project too" task-layout Example \
   "warn | 3 | parent_label:invalid, in-progress:flat, done:flat"
-reset
 fi
 
 # The sprint layout: a child in no sprint goes into its parent's folder in backlog/, and a child in
@@ -2128,7 +2106,6 @@ doc Example
 chk "children --fix: then every task is in its place" task-layout Example "ok | 0 | -"
 sb unresolved Example
 is "children --fix: unresolved lists nothing after the sprint moves" "$RC/$OUT" "0/"
-reset
 fi
 
 # A task folder that lost its README is named for no task: a README in it is no task, so no-readme
@@ -2145,7 +2122,6 @@ chk "lost README: no-readme still names the folder" no-readme Example "warn | 1 
 chk "lost README: task-layout names nothing in it" task-layout Example "ok | 0 | -"
 doc Example --fix
 is "lost README: --fix moves nothing out of it" "$(fixed_moves)/$(ls "$T/planned/ST-9/notes")" "fixed: nothing/README.md"
-reset
 fi
 
 # ---------------------------------------------------------------- board, the child folders
@@ -2175,7 +2151,6 @@ chk "board: a sprint project's 0.10.0 board warns the sprint filter alone" board
 layout flat
 doc Example
 chk "board: a flat project with a child is not asked for the child branch" board Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- topic-tags
@@ -2213,7 +2188,6 @@ mkdir -p "$vault/$P/"'docs\money'
 add_topic_line '- billing -> docs\money'
 doc Example
 chk "topic-tags: an exception whose folder holds a backslash is not taken, though the folder is there" topic-tags Example "warn | 1 | billing"
-reset
 fi
 
 # ---------------------------------------------------------------- repos
@@ -2248,7 +2222,6 @@ chk "repos: ok once the exception's folder exists" repos Example "ok | 0 | -"
 set_repos '[example-api, example-web]' '' '[]'
 doc Example
 chk "repos: ok when repositories are listed with no location" repos Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- old-namespace, the settings of the vault root and the repos
@@ -2268,7 +2241,6 @@ set_repos '[example-api, example-web]' "$R" "[\"example-web=$vault\"]"
 doc
 chk "old-namespace: a repo whose folder is the vault root has its settings read once" old-namespace vault \
   "warn | 2 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker)"
-reset
 fi
 
 # ---------------------------------------------------------------- code-doc-map
@@ -2307,7 +2279,6 @@ cp "$tmp/profile.mapped" "$PROFILE"
 edit "$PROFILE" 's/^## Docs$/## Notes/'
 doc Example
 chk "code-doc-map: the map counts only inside the Docs section" code-doc-map Example "warn | 3 | example-api, Example-Web, example-jobs"
-reset
 fi
 
 # ---------------------------------------------------------------- subprojects
@@ -2385,7 +2356,6 @@ rm -f "$SUBS/more.md" "$SUBS/ops.md" "$SUBS/web.md"
 doc Example
 chk "subprojects: an empty note lends the profile's repos to nobody" subprojects Example \
   "warn | 3 | blank:type, blank:no-repos, blank:no-docs"
-reset
 fi
 
 # ---------------------------------------------------------------- sprints
@@ -2411,7 +2381,6 @@ reset
 sb task set EX-3 sprint=2026-01-28
 doc Example
 chk "sprints: the next id is no excuse while a sprint is in progress" sprints Example "fail | 1 | EX-3:2026-01-28"
-reset
 fi
 
 # ---------------------------------------------------------------- sprints, after a close
@@ -2434,7 +2403,6 @@ sb task set EX-2 sprint=
 edit "$vault/$P/claude/profile.md" 's/^sprint_anchor_end: .*/sprint_anchor_end: ""/'
 doc Example
 chk "sprints: with no anchor there is no next id, so nothing is exempt" sprints Example "fail | 1 | EX-1:2026-01-28"
-reset
 fi
 
 # ---------------------------------------------------------------- links in tasks, line endings
@@ -2474,7 +2442,6 @@ chk "line-endings: a CRLF file with no final newline is not mixed" line-endings 
 printf '\n' >>"$T/EX-3/README.md"
 doc Example
 chk "line-endings: one bare LF at the end is mixed" line-endings Example "warn | 2 | EX-2, EX-3"
-reset
 fi
 
 # ---------------------------------------------------------------- depends-on
@@ -2527,7 +2494,6 @@ is "depends-on: a ring of 500 tasks names each" "$(row depends-on | cut -d'|' -f
 printf -- '---\naliases:\n  - LG-500\nstatus: planned\ntype: task\ntags:\n  - type/task\n  - status/active\n---\n' >"$T/LG-500/README.md"
 doc Example
 chk "depends-on: a chain of 500 tasks is no ring" depends-on Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- --fix
@@ -2554,7 +2520,6 @@ is "--fix: one line changed in a CRLF file" "$(diff "$tmp/EX-3.before" "$T/EX-3/
 is "--fix: a CRLF file stays CRLF" "$(awk '!/\r$/ { n++ } END { print n + 0 }' "$T/EX-3/README.md")" "0"
 doc Example --fix
 is "--fix: nothing left to change" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
-reset
 fi
 
 # ---------------------------------------------------------------- --json
@@ -2593,7 +2558,6 @@ print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["re
 else
   printf 'skip  --json: python3 is not installed\n'
 fi
-reset
 fi
 
 # ---------------------------------------------------------------- two projects
@@ -2627,12 +2591,10 @@ printf '%s\n' '# Gone note' >"$vault/gone-note.md"
 printf '%s\n' '# Also gone' >"$vault/$P/docs/also-gone.md"
 doc Example
 chk "unresolved-links: ok once the files exist, wherever they are in the vault" unresolved-links Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- a project without sprints
 if block; then
-reset
 K="$vault/projects/kanban"
 sb scaffold project Kanban --path projects/kanban --keys KB --no-sprints
 sb task new KB-1 --project Kanban --title "First task"
@@ -2699,7 +2661,6 @@ fi
 
 # ---------------------------------------------------------------- session-check, the session block
 if block; then
-reset
 R="$tmp/code/example-api"
 RULE='rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.'
 mkdir -p "$R/.git" "$R/src/deep" "$tmp/code/outside/.git"
@@ -2785,7 +2746,6 @@ rc_is "session-check: exit 0 with an index that has no table" 0
 out_is "session-check: silent with an index that has no table" ""
 run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
 out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /odsb:vault-setup init"
-reset
 fi
 
 # ---------------------------------------------------------------- delivery and validation
@@ -2880,7 +2840,6 @@ chk "validation: a repo file that still holds the template's text" validation Ex
 rm -rf "$tmp/code/example-infra"
 doc Example
 chk "validation: a repo home whose folder is missing is left to the repos check" validation Example "ok | 0 | -"
-reset
 fi
 # ---------------------------------------------------------------- validation edge cases
 if block; then
@@ -2892,7 +2851,6 @@ chk "validation: while repos leaves it" repos Example "ok | 0 | -"
 printf '# example-api validation\n\n## example-api\n' >"$tmp/code/example-api/validation.md"
 doc Example
 chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
-reset
 fi
 
 # ---------------------------------------------------------------- spec-trace
@@ -2989,7 +2947,6 @@ chk "spec-trace: a story with no criteria section has no criterion" spec-trace E
 reqs "$SPR" 'No requirement yet.'
 doc Example
 chk "spec-trace: and with no requirement either, no offender" spec-trace Example "ok | 0 | -"
-reset
 fi
 
 # R5: the stories the check reads. Each requirements.md here serves nothing.
@@ -3046,7 +3003,6 @@ chk "spec-trace: a spec story with no spec folder is not read" spec-trace Exampl
 mkdir -p "$T/EX-3/spec"
 doc Example
 chk "spec-trace: nor one with a spec folder and no requirements.md" spec-trace Example "ok | 0 | -"
-reset
 fi
 
 # R5: a spec in the repo.
@@ -3096,7 +3052,6 @@ edit "$vault/$P/claude/subprojects/infra.md" 's/^delivery: ""$/delivery: direct/
 sb task set EX-3 delivery=
 doc Example
 chk "spec-trace: a subproject's delivery holds for its story with no key of its own" spec-trace Example "ok | 0 | -"
-reset
 fi
 
 # ---------------------------------------------------------------- result

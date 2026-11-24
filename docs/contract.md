@@ -1128,40 +1128,41 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Agents call skills through the Skill tool as `odsb:<name>`.
 - A skill names a project's parent stories by its `parent_label`: features or epics. The
   frontmatter key it writes stays `epic`.
-- **Two skills keep the work.** `story-tracker` owns each ticket. `scrum-master` plans the sprints
-  and releases, and checks the board. Each has its own `description`, as ticket requests come
-  often and must pick their skill alone.
+- **Two skills keep the work.** `story-tracker` owns each ticket. `scrum-master` refines the
+  stories, plans the sprints and releases, and checks the board. Each has its own `description`,
+  as ticket requests come often and must pick their skill alone.
 - Each `SKILL.md` is its skill's readme. It holds the context step, the rules each run needs and
   a table that routes each mode or workflow to its file in the same folder. Each file is read only
   when its mode or workflow runs.
 - Neither skill has a daily status.
 - **`story-tracker`** handles one ticket at a time: draft, start, update, recall, status and
-  environment set. It runs as `/odsb:story-tracker`. Its files are `create.md`, `status.md` and
-  `env-split.md`.
+  environment set. Its files are `create.md`, `status.md` and `env-split.md`.
 - Its start mode shows a new story's text and writes it only on the owner's approval. A change the
   owner asks for is shown again before it is written.
-- A story release-planning got approved is approved already, and gets the status note
+- A story refinement got approved is approved already, and gets the status note
   `Planned: the owner approved this text.`
 - A story it sets to `done` goes to `docs-keeper`, as below. Then it logs the story's achievement
   through the profile's `achievements_skill`, when it names one.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
-  skill. Its three workflows are `sprint-planning.md`, `release-planning.md` and
+  skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and
   `organize-board.md`.
-- `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
-- `release-planning` sets a release's goals, epics and stories with the owner, in the project's
-  planned-releases note (section 3).
-- `organize-board` runs the doctor on the project, says what each failing row means, and changes
-  nothing without asking.
-- Each new story of a release's draft has the shape of section 1 of
-  `skills/story-tracker/create.md`, with at most 4 acceptance criteria, its parent and the tasks it
-  waits on.
+- `refinement` drafts or refines an epic and its stories, or one story, with the owner.
+- Each story of its draft has the shape of section 1 of `skills/story-tracker/create.md`, with at
+  most 4 acceptance criteria, its parent and the tasks it waits on.
 - The skill shows the owner the whole draft and writes nothing until the owner approves it.
 - A change the owner asks for is made in the draft and shown again. It is written only once the
   owner approves it.
-- On the approval it creates each new epic, then each story, through the `story-tracker` skill's
-  start mode, which writes the task note. Then it links each story to the tasks it waits on with
-  `task dep`, links the stories in the epic's list, and writes the release into the
-  planned-releases note.
+- On the approval it writes through story-tracker: its start mode for each new epic, then each
+  new story, and its update mode for each one that changed. Then it links each story to the tasks
+  it waits on with `task dep`, and links the stories in the epic's list.
+- `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
+- `release-planning` sets a release's goals, epics and stories with the owner, in the project's
+  planned-releases note (section 3). A story or epic that does not exist yet goes through
+  refinement first.
+- It shows the release's section and writes it only once the owner approves it. It writes only
+  that section and the `## Epics` lines.
+- `organize-board` runs the doctor on the project, says what each failing row means, and changes
+  nothing without asking.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:

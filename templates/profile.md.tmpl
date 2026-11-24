@@ -40,6 +40,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - Persona: the role a story's description opens with (`*As a* <persona>,`). Set it in `persona:` above.
 - Tracker: <where tickets live, where epics usually sit, any ticket markup to keep>.
 - Extra frontmatter a task README needs here, and how to pick topic tags for a new ticket: <or "none">.
+- A `parent_label:` key added above names the project's parent stories: `feature`, or `epic` with
+  no key. The word changes labels only: a task's frontmatter key stays `epic`.
 - `task_layout:` above is `flat`, the default, `archive`, `status` or `sprint`. A `flat` project
   never moves a task.
 - `archive` moves a done or abandoned task, once, with `second-brain task archive <ID>`, to
@@ -49,6 +51,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - `sprint` keeps each task in the folder of its sprint under the tasks root, such as
   `2026-12-04/<ID>/`, and a task in no sprint in `backlog/<ID>/`. `second-brain task set` moves it
   when its sprint changes, and nothing is archived. With `uses_sprints: false` it is `flat`.
+- With `status` or `sprint`, a task whose `epic` names another task sits inside a folder named for
+  that parent, in the folder of its own status or sprint, such as `done/<parent>/<ID>/`.
 - With `sprint`, a `sprint_folder:` key added above names a sprint's folder: its end date with no
   key, or a pattern such as `sprint-<n>`, as `### Profile frontmatter` in the plugin's
   `docs/contract.md` says.

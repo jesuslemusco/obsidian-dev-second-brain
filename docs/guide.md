@@ -153,6 +153,25 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   key, then run `second-brain doctor --fix` once. It also removes each empty group folder, a
   status folder too, whether or not a move emptied it.
 
+### Feature and epic folders
+
+- A child task is one whose `epic` names another task, its parent. A project calls its parent
+  stories features or epics, as `parent_label` in its profile says.
+- Tell Claude a story belongs to EX-1, and it runs `second-brain task set EX-2 epic=EX-1`.
+- In a status or sprint project, a child sits inside a folder named for its parent, in the folder
+  of its own status or sprint, such as `tasks/backlog/EX-1/EX-2/` or `tasks/done/EX-1/EX-2/`, as
+  `## 4. A task` in `docs/contract.md` says. In a flat or archive project nothing moves.
+- The parent's own note stays where its own status or sprint puts it. A child that joins a sprint
+  moves to `tasks/<sprint folder>/EX-1/EX-2/` while EX-1 stays in `tasks/backlog/EX-1/`.
+- A parent's move takes its own files alone. A parent done or abandoned leaves its open children
+  where they are, and every command still finds them.
+- A child's own move removes the folder named for its parent that it leaves empty.
+- `second-brain doctor --fix` moves a child that is outside its parent's folder. It leaves one
+  whose `epic` names no single task where it is, and the doctor names it.
+- `vault-setup` asks whether a project calls its parent stories features or epics, as
+  `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
+  in a task's frontmatter stays `epic`.
+
 ## Spec-driven delivery
 
 - Start one with `/odsb:spec EX-2`, or with the request under

@@ -36,6 +36,8 @@ Step 0 of `SKILL.md` has run.
    - With `task_layout: sprint`, it moves each task in `--carry` to the next sprint's folder and
      each in `--backlog` into `backlog/`, and prints their paths the same way. A done or abandoned
      task, and one in `--abandon`, stays in the closed sprint's folder.
+   - In both, a child goes into a folder named for its parent in the folder it moves to, and a
+     parent moves its own files alone, leaving its children where they are.
    - A move that fails is named on stderr, and the call exits with its code. The sprint is closed
      all the same: never run the call again. Tell the user the task and the reason:
      `second-brain doctor --fix` moves it to `abandoned/` once the reason is handled.

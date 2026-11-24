@@ -12,6 +12,10 @@ It can also build a story from a spec you approve, one task at a time, each test
   status. A project that keeps each task in the folder of its sprint has it at
   `<project>/tasks/<sprint folder>/<ID>/README.md`, or `<project>/tasks/backlog/<ID>/README.md`
   in no sprint.
+- **Features and epics.** In those two kinds of project, a ticket whose `epic` names another
+  ticket sits inside a folder named for that parent, such as
+  `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
+  or epics.
 - **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
   carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step

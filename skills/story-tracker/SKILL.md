@@ -36,6 +36,13 @@ Run these yourself, before anything else. Chain them in one Bash call where that
      nothing to ask either. A new story is in `<tasks_root>/backlog/<ID>/`;
      `second-brain task set <ID> sprint=<id>` moves it to the folder of that sprint, and
      `sprint=` back to `backlog/`. A status change moves nothing.
+   - `parent_label` is the word for a parent story: `feature`, or `epic` when the line is absent
+     or holds anything else. Say that word to the user, in every mode, for the story a key
+     `epic` names. The key itself stays `epic`.
+   - With `status` or `sprint`, a story whose `epic` names another story sits inside a folder
+     named for that parent: `second-brain task set <ID> epic=<parent>` moves it in, `epic=` moves
+     it out, and every move keeps it under its parent. A parent's move leaves its children where
+     they are.
 4. `second-brain profile <project> stories` prints what this project does differently.
    - Exit 1 here only means there is no Stories section. Carry on.
    - Read other sections only when a step names them.
@@ -150,6 +157,8 @@ move to `in-progress`.
 - Set scalar keys (`status`, `title`, `next`, `branch`, `epic`) through the helper, never by hand:
   `second-brain task set <ID> status=in-review next="<one phrase, the next action>"`.
   - An unknown status exits 5.
+  - `note: <word> <value> names no single task of <project>` on stderr: the parent the user
+    named is no story of the project, or names several. Say so, and ask for its id.
 - Keep `title` and `next` current.
 - Log what happened: `second-brain task note <ID> "<text>" --session <session id>`.
 - Tick the acceptance criteria that are now met.
@@ -205,6 +214,7 @@ it only on a yes.
 - Link a story by its path: `[[<project path>/<tasks_root>/EX-123/README|EX-123]]`.
   - An archived story's path, or one in a `status` project, is the one `find` prints.
   - So is one in a `sprint` project, which changes when the story's sprint does.
+  - So is a child's, inside a folder named for its parent.
   - In a table cell, write the pipe as `\|`.
 - Run `second-brain move` or `second-brain rename` with `--dry-run` first.
 - Never rename a task folder.

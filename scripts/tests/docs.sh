@@ -227,7 +227,7 @@ file_has "contract: sb_task_readme finds a task's README in any of them" "$CS" \
   '`sb_task_readme`, which finds one task folder'"'"'s README in any of them.'
 file_lacks "contract: the lookup no longer names two depths alone" "$CS" 'task READMEs at both depths'
 line_is "contract: the board template's placeholders take STATUS_DEPTH" "$CS" \
-  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |'
+  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `CHILD_DEPTH`, `SPRINT_ID`, `PARENT_LABEL` |'
 CV="$here/templates/obsidian-conventions.md.tmpl"
 file_has "conventions: task_layout takes status and sprint" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive`, `status` or `sprint`.'
 file_has "conventions: the short version names the status folders" "$CV" 'With `status`, each'
@@ -343,7 +343,7 @@ file_has "contract: the lookup goes through the group folders of sb_task_groups"
   '- Both also look in each group folder that `sb_task_groups` lists'
 CV="$here/templates/obsidian-conventions.md.tmpl"
 cv_version="$(sed -n 's/^conventions_version: *//p' "$CV" | head -1)"
-is "conventions: the sprint folders raise conventions_version to 9" "$cv_version" "9"
+is "conventions: the child folders raise conventions_version to 10" "$cv_version" "10"
 file_has "conventions: the short version names the sprint folders" "$CV" 'With `sprint`,'
 line_is "conventions: the path of a task in backlog/" "$CV" \
   '<project>/tasks/backlog/<TICKET-ID>/README.md          # a task in no sprint, in the sprint layout'
@@ -2082,6 +2082,127 @@ for l in '- A spec build agent that goes idle with no report, such as one that s
   n="$(linex "$CG" "$l")"
   is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
 done
+
+# ---------------------------------------------------------------- the child folders and the parent word
+CC="$here/docs/contract.md"
+file_has "contract: a child task is a word of the contract" "$CC" \
+  '| child task | A task whose `epic` names another task of its project, its parent.'
+file_has "contract: the project tree names a child task" "$CC" \
+  '  tasks/<status>/<parent>/<TICKET-ID>/README.md   a child task, with task_layout: status'
+file_has "contract: parent_label is feature or epic" "$CC" \
+  '- `parent_label` is the word for the project'"'"'s parent stories: `feature`, in any letter case, or'
+file_has "contract: the word changes labels only" "$CC" \
+  '- The word changes labels only: the skills, the board'"'"'s column and the helper'"'"'s output. A task'"'"'s'
+file_has "contract: children nest in status and sprint alone" "$CC" \
+  '- In `status` and `sprint`, a child task sits inside a folder named for its parent, one folder'
+file_has "contract: a child's path in a status project" "$CC" '`<project>/<tasks_root>/<status>/<parent>/<ID>/README.md`'
+file_has "contract: a child that joins a sprint leaves its parent's note in backlog/" "$CC" \
+  '`<sprint folder>/<parent>/<ID>/` while its parent'"'"'s note stays in `backlog/<parent>/`.'
+file_has "contract: a README inside a task is a child when its epic names the task" "$CC" \
+  '- A README one folder inside a task folder in a group folder is a child task when its `epic` names'
+file_has "contract: a parent's move takes its own files alone" "$CC" \
+  '- A move of a parent takes its own note and files alone: every entry of its folder but its'
+file_has "contract: a parent done or abandoned leaves its open children" "$CC" \
+  '- A parent that is done or abandoned leaves its open children where they are, and every command'
+file_has "contract: the board's branch for a task one level deeper" "$CC" '- A branch after it takes a task one level deeper'
+OUT="$(grep '^| `task set ' "$CC")"
+out_has "contract: task set moves a child into its parent's folder" \
+  'into its parent'"'"'s folder in the folder of its status or sprint, `<tasks_root>/<folder>/<parent>/<ID>/`'
+out_has "contract: task set prints the folder it removes" 'prints `removed: <path>` after the `links:` lines'
+OUT="$(grep '^| `task head ' "$CC")"
+out_has "contract: task head takes the parent word as the epic line's key" '`feature: <value>` where it is `feature`'
+OUT="$(grep '^| `scaffold project ' "$CC")"
+out_has "contract: scaffold project takes --parent-label" '[--parent-label feature\|epic]'
+OUT="$(grep '^| project | `task-layout` ' "$CC")"
+out_has "contract: task-layout names a child out of its parent's folder" '`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`'
+out_has "contract: task-layout names an epic that names no task" '`<ID>:unknown-<label>`'
+out_has "contract: task-layout names a parent_label of neither word" '(`parent_label:invalid`)'
+OUT="$(grep '^| project | `board` ' "$CC")"
+out_has "contract: the board check names a board with no child branch" '(`tasks.base:no-child-filter`) (warn)'
+line_is "contract: the hook takes a child task note" "$CC" \
+  '- One level deeper in such a group folder, `tasks/<folder>/<parent>/<ID>/README.md` is a whole'
+file_has "contract: a skill names parent stories by parent_label" "$CC" \
+  '- A skill names a project'"'"'s parent stories by its `parent_label`: features or epics. The'
+CVT="$here/templates/obsidian-conventions.md.tmpl"
+file_has "conventions: the short version names a child's folder" "$CVT" \
+  'In both, a task whose `epic` names another task sits inside a folder'
+line_is "conventions: the tree names a child task" "$CVT" \
+  '<project>/tasks/<status>/<parent>/<TICKET-ID>/README.md  # a child task, in the status layout'
+file_has "conventions: the parent word changes labels only" "$CVT" \
+  'calls its parent stories features or epics, as the profile'"'"'s `parent_label` says; the key stays'
+GDC="$here/docs/guide.md"
+line_is "guide: a section on the feature and epic folders" "$GDC" '### Feature and epic folders'
+file_has "guide: a child sits inside a folder named for its parent" "$GDC" \
+  '- In a status or sprint project, a child sits inside a folder named for its parent, in the folder'
+file_has "guide: a parent done or abandoned leaves its open children" "$GDC" \
+  '- A parent'"'"'s move takes its own files alone. A parent done or abandoned leaves its open children'
+file_has "guide: vault-setup asks for the word" "$GDC" \
+  '- `vault-setup` asks whether a project calls its parent stories features or epics, as'
+file_has "README: names the feature and epic folders" "$here/README.md" '- **Features and epics.** In those two kinds of project'
+VSK="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: asks for the parent word" "$VSK" '   - whether it calls its parent stories features or epics.'
+line_is "vault-setup: features pass --parent-label feature" "$VSK" \
+  '   - Features: add `--parent-label feature`. It writes `parent_label: feature` into the profile,'
+file_has "vault-setup: adopt asks for the word too" "$VSK" '| `parent_label` | with adopt only, as step 1 asks it for a new project:'
+file_has "vault-setup adopt: asks whether the project calls its parent stories features or epics" \
+  "$here/skills/vault-setup/adopt.md" 'and whether it calls its parent stories features or'
+STK="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: reads the parent word from the profile" "$STK" \
+  '   - `parent_label` is the word for a parent story: `feature`, or `epic` when the line is absent'
+file_has "story-tracker: epic= moves a story under its parent" "$STK" \
+  'named for that parent: `second-brain task set <ID> epic=<parent>` moves it in, `epic=` moves'
+file_has "story-tracker status: the Epic field takes the project's word" "$here/skills/story-tracker/status.md" \
+  '  - Name the `Epic:` field after the project'"'"'s word, `Feature:` with `parent_label: feature`. The'
+file_has "story-tracker create: the parent is the project's feature or epic" "$here/skills/story-tracker/create.md" \
+  'feature or epic, as Step 0 of `SKILL.md` names it.'
+SPK="$here/skills/sprint/SKILL.md"
+file_has "sprint: calls a parent story by the project's word" "$SPK" \
+  '- A task whose `epic` names another task is a child of that parent story. Call a parent story by'
+file_has "sprint: a move keeps a child under its parent" "$SPK" \
+  'parent, in the folder it moves to, and a parent'"'"'s move takes its own files alone.'
+file_has "sprint close: a child goes under its parent" "$here/skills/sprint/close.md" \
+  '   - In both, a child goes into a folder named for its parent in the folder it moves to, and a'
+file_has "scrum-master: calls a parent story by the project's word" "$here/agents/scrum-master.md" \
+  'parent moves its own files alone. Call a parent story by the project'"'"'s word, `feature` or'
+file_has "docs-keeper: a child task is one folder deeper" "$here/agents/docs-keeper.md" \
+  '  In both, a child task, one whose `epic` names another task, is one folder deeper, inside a'
+CHK="$here/skills/vault-doctor/checks.md"
+file_has "checks board: no-child-filter" "$CHK" '(`tasks.base:no-child-filter`).'
+file_has "checks task-layout: a child out of its parent's folder" "$CHK" '(`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`)'
+file_has "checks task-layout: an epic that names no task is left where it is" "$CHK" \
+  '`<ID>:unknown-<word>`: `--fix` leaves the task where it is'
+file_has "checks task-layout: parent_label:invalid is the user's to answer" "$CHK" \
+  '`parent_label:invalid`: ask the user whether the project calls its parent stories features or epics'
+line_is "vault-doctor fix: a child offender is a task it moves" "$here/skills/vault-doctor/SKILL.md" \
+  '     offender is a child it moves into a folder named for its parent: name it with that folder.'
+under_011 "changelog: the child folders are under 0.11.0" \
+  '- In a status or sprint project, a child task, one whose `epic` names another task, sits inside a'
+under_011 "changelog: epic= moves a child is under 0.11.0" \
+  '- `task set <ID> epic=<parent>` moves a child into that folder, and `epic=` moves it out. A status'
+under_011 "changelog: parent_label is under 0.11.0" \
+  '- `parent_label` in the profile names a project'"'"'s parent stories `feature`, or `epic` with no key.'
+under_011 "changelog: the board's child branch is under 0.11.0" \
+  '- A new board'"'"'s filters take a task one level deeper. An existing board is not rewritten: in a'
+under_011 "changelog: the conventions note at version 10 is under 0.11.0" \
+  '- The conventions note is at version 10: it names a child task'"'"'s folder. The doctor'"'"'s'
+file_has "contract: a folder with no README holds tasks when it is named for a task found elsewhere" "$CC" \
+  '  deeper, when it is named for a task found elsewhere, by its folder name or an alias, without'
+file_has "contract: what a task found elsewhere is" "$CC" \
+  '- A task found elsewhere is one directly under the tasks root, in a group folder or in the'
+file_has "contract: a folder named for no task holds none" "$CC" \
+  '- A folder with no `README.md` that is named for no task holds none: a README in it is no task,'
+file_has "contract: a parent's entries with a dot first move too" "$CC" \
+  '- An entry whose name starts with a dot moves too. `move` takes no such name, so it moves as it'
+file_has "contract: an epic of none or several tasks names no parent" "$CC" \
+  '- An `epic` that names no single task of the project, none or several, names no parent: a move'
+file_has "contract: the hook takes a folder named for a task found elsewhere" "$CC" \
+  '- With no `<parent>/README.md`, it is one when `<parent>` is named for a task found elsewhere in'
+file_has "contract: the hook runs one find for it" "$CC" \
+  '  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder'
+file_has "contract: the shell runs that find, and no path is text a shell reads" "$CC" \
+  '- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a'
+under_011 "changelog: the folder named for a task is under 0.11.0" \
+  '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
 
 # ---------------------------------------------------------------- result
 result

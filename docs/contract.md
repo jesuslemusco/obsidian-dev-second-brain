@@ -1148,7 +1148,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
   The scrum-master's refinement and release planning read them there.
-- A story refinement got approved is approved already, and gets the status note
+- A story that refinement got approved is approved already, and gets the status note
   `Planned: the owner approved this text.`
 - A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
   does the sprint close: only an achievements skill tracks them.

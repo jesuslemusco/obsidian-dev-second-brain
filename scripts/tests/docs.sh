@@ -2628,7 +2628,7 @@ line_is "story-tracker create: a story refinement got approved is approved alrea
   'A story the scrum-master'"'"'s refinement got approved is approved already. Write it from that text,'
 for f in refinement release-planning; do
   file_has "$f: asks for the approval as story-tracker's create.md says" "$here/skills/scrum-master/$f.md" \
-    'ask for the approval as `## 3. Create the story` in'
+    'as `## 3. Create the story` in'
   file_lacks "$f: does not restate the approval rules" "$here/skills/scrum-master/$f.md" 'Only the owner'"'"'s approval counts.'
 done
 file_has "scrum-master: release-planning reads create.md too" "$here/skills/scrum-master/SKILL.md" \
@@ -2649,8 +2649,15 @@ line_is "sprint-planning: an ended sprint closes only when nothing else is asked
 is "sprint-planning: the close checks come before open" \
   "$(($(lineno "$SMW" '2. The user asks to close the sprint, with none') < $(lineno "$SMW" '3. No sprint in progress: `## Open`')))" "1"
 file_lacks "sprint-planning: no achievement" "$SMW" 'achievement'
-line_is "vault-setup: achievements_skill waits for the achievements skill" "$here/skills/vault-setup/SKILL.md" \
-  '   | `achievements_skill` | nothing yet: no skill reads it until the plugin'"'"'s achievements skill, which is planned | `""` |'
+line_is "vault-setup: asks nothing for achievements_skill" "$here/skills/vault-setup/SKILL.md" \
+  '   - Ask nothing for `achievements_skill`. When the profile lacks it, write'
+line_is "vault-setup: writes it empty" "$here/skills/vault-setup/SKILL.md" \
+  '     `achievements_skill: ""`: no skill reads it until the plugin'"'"'s achievements skill, which is'
+file_lacks "vault-setup: no interview row for achievements_skill" "$here/skills/vault-setup/SKILL.md" '| `achievements_skill` |'
+line_is "refinement: asks for the approval without showing the draft again" "$here/skills/scrum-master/refinement.md" \
+  '  `create.md` says, without showing the draft again.'
+file_has "contract: a story that refinement got approved" "$here/docs/contract.md" \
+  '- A story that refinement got approved is approved already, and gets the status note'
 line_is "profile template: achievements_skill waits for the achievements skill" "$here/templates/profile.md.tmpl" \
   '- `achievements_skill:` waits for the plugin'"'"'s achievements skill, which is planned. No skill'
 file_lacks "profile template: no story is handed to it" "$here/templates/profile.md.tmpl" 'hand it to'

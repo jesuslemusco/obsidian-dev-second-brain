@@ -43,8 +43,8 @@ epic and each story in the shape its section 1 gives:
 - End each chunk with the line `What's wrong or missing?` as plain text, not an AskUserQuestion
   call. Then stop for the owner's answer.
 - Fix what the owner names before you show the next chunk.
-- After the last chunk, ask for the approval as `## 3. Create the story` in `create.md` says, for
-  the whole draft.
+- After the last chunk, ask for the approval of the whole draft as `## 3. Create the story` in
+  `create.md` says, without showing the draft again.
 - A change: make it in the draft, show each story it changed again in full, then ask again.
 
 ## 4. Write

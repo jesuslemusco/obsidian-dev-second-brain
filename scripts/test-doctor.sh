@@ -5,6 +5,14 @@
 # each case once.
 set -u
 
+# A line that opens a block, as block() says, and is written another way stops the run here.
+bad="$(awk '/^[ \t]*if block([^A-Za-z0-9_-]|$)/ && !/^if block (0|[1-9][0-9]*); then$/ { print NR; exit }' "$0")"
+if [ -n "$bad" ]; then
+  printf 'line %s: open a block with "if block <cost>; then", a cost such as 25 with no leading zero\n' \
+    "$bad" >&2
+  exit 2
+fi
+
 shard_n=0
 shard_total=0
 if [ "$#" -gt 0 ]; then
@@ -127,10 +135,12 @@ reset() {
   mkdir -p "$home"
 }
 # The cases after the setup come in blocks. Each opens with "if block <cost>; then" and closes
-# with "fi". The cost is about the tenths of a second the block takes on Linux.
+# with "fi". The cost is about the tenths of a second the block takes on Linux. To measure the
+# costs again, time each --shard k/<blocks>, which runs the one block its summary line names, and
+# take off the time of --shard <blocks + 1>/<blocks + 1>, which runs the setup alone.
 # costs: the cost of each block, in order, as the script writes it.
 costs=()
-read -r -a costs <<<"$(sed -n 's/^if block \([0-9][0-9]*\); then$/\1/p' "$0" | tr '\n' ' ')"
+read -r -a costs <<<"$(awk '/^if block (0|[1-9][0-9]*); then$/ { print $3 + 0 }' "$0" | tr '\n' ' ')"
 # plan: the shard of each block. The costliest block goes first, each to the shard that holds the
 # least cost so far, the first on a tie. With as many shards as blocks, each shard holds one block.
 plan=()
@@ -155,16 +165,18 @@ fi
 # blocks.
 n_block=0
 n_held=0
+held=""
 cost_held=0
 block() {
   local f
   n_block=$((n_block + 1))
-  if [ "${costs[n_block - 1]:-}" != "${1:-}" ]; then
+  if [ "$#" -ne 1 ] || [ -z "${costs[n_block - 1]:-}" ] || [ "${costs[n_block - 1]}" != "$1" ]; then
     printf 'block %s: write it as "if block <cost>; then", alone on its line\n' "$n_block" >&2
     exit 2
   fi
   [ "$shard_total" -eq 0 ] || [ "${plan[n_block - 1]}" -eq "$shard_n" ] || return 1
   n_held=$((n_held + 1))
+  held="$held $n_block"
   cost_held=$((cost_held + $1))
   for f in "$tmp"/*; do
     case "${f##*/}" in pristine | undefined) ;; *) rm -rf "$f" ;; esac
@@ -191,6 +203,32 @@ cp -R "$vault" "$tmp/pristine"
 if block 0; then
 for f in "$here/scripts/lib/doctor.sh" "$here/scripts/test-doctor.sh"; do
   if bash -n "$f" 2>"$tmp/stderr"; then pass "syntax: ${f#"$here"/}"; else fail "syntax: ${f#"$here"/}" "$(cat "$tmp/stderr")"; fi
+done
+fi
+
+# ---------------------------------------------------------------- the script's own flag and blocks
+if block 1; then
+self="$here/scripts/test-doctor.sh"
+for v in 0/4 5/4 abc; do
+  run bash "$self" --shard "$v"
+  is "shards: --shard $v exits 2 and says what it takes" "$RC/$ERR" \
+    "2/--shard takes <n>/<total>, with n from 1 to total, such as 2/4, not $v"
+done
+# Three copies of the script, each with one block written wrong: the last with no cost, a new one
+# with no cost added after it, and the first with a leading zero. Each stops before its setup, and
+# the bad --shard stops one that does not.
+first="$(grep -n '^if block [0-9]*; then$' "$self" | head -1 | cut -d: -f1)"
+last="$(grep -n '^if block [0-9]*; then$' "$self" | tail -1 | cut -d: -f1)"
+end="$(grep -n '^# -* result$' "$self" | cut -d: -f1)"
+awk -v n="$last" 'NR == n { $0 = "if block; then" } { print }' "$self" >"$tmp/last.sh"
+awk -v n="$end" 'NR == n { print "if block; then"; print "fi"; print "" } { print }' "$self" >"$tmp/added.sh"
+awk -v n="$first" 'NR == n { $0 = "if block 08; then" } { print }' "$self" >"$tmp/zero.sh"
+for c in "last:$last:the last block has no cost" "added:$end:a block added after it has no cost" \
+  "zero:$first:a cost has a leading zero"; do
+  f="${c%%:*}" c="${c#*:}" ln="${c%%:*}" c="${c#*:}"
+  run bash "$tmp/$f.sh" --shard 0/1
+  is "blocks: where $c, the run stops before its setup, exit 2, and names the line" "$RC/$ERR" \
+    "2/line $ln: open a block with \"if block <cost>; then\", a cost such as 25 with no leading zero"
 done
 fi
 
@@ -3091,8 +3129,9 @@ fi
 if [ "$shard_total" -gt 0 ]; then
   cost_all=0
   for f in "${costs[@]}"; do cost_all=$((cost_all + f)); done
-  printf '\nshard %s/%s: %s of the %s blocks, cost %s of %s\n' \
-    "$shard_n" "$shard_total" "$n_held" "$n_block" "$cost_held" "$cost_all"
+  [ -n "$held" ] || held=" none"
+  printf '\nshard %s/%s: %s of the %s blocks (%s), cost %s of %s\n' \
+    "$shard_n" "$shard_total" "$n_held" "$n_block" "${held# }" "$cost_held" "$cost_all"
 fi
 printf '\n%s passed, %s failed\n' "$n_pass" "$n_fail"
 [ "$n_fail" -eq 0 ]

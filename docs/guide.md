@@ -201,8 +201,9 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 
 - Build one with `/odsb:build EX-2`, or an epic's stories with `/odsb:build EX-1`, or with the
   request under [What to say](#what-to-say).
-- Only a story whose text you approved is built. Refinement writes the note that says so, and so
-  does story-tracker when it starts a story, as Step 2 of `skills/build/SKILL.md` says.
+- Only a story whose text you approved is built. story-tracker writes the note that says so when
+  it starts a story, and refinement has it written on each story you approve, new or not, as
+  Step 2 of `skills/build/SKILL.md` says.
 - Each story is built in a git worktree of its own, next to the repo's folder. The
   `implementer` and the `reviewer` work there, and the checks run there:
   `second-brain validation run <project> <repo> --path <worktree>`.
@@ -215,7 +216,8 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under
   `## 8. When to ask the owner` in `skills/build/story.md`.
-- A passed story waits for your go to merge. Its worktree is then removed, and the branch stays.
+- Once a story passed, its worktree is removed, after Claude shows you any ignored file in it,
+  such as a `.env`. The branch stays, and waits for your go to merge.
 - Progress is kept in the story's status notes, so a new session goes on where the build stopped.
 - Once the build has started, Claude settles any other question itself, such as a criterion an
   agent reads two ways, and records it as a status note,

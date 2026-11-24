@@ -35,8 +35,8 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 checks:   validation <project> [repo] [--path DIR] | validation new <project> <repo>
-          validation run <project> <repo> [--when each-task|each-build|release] [--timeout S]
-              [--path DIR]   (DIR stands in for the repo's folder, such as a git worktree)
+          validation run <project> <repo> [--when each-task|each-build|release] [--timeout S] [--path DIR]
+              (DIR stands in for the repo's folder, such as a git worktree)
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]
           sprint set <project> goal=<text> committed=<n>

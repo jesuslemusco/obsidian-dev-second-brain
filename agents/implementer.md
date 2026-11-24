@@ -30,12 +30,14 @@ id and the rulings. The story and the code in the worktree are what you build fr
    `## Acceptance criteria` and `## Approach / Key decisions`.
 3. Read the code its criteria touch, in the worktree alone. Read only what the story needs.
 4. Build test-first, as `## 1. Build test-first` says.
+   - A prompt with a `Fix: review <m> failed` line, as a fresh `implementer` gets on a fix round:
+     take `### A story fix` in place of this step.
 5. Run its checks, as `## 2. Check` says: your test, then
    `second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`.
    - Run no other check: the review runs the rest, in the same worktree.
 6. Check your change yourself, as `### Check it yourself` says.
-7. Commit in the worktree, as `## 3. Commit` says, with `git -C "<worktree>"`. Give each commit
-   a subject in the style `git -C "<worktree>" log --oneline -10` shows.
+7. Commit in the worktree, as `## 3. Commit` says. Give each commit a subject in the style
+   `git -C "<worktree>" log --oneline -10` shows.
 8. Reply as `## 4. Report` says. `Commit:` names your last commit.
 
 ### Check it yourself
@@ -53,9 +55,12 @@ The owner wants a story to pass its first review.
 
 ### A story fix
 
-A message that starts with `Fix: review <m> failed` names a review of your story that failed.
+A message that starts with `Fix: review <m> failed`, or a story prompt with that line, names a
+review of your story that failed.
 
 - Check where you are, as step 1 of `## Story mode` says.
+- A fresh `implementer`, launched with that line: read the story and the code first, as steps 2
+  and 3 of `## Story mode` say.
 - Read the story's `Defect <m>:` status notes, with a ranged read of `## Status notes`. Each is
   one defect, with the fix the reviewer proposes.
 - Fix each, with its proposed fix or a better one, as `## 1. Build test-first` says. Then take
@@ -111,8 +116,8 @@ every change.
 
 ## 3. Commit
 
-- Commit only when your test passed and every row `validation run` printed passed or was skipped.
-  A row it skips has no command to run.
+- Commit only when the checks of step 5 of `## Story mode` passed: your test, and every row
+  `validation run` printed passed or was skipped. A row it skips has no command to run.
 - Stage the story's files by name: `git -C "<worktree>" add <file>...`.
 - Never amend or push.
 - A commit hook fails: fix the cause and commit again. Never `--no-verify`.

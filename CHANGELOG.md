@@ -56,6 +56,22 @@
 - The pull request format writes its five headings as bold lines with no `##`, as in `**Goal**`.
   The note is at `pull_request_version: 4`, so the doctor's `pull-request` check warns about an
   older note. `doctor --fix` replaces one that was never edited.
+- A spec build agent that goes idle with no report, such as one that says its checks still run,
+  no longer stalls the build. The `spec` skill checks the branch and whether a check the agent
+  started still runs. With none running, it sends the agent one message to finish its step and
+  report, then takes its next reply as final. Work that still runs is waited for.
+- An idle notice that repeats a reply the skill took already, as a named agent's last reply comes
+  twice, changes no state and gets no reply.
+- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,
+  linked from the project's `claude/README.md`: each order with its date and your words, what
+  works on it now, the orders done, and the last check of each story. Builds of one project
+  share the note and only edit it. It is removed with its hub line once no order of any story is
+  open. You can stop the build or drop an order at any time: it is then closed.
+- While an order is open, the skill checks every 10 minutes on the agents, the branch and the
+  running checks against your orders. In Claude Code it is a session-only `CronCreate` job, off
+  the hour and the half hour. It stops once no order of its story is open. It never takes the
+  build back after you interrupt it or tell it to hold. The check never pushes, merges or takes
+  another outside action.
 
 ## 0.10.0 - 2026-11-22
 

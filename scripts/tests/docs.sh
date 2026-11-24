@@ -1859,5 +1859,191 @@ file_has "changelog: only a missing block is asked again" "$here/CHANGELOG.md" \
 file_has "changelog: the worked examples" "$here/CHANGELOG.md" \
   '- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its'
 
+# ---------------------------------------------------------------- the build catches an agent with no report, and checks on the owner's orders
+BM="$here/skills/spec/build.md"
+CT="$here/docs/contract.md"
+CG="$here/CHANGELOG.md"
+q="'"
+for h in '### An agent with no report' "### The owner${q}s open orders" '### The check every 10 minutes'; do
+  line_is "spec build: has $h" "$BM" "$h"
+  is "spec build: $h is in the launch section, before the verdict reading" \
+    "$(($(linex "$BM" '## 3. Launching an agent') < $(linex "$BM" "$h") && $(linex "$BM" "$h") < $(linex "$BM" '### Reading a verdict')))" "1"
+done
+line_is "spec build: a repeated reply is no new event" "$BM" \
+  '- A named agent can send its last reply twice: as its message, then again in its idle notice. A'
+line_is "spec build: it changes no state and gets no reply" "$BM" \
+  '  notice that repeats a reply you took already is no new event: it changes no state, and gets no'
+line_is "spec build: an implementer's report is a commit or a block" "$BM" \
+  "- An \`implementer\`${q}s: a \`Commit:\` line, or a first line \`BLOCKED:\`. A bundle${q}s run gives one per"
+line_is "spec build: a reviewer's report is its JSON block" "$BM" \
+  "- A \`reviewer\`${q}s: the JSON block of \`### Reading a verdict\`."
+line_is "spec build: an idle agent with no report is checked before its reply is final" "$BM" \
+  'Before you take the reply of an agent idle with no report as final:'
+line_is "spec build: it checks the branch with git log and git status" "$BM" \
+  '   - `git -C "<path>" log --oneline <start>..HEAD` and `git -C "<path>" status --porcelain`: what'
+line_is "spec build: and whether a check the agent started still runs" "$BM" \
+  '   - Whether a check it started still runs, such as its tests or a `validation run`: look for its'
+line_is "spec build: a process counts only under the repo's path" "$BM" \
+  '     process with `ps`. Count only a process whose working directory or command line is under'
+line_is "spec build: since another build may run its tests in another worktree" "$BM" \
+  "     \`<path>\`: another build${q}s tests may run in another worktree."
+line_is "spec build: work that still runs is waited for" "$BM" \
+  '2. Its check still runs: the work is real. Wait for its next reply.'
+line_is "spec build: nothing running gets one message" "$BM" \
+  '3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id'
+line_is "spec build: the message asks it to finish its step and report" "$BM" \
+  '   `Nothing you started is still running. Finish your step, then reply with your report.`'
+line_is "spec build: the message goes once" "$BM" '   - Send it once per launch or fix message, never twice.'
+line_is "spec build: then its next reply is final" "$BM" \
+  '4. Its next reply is final, with a report or not, unless its check still runs, as item 2 says.'
+is "spec build: the message comes before the reply is final" \
+  "$(($(lineno "$BM" '3. Nothing of it runs: send that agent one message') < $(lineno "$BM" '4. Its next reply is final, with a report or not')))" "1"
+bi_ptr='   - It is idle with no report: first take it as `### An agent with no report` says. Then read'
+is "spec build: Build it item 3 sends an idle implementer there first" \
+  "$(awk '/^### Build it$/ { on = 1 } /^### Review it$/ { on = 0 } on' "$BM" | grep -cxF -- "$bi_ptr")" "1"
+is "spec build: between items 3 and 4 of Build it" \
+  "$(($(lineno "$BM" '3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`') < $(linex "$BM" "$bi_ptr") && \
+  $(linex "$BM" "$bi_ptr") < $(lineno "$BM" '4. Its reply starts with `BLOCKED:`, or no commit was found')))" "1"
+rv_ptr='   - A `reviewer` idle with no block at all: first take it as `### An agent with no report`'
+line_is "spec build: the verdict reading sends an idle reviewer there first" "$BM" "$rv_ptr"
+is "spec build: before it asks for the block alone" \
+  "$(($(lineno "$BM" '5. No block, or one that does not parse') < $(linex "$BM" "$rv_ptr") && \
+  $(linex "$BM" "$rv_ptr") < $(lineno "$BM" '6. A block that parses and is not good')))" "1"
+line_is "spec build: a bundle's run goes there too" "$BM" \
+  '      - It is idle with no report: first take it as `### An agent with no report` says.'
+line_is "spec build: the reviewer may get that message" "$BM" '  `### An agent with no report` gives, or the one that'
+line_is "spec build: the orders note's path" "$BM" '`<project path>/claude/lead-agent-task-memory.md`. It tells the check every 10 minutes, and a new'
+line_is "spec build: an order is the owner's ask, in their words" "$BM" \
+  '- An order is what the owner asked you to do, in their words: the request that ran the skill, and'
+line_is "spec build: the note holds each open order with its date and the owner's words" "$BM" \
+  "- Under \`## Open orders\`, the note holds each open order: its date, its story, the owner${q}s words"
+line_is "spec build: and what works on it now" "$BM" \
+  '  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a'
+line_is "spec build: then the orders done and a last-check line per story" "$BM" \
+  '- Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per'
+line_is "spec build: another build of the project may share the note" "$BM" \
+  '- Another build of the project may keep its orders in the same note. Your own are the orders of'
+line_is "spec build: once the note is there, it is only edited" "$BM" \
+  '   - Once the note is there, change it only with the Edit tool, never a whole rewrite, so that you'
+line_is "spec build: so no session overwrites another's orders" "$BM" \
+  "     never overwrite another session${q}s orders."
+line_is "spec build: the hub links to the note" "$BM" \
+  "     \`- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner${q}s open orders.\`"
+line_is "spec build: no order of the story open stops its check" "$BM" \
+  '4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.'
+line_is "spec build: another story's open order keeps the note" "$BM" \
+  '   - An order of another story still open: leave the note and its hub line.'
+line_is "spec build: no order of any story open removes the hub's line, then the note" "$BM" \
+  "   - No order of any story open: remove the hub${q}s line, then the note:"
+line_is "spec build: removing its own note is no destructive action" "$BM" \
+  '     it is no destructive action of `## 8`.'
+file_has "spec build: it is the lead's own note" "$BM" '`rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing'
+for l in '## Open orders' '## Done' '> Up: [[<project path>/claude/README|<project> Claude Hub]]' \
+  "- <YYYY-MM-DD> <ID>: \"<the owner${q}s words, as written>\"" \
+  'Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.'; do
+  is "spec build: the note's shape has $l" \
+    "$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM" | grep -cxF -- "$l")" "1"
+done
+line_is "spec build: the start writes the order and starts the check" "$BM" \
+  "7. Write the order that ran the build in the orders note, as \`### The owner${q}s open orders\` says."
+is "spec build: right after the build's started or resumed note" \
+  "$(($(lineno "$BM" 'Build: resumed on <branch> at <short hash>.') < $(lineno "$BM" '7. Write the order that ran the build in the orders note') && \
+  $(lineno "$BM" '7. Write the order that ran the build in the orders note') < $(linex "$BM" '## 3. Launching an agent')))" "1"
+line_is "spec build: the check runs every 10 minutes while an order of the story is open" "$BM" \
+  'While an order of `<ID>` is open, check on it every 10 minutes. An agent can go idle with no'
+line_is "spec build: CronList first keeps a job with the same prompt" "$BM" \
+  '   - In Claude Code, run `CronList` first. A job that already has the prompt below is the check:'
+line_is "spec build: CronCreate schedules it off the hour and the half hour" "$BM" \
+  '   - Else create it with `CronCreate`: `cron: "7,17,27,37,47,57 * * * *"`, `recurring: true`, and'
+file_lacks "spec build: no job on the hour or the half hour" "$BM" '*/10 * * * *'
+line_is "spec build: the prompt names build.md of the spec skill" "$BM" \
+  '     `Check on the open orders of <ID>, as the check every 10 minutes in build.md of the spec skill says.`'
+line_is "spec build: in this session alone" "$BM" \
+  '   - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or'
+line_is "spec build: a missing note is written again, not a stop" "$BM" \
+  '   - The note is missing while an order of `<ID>` is open: write it again with your open orders,'
+file_has "spec build: and the check goes on" "$BM" 'says, and go on. Never stop the check for it.'
+line_is "spec build: the check goes on only when the owner has not interrupted or said to hold" "$BM" \
+  '   - No one works toward it, and the owner has not since interrupted you or told you to hold: go'
+line_is "spec build: otherwise it waits for the owner" "$BM" \
+  '     on with its next step now. Otherwise wait for the owner, and say so.'
+file_lacks "spec build: no longer goes on whatever the owner said" "$BM" '   - No one works toward it: go on with its next step now.'
+line_is "spec build: with no scheduling tool it checks on each notice" "$BM" \
+  '   - No scheduling tool: check on each notice that comes to you instead, from an agent or from a'
+line_is "spec build: the check asks of each order who works toward it" "$BM" \
+  '2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent'
+line_is "spec build: the check edits its story's last-check line" "$BM" \
+  '4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.'
+line_is "spec build: the check takes no outside action" "$BM" \
+  '5. The check never pushes, merges or takes another outside action.'
+line_is "spec build: CronDelete stops it once no order of the story is open" "$BM" \
+  '6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.'
+file_has "spec build: the finish closes the build's orders" "$BM" \
+  "   - Once \`finish.md\` is done, so are the build${q}s orders: take them to \`## Done\`, as"
+is "spec build: after finish.md" \
+  "$(($(lineno "$BM" '7. Read `finish.md`, next to this file') < $(lineno "$BM" '   - Once `finish.md` is done, so are the build')))" "1"
+line_is "spec build: an answer at a stop that sends the build on is an order" "$BM" \
+  '   - An answer that sends the build on is an order: add it to the orders note, as'
+file_has "spec build: the owner stopping closes the build's orders" "$BM" \
+  "     from it. Take the build${q}s orders to \`## Done\`, as \`### The owner${q}s open orders\` says."
+line_is "contract: the orders note is an optional file of the project" "$CT" \
+  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a spec build writes (section 9)"
+file_has "contract: an agent with no report" "$CT" '- **An agent with no report.** An agent can go idle before its report, such as on a reply that'
+file_has "contract: one message, then the next reply is final" "$CT" \
+  '- A check that still runs is waited for. With none, the skill sends the agent one message to'
+file_has "contract: a repeated reply is no new event" "$CT" \
+  '- A notice that repeats a reply the skill took already, such as a named agent'"${q}"'s last reply sent'
+file_has "contract: the owner's open orders" "$CT" \
+  "- **The owner${q}s open orders.** The skill keeps the owner${q}s open orders of a build in"
+file_has "contract: the check every 10 minutes" "$CT" \
+  '- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10'
+file_has "contract: builds of one project only edit the shared note" "$CT" \
+  '  note, so once it is there the skill changes it only with edits, never a whole rewrite.'
+file_has "contract: the check stops with its story, the note with every story" "$CT" \
+  '- Once no order of its story is open, the skill stops its check. Once no order of any story is'
+file_has "contract: the check holds when the owner interrupts or says to hold" "$CT" \
+  '- The check goes on with an order no one works toward only when the owner has not since'
+file_has "contract: a process counts only under the repo's path" "$CT" \
+  '- A process counts as the agent'"${q}"'s check only when its working directory or command line is under'
+line_is "contract: the building and in-review line names the skill" "$CT" \
+  '- The skill sets a task `building` before each `implementer` launch or fix message, and'
+file_lacks "contract: no bare It after the check's bullets" "$CT" '- It sets a task `building`'
+file_has "contract: the check takes no outside action" "$CT" '- The check never pushes, merges or takes another outside action.'
+line_is "spec build: the check's own prompt is no order" "$BM" "  check${q}s own prompt is no order."
+line_is "spec build: the owner stops the build or drops an order at any time" "$BM" \
+  '   - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the'
+file_lacks "spec build: no longer closes an order only at a stop" "$BM" 'The owner stops the build at a stop'
+line_is "spec build: a wait for the owner is said once" "$BM" '   - Waiting for the owner: say it once, not at each check.'
+is "spec build: and that is in the check" \
+  "$(awk '/^### The check every 10 minutes$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
+file_has "contract: an order closes when the owner stops the build or drops it" "$CT" \
+  '- An order closes when it is done, or when the owner stops the build or drops the order, at a stop'
+file_has "contract: the check's prompt is no order" "$CT" "  or not. The check${q}s own prompt is no order."
+file_has "contract: the check says a wait once" "$CT" 'Otherwise it waits for the owner and says so once,'
+GD="$here/docs/guide.md"
+line_is "guide: a build writes the orders note" "$GD" \
+  "- A build writes your open orders to \`claude/lead-agent-task-memory.md\` in the project${q}s folder of"
+line_is "guide: and a hub line, both removed once no order is open" "$GD" \
+  "  your vault, with a line in the project${q}s \`claude/README.md\`, and removes both once no order is"
+line_is "guide: and runs a check every 10 minutes" "$GD" \
+  '  open. While one is open, it runs a check in your session every 10 minutes, as'
+line_is "guide: pointing to the two build.md headings" "$GD" \
+  "  \`### The owner${q}s open orders\` and \`### The check every 10 minutes\` in \`skills/spec/build.md\`"
+for h in "### The owner${q}s open orders" '### The check every 10 minutes'; do
+  is "guide: the build.md heading $h is under Spec-driven delivery" \
+    "$(awk '/^## Spec-driven delivery$/ { on = 1; next } /^## / { on = 0 } on' "$GD" | grep -cF -- "\`$h\`")" "1"
+done
+file_has "changelog: the owner can stop the build or drop an order" "$CG" \
+  'You can stop the build or drop an order at any time: it is then closed.'
+cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.10.0 - ')"
+for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \
+  '- An idle notice that repeats a reply the skill took already, as a named agent'"${q}"'s last reply comes' \
+  '- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,' \
+  '- While an order is open, the skill checks every 10 minutes on the agents, the branch and the'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
+done
+
 # ---------------------------------------------------------------- result
 result

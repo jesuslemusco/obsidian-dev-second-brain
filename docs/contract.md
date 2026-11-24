@@ -80,6 +80,7 @@ index_version: 7
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
   claude/writing-style.md       optional; the project's own writing style, which wins
+  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a spec build writes (section 9)
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -1065,8 +1066,41 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
   place, with the same name and model. For a task of a bundle, it is given that task alone.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
-- It sets a task `building` before each `implementer` launch or fix message, and `in-review`
-  before each `reviewer` launch on it. It sets each result as the agent reports it.
+- A notice that repeats a reply the skill took already, such as a named agent's last reply sent
+  again in its idle notice, is no new event. It changes no state and gets no reply.
+- **An agent with no report.** An agent can go idle before its report, such as on a reply that
+  says its checks still run. Its report is an `implementer`'s `Commit:` or `BLOCKED:` line, or a
+  `reviewer`'s JSON block.
+- Before the skill takes such a reply as final, it checks the branch, with `git log` and
+  `git status --porcelain`, and whether a check the agent started still runs.
+- A check that still runs is waited for. With none, the skill sends the agent one message to
+  finish its step and report. Its next reply is final.
+- That message holds no view of the result, so a `reviewer` gets it too.
+- **The owner's open orders.** The skill keeps the owner's open orders of a build in
+  `<project>/claude/lead-agent-task-memory.md`, linked from the project's `claude/README.md`.
+- The note holds each open order, with its date, its story, the owner's words and what works on
+  it now. Then the orders done, and one line per story on its last check.
+- The skill adds its order when a build starts or resumes. Two builds of the project share the
+  note, so once it is there the skill changes it only with edits, never a whole rewrite.
+- A note missing while an order of the story is open is written again.
+- An order closes when it is done, or when the owner stops the build or drops the order, at a stop
+  or not. The check's own prompt is no order.
+- Once no order of its story is open, the skill stops its check. Once no order of any story is
+  open, it removes the hub's line, then the note. Removing its own note is no destructive action.
+- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10
+  minutes on the agents, the branch and the running checks against the orders. Of each order it
+  asks whether it or an agent works toward it.
+- In Claude Code a session-only `CronCreate` job runs the check, off the hour and the half hour,
+  and `CronDelete` ends it. The skill keeps a job `CronList` shows with the same prompt. With no
+  scheduling tool, the skill checks on each notice that comes to it.
+- A process counts as the agent's check only when its working directory or command line is under
+  the repo's path.
+- The check goes on with an order no one works toward only when the owner has not since
+  interrupted the skill or told it to hold. Otherwise it waits for the owner and says so once,
+  not at each check.
+- The check never pushes, merges or takes another outside action.
+- The skill sets a task `building` before each `implementer` launch or fix message, and
+  `in-review` before each `reviewer` launch on it. It sets each result as the agent reports it.
 - It shows the owner `spec status <ID>` after each task's review, when the build stops or
   finishes, and when a session resumes a build.
 - A build resumes in a new session from `build.json`. A task cut off while `building` takes a

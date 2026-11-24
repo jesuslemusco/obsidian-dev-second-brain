@@ -94,7 +94,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 7"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 8"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \

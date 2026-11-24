@@ -103,8 +103,8 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 - Never ask the user for a date a file already holds.
 - Ask with AskUserQuestion. With none, as in a subagent: end the reply with the numbered
   questions, and write nothing that waits on their answers.
-- A request for ticket text to paste into the tracker, with or without an id, goes to the
-  story-tracker skill in `draft` mode.
+- A request for ticket text to paste into the tracker, with or without an id,
+  goes to the story-tracker skill in `draft` mode.
 - The session does not offer a skill this one hands work to: say so and stop, unless its step
   says to go on.
 - Write absolute dates and plain hyphens. Turn "this sprint" or "last week" into real dates.

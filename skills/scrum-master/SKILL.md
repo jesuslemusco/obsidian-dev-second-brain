@@ -1,7 +1,7 @@
 ---
 name: scrum-master
-description: Plan an epic and its stories, or one story, for the owner to approve, and run a project's sprint cadence from the Obsidian vault - open, plan, daily status, close and carry over.
-argument-hint: "[plan | open | pick | status | close | done | hygiene] [project]"
+description: Plan a project's sprints and releases from the Obsidian vault - open, plan and close a sprint with carry-over, or plan a release's goals, epics and stories for the owner to approve.
+argument-hint: "[sprint-planning | release-planning] [project]"
 allowed-tools: Read Bash(second-brain *)
 ---
 
@@ -9,29 +9,24 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 
 # Scrum master
 
-You plan the work with the owner and run the sprint: open it, pick its stories, track them, close
-it and carry over what is left.
+You plan the work with the owner: each sprint, and each release with its epics and stories.
 
-The first argument is the mode, the second the project. With no mode, take it from the request.
-With nothing to go on, run status.
+The first argument is the workflow, the second the project. With no workflow, take it from the
+request. With nothing to go on, ask which one.
 
-## Modes
+## Workflows
 
-After Step 0, read the file of the mode in use, and only that file.
+After Step 0, read the file of the workflow in use, and only that file.
 
-| Mode | When | Read |
+| Workflow | When | Read |
 |---|---|---|
-| plan | An epic and its stories, or one story, to draft and write once the owner approves | `${CLAUDE_SKILL_DIR}/plan.md` |
-| open | A new sprint | `${CLAUDE_SKILL_DIR}/open.md` |
-| pick | Plan the sprint: which tasks join it and which leave | `${CLAUDE_SKILL_DIR}/pick.md` |
-| status | The sprint's status, or a daily status of one project or of every project | `${CLAUDE_SKILL_DIR}/status.md` |
-| close | The sprint ends: close it and carry over what is left | `${CLAUDE_SKILL_DIR}/close.md` |
-| done | A story finished: its update and its achievement | `${CLAUDE_SKILL_DIR}/done.md` |
-| hygiene | A health pass on one project | `${CLAUDE_SKILL_DIR}/hygiene.md` |
+| sprint-planning | Open a sprint, plan it, pick its stories, close it and carry over what is left | `${CLAUDE_SKILL_DIR}/sprint-planning.md` |
+| release-planning | Plan a release: its goals, epics and stories, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
 
-- A request to plan the sprint is pick. A request to plan an epic, a feature or a story is plan.
-- plan also reads story-tracker's `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
-- One mode leads to another only where its file says so. Then read that file too.
+- release-planning also reads story-tracker's
+  `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
+- A request to plan an epic or a story is release-planning.
+- Where a ticket stands, a standup or the stories of a sprint go to the story-tracker skill.
 
 ## Step 0 - Context (every run)
 
@@ -50,12 +45,10 @@ second-brain sprint current "$p"
   - All you have is a ticket id: add `--key EX-123`.
 - `resolved:` is empty or holds several names: show `second-brain projects`, ask, and run the
   block again with `--name`.
-  - A status of every project needs no project: go to status.
 - `profile ... sprints` prints the project's own sprint rules. They win over the defaults here.
 - `sprint current` prints id, start, end, days left and goal. Exit 1: no sprint is in progress.
 - Exit 5 with `does not use sprints`: the profile says `uses_sprints: false`.
-  - open, pick and close: say so and stop.
-  - status reports the project's stories from the Active view. plan, done and hygiene go on.
+  - sprint-planning: say so and stop. release-planning goes on.
   - Sprints come back only when the user sets that key to `true` and runs
     `second-brain scaffold project` again with the same name and path.
   - Relay the `note:` lines it prints: they name what is left to add by hand.
@@ -72,34 +65,14 @@ Stop when the setup is missing. Never guess a path.
 
 The session id for status notes is `${CLAUDE_SESSION_ID}`.
 
-## The model
+## Rules
 
-- A sprint is one note, named by its end date: `<sprints_root>/2026-01-14.md`. That date is its id.
-- A task joins a sprint through one property: `sprint: "2026-01-14"`.
 - A task whose `epic` names another task is a child of that parent story. Call a parent story by
   the project's word: `feature` when `second-brain profile <project> --keys` prints
   `parent_label: feature`, else `epic`. The key stays `epic`.
-- With `task_layout: status` or `sprint`, every move keeps a child inside a folder named for its
-  parent, in the folder it moves to, and a parent's move takes its own files alone.
-- Nobody keeps a task list by hand. The sprint note holds none.
-- `committed`, `completed` and `carried_over` on the sprint note are counts, not lists.
-
-## Rules
-
-- Frontmatter is the truth. Never infer a status or a sprint from prose.
-- Sprint ids in frontmatter are always quoted. The helper writes them: never retype one by hand.
-- A task belongs to at most one sprint. Setting `sprint` replaces the old value.
-- Backlog means no `sprint` key: not an empty value, not a placeholder word.
-- A done task keeps the sprint it finished in.
-- Write into the sprint note by hand only under `## Notes`, and only when the user asks.
-  `sprint open`, `sprint set` and `sprint close` write the rest.
-- Report a missing or non-standard status as "Needs a status". Never set one without asking.
-- A new story is written only in plan, once the owner approves its text. Any other change to a
-  story goes through the story-tracker skill, with the Skill tool as `odsb:story-tracker`.
-- This skill touches a task only through `second-brain task set`, `second-brain task note`, the
-  sprint commands that move tasks, the writes of plan once the owner approves and, after
-  a yes at close, `second-brain task archive`.
-- Ask, do not invent: a date, a goal, a ticket id, a reason, acceptance criteria, a result.
+- Each ticket belongs to the story-tracker skill, with the Skill tool as `odsb:story-tracker`.
+  It writes and changes each task note, one ticket at a time.
+- Ask, do not invent: a date, a goal, a ticket id, a reason, acceptance criteria.
 - Never ask the user for a date a file already holds.
 - Ask with AskUserQuestion. With none, as in a subagent: end the reply with the numbered
   questions, and write nothing that waits on their answers.

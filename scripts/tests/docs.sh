@@ -2610,6 +2610,15 @@ line_is "story-tracker create: only the owner's approval counts" "$STC" \
 file_lacks "story-tracker create: no pointer into another skill's folder" "$STC" 'skills/scrum-master/'
 line_is "story-tracker create: a story refinement got approved is approved already" "$STC" \
   'A story the scrum-master'"'"'s refinement got approved is approved already. Write it from that text,'
+for f in refinement release-planning; do
+  file_has "$f: asks for the approval as story-tracker's create.md says" "$here/skills/scrum-master/$f.md" \
+    'ask for the approval as `## 3. Create the story` in'
+  file_lacks "$f: does not restate the approval rules" "$here/skills/scrum-master/$f.md" 'Only the owner'"'"'s approval counts.'
+done
+file_has "scrum-master: release-planning reads create.md too" "$here/skills/scrum-master/SKILL.md" \
+  '- refinement and release-planning also read story-tracker'"'"'s'
+file_has "contract: the approval rules have one home" "$here/docs/contract.md" \
+  '- Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.'
 is "story-tracker create: the approval comes before step 1" \
   "$(($(lineno "$STC" 'Show the owner the text from section 1 first') < $(lineno "$STC" '1. `second-brain task new EX-123')))" "1"
 SMW="$here/skills/scrum-master/sprint-planning.md"

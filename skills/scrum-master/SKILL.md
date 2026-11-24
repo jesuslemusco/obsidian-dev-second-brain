@@ -26,7 +26,8 @@ After Step 0, read the file of the workflow in use, and only that file.
 | release-planning | Plan a release: its goals, epics and stories, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
 | organize-board | Check and organize the project's notes and board | `${CLAUDE_SKILL_DIR}/organize-board.md` |
 
-- refinement also reads story-tracker's `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
+- refinement and release-planning also read story-tracker's
+  `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
 - Where a ticket stands, an update, a standup or the stories of a sprint go to the story-tracker
   skill, with the Skill tool as `odsb:story-tracker`.
 

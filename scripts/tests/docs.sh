@@ -2875,6 +2875,15 @@ for f in "$STS" "$SMS"; do
   extra="$(printf '%s\n' "$tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)' -e 'Bash(ls -d *)')"
   is "allowed-tools: $sk has no other command pattern" "$extra" ""
 done
+# No skill pre-approves git: a -c setting can make any git command run a program.
+for f in "$here"/skills/*/SKILL.md; do
+  sk="$(basename "$(dirname "$f")")"
+  case "$(sed -n 's/^allowed-tools: //p' "$f")" in
+    *'Bash(git'*) fail "allowed-tools: $sk, like every skill, has no git pattern" "got: $(sed -n 's/^allowed-tools: //p' "$f")" ;;
+    *) pass "allowed-tools: $sk, like every skill, has no git pattern" ;;
+  esac
+done
+is "allowed-tools: the every-skill git check reads each skill" "$(ls "$here"/skills/*/SKILL.md | grep -c '')" "$(ls -d "$here"/skills/*/ | grep -c '')"
 file_has "contract: a git -C pattern never qualifies" "$here/docs/contract.md" \
   '- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path'
 file_has "contract: a skill call with an id needs the prefix form" "$here/docs/contract.md" \

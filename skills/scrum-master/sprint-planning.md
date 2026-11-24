@@ -7,7 +7,23 @@ stories and closes it with carry-over.
 
 ## Where to start
 
-- Step 0 printed `does not use sprints`: say so and stop.
+Run these two as one Bash call:
+
+```bash
+second-brain profile "<project>" sprints
+second-brain sprint current "<project>"
+```
+
+- `profile ... sprints` prints the project's own sprint rules. They win over the defaults here.
+  Exit 1 only means the profile has no `## Sprints` section. Carry on.
+- `sprint current` prints id, start, end, days left and goal. Exit 1: no sprint is in progress.
+- Exit 5 with `does not use sprints`: the profile says `uses_sprints: false`. Say so and stop.
+  - Sprints come back only when the user sets that key to `true` and runs
+    `second-brain scaffold project` again with the same name and path.
+  - Relay the `note:` lines it prints: they name what is left to add by hand.
+
+Then:
+
 - No sprint in progress: `## Open`, then `## Pick`.
 - The user asks to close the sprint, or its days left are 0 or less: `## Close`.
 - Any other request while a sprint is in progress: `## Pick`.
@@ -23,7 +39,7 @@ stories and closes it with carry-over.
 
 ## Open
 
-1. Step 0 found a sprint in progress: do not open another. Name it, offer `## Close`, stop.
+1. `sprint current` found a sprint in progress: do not open another. Name it, offer `## Close`, stop.
 2. Run `second-brain sprint next <project>`. It prints the id, start and end the profile's cadence
    gives, and writes nothing.
    - Do no date arithmetic yourself.
@@ -73,9 +89,9 @@ stories and closes it with carry-over.
      the `sprint_folder` pattern: nothing was written, and the pattern is the user's to fix.
    - A move that fails exits as `second-brain move` does, with the sprint written:
      `second-brain doctor --fix` moves the task once the reason is handled.
-6. A task that does not exist yet: start it through the story-tracker skill, with the Skill tool
-   as `odsb:story-tracker`. It shows the owner the story's text before it writes it. Then set its
-   sprint as in 5.
+6. A task that does not exist yet: start it in the start mode of `story-track.md`, at the path
+   `## Workflows` in `SKILL.md` gives. It shows the owner the story's text before it writes it.
+   Then set its sprint as in 5.
 7. Run `second-brain board <project> "Current sprint"` and show the list back.
 8. Freeze its row count: `second-brain sprint set <project> committed=<count>`.
    - The sprint started before today: ask before changing `committed`.
@@ -158,6 +174,6 @@ stories and closes it with carry-over.
 - Write into the sprint note by hand only under `## Notes`, and only when the user asks.
   `sprint open`, `sprint set` and `sprint close` write the rest.
 - Report a missing or non-standard status as "Needs a status". Never set one without asking.
-- Task files belong to the story-tracker skill. Never create one from this workflow.
+- Task files belong to the story-track workflow. Never create one from this one.
 - This workflow touches a task only through `second-brain task set`, `second-brain task note`, the
   sprint commands that move tasks and, after a yes at close, `second-brain task archive`.

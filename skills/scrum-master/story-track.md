@@ -1,33 +1,22 @@
----
-name: story-tracker
-description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
-argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
-allowed-tools: Read Grep Glob Bash(second-brain *)
----
-
-# Story tracker
-
-A story is a task's `README.md` in the vault.
+# Story track
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
-The session id for notes is `${CLAUDE_SESSION_ID}`.
+Read this in story-track only, after Step 0 of `SKILL.md`. It handles one ticket at a time. A story
+is a task's `README.md` in the vault.
 
-## Step 0 - Context, project, profile
+The files it names, `story-track-create.md`, `story-track-status.md` and `story-track-env-split.md`,
+are in this skill's folder, at the paths `## Workflows` in `SKILL.md` gives. Read each one only
+when a step names it.
 
-Run these yourself, before anything else. Chain them in one Bash call where that helps.
+## Context
 
-1. `second-brain context`.
-   - Command not found: the plugin is not enabled. Say so and stop.
-   - `vault: none`: say no vault is set up, offer `/odsb:vault-setup`, stop.
-2. Resolve the project, first match wins: the name the user gave
-   (`second-brain project --name <N>`), the ticket id (`--key EX-123`), else the `project:` line.
-   - `none`, exit 1 or exit 4: show `second-brain projects` and ask.
-3. `second-brain profile <project> --keys` prints the settings the steps below name.
-   - Exit 1: no profile. Say so, offer `/odsb:vault-setup adopt`, stop.
+Step 0 of `SKILL.md` has resolved the project and printed `second-brain profile <project> --keys`.
+
+1. Read the settings the steps below name from that output.
    - A subproject's settings win, from `second-brain subproject <project> <name>`. The subproject
      is the `subproject:` line, the task's `subproject` key, or the one the user names.
-   - A new story names its subproject as `## 3. Create the story` in `create.md` says.
+   - A new story names its subproject as `## 3. Create the story` in `story-track-create.md` says.
    - `task_layout` is `flat`, `archive`, `status` or `sprint`. A profile with no such line is
      `flat`, and so is `sprint` with `uses_sprints: false`.
    - With `status`, a story's folder follows its status, so there is nothing to archive and
@@ -43,7 +32,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
      named for that parent: `second-brain task set <ID> epic=<parent>` moves it in, `epic=` moves
      it out, and every move keeps it under its parent. A parent's move leaves its children where
      they are.
-4. `second-brain profile <project> stories` prints what this project does differently.
+2. `second-brain profile <project> stories` prints what this project does differently.
    - Exit 1 here only means there is no Stories section. Carry on.
    - Read other sections only when a step names them.
 
@@ -51,19 +40,20 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 
 | Mode | When | Do |
 |---|---|---|
-| draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
-| start | Work begins on a ticket with no story, often signalled by a branch named for it, or release-planning hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
+| draft | The user wants a ticket written, with or without an id | Read `story-track-create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
+| start | Work begins on a ticket with no story, often signalled by a branch named for it, or release-planning hands over a story the owner approved | Find (expect none), branch check, then read `story-track-create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
-| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
-| environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
+| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `story-track-status.md`. No branch check |
+| environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `story-track-env-split.md` |
 
 Ticket text, in draft mode or when the user asks for text to paste into the tracker:
 
 - Fill the project's own template when it has one:
   `<vault>/<project path>/claude/templates/ticket-description.md.tmpl`, with the `vault:` line
   and the project's path from Step 0.
-- Else fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.
+- Else fill the plugin's `ticket-description.md.tmpl`, at the path `## Workflows` in `SKILL.md`
+  gives. Never write it freehand.
 - A story exists: fill it from the story, with the README's Description and acceptance criteria.
 - Reply with plain text in the tracker's markup.
 - Keep it to one screen, about 40 lines.
@@ -242,5 +232,5 @@ it only on a yes.
 - Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log.
 - Write absolute dates in notes. Never "yesterday" or "last week".
 - Say "ticket" and "tracker". The tracker's name is the profile's `tracker`.
-- Leave `sprint` and `carried_from` to the scrum-master skill unless the user asks.
+- Leave `sprint` and `carried_from` to the sprint-planning workflow unless the user asks.
 - Keep story state in the vault only: never in Claude's memory or the code repo.

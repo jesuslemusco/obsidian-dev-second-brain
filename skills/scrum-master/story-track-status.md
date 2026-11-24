@@ -1,6 +1,6 @@
 # Status overview
 
-Read this in status mode only, after Step 0 of `SKILL.md`. This mode only reads and reports: never
+Read this in status mode only, after `## Context` in `story-track.md`. This mode only reads and reports: never
 edit a story, set a status or repair a field here.
 
 ## Gather the rows

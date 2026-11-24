@@ -1478,6 +1478,10 @@ line_is "spec build: it checks the branch with git log and git status" "$BM" \
   '   - `git -C "<path>" log --oneline <start>..HEAD` and `git -C "<path>" status --porcelain`: what'
 line_is "spec build: and whether a check the agent started still runs" "$BM" \
   '   - Whether a check it started still runs, such as its tests or a `validation run`: look for its'
+line_is "spec build: a process counts only under the repo's path" "$BM" \
+  '     process with `ps`. Count only a process whose working directory or command line is under'
+line_is "spec build: since another build may run its tests in another worktree" "$BM" \
+  "     \`<path>\`: another build${q}s tests may run in another worktree."
 line_is "spec build: work that still runs is waited for" "$BM" \
   '2. Its check still runs: the work is real. Wait for its next reply.'
 line_is "spec build: nothing running gets one message" "$BM" \
@@ -1510,16 +1514,28 @@ line_is "spec build: the note holds each open order with its date and the owner'
   "- Under \`## Open orders\`, the note holds each open order: its date, its story, the owner${q}s words"
 line_is "spec build: and what works on it now" "$BM" \
   '  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a'
-line_is "spec build: then the orders done and a last-check line" "$BM" \
-  '- Under `## Done`, each order done, with what finished it. Last, a `Last check:` line: the time'
+line_is "spec build: then the orders done and a last-check line per story" "$BM" \
+  '- Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per'
+line_is "spec build: another build of the project may share the note" "$BM" \
+  '- Another build of the project may keep its orders in the same note. Your own are the orders of'
+line_is "spec build: once the note is there, it is only edited" "$BM" \
+  '   - Once the note is there, change it only with the Edit tool, never a whole rewrite, so that you'
+line_is "spec build: so no session overwrites another's orders" "$BM" \
+  "     never overwrite another session${q}s orders."
 line_is "spec build: the hub links to the note" "$BM" \
   "     \`- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner${q}s open orders.\`"
-line_is "spec build: no order open removes the hub's line, then the note" "$BM" \
-  "4. No order open: remove the hub${q}s line, then the note:"
-line_is "spec build: and stops the check" "$BM" '   - Then stop the check every 10 minutes, as its item 6 says.'
+line_is "spec build: no order of the story open stops its check" "$BM" \
+  '4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.'
+line_is "spec build: another story's open order keeps the note" "$BM" \
+  '   - An order of another story still open: leave the note and its hub line.'
+line_is "spec build: no order of any story open removes the hub's line, then the note" "$BM" \
+  "   - No order of any story open: remove the hub${q}s line, then the note:"
+line_is "spec build: removing its own note is no destructive action" "$BM" \
+  '     it is no destructive action of `## 8`.'
+file_has "spec build: it is the lead's own note" "$BM" '`rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing'
 for l in '## Open orders' '## Done' '> Up: [[<project path>/claude/README|<project> Claude Hub]]' \
   "- <YYYY-MM-DD> <ID>: \"<the owner${q}s words, as written>\"" \
-  'Last check: <YYYY-MM-DD HH:MM> - <what it found>.'; do
+  'Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.'; do
   is "spec build: the note's shape has $l" \
     "$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM" | grep -cxF -- "$l")" "1"
 done
@@ -1528,20 +1544,35 @@ line_is "spec build: the start writes the order and starts the check" "$BM" \
 is "spec build: right after the build's started or resumed note" \
   "$(($(lineno "$BM" 'Build: resumed on <branch> at <short hash>.') < $(lineno "$BM" '7. Write the order that ran the build in the orders note') && \
   $(lineno "$BM" '7. Write the order that ran the build in the orders note') < $(linex "$BM" '## 3. Launching an agent')))" "1"
-line_is "spec build: the check runs every 10 minutes while an order is open" "$BM" \
-  'While an order is open, check on it every 10 minutes. An agent can go idle with no report and no'
-line_is "spec build: CronCreate schedules it" "$BM" \
-  '   - In Claude Code, create it with `CronCreate`: `cron: "*/10 * * * *"`, `recurring: true`, and'
-line_is "spec build: in this session alone" "$BM" '   - It is session-only: never pass `durable: true`. Keep the job id it returns.'
+line_is "spec build: the check runs every 10 minutes while an order of the story is open" "$BM" \
+  'While an order of `<ID>` is open, check on it every 10 minutes. An agent can go idle with no'
+line_is "spec build: CronList first keeps a job with the same prompt" "$BM" \
+  '   - In Claude Code, run `CronList` first. A job that already has the prompt below is the check:'
+line_is "spec build: CronCreate schedules it off the hour and the half hour" "$BM" \
+  '   - Else create it with `CronCreate`: `cron: "7,17,27,37,47,57 * * * *"`, `recurring: true`, and'
+file_lacks "spec build: no job on the hour or the half hour" "$BM" '*/10 * * * *'
+line_is "spec build: the prompt names build.md of the spec skill" "$BM" \
+  '     `Check on the open orders of <ID>, as the check every 10 minutes in build.md of the spec skill says.`'
+line_is "spec build: in this session alone" "$BM" \
+  '   - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or'
+line_is "spec build: a missing note is written again, not a stop" "$BM" \
+  '   - The note is missing while an order of `<ID>` is open: write it again with your open orders,'
+file_has "spec build: and the check goes on" "$BM" 'says, and go on. Never stop the check for it.'
+line_is "spec build: the check goes on only when the owner has not interrupted or said to hold" "$BM" \
+  '   - No one works toward it, and the owner has not since interrupted you or told you to hold: go'
+line_is "spec build: otherwise it waits for the owner" "$BM" \
+  '     on with its next step now. Otherwise wait for the owner, and say so.'
+file_lacks "spec build: no longer goes on whatever the owner said" "$BM" '   - No one works toward it: go on with its next step now.'
 line_is "spec build: with no scheduling tool it checks on each notice" "$BM" \
   '   - No scheduling tool: check on each notice that comes to you instead, from an agent or from a'
 line_is "spec build: the check asks of each order who works toward it" "$BM" \
   '2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent'
-line_is "spec build: the check writes the last-check line" "$BM" '4. Write the `Last check:` line: the time, and what the check found.'
+line_is "spec build: the check edits its story's last-check line" "$BM" \
+  '4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.'
 line_is "spec build: the check takes no outside action" "$BM" \
   '5. The check never pushes, merges or takes another outside action.'
-line_is "spec build: CronDelete stops it with the note" "$BM" \
-  '6. Stop it once the orders note is removed. In Claude Code, run `CronDelete` with the job id.'
+line_is "spec build: CronDelete stops it once no order of the story is open" "$BM" \
+  '6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.'
 file_has "spec build: the finish closes the build's orders" "$BM" \
   "   - Once \`finish.md\` is done, so are the build${q}s orders: take them to \`## Done\`, as"
 is "spec build: after finish.md" \
@@ -1560,7 +1591,18 @@ file_has "contract: a repeated reply is no new event" "$CT" \
 file_has "contract: the owner's open orders" "$CT" \
   "- **The owner${q}s open orders.** The skill keeps the owner${q}s open orders of a build in"
 file_has "contract: the check every 10 minutes" "$CT" \
-  '- **The check every 10 minutes.** While an order is open, the skill checks every 10 minutes on the'
+  '- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10'
+file_has "contract: builds of one project only edit the shared note" "$CT" \
+  '  note, so once it is there the skill changes it only with edits, never a whole rewrite.'
+file_has "contract: the check stops with its story, the note with every story" "$CT" \
+  '- Once no order of its story is open, the skill stops its check. Once no order of any story is'
+file_has "contract: the check holds when the owner interrupts or says to hold" "$CT" \
+  '- The check goes on with an order no one works toward only when the owner has not since'
+file_has "contract: a process counts only under the repo's path" "$CT" \
+  '- A process counts as the agent'"${q}"'s check only when its working directory or command line is under'
+line_is "contract: the building and in-review line names the skill" "$CT" \
+  '- The skill sets a task `building` before each `implementer` launch or fix message, and'
+file_lacks "contract: no bare It after the check's bullets" "$CT" '- It sets a task `building`'
 file_has "contract: the check takes no outside action" "$CT" '- The check never pushes, merges or takes another outside action.'
 cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
 cg_end="$(lineno "$CG" '## 0.10.0 - ')"

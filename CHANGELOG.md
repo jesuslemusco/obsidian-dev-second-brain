@@ -10,11 +10,14 @@
   twice, changes no state and gets no reply.
 - The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,
   linked from the project's `claude/README.md`: each order with its date and your words, what
-  works on it now, the orders done, and the last check. It removes the note and its hub line once
-  no order is open.
+  works on it now, the orders done, and the last check of each story. Builds of one project
+  share the note and only edit it. It is removed with its hub line once no order of any story is
+  open.
 - While an order is open, the skill checks every 10 minutes on the agents, the branch and the
-  running checks against your orders. In Claude Code it is a session-only `CronCreate` job. The
-  check never pushes, merges or takes another outside action.
+  running checks against your orders. In Claude Code it is a session-only `CronCreate` job, off
+  the hour and the half hour. It stops once no order of its story is open. It never takes the
+  build back after you interrupt it or tell it to hold. The check never pushes, merges or takes
+  another outside action.
 
 ## 0.10.0 - 2026-11-22
 

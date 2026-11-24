@@ -124,7 +124,8 @@ Before you take the reply of an agent idle with no report as final:
    - `git -C "<path>" log --oneline <start>..HEAD` and `git -C "<path>" status --porcelain`: what
      it committed, and what it left uncommitted.
    - Whether a check it started still runs, such as its tests or a `validation run`: look for its
-     process with `ps`.
+     process with `ps`. Count only a process whose working directory or command line is under
+     `<path>`: another build's tests may run in another worktree.
 2. Its check still runs: the work is real. Wait for its next reply.
 3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id
    when it has none:
@@ -147,24 +148,28 @@ session, what is still owed.
 - Under `## Open orders`, the note holds each open order: its date, its story, the owner's words
   as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a
   check that runs.
-- Under `## Done`, each order done, with what finished it. Last, a `Last check:` line: the time
-  of the newest check, and what it found.
-- An order of another story is another session's: leave it as it is.
+- Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per
+  story: the time of its newest check, and what it found.
+- Another build of the project may keep its orders in the same note. Your own are the orders of
+  `<ID>`. An order of another story is another session's: leave it as it is.
 
-1. When the build starts or resumes, write the order that ran it, unless the note holds it
-   already.
+1. When the build starts or resumes, add the order that ran it, unless the note holds it already.
    - No note yet: write it with the Write tool, as below. Then add its line to the project's
      Claude hub, `<project path>/claude/README.md`, in the list at its top, after the profile's
-     line:
+     line, unless the hub has it already:
      `- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner's open orders.`
+   - Once the note is there, change it only with the Edit tool, never a whole rewrite, so that you
+     never overwrite another session's orders.
 2. A new order: add it under `## Open orders`. Keep each `Now:` line true as the work moves on.
 3. An order done: take it to `## Done`, with what finished it.
    - The build's orders are done when `finish.md` is done.
    - The owner stops the build at a stop: its orders are done too, stopped by the owner.
-4. No order open: remove the hub's line, then the note:
-   `rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`.
+4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.
+   - An order of another story still open: leave the note and its hub line.
+   - No order of any story open: remove the hub's line, then the note:
+     `rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing
+     it is no destructive action of `## 8`.
    - `second-brain unresolved "<project>"` must then list no link to the note.
-   - Then stop the check every 10 minutes, as its item 6 says.
 
 The note, with each `<...>` filled:
 
@@ -190,34 +195,41 @@ tags:
 
 - <YYYY-MM-DD> <ID>: "<the owner's words, as written>" - <what finished it>.
 
-Last check: <YYYY-MM-DD HH:MM> - <what it found>.
+Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.
 ```
 
 ### The check every 10 minutes
 
-While an order is open, check on it every 10 minutes. An agent can go idle with no report and no
-notice that wakes you.
+While an order of `<ID>` is open, check on it every 10 minutes. An agent can go idle with no
+report and no notice that wakes you.
 
 1. Start it when the build starts or resumes, as item 7 of `## 2. Ready to build` says. Keep one
    check at a time.
-   - In Claude Code, create it with `CronCreate`: `cron: "*/10 * * * *"`, `recurring: true`, and
-     the prompt `Check on the open orders of <ID>, as the check every 10 minutes in build.md says.`
-   - It is session-only: never pass `durable: true`. Keep the job id it returns.
+   - In Claude Code, run `CronList` first. A job that already has the prompt below is the check:
+     keep it, and start none.
+   - Else create it with `CronCreate`: `cron: "7,17,27,37,47,57 * * * *"`, `recurring: true`, and
+     the prompt
+     `Check on the open orders of <ID>, as the check every 10 minutes in build.md of the spec skill says.`
+   - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or
+     `CronList`.
    - No scheduling tool: check on each notice that comes to you instead, from an agent or from a
      run in the background.
 2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent
    working toward it? Look at the agent at work, the branch and the running checks, as item 1 of
    `### An agent with no report` says.
+   - The note is missing while an order of `<ID>` is open: write it again with your open orders,
+     as item 1 of `### The owner's open orders` says, and go on. Never stop the check for it.
 3. Then, for each order:
    - Done: take it to `## Done`, as `### The owner's open orders` says.
    - A report you have not taken yet: take it now, as the step that launched its agent says.
    - An agent idle with no report: take it as `### An agent with no report` says.
    - An agent at work, a check that still runs, or a question to the owner: wait.
-   - No one works toward it: go on with its next step now. A step item 5 rules out waits for the
-     owner: say so.
-4. Write the `Last check:` line: the time, and what the check found.
+   - No one works toward it, and the owner has not since interrupted you or told you to hold: go
+     on with its next step now. Otherwise wait for the owner, and say so.
+   - A next step that item 5 rules out waits for the owner too: say so.
+4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.
 5. The check never pushes, merges or takes another outside action.
-6. Stop it once the orders note is removed. In Claude Code, run `CronDelete` with the job id.
+6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.
 
 ### Reading a verdict
 

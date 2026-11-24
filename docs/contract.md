@@ -1036,17 +1036,25 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - **The owner's open orders.** The skill keeps the owner's open orders of a build in
   `<project>/claude/lead-agent-task-memory.md`, linked from the project's `claude/README.md`.
 - The note holds each open order, with its date, its story, the owner's words and what works on
-  it now. Then the orders done, and a line on the last check.
-- The skill writes the note when a build starts or resumes. Once no order is open, it removes the
-  hub's line, then the note.
-- **The check every 10 minutes.** While an order is open, the skill checks every 10 minutes on the
-  agents, the branch and the running checks against the orders. Of each order it asks whether it
-  or an agent works toward it.
-- In Claude Code a session-only `CronCreate` job runs the check, and `CronDelete` ends it with the
-  note. With no scheduling tool, the skill checks on each notice that comes to it.
+  it now. Then the orders done, and one line per story on its last check.
+- The skill adds its order when a build starts or resumes. Two builds of the project share the
+  note, so once it is there the skill changes it only with edits, never a whole rewrite.
+- A note missing while an order of the story is open is written again.
+- Once no order of its story is open, the skill stops its check. Once no order of any story is
+  open, it removes the hub's line, then the note. Removing its own note is no destructive action.
+- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10
+  minutes on the agents, the branch and the running checks against the orders. Of each order it
+  asks whether it or an agent works toward it.
+- In Claude Code a session-only `CronCreate` job runs the check, off the hour and the half hour,
+  and `CronDelete` ends it. The skill keeps a job `CronList` shows with the same prompt. With no
+  scheduling tool, the skill checks on each notice that comes to it.
+- A process counts as the agent's check only when its working directory or command line is under
+  the repo's path.
+- The check goes on with an order no one works toward only when the owner has not since
+  interrupted the skill or told it to hold. Otherwise it waits for the owner and says so.
 - The check never pushes, merges or takes another outside action.
-- It sets a task `building` before each `implementer` launch or fix message, and `in-review`
-  before each `reviewer` launch on it. It sets each result as the agent reports it.
+- The skill sets a task `building` before each `implementer` launch or fix message, and
+  `in-review` before each `reviewer` launch on it. It sets each result as the agent reports it.
 - It shows the owner `spec status <ID>` after each task's review, when the build stops or
   finishes, and when a session resumes a build.
 - A build resumes in a new session from `build.json`. A task cut off while `building` takes a

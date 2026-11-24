@@ -2,6 +2,9 @@
 
 ## 0.12.0 - unreleased
 
+- `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
+  and wait for one that outlasts it: no agent replies while a check it started still runs.
+
 ## 0.11.0 - 2026-11-23
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile

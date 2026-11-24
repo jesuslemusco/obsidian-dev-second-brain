@@ -1109,10 +1109,39 @@ file_has "spec build: keeps track of the build" "$BM" "You keep track of the bui
 file_has "spec build: a release check runs only when the owner asks" "$BM" '- Run a `release` check only when the owner asks:'
 file_has "spec build: the build-wide run runs in the background" "$BM" \
   '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice. A run can'
-file_has "reviewer: runs validation run in the background" "$here/agents/reviewer.md" \
-  '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice before you go'
-file_has "contract: validation run runs in the background, and implementer's tests too" "$here/docs/contract.md" \
-  '- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and'
+file_has "contract: the skill runs validation run in the background" "$here/docs/contract.md" \
+  '- The skill runs `validation run` with the Bash tool'"'"'s `run_in_background` and waits for its'
+file_has "contract: implementer and reviewer run each check in the foreground" "$here/docs/contract.md" \
+  '- `implementer` and `reviewer` run each check in the foreground, with the Bash tool'"'"'s longest'
+file_has "contract: a check ends with its exit line" "$here/docs/contract.md" \
+  '- Each check'"'"'s command ends with `; echo "exit: $?"`. A check that outlasts the timeout, or runs'
+file_has "contract: the agent waits for a check moved to the background" "$here/docs/contract.md" \
+  '- The agent waits for it in the foreground, in calls under the timeout, until its output file'
+file_has "contract: no agent replies while a check it started runs" "$here/docs/contract.md" \
+  '- No agent replies while a check it started still runs: once it replies, the notice may never'
+file_has "contract: fix rounds 1 to 3 still resume the same implementer" "$here/docs/contract.md" \
+  '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
+file_has "changelog: build agents run each check in the foreground" "$here/CHANGELOG.md" \
+  '- `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,'
+# Each build agent runs each check in the foreground, and never replies while one it started runs.
+for ag in implementer reviewer; do
+  AF="$here/agents/$ag.md"
+  file_lacks "$ag: runs no check in the background" "$AF" 'run_in_background: true'
+  file_has "$ag: runs each check in the foreground, with the longest timeout" "$AF" \
+    '`timeout: 600000`, 10 minutes. Never with `run_in_background`.'
+  line_is "$ag: ends each check's command with its exit line" "$AF" \
+    '- End each check'"'"'s command with `; echo "exit: $?"`, so that its output shows when it ended.'
+  file_has "$ag: a check moved to the background still runs" "$AF" \
+    '- A check that outlasts the timeout moves to the background and still runs. A message that'
+  file_has "$ag: waits for it in the foreground" "$AF" \
+    '`for i in $(seq 55); do grep -q '"'"'^exit: '"'"' "<file>" && break; sleep 10; done`. Run that'
+  file_has "$ag: a check with no exit line is no pass" "$AF" \
+    '- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One'
+  file_has "$ag: never replies while a check it started runs" "$AF" \
+    '- Never reply while a check you started still runs. Once you reply, its notice may never reach'
+done
+file_has "reviewer: a server a step needs is no check" "$here/agents/reviewer.md" \
+  '- A server a step needs is no check: start it as `### Set up and start` says.'
 IM="$here/agents/implementer.md"
 file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
 line_is "implementer: replies with its commit first" "$IM" '1. `Commit: <short hash>`.'
@@ -1140,8 +1169,8 @@ file_has "implementer: runs every check the packet names" "$IM" \
   "Before you commit, run every check under the packet's \`## Checks\`."
 file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
-file_has "implementer: runs its tests and checks in the background" "$IM" \
-  '- Run each test and check with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice'
+file_has "implementer: runs each test and check in the foreground" "$IM" \
+  '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
 line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
   '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \
@@ -2060,7 +2089,9 @@ done
 file_has "changelog: the owner can stop the build or drop an order" "$CG" \
   'You can stop the build or drop an order at any time: it is then closed.'
 lc_files="$(cd "$here" && find skills agents docs templates hooks README.md CHANGELOG.md -type f | sort)"
-lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null)"
+# A line that names a timeout, such as the Bash tool's 10 minutes for a check, names no pace.
+lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null \
+  | grep -v 'timeout')"
 is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
 lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
 is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \

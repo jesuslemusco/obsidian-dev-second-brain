@@ -61,8 +61,18 @@ for the files it names, and the repo's `each task` checks, which are quick and r
 - `- each task:` lines: run them all at once with
   `second-brain validation run "<project>" <repo> --when each-task`, with the packet's `repo`.
   Each row it prints is one result.
-- Run each test and check with the Bash tool's `run_in_background: true`, and wait for its notice
-  before you go on. A suite can take longer than a Bash call's timeout of 2 minutes.
+- Run each test and check in the foreground, with the Bash tool's longest timeout:
+  `timeout: 600000`, 10 minutes. Never with `run_in_background`.
+- End each check's command with `; echo "exit: $?"`, so that its output shows when it ended.
+- A check that outlasts the timeout moves to the background and still runs. A message that
+  reaches you while it runs moves it there too. The call's result names its output file.
+- Wait for it in the foreground, with the same timeout:
+  `for i in $(seq 55); do grep -q '^exit: ' "<file>" && break; sleep 10; done`. Run that
+  again until the file holds the `exit:` line, then read the file for the result.
+- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One
+  stopped before that line, such as at a time limit, failed.
+- Never reply while a check you started still runs. Once you reply, its notice may never reach
+  you.
 - A check fails: fix the cause in your change, then run it again. Never change a test or a check
   only so that it passes.
 - A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,

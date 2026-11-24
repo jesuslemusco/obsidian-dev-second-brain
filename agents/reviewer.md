@@ -36,9 +36,20 @@ Each bullet under `### Checks` and `### Check as a user would` ends with when it
 - Run the checks under `### Checks` only through
   `second-brain validation run "<project>" <repo> --when <when>`. It runs each matching command
   and prints a row per command. A `fail` row is a finding, with the lines under it.
-- Run it with the Bash tool's `run_in_background: true`, and wait for its notice before you go
-  on. A run can take longer than a Bash call's timeout, and a helper that a timeout kills leaves
-  its check running.
+- Run each check in the foreground, with the Bash tool's longest timeout:
+  `timeout: 600000`, 10 minutes. Never with `run_in_background`.
+- A step you run with Bash is a check here too.
+- End each check's command with `; echo "exit: $?"`, so that its output shows when it ended.
+- A check that outlasts the timeout moves to the background and still runs. A message that
+  reaches you while it runs moves it there too. The call's result names its output file.
+- Wait for it in the foreground, with the same timeout:
+  `for i in $(seq 55); do grep -q '^exit: ' "<file>" && break; sleep 10; done`. Run that
+  again until the file holds the `exit:` line, then read the file for the result.
+- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One
+  stopped before that line, such as at a time limit, failed.
+- Never reply while a check you started still runs. Once you reply, its notice may never reach
+  you.
+- A server a step needs is no check: start it as `### Set up and start` says.
 - Run a user step only when your mode takes its `when:`.
 - Never run a `release` check or step: only the owner asks for one.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.0 - unreleased
+## 0.11.0 - 2026-11-23
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile
   puts a task in a sprint at `<tasks_root>/<sprint folder>/<ID>/README.md`, and a task in no

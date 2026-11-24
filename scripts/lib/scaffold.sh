@@ -21,7 +21,7 @@ sb_scaffold_validation() {
   local name="$2" rel file r home rest text
   rel="$1/claude/validation.md"
   file="$SB_ROOT/$rel"
-  [ "$(sb_spec_value validation_home "$SB_P_PROFILE")" = "vault" ] || return 0
+  [ "$(sb_val_home "$SB_P_PROFILE")" = "vault" ] || return 0
   if [ -e "$file" ]; then
     printf 'exists: %s\n' "$rel" >&2
     return 0
@@ -284,7 +284,7 @@ sb_scaffold_project() {
   sb_scaffold_file project-readme.md.tmpl "$path/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
     "TASKS_HUB_LINE=$line_tasks" "TOPICS_HUB_LINE=$line_topics" "SPRINTS_HUB_LINE=$line_sprints"
   line_validation=""
-  if [ "$(sb_spec_value validation_home "$profile")" = "vault" ]; then
+  if [ "$(sb_val_home "$profile")" = "vault" ]; then
     line_validation="- Validation: [[$path/claude/validation|$name Validation]] - how to run and check
   each repo. Agents read a repo's section before they build or review a change."
   fi

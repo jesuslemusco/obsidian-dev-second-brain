@@ -106,4 +106,4 @@ as `planned`. Work on it has not started, so step 6 waits until it does.
    `second-brain task note EX-123 "Planned: the owner approved this text." --session <session id from SKILL.md>`.
    - Work on it has started: then
      `second-brain task note EX-123 "<where the story stands>" --session <session id from SKILL.md>`.
-6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.
+6. Offer the build, as `## Building a story` in `SKILL.md` says.

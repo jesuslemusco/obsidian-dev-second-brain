@@ -41,17 +41,17 @@
 - `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
   and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
   while a check it started still runs.
-- `reviewer` grades code quality on a failing task too, so that one fix round answers every
+- `reviewer` grades code quality on a failing story too, so that one fix round answers every
   defect. A re-review still grades the quality of the fix's commits alone.
 - The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
 - `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in
   `agents/reviewer.md` says. A name that misleads, code repeated where it could be shared, or code
   against the conventions around it is a follow-up. It stays a defect when a check fails on it, a
-  user would hit it, it makes a doc wrong, or a requirement, a design decision or a rule written
-  in the repo names it. Every other finding is a defect.
-- Only a defect fails a task, counts in the verdict's `issues` and goes to the fix loop. A
-  follow-up is a `Follow-up: <task>:` status note on the story. When the build finishes or stops,
-  it lists each one so far for the owner, who can have one fixed then.
+  user would hit it, it makes a doc wrong, or the story's criteria or Approach, or a rule written
+  in the repo, names it. Every other finding is a defect.
+- Only a defect fails a story, counts in the verdict's `issues` and goes to the fix loop. A
+  follow-up is a `Follow-up:` status note on the story. When the build finishes or stops, it lists
+  each one so far for the owner, who can have one fixed then.
 - Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a
   file or a branch state can test, such as `git merge-base --is-ancestor <branch> release/<version>`
   exiting 0. The lead writes it from the owner's words when it takes the order, and asks the owner
@@ -80,12 +80,37 @@
   with an empty merge base in `diff3` style, keeps both. Any other conflict is shown, and the
   merge aborted. The repo's checks run on the merged tree unless it is the one the review read,
   and a push runs only on the owner's word. The story's worktree is removed after the merge.
-- `implementer` and `reviewer` have a story mode, beside the spec task mode. Before it commits,
-  the implementer checks its whole change against the story's criteria and the reviewer's
-  `## Defects and follow-ups`.
+- `implementer` and `reviewer` build and review a whole story in its git worktree, in story mode.
+  Before it commits, the implementer checks its whole change against the story's criteria and the
+  reviewer's `## Defects and follow-ups` and `## Code quality`.
 - `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
   that stands in for the repo's, such as a git worktree of it. The checks run there, and a
   `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.
+- The spec flow is retired, so there is one flow to learn: the `build` skill builds every approved
+  story from its README. The spec skill and its checker agent are gone, and so are the helper's
+  spec commands, the three spec templates and `build.json`. `second-brain help` lists no spec
+  command.
+- `implementer` and `reviewer` keep their story mode and the baseline, and lose the task mode,
+  its bundles, and the user and branch reviews that only a spec build ran.
+- The `delivery` and `spec_home` keys are gone from the profile, the subproject note and the task.
+  story-tracker weighs no story: when work starts on one, it offers `/odsb:build`.
+  `second-brain subproject` prints no `delivery` or `spec_home` line, and `task set` no longer
+  checks a `delivery` value.
+- The doctor's `delivery` check is now `settings`: it names a `validation_home` or a
+  `lead_check_minutes` that is not allowed, and reads no `delivery` or `spec_home` key. The
+  `spec-trace` check is gone.
+- The validation commands live in `scripts/lib/validation.sh`, and `second-brain help` lists them
+  under `checks:`. They work as before.
+- The conventions note is at version 11: it names no `spec` note type and no `delivery` key. The
+  doctor's `conventions` check warns about an older note.
+- A vault with specs moves on as it is. A story's `spec/` folder and `build.json` stay in its task
+  folder as plain notes: nothing reads them, a move takes them with the task, and no doctor check
+  is about them. A spec kept in a repo stays there until you delete it.
+- To build a story you started from a spec, bring what its spec settled into the README's
+  criteria through `/odsb:scrum-master refinement`, approve the text, then run `/odsb:build <ID>`.
+  Remove a `delivery` or `spec_home` key when you like: nothing reads it.
+- A note, a skill or a settings rule of your own that names the spec skill: point it at the build
+  skill.
 
 ## 0.11.0 - 2026-11-23
 

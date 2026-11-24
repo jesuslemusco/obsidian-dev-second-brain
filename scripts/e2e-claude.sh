@@ -155,8 +155,8 @@ ask "$tmp/board.jsonl" "Organize the board of the Example project."
 trigger "trigger: a request to organize the board loads scrum-master" "$tmp/board.jsonl" scrum-master
 ask "$tmp/health.jsonl" "Check my vault for problems."
 trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
-ask "$tmp/spec.jsonl" "Implement EX-2 spec-driven, starting with its requirements."
-trigger "trigger: a spec-driven request loads spec" "$tmp/spec.jsonl" spec
+ask "$tmp/build.jsonl" "Build the approved stories of EX-1."
+trigger "trigger: a request to build approved stories loads build" "$tmp/build.jsonl" build
 
 printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
 # With no persona, section 1 of create.md asks for one, and a headless run cannot answer.

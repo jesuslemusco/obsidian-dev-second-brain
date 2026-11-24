@@ -34,10 +34,7 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task dep <ID> add|remove <ID> | task archive <ID>   (a done task, once)
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
-specs:    spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)
-          spec tick <ID> <task> | spec packet <ID> <task> | spec link <ID>
-          spec status <ID> [<task> <state> [--commit H]] | spec issue <ID> <task> "<issue>" --fix "<fix>"
-          validation <project> [repo] [--path DIR] | validation new <project> <repo>
+checks:   validation <project> [repo] [--path DIR] | validation new <project> <repo>
           validation run <project> <repo> [--when each-task|each-build|release] [--timeout S] [--path DIR]
               (DIR stands in for the repo's folder, such as a git worktree)
 sprints:  sprint current <project> | sprint next <project>
@@ -53,7 +50,7 @@ setup:    scaffold vault [DIR]
           link move <skill|agent> <name> [--project P]   (a foreign one into the vault)
           link drop-original <skill|agent> <name> <path>   (the original of a copy)
           snapshot [name] | compare [name] | session-check
-json:     task head, spec tasks, spec status <ID>, validation <project> [repo] and validation run take --json
+json:     task head, validation <project> [repo] and validation run take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
             6 already exists
 EOF
@@ -94,21 +91,6 @@ sb_today() {
     printf '%s\n' "$SECOND_BRAIN_TODAY"
   else
     date +%Y-%m-%d
-  fi
-}
-
-# Print the time build.json records, as YYYY-MM-DDTHH:MM:SS+HH:MM. SECOND_BRAIN_NOW overrides it;
-# with SECOND_BRAIN_TODAY alone it is that day at midnight.
-sb_now() {
-  local t z
-  if [ -n "${SECOND_BRAIN_NOW:-}" ]; then
-    printf '%s\n' "$SECOND_BRAIN_NOW"
-  elif [ -n "${SECOND_BRAIN_TODAY:-}" ]; then
-    printf '%sT00:00:00+00:00\n' "$SECOND_BRAIN_TODAY"
-  else
-    t="$(date +%Y-%m-%dT%H:%M:%S%z)"
-    z="${t#"${t%?????}"}"
-    printf '%s%s:%s\n' "${t%?????}" "${z%??}" "${z#???}"
   fi
 }
 

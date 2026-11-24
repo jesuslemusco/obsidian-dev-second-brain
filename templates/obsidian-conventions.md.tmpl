@@ -2,7 +2,7 @@
 aliases:
   - Obsidian Conventions
 type: onboarding
-conventions_version: 10
+conventions_version: 11
 tags:
   - type/onboarding
 ---
@@ -62,9 +62,8 @@ tags:
 
 - **`type`** and the `type/<type>` tag - one of `task`, `bug`, `investigation`, `architecture`,
   `runbook`, `validation`, `tool`, `ops`, `onboarding`, `data-source`, `data-output`, `sprint`,
-  `profile`, `subproject`, `spec`, `moc`. A project may add its own.
-- `moc` is for hubs. `spec` is a story's `requirements.md`, `design.md` or `tasks.md`, in `spec/`
-  in its task folder.
+  `profile`, `subproject`, `moc`. A project may add its own.
+- `moc` is for hubs.
 - The ticket id is the folder name and the first alias, not a property.
 - A task note may also carry:
   - `carried_from` - the sprint ids it was carried over from.
@@ -72,8 +71,6 @@ tags:
   - `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
     is named.
   - `archived` - the date `task archive` moved it.
-  - `delivery` - `spec` or `direct`, how the story is built, set when work starts on it.
-    `second-brain spec` says which holds and where its spec is.
 
 ## Topic tags
 

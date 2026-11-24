@@ -147,6 +147,8 @@ ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
 trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
 ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
 trigger "trigger: a sprint request loads scrum-master" "$tmp/sprint.jsonl" scrum-master
+ask "$tmp/refine.jsonl" "Refine EX-2 for the Example project: split it into two stories."
+trigger "trigger: a request to refine a story loads scrum-master" "$tmp/refine.jsonl" scrum-master
 ask "$tmp/plan.jsonl" "Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories."
 trigger "trigger: a request to plan a release loads scrum-master" "$tmp/plan.jsonl" scrum-master
 ask "$tmp/board.jsonl" "Organize the board of the Example project."

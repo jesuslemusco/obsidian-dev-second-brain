@@ -105,7 +105,7 @@ is "index: the every-session section says where the vault is" "$(printf '%s\n' "
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
 file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
-file_has "index: the scrum-master plans the sprints and releases" "$vault/CLAUDE.md" "update), \`scrum-master\` plans the sprints and releases, \`vault-setup\` sets up the vault or a"
+file_has "index: the scrum-master refines the stories and plans the sprints and releases" "$vault/CLAUDE.md" "update), \`scrum-master\` refines the stories and plans the sprints and releases, \`vault-setup\`"
 is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \

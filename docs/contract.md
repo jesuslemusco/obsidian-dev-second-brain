@@ -80,6 +80,7 @@ index_version: 6
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
   claude/writing-style.md       optional; the project's own writing style, which wins
+  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a spec build writes (section 9)
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -1022,6 +1023,28 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
   place, with the same name and model. For a task of a bundle, it is given that task alone.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
+- A notice that repeats a reply the skill took already, such as a named agent's last reply sent
+  again in its idle notice, is no new event. It changes no state and gets no reply.
+- **An agent with no report.** An agent can go idle before its report, such as on a reply that
+  says its checks still run. Its report is an `implementer`'s `Commit:` or `BLOCKED:` line, or a
+  `reviewer`'s JSON block.
+- Before the skill takes such a reply as final, it checks the branch, with `git log` and
+  `git status --porcelain`, and whether a check the agent started still runs.
+- A check that still runs is waited for. With none, the skill sends the agent one message to
+  finish its step and report. Its next reply is final.
+- That message holds no view of the result, so a `reviewer` gets it too.
+- **The owner's open orders.** The skill keeps the owner's open orders of a build in
+  `<project>/claude/lead-agent-task-memory.md`, linked from the project's `claude/README.md`.
+- The note holds each open order, with its date, its story, the owner's words and what works on
+  it now. Then the orders done, and a line on the last check.
+- The skill writes the note when a build starts or resumes. Once no order is open, it removes the
+  hub's line, then the note.
+- **The check every 10 minutes.** While an order is open, the skill checks every 10 minutes on the
+  agents, the branch and the running checks against the orders. Of each order it asks whether it
+  or an agent works toward it.
+- In Claude Code a session-only `CronCreate` job runs the check, and `CronDelete` ends it with the
+  note. With no scheduling tool, the skill checks on each notice that comes to it.
+- The check never pushes, merges or takes another outside action.
 - It sets a task `building` before each `implementer` launch or fix message, and `in-review`
   before each `reviewer` launch on it. It sets each result as the agent reports it.
 - It shows the owner `spec status <ID>` after each task's review, when the build stops or

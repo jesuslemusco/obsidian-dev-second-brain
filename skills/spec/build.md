@@ -11,6 +11,8 @@ to you as its result.
 - `<short hash>` is what `git -C "<path>" rev-parse --short HEAD` prints.
 - `<start>` is where the branch starts: the `<short hash>` that item 2 of `## 2. Ready to build`
   notes, before a spec is committed.
+- `<project path>` is the project's path in the vault, the second field that
+  `second-brain project --key <ID>` prints. `<vault>` is the path `second-brain root` prints.
 - Once the build has started, ask the owner only for the stops `## 8. When to ask the owner`
   lists. Decide any other question yourself, as a ruling.
 
@@ -45,11 +47,16 @@ to you as its result.
 5. `second-brain task set <ID> status=in-progress next="The spec skill builds the approved tasks"`.
 6. A new build: `second-brain task note <ID> "Build: started on <branch> at <short hash>."`.
    - A resumed one: `second-brain task note <ID> "Build: resumed on <branch> at <short hash>."`.
+7. Write the order that ran the build in the orders note, as `### The owner's open orders` says.
+   Then start the check every 10 minutes, as `### The check every 10 minutes` says.
 
 ## 3. Launching an agent
 
 - Launch one agent at a time with the Agent tool, and wait for its result. Its result is its
   report: never relay a report by hand, and never read an agent's transcript.
+- A named agent can send its last reply twice: as its message, then again in its idle notice. A
+  notice that repeats a reply you took already is no new event: it changes no state, and gets no
+  reply.
 - Name each launch's model by its role and round:
   - `odsb:implementer`: `model: "opus"`. It builds a task from its packet alone, and takes fix
     rounds 1 to 3.
@@ -97,9 +104,120 @@ to you as its result.
   by its task.
 - `reviewer`'s prompt in branch mode: the same lines with `Mode: branch.`, then `Base: <hash>.`:
   the hash of the newest `Build: started on <branch> at <short hash>.` note.
-- A `reviewer` prompt holds only these lines, and a message to it only the one
+- A `reviewer` prompt holds only these lines, and a message to it only the one that
+  `### An agent with no report` gives, or the one that
   `### Reading a verdict` gives. Never add a view of your own on the result, such as the
   implementer's report, its `Test:` or `Check:` lines, or the verdict you expect.
+
+### An agent with no report
+
+An agent can go idle before its report, such as on a reply that says its checks still run, when
+none runs. Its report is:
+
+- An `implementer`'s: a `Commit:` line, or a first line `BLOCKED:`. A bundle's run gives one per
+  task, up to a stop.
+- A `reviewer`'s: the JSON block of `### Reading a verdict`.
+
+Before you take the reply of an agent idle with no report as final:
+
+1. Check the branch and its checks.
+   - `git -C "<path>" log --oneline <start>..HEAD` and `git -C "<path>" status --porcelain`: what
+     it committed, and what it left uncommitted.
+   - Whether a check it started still runs, such as its tests or a `validation run`: look for its
+     process with `ps`.
+2. Its check still runs: the work is real. Wait for its next reply.
+3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id
+   when it has none:
+   `Nothing you started is still running. Finish your step, then reply with your report.`
+   - Send it once per launch or fix message, never twice.
+   - SendMessage is not there: take its reply as final now.
+4. Its next reply is final, with a report or not, unless its check still runs, as item 2 says.
+   - Take an `implementer`'s as items 3 to 5 of `### Build it` say, or item 2 of `### A bundle`
+     for a bundle's run.
+   - Read a `reviewer`'s verdict from it by `### Reading a verdict`.
+
+### The owner's open orders
+
+Keep the owner's open orders in a note in the vault,
+`<project path>/claude/lead-agent-task-memory.md`. It tells the check every 10 minutes, and a new
+session, what is still owed.
+
+- An order is what the owner asked you to do, in their words: the request that ran the skill, and
+  each later one, such as a `release` check or an answer at a stop that sends the build on.
+- Under `## Open orders`, the note holds each open order: its date, its story, the owner's words
+  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a
+  check that runs.
+- Under `## Done`, each order done, with what finished it. Last, a `Last check:` line: the time
+  of the newest check, and what it found.
+- An order of another story is another session's: leave it as it is.
+
+1. When the build starts or resumes, write the order that ran it, unless the note holds it
+   already.
+   - No note yet: write it with the Write tool, as below. Then add its line to the project's
+     Claude hub, `<project path>/claude/README.md`, in the list at its top, after the profile's
+     line:
+     `- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner's open orders.`
+2. A new order: add it under `## Open orders`. Keep each `Now:` line true as the work moves on.
+3. An order done: take it to `## Done`, with what finished it.
+   - The build's orders are done when `finish.md` is done.
+   - The owner stops the build at a stop: its orders are done too, stopped by the owner.
+4. No order open: remove the hub's line, then the note:
+   `rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`.
+   - `second-brain unresolved "<project>"` must then list no link to the note.
+   - Then stop the check every 10 minutes, as its item 6 says.
+
+The note, with each `<...>` filled:
+
+```markdown
+---
+aliases:
+  - "<project> Lead Memory"
+type: ops
+tags:
+  - type/ops
+---
+
+> Up: [[<project path>/claude/README|<project> Claude Hub]]
+
+# <project> lead memory
+
+## Open orders
+
+- <YYYY-MM-DD> <ID>: "<the owner's words, as written>"
+  - Now: <what works on it: you, an agent by its name, or a check that runs>.
+
+## Done
+
+- <YYYY-MM-DD> <ID>: "<the owner's words, as written>" - <what finished it>.
+
+Last check: <YYYY-MM-DD HH:MM> - <what it found>.
+```
+
+### The check every 10 minutes
+
+While an order is open, check on it every 10 minutes. An agent can go idle with no report and no
+notice that wakes you.
+
+1. Start it when the build starts or resumes, as item 7 of `## 2. Ready to build` says. Keep one
+   check at a time.
+   - In Claude Code, create it with `CronCreate`: `cron: "*/10 * * * *"`, `recurring: true`, and
+     the prompt `Check on the open orders of <ID>, as the check every 10 minutes in build.md says.`
+   - It is session-only: never pass `durable: true`. Keep the job id it returns.
+   - No scheduling tool: check on each notice that comes to you instead, from an agent or from a
+     run in the background.
+2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent
+   working toward it? Look at the agent at work, the branch and the running checks, as item 1 of
+   `### An agent with no report` says.
+3. Then, for each order:
+   - Done: take it to `## Done`, as `### The owner's open orders` says.
+   - A report you have not taken yet: take it now, as the step that launched its agent says.
+   - An agent idle with no report: take it as `### An agent with no report` says.
+   - An agent at work, a check that still runs, or a question to the owner: wait.
+   - No one works toward it: go on with its next step now. A step item 5 rules out waits for the
+     owner: say so.
+4. Write the `Last check:` line: the time, and what the check found.
+5. The check never pushes, merges or takes another outside action.
+6. Stop it once the orders note is removed. In Claude Code, run `CronDelete` with the job id.
 
 ### Reading a verdict
 
@@ -125,6 +243,8 @@ verdict from that block alone, never from the words before it.
 4. No good block is no verdict, and never a PASS.
 5. No block, or one that does not parse: ask the reviewer once more with SendMessage,
    `Your reply has no JSON verdict block that parses. Reply with the block alone.`
+   - A `reviewer` idle with no block at all: first take it as `### An agent with no report`
+     says. Ask here only when its final reply has no block that parses either.
 6. A block that parses and is not good, or no good block after item 5: launch one fresh
    `reviewer` in its place, with the same prompt. In a bundle, launch it on the tasks with no good
    block, with the bundle's prompt for those tasks.
@@ -206,6 +326,8 @@ A resumed build finds each task as an earlier session left it. Go on from its st
 3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commit
    first, as item 2 of `### Where the task stands` says. A commit found goes on as that item
    says. None found: item 4.
+   - It is idle with no report: first take it as `### An agent with no report` says. Then read
+     its final reply as this item and item 4 say.
 4. Its reply starts with `BLOCKED:`, or no commit was found: a stop, unless a ruling settles it.
    - A `BLOCKED:` on a question a ruling settles, such as a requirement it reads two ways: rule on
      it as `### A ruling` says, and write no stop note. Then go on from the task's state, as
@@ -274,6 +396,7 @@ not `passed`, in order:
    `blocked` with a ruling. None: item 3.
    1. `second-brain spec status <ID> <task> building` for each of them, in order.
    2. Launch one fresh `implementer` on them, with the bundle's prompt and name.
+      - It is idle with no report: first take it as `### An agent with no report` says.
    3. Its reply holds one report per task, in order, each under a line `Task: <task>`. Take each
       task in order:
       - A report with a `Commit:` line:
@@ -337,6 +460,8 @@ A resumed build with every task passed comes straight here.
    - Then list the rulings of the build, as `### The list of rulings` says.
 7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
    takes it from there.
+   - Once `finish.md` is done, so are the build's orders: take them to `## Done`, as
+     `### The owner's open orders` says.
 
 ## 7. When the build stops
 
@@ -351,6 +476,8 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
    wrote it already. A block writes it before it sets `blocked`, so a new session never takes an
    older ruling for this stop.
 3. Ask the owner with AskUserQuestion what to do.
+   - An answer that sends the build on is an order: add it to the orders note, as
+     `### The owner's open orders` says.
    - A ruling on the task:
      `second-brain task note <ID> "Build: the owner ruled on <task>: <the ruling, as written>."`.
      Then go on from the step that stopped, with its ruling lines in the next prompt for that
@@ -369,7 +496,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
        into the changed phase each one the owner keeps.
      - The owner approves the phases after it again too. Only then does the build go on.
    - The owner stops here: `build.json` keeps where the build stands, and a new session goes on
-     from it.
+     from it. Take the build's orders to `## Done`, as `### The owner's open orders` says.
 
 ## 8. When to ask the owner
 

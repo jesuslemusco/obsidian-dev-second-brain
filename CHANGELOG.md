@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.0 - unreleased
+
+- A spec build agent that goes idle with no report, such as one that says its checks still run,
+  no longer stalls the build. The `spec` skill checks the branch and whether a check the agent
+  started still runs. With none running, it sends the agent one message to finish its step and
+  report, then takes its next reply as final. Work that still runs is waited for.
+- An idle notice that repeats a reply the skill took already, as a named agent's last reply comes
+  twice, changes no state and gets no reply.
+- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,
+  linked from the project's `claude/README.md`: each order with its date and your words, what
+  works on it now, the orders done, and the last check. It removes the note and its hub line once
+  no order is open.
+- While an order is open, the skill checks every 10 minutes on the agents, the branch and the
+  running checks against your orders. In Claude Code it is a session-only `CronCreate` job. The
+  check never pushes, merges or takes another outside action.
+
 ## 0.10.0 - 2026-11-22
 
 - A project can keep each task in the folder of its status: `task_layout: status` in the profile

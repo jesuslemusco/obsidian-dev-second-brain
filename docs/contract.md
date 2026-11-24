@@ -1040,6 +1040,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - The skill adds its order when a build starts or resumes. Two builds of the project share the
   note, so once it is there the skill changes it only with edits, never a whole rewrite.
 - A note missing while an order of the story is open is written again.
+- An order closes when it is done, or when the owner stops the build or drops the order, at a stop
+  or not. The check's own prompt is no order.
 - Once no order of its story is open, the skill stops its check. Once no order of any story is
   open, it removes the hub's line, then the note. Removing its own note is no destructive action.
 - **The check every 10 minutes.** While an order of its story is open, the skill checks every 10
@@ -1051,7 +1053,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A process counts as the agent's check only when its working directory or command line is under
   the repo's path.
 - The check goes on with an order no one works toward only when the owner has not since
-  interrupted the skill or told it to hold. Otherwise it waits for the owner and says so.
+  interrupted the skill or told it to hold. Otherwise it waits for the owner and says so once,
+  not at each check.
 - The check never pushes, merges or takes another outside action.
 - The skill sets a task `building` before each `implementer` launch or fix message, and
   `in-review` before each `reviewer` launch on it. It sets each result as the agent reports it.

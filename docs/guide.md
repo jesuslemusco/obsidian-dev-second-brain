@@ -203,6 +203,11 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `build.json` in the story's folder. A new session goes on from there.
 - Each task's build and review state, commits, issues and times are in `build.json`, never in the
   story's README. The README keeps the story-level notes, such as the build started or stopped.
+- A build writes your open orders to `claude/lead-agent-task-memory.md` in the project's folder of
+  your vault, with a line in the project's `claude/README.md`, and removes both once no order is
+  open. While one is open, it runs a check in your session every 10 minutes, as
+  `### The owner's open orders` and `### The check every 10 minutes` in `skills/spec/build.md`
+  say.
 - When the last task passes, the story moves to `in-review`.
 - Then Claude asks whether to merge the branch into the release branch, open a pull request into
   it, or keep it, as `skills/spec/finish.md` says.

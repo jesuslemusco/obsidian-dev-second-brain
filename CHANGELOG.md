@@ -12,7 +12,7 @@
   linked from the project's `claude/README.md`: each order with its date and your words, what
   works on it now, the orders done, and the last check of each story. Builds of one project
   share the note and only edit it. It is removed with its hub line once no order of any story is
-  open.
+  open. You can stop the build or drop an order at any time: it is then closed.
 - While an order is open, the skill checks every 10 minutes on the agents, the branch and the
   running checks against your orders. In Claude Code it is a session-only `CronCreate` job, off
   the hour and the half hour. It stops once no order of its story is open. It never takes the

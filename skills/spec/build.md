@@ -144,7 +144,8 @@ Keep the owner's open orders in a note in the vault,
 session, what is still owed.
 
 - An order is what the owner asked you to do, in their words: the request that ran the skill, and
-  each later one, such as a `release` check or an answer at a stop that sends the build on.
+  each later one, such as a `release` check or an answer at a stop that sends the build on. The
+  check's own prompt is no order.
 - Under `## Open orders`, the note holds each open order: its date, its story, the owner's words
   as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a
   check that runs.
@@ -163,7 +164,8 @@ session, what is still owed.
 2. A new order: add it under `## Open orders`. Keep each `Now:` line true as the work moves on.
 3. An order done: take it to `## Done`, with what finished it.
    - The build's orders are done when `finish.md` is done.
-   - The owner stops the build at a stop: its orders are done too, stopped by the owner.
+   - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the
+     owner.
 4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.
    - An order of another story still open: leave the note and its hub line.
    - No order of any story open: remove the hub's line, then the note:
@@ -227,6 +229,7 @@ report and no notice that wakes you.
    - No one works toward it, and the owner has not since interrupted you or told you to hold: go
      on with its next step now. Otherwise wait for the owner, and say so.
    - A next step that item 5 rules out waits for the owner too: say so.
+   - Waiting for the owner: say it once, not at each check.
 4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.
 5. The check never pushes, merges or takes another outside action.
 6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.

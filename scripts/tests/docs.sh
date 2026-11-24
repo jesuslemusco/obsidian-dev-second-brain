@@ -1604,6 +1604,32 @@ line_is "contract: the building and in-review line names the skill" "$CT" \
   '- The skill sets a task `building` before each `implementer` launch or fix message, and'
 file_lacks "contract: no bare It after the check's bullets" "$CT" '- It sets a task `building`'
 file_has "contract: the check takes no outside action" "$CT" '- The check never pushes, merges or takes another outside action.'
+line_is "spec build: the check's own prompt is no order" "$BM" "  check${q}s own prompt is no order."
+line_is "spec build: the owner stops the build or drops an order at any time" "$BM" \
+  '   - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the'
+file_lacks "spec build: no longer closes an order only at a stop" "$BM" 'The owner stops the build at a stop'
+line_is "spec build: a wait for the owner is said once" "$BM" '   - Waiting for the owner: say it once, not at each check.'
+is "spec build: and that is in the check" \
+  "$(awk '/^### The check every 10 minutes$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
+file_has "contract: an order closes when the owner stops the build or drops it" "$CT" \
+  '- An order closes when it is done, or when the owner stops the build or drops the order, at a stop'
+file_has "contract: the check's prompt is no order" "$CT" "  or not. The check${q}s own prompt is no order."
+file_has "contract: the check says a wait once" "$CT" 'Otherwise it waits for the owner and says so once,'
+GD="$here/docs/guide.md"
+line_is "guide: a build writes the orders note" "$GD" \
+  "- A build writes your open orders to \`claude/lead-agent-task-memory.md\` in the project${q}s folder of"
+line_is "guide: and a hub line, both removed once no order is open" "$GD" \
+  "  your vault, with a line in the project${q}s \`claude/README.md\`, and removes both once no order is"
+line_is "guide: and runs a check every 10 minutes" "$GD" \
+  '  open. While one is open, it runs a check in your session every 10 minutes, as'
+line_is "guide: pointing to the two build.md headings" "$GD" \
+  "  \`### The owner${q}s open orders\` and \`### The check every 10 minutes\` in \`skills/spec/build.md\`"
+for h in "### The owner${q}s open orders" '### The check every 10 minutes'; do
+  is "guide: the build.md heading $h is under Spec-driven delivery" \
+    "$(awk '/^## Spec-driven delivery$/ { on = 1; next } /^## / { on = 0 } on' "$GD" | grep -cF -- "\`$h\`")" "1"
+done
+file_has "changelog: the owner can stop the build or drop an order" "$CG" \
+  'You can stop the build or drop an order at any time: it is then closed.'
 cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
 cg_end="$(lineno "$CG" '## 0.10.0 - ')"
 for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \

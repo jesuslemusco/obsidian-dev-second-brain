@@ -457,13 +457,13 @@ sb_task_tag() {
   sb_task_topics "$SB_T_FILE"
 }
 
-# Return 0 when a name, lowercased, is archive, backlog or one of the five status folders, and print
-# that folder; such a name is no task id and no alias in any layout, since a file system that
-# ignores letter case would take it for that folder.
+# Return 0 when a name, lowercased, is in SB_TASK_RESERVED: archive, one of the five status folders
+# or backlog, and print that folder; such a name is no task id and no alias in any layout, since a
+# file system that ignores letter case would take it for that folder.
 sb_task_reserved() {
   local name s
   name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  for s in archive backlog $SB_TASK_STATUSES; do
+  for s in $SB_TASK_RESERVED; do
     if [ "$name" = "$s" ]; then
       printf '%s\n' "$s"
       return 0

@@ -139,7 +139,7 @@ tags:
 ```
 
 - `base_branch` is the branch a new story's branch is cut from, as
-  `## Branch check (start, update, recall)` in `skills/story-track/SKILL.md` says.
+  `## Branch check (start, update, recall)` in `skills/story-tracker/SKILL.md` says.
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
 - `parent_label` is the word for the project's parent stories: `feature`, in any letter case, or
@@ -213,8 +213,8 @@ tags:
   task's, then its subproject's, then the profile's.
 - A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`
   skill fall back to.
-- When work starts on a story with no `delivery` of its own, the `story-track` skill weighs it
-  and writes the story's own, as `## Spec-driven stories` in `skills/story-track/SKILL.md` says.
+- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and writes
+  the story's own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.
 - `spec_home` is where a story's spec lives. `vault`: `spec/` next to the task's `README.md`.
   `repo`: `spec/<ID>/` in the story's repo. A subproject's note may set it.
 - The story's repo is the first repo of its subproject, else the project's first repo, in the
@@ -973,7 +973,7 @@ rule: find and read notes with `second-brain find`, `search`, `task head` and `o
   of a word, matched without letter case and printed with the key as the index spells it. It is
   `none` when the branch names none.
 - `story` is there only with a ticket: the vault path of its task README, found by its folder and
-  then by its aliases, with its `status` and `next`; or `none - run story-track start`.
+  then by its aliases, with its `status` and `next`; or `none - run story-tracker start`.
 - The block always ends with the `rule` line, the search and read rule of the index.
 - Anywhere else it prints nothing.
 - Anything that fails while the block is built leaves the block out, and the command still exits
@@ -1092,15 +1092,15 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - `task new` fills the project's `task-readme.md.tmpl`.
 - `spec link` reads the section text of both the project's and the plugin's, so a story made
   before the project had its own template still takes its link alone.
-- The `story-track` skill fills the project's `ticket-description.md.tmpl` for ticket text, as
-  `skills/story-track/SKILL.md` says.
+- story-tracker fills the project's `ticket-description.md.tmpl` for ticket text, as
+  `skills/story-tracker/SKILL.md` says.
 - A project's template takes the placeholders of the plugin's. Any other is left unfilled, so
   `task new` exits 5 and names the template.
 - A project's `task-readme.md.tmpl` opens with frontmatter. When the README filled from it has
   none, as from an empty template, `task new` exits 5, names the template and leaves no README.
 - A project's `task-readme.md.tmpl` keeps the frontmatter keys the helper writes: `aliases`,
   `title`, `status`, `next`, `branch`, `epic` and `type`.
-- It keeps the sections the helper or `story-track` writes under: `## Status notes` and
+- It keeps the sections the helper or story-tracker writes under: `## Status notes` and
   `## Discovery log`.
 - The doctor's `task-template` check warns about a key or a section it lacks.
 
@@ -1128,15 +1128,15 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Agents call skills through the Skill tool as `odsb:<name>`.
 - A skill names a project's parent stories by its `parent_label`: features or epics. The
   frontmatter key it writes stays `epic`.
-- **Two skills keep the work.** `story-track` owns each ticket. `scrum-master` plans the sprints
+- **Two skills keep the work.** `story-tracker` owns each ticket. `scrum-master` plans the sprints
   and releases, and checks the board. Each has its own `description`, as ticket requests come
   often and must pick their skill alone.
 - Each `SKILL.md` is its skill's readme. It holds the context step, the rules each run needs and
   a table that routes each mode or workflow to its file in the same folder. Each file is read only
   when its mode or workflow runs.
 - Neither skill has a daily status.
-- **`story-track`** handles one ticket at a time: draft, start, update, recall, status and
-  environment set. It runs as `/odsb:story-track`. Its files are `create.md`, `status.md` and
+- **`story-tracker`** handles one ticket at a time: draft, start, update, recall, status and
+  environment set. It runs as `/odsb:story-tracker`. Its files are `create.md`, `status.md` and
   `env-split.md`.
 - Its start mode shows a new story's text and writes it only on the owner's approval. A change the
   owner asks for is shown again before it is written.
@@ -1152,12 +1152,13 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   planned-releases note (section 3).
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
-- Each new story of a release's draft has the shape of section 1 of `skills/story-track/create.md`,
-  with at most 4 acceptance criteria, its parent and the tasks it waits on.
+- Each new story of a release's draft has the shape of section 1 of
+  `skills/story-tracker/create.md`, with at most 4 acceptance criteria, its parent and the tasks it
+  waits on.
 - The skill shows the owner the whole draft and writes nothing until the owner approves it.
 - A change the owner asks for is made in the draft and shown again. It is written only once the
   owner approves it.
-- On the approval it creates each new epic, then each story, through the `story-track` skill's
+- On the approval it creates each new epic, then each story, through the `story-tracker` skill's
   start mode, which writes the task note. Then it links each story to the tasks it waits on with
   `task dep`, links the stories in the epic's list, and writes the release into the
   planned-releases note.
@@ -1478,7 +1479,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Until a change is confirmed, its planned doc edits are recorded as pending and not made: under
   `## Docs to update` in the task README when there is a ticket, else as a line starting
   `pending production:` in the profile's debt file.
-- **A ticket marked done starts `docs-keeper`.** When `story-track` sets a story `done` in a
+- **A ticket marked done starts `docs-keeper`.** When `story-tracker` sets a story `done` in a
   project with no environments, or sets its last environment `done`, it starts the `docs-keeper`
   agent with the ticket id and the README path.
 - `docs-keeper` makes the edits under `## Docs to update` and ticks them. With no such section it

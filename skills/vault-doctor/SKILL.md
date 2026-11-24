@@ -49,11 +49,29 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    task folders and rewrites links.
    - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:
      `--fix` moves each task to the folder of its status.
+   - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to
+     the folder of its sprint, or to `backlog/`.
+   - In a sprint project, every `--fix` run also removes each empty group folder, a status folder
+     too, whether or not a move emptied it: each empty folder directly under the tasks root. An
+     empty folder inside one, such as `backlog/<ID>/`, stays. Say so before it runs.
+   - In a status project, every `--fix` run also removes each empty group folder other than the
+     five status folders, whether or not a move emptied it: an empty folder directly under the
+     tasks root, such as an empty `backlog/`, a sprint's folder or a task folder with no README
+     there. An empty status folder stays, and so does an empty folder inside one, such as
+     `planned/<ID>/`. Say so before it runs.
    - Say how many tasks it will archive or move, and name them: each `<ID>:to-archive` or
      `<ID>:<status>` offender.
+   - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.
    - The number is the row's count, less each offender that is not a task it moves:
      `archive:status`, whose task the row counts as `<ID>:<status>` too, and in an archive
      project `<ID>:open`, `archive_after_days:not-a-number` and `<status>:archive`.
+   - In an archive project, a `<folder>:archive` offender, such as `backlog:archive`, is no task
+     either.
+   - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither
+     is a `<folder>:status` offender, whose tasks the row counts as `<ID>:<status>` too.
+   - In a status or sprint project, an `<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`
+     offender is a child it moves into a folder named for its parent: name it with that folder.
+     `<ID>:unknown-<word>` and `parent_label:invalid` are no task it moves.
    - The count is above five: say that the doctor names only the first five, and name those. The
      count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.
    - Then run `second-brain snapshot` before it.
@@ -65,6 +83,9 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      `archive/<YYYY>/`, and nothing else.
    - After a move to the folders of their status, run it too. It lists the aliases of each moved
      task folder as removed at the old path and added under `<status>/`, and nothing else.
+   - After a move to the folders of their sprint, run it too. It lists the aliases of each moved
+     task folder as removed at the old path and added under the sprint's folder or `backlog/`,
+     and nothing else.
    - An `unresolved added:` line, or a `tasks added:`, `tasks removed:` or `tasks changed:` line,
      is a link or a task the move broke. Report it.
 7. A `foreign` row: run `second-brain link --foreign`, which lists every item. Take them one at

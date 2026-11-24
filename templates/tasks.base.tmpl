@@ -15,6 +15,12 @@ filters:
                 - file.inFolder("{{TASKS_PATH}}/in-review")
                 - file.inFolder("{{TASKS_PATH}}/done")
                 - file.inFolder("{{TASKS_PATH}}/abandoned")
+        - and:
+            - file.folder.split("/").length == {{STATUS_DEPTH}}
+            - file.folder.split("/")[{{TASK_DEPTH}}] == aliases[0]
+        - and:
+            - file.folder.split("/").length == {{CHILD_DEPTH}}
+            - file.folder.split("/")[{{STATUS_DEPTH}}] == aliases[0]
 formulas:
   task: file.asLink(aliases[0])
   topics: tags.filter(!value.toString().contains("type/") && !value.toString().contains("status/"))
@@ -36,7 +42,7 @@ properties:
   note.depends_on:
     displayName: Depends on
   note.epic:
-    displayName: Epic
+    displayName: {{PARENT_LABEL}}
   note.subproject:
     displayName: Subproject
   note.branch:

@@ -127,8 +127,50 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - When a sprint closes, each task it abandons moves to `tasks/abandoned/<ID>/`.
 - A status edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
   folder of its status.
-- To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once. It
-  also removes the archive's empty folders.
+- To switch a project that has tasks, set the key, then run `second-brain doctor --fix` once.
+  Every run also removes the archive's empty folders, and each empty folder directly under the
+  tasks root other than the five status folders, such as an empty `backlog/`, a sprint's folder or
+  a task folder with no README there, whether or not a move emptied it. An empty status folder
+  stays, and so does an empty folder inside one, such as `planned/<ID>/`.
+
+### Sprint folders
+
+- `task_layout: sprint` in the profile keeps each task in the folder of its sprint, and a task in
+  no sprint in `tasks/backlog/<ID>/`, as `## 4. A task` in `docs/contract.md` says. It needs a
+  project that runs sprints.
+- A sprint's folder is named by `sprint_folder` in the profile: by default its end date, as in
+  `tasks/2026-10-14/`, or a pattern such as `sprint-<n>`, as `### Profile frontmatter` in
+  `docs/contract.md` says.
+- A new story starts in `tasks/backlog/<ID>/`.
+- When it joins a sprint, `second-brain task set` moves the folder to that sprint's folder, and
+  every link to it follows. When it leaves, the folder goes back to `tasks/backlog/<ID>/`.
+- When a sprint opens, each task it re-points to the new sprint moves to that sprint's folder.
+- When a sprint closes, each carried task moves to the next sprint's folder, and each task sent to
+  the backlog to `tasks/backlog/<ID>/`. Done and abandoned tasks stay where they are.
+- A sprint edited in the board moves nothing: `second-brain doctor --fix` moves each task to the
+  folder of its sprint.
+- To switch a project that has tasks, or to rename the folders with a new `sprint_folder`, set the
+  key, then run `second-brain doctor --fix` once. It also removes each empty group folder, a
+  status folder too, whether or not a move emptied it.
+
+### Feature and epic folders
+
+- A child task is one whose `epic` names another task, its parent. A project calls its parent
+  stories features or epics, as `parent_label` in its profile says.
+- Tell Claude a story belongs to EX-1, and it runs `second-brain task set EX-2 epic=EX-1`.
+- In a status or sprint project, a child sits inside a folder named for its parent, in the folder
+  of its own status or sprint, such as `tasks/backlog/EX-1/EX-2/` or `tasks/done/EX-1/EX-2/`, as
+  `## 4. A task` in `docs/contract.md` says. In a flat or archive project nothing moves.
+- The parent's own note stays where its own status or sprint puts it. A child that joins a sprint
+  moves to `tasks/<sprint folder>/EX-1/EX-2/` while EX-1 stays in `tasks/backlog/EX-1/`.
+- A parent's move takes its own files alone. A parent done or abandoned leaves its open children
+  where they are, and every command still finds them.
+- A child's own move removes the folder named for its parent that it leaves empty.
+- `second-brain doctor --fix` moves a child that is outside its parent's folder. It leaves one
+  whose `epic` names no single task where it is, and the doctor names it.
+- `vault-setup` asks whether a project calls its parent stories features or epics, as
+  `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
+  in a task's frontmatter stays `epic`.
 
 ## Spec-driven delivery
 
@@ -203,6 +245,11 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `build.json` in the story's folder. A new session goes on from there.
 - Each task's build and review state, commits, issues and times are in `build.json`, never in the
   story's README. The README keeps the story-level notes, such as the build started or stopped.
+- A build writes your open orders to `claude/lead-agent-task-memory.md` in the project's folder of
+  your vault, with a line in the project's `claude/README.md`, and removes both once no order is
+  open. While one is open, it runs a check in your session, as often as `lead_check_minutes` in
+  the project's profile says, as `### The owner's open orders` and `### The lead's check` in
+  `skills/spec/build.md` say.
 - When the last task passes, the story moves to `in-review`.
 - Then Claude asks whether to merge the branch into the release branch, open a pull request into
   it, or keep it, as `skills/spec/finish.md` says.

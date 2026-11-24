@@ -16,6 +16,7 @@ The interfaces every part of this plugin agrees on. Change this file first, then
 | project | A folder inside the vault, listed in the index by its vault-relative path. |
 | profile | `<vault>/<project path>/claude/profile.md`, the project's one settings note. |
 | subproject | A part of a project with its own repos, branches and docs folder. It shares the project's ticket keys, tasks and board. |
+| child task | A task whose `epic` names another task of its project, its parent. A project calls its parent stories features or epics, as `parent_label` says. |
 | helper | `bin/second-brain`, on the Bash PATH while the plugin is enabled. |
 | vault path | A path relative to the vault root, with forward slashes on every system. |
 
@@ -48,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 6
+index_version: 7
 ---
 ```
 
@@ -80,6 +81,7 @@ index_version: 6
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
   claude/writing-style.md       optional; the project's own writing style, which wins
+  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a spec build writes (section 9)
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -88,6 +90,11 @@ index_version: 6
   tasks/<TICKET-ID>/spec/       the story's spec, with spec_home: vault
   tasks/archive/<YYYY>/<TICKET-ID>/README.md   a done or abandoned task, with task_layout: archive
   tasks/<status>/<TICKET-ID>/README.md         a task, with task_layout: status
+  tasks/backlog/<TICKET-ID>/README.md          a task in no sprint, with task_layout: sprint
+  tasks/<sprint folder>/<TICKET-ID>/README.md  a task in a sprint, with task_layout: sprint
+  tasks/<status>/<parent>/<TICKET-ID>/README.md   a child task, with task_layout: status
+  tasks/backlog/<parent>/<TICKET-ID>/README.md    a child task in no sprint, with task_layout: sprint
+  tasks/<sprint folder>/<parent>/<TICKET-ID>/README.md   a child task in a sprint
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
@@ -123,6 +130,7 @@ repo_paths: []
 delivery: direct
 spec_home: vault
 validation_home: vault
+lead_check_minutes: 20
 achievements_skill: ""
 tags:
   - type/profile
@@ -133,14 +141,19 @@ tags:
   `## Branch check (start, update, recall)` in `skills/story-tracker/SKILL.md` says.
 - `production_branch` is the branch production runs. Empty means `base_branch`.
 - `persona` is the role a story's description opens with (`*As a* <persona>,`).
+- `parent_label` is the word for the project's parent stories: `feature`, in any letter case, or
+  `epic`. A missing or empty key is `epic`. So is any other value, which the doctor's
+  `task-layout` check names. `scaffold project --parent-label` writes the key.
+- The word changes labels only: the skills, the board's column and the helper's output. A task's
+  frontmatter key stays `epic`.
 - `topics_root: "."` puts the topic folders at the project root.
 - `tasks_root`, `topics_root` and `sprints_root` are folders inside the project, written with
   forward slashes.
 - Every command drops a slash in front of or behind a root: `/tasks` is `tasks`.
 - A root that holds a `..` part or a backslash leaves the project. What the doctor does with one
   is under `### link, doctor, snapshot`.
-- `task_layout` is `flat`, `archive` or `status`, in any letter case. A missing key or another
-  value is `flat`.
+- `task_layout` is `flat`, `archive`, `status` or `sprint`, in any letter case. A missing key or
+  another value is `flat`, and so is `sprint` with `uses_sprints: false`.
 - `flat`: every task stays in `<tasks_root>/<ID>/`.
 - `archive`: a done or abandoned task moves to the archive through `task archive`, as its row
   under `## 7. The helper` says.
@@ -148,8 +161,28 @@ tags:
   when its status changes, as `## 4. A task` says. Nothing is archived.
 - To turn `status` on for a project that has tasks, set the key, then run `doctor --fix` once: it
   moves each task to the folder of its status, as its row under `## 7. The helper` says.
-- Commands find a task directly under the tasks root, in a status folder or in the archive, in
-  every layout.
+- `sprint`: each task sits in the folder of its sprint, `<tasks_root>/<sprint folder>/<ID>/`, or
+  in `<tasks_root>/backlog/<ID>/` with no sprint, and moves when its sprint changes, as
+  `## 4. A task` says. Nothing is archived.
+- `sprint_folder` is the pattern that names a sprint's folder in the sprint layout. A missing or
+  empty key is `"<end>"`, so the folder of sprint `2026-10-14` is `2026-10-14`.
+- In the pattern, `<end>` is the sprint id, `<start>` its first day and `<n>` its number.
+  `"sprint-<n>"` gives `sprint-3` to the third sprint.
+- `<start>` is the `start` key of the sprint's note, or with no note the id less
+  `sprint_length_days` plus one day, as `sprint open` counts it.
+- `<n>` is one more than the count of the project's sprint notes with an earlier id. A sprint
+  with no note shares its number with the next sprint that has one.
+- With a pattern that has none of the three, or gives a sprint no folder name, each command that
+  would move a task there exits 5 naming the pattern, and nothing is written.
+- A folder name is letters, digits, dots, hyphens and underscores, neither a dot nor a hyphen
+  first, and not `archive`, `backlog` or a status, in any letter case.
+- To turn `sprint` on for a project that has tasks, or after a change to `sprint_folder`, set
+  the key, then run `doctor --fix` once: it moves each task to the folder of its sprint, or to
+  `backlog/`, as its row under `## 7. The helper` says.
+- Commands find a task directly under the tasks root, in a status folder, in `backlog` or another
+  group folder, or in the archive, in every layout, as `## 4. A task` says.
+- In `status` and `sprint`, a child task sits inside a folder named for its parent, one folder
+  deeper, as `## 4. A task` says. In `flat` and `archive` a child stays at `<tasks_root>/<ID>/`.
 - `archive_after_days` is a whole number of days, 14 when the key is absent.
 - With `archive`, a done or abandoned task outside the archive is due once that many days have
   passed since its newest date: the date of its newest status note, or its sprint id when that is
@@ -192,6 +225,12 @@ tags:
 - A missing or empty value passes to the next level. At the profile it means the default:
   `direct`, `vault` and `vault`.
 - The first value found decides. One that is not allowed means the default.
+- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on
+  its open orders, as `### The lead's check` in `skills/spec/build.md` says. It is 10, 12, 15,
+  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,
+  or any other value, is 20.
+- `templates/profile.md.tmpl` leaves the key out. The doctor's `delivery` check warns on a value
+  it does not take.
 
 ### Profile sections
 
@@ -298,10 +337,64 @@ there is no ticket yet.
 - There, a status change moves the task's folder with `move`, so every link to it follows:
   `task set` moves it, and `sprint close` moves each task it abandons, as their rows under
   `## 7. The helper` say. A status edited by hand moves nothing until `doctor --fix`.
+- With `task_layout: sprint`, a task in a sprint is
+  `<project>/<tasks_root>/<sprint folder>/<ID>/README.md`, in the folder that `sprint_folder`
+  names for its sprint, and a task in no sprint is `<project>/<tasks_root>/backlog/<ID>/README.md`.
+- There, a sprint change moves the task's folder with `move`: `task set` moves it, `sprint open`
+  moves each task it re-points, and `sprint close` moves each task it carries or sends to the
+  backlog, as their rows under `## 7. The helper` say.
+- A done or abandoned task stays in the folder of its sprint, and a status change moves nothing.
+  A sprint edited by hand moves nothing until `doctor --fix`.
 - The folder `archive` directly under the tasks root holds the archive, and the five status
   folders beside it hold the tasks of a status project. Commands look in all six in every layout.
   None of the six is a task, and none of their names, in any letter case, is a task id or an
   alias.
+- `backlog` and the sprint folders beside them hold the tasks of a sprint project. Each folder
+  directly under the tasks root with no `README.md` of its own is a group folder, such as a
+  sprint's folder; one with a `README.md` is a task. The five status folders and `backlog` are
+  group folders whatever they hold.
+- Commands look in `backlog` and in every group folder, in every layout.
+- `backlog` is no task either, and its name, in any letter case, is no task id and no alias.
+
+A child task:
+
+- A task is a child when its `epic` names another task of its project, its parent: by its folder
+  name or an alias, without letter case. An empty `epic`, `-` or the task's own id names none.
+- With `task_layout: status` or `sprint`, a child sits inside a folder named for its parent, in
+  the folder its own status or sprint gives: `<project>/<tasks_root>/<status>/<parent>/<ID>/README.md`,
+  `<project>/<tasks_root>/backlog/<parent>/<ID>/README.md` or
+  `<project>/<tasks_root>/<sprint folder>/<parent>/<ID>/README.md`. `<parent>` is the parent's
+  folder name.
+- The parent's note is `README.md` in its own folder, where its own status, or its sprint or
+  `backlog`, puts it, as every task's is. A child that joins a sprint moves to
+  `<sprint folder>/<parent>/<ID>/` while its parent's note stays in `backlog/<parent>/`.
+- A README one folder inside a task folder in a group folder is a child task when its `epic` names
+  that task. Any other README inside a task is still no task.
+- A folder directly in a group folder with no `README.md` of its own holds tasks, one level
+  deeper, when it is named for a task found elsewhere, by its folder name or an alias, without
+  letter case: such as `done/<parent>/`, which holds a done child while its parent's note is in
+  `in-progress/<parent>/`. Each folder in it with a `README.md` is then a task.
+- A task found elsewhere is one directly under the tasks root, in a group folder or in the
+  archive, a child inside its parent's folder, or one such a folder holds.
+- A folder with no `README.md` that is named for no task holds none: a README in it is no task,
+  and the folder is a task folder with no README, as the doctor's `no-readme` check says.
+- Commands look for a task one level deeper in every layout. In `flat` and `archive` a child stays
+  at `<tasks_root>/<ID>/`, and nothing moves it into a parent's folder.
+- In a status or sprint project, a move keeps a child under its parent. A change of its status or
+  sprint moves it to `<new folder>/<parent>/<ID>/`, and makes `<new folder>/<parent>/` when it is
+  missing. Setting `epic` moves it in, and clearing it moves it out to `<folder>/<ID>/`.
+- A move of a parent takes its own note and files alone: every entry of its folder but its
+  children's folders, which stay where they are. Its destination may be a folder named for it that
+  holds one of its children already: its entries go in beside them, each to a place that is free.
+- An entry whose name starts with a dot moves too. `move` takes no such name, so it moves as it
+  is, and no link into it is rewritten.
+- A parent that is done or abandoned leaves its open children where they are, and every command
+  still finds them.
+- In a status or sprint project, a move of a task out of a folder that holds tasks one level
+  deeper, one with no `README.md`, removes that folder when it leaves it empty.
+- An `epic` that names no single task of the project, none or several, names no parent: a move
+  puts the task at `<folder>/<ID>/`. The doctor's `task-layout` check names it, and `doctor --fix`
+  leaves it where it is.
 
 ```yaml
 ---
@@ -328,7 +421,8 @@ tags:
 
 - The helper never writes `jira_id`. Notes that have it keep it; readers ignore it.
 - An archived task carries `archived: "YYYY-MM-DD"`, quoted: the day `task archive` moved it. A
-  task that moves out of the archive into a status folder loses the key.
+  task that moves out of the archive into a status folder loses the key, as does one that moves
+  into `backlog` or a sprint's folder.
 - The tasks that wait on a task are never stored: Obsidian shows them as backlinks.
 - `delivery` is `direct` or `spec`. `task set <ID> delivery=<value>` writes it in lower case. Any
   other value exits 5.
@@ -432,6 +526,17 @@ Body: an up-link to the sprints hub, then `## Goal`, `## Notes`, `## Close`.
   folders, and `<tasks_root>/archive/<YYYY>/<ID>/`.
 - Every new board holds that status filter, in every layout. An existing board is never
   rewritten: in a status project, the doctor's `board` check names one without it.
+- A last branch takes a task in a group folder, `<tasks_root>/<folder>/<ID>/`, such as `backlog/`
+  or a sprint's folder: a README two folders below the tasks root whose folder's name is its first
+  alias, as a task's is. The board cannot see whether a folder has a README.
+- Every new board holds that branch too, in every layout. An existing board is never rewritten:
+  in a sprint project, the doctor's `board` check names one without it.
+- A branch after it takes a task one level deeper, such as a child task in
+  `<tasks_root>/<folder>/<parent>/<ID>/`: a README three folders below the tasks root whose
+  folder's name is its first alias.
+- Every new board holds it too, in every layout. An existing board is never rewritten: in a status
+  or sprint project that has a child task, the doctor's `board` check names one without it.
+- The board names its `epic` column by `parent_label`: `Feature` or `Epic`.
 - It shows `file.asLink(aliases[0])` as the task name.
 - The `Current sprint` view filters on one literal sprint id, which `sprint open` rewrites.
 - `By subproject` shows the active tasks grouped by `subproject`, with a `Subproject` column.
@@ -495,14 +600,14 @@ Rules that hold for every command:
 | `profile <project> --keys` | the profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
 | `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
-| `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, directly under the tasks root, in a status folder or archived, then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
-| `task head <ID> [--project P] [--json]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | `--json` prints one object whose keys are the lines' keys, `subproject` only when set. `topics` and `envs` are arrays, each env as `<env>:<id>:<status>` |
+| `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, directly under the tasks root, in a status folder, in `backlog` or another group folder, or archived, or one level deeper in a group folder, as a child task is (section 4), then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
+| `task head <ID> [--project P] [--json]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | `--json` prints one object whose keys are the lines' keys, `subproject` only when set. `topics` and `envs` are arrays, each env as `<env>:<id>:<status>`. The `epic` line takes its key from the profile's `parent_label`: `feature: <value>` where it is `feature`, in the text and in `--json` |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
-| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only. Setting `status` also sets the `status/` tag, and setting `type` the `type/` tag. `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for a list key (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>`, and is written as its note is named; exit 1 when none matches. In a status project, a `status` other than the task's own, the last `status=` pair winning, moves the task's folder with `move` to `<tasks_root>/<status>/<ID>/` once the keys are written: the README's new vault path and the move's `links: <path> \| <count>` lines come after the changed keys. Exit 6, writing nothing, when anything is at that destination, an empty folder or a link too. The same status moves nothing, even from another folder, and a task whose folder is the destination already is not moved. A move that fails exits as `move` does, with the keys written |
+| `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only. Setting `status` also sets the `status/` tag, and setting `type` the `type/` tag. `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for a list key (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>`, and is written as its note is named; exit 1 when none matches. In a status project, a `status` other than the task's own, the last `status=` pair winning, moves the task's folder with `move` to `<tasks_root>/<status>/<ID>/` once the keys are written: the README's new vault path and the move's `links: <path> \| <count>` lines come after the changed keys. Exit 6, writing nothing, when anything is at that destination, an empty folder or a link too. The same status moves nothing, even from another folder, and a task whose folder is the destination already is not moved. A move that fails exits as `move` does, with the keys written. In a sprint project, a `sprint` other than the task's own, the last `sprint=` pair winning, moves the task's folder the same way, to the folder of that sprint, `<tasks_root>/<sprint folder>/<ID>/`, or to `<tasks_root>/backlog/<ID>/` for `sprint=`; there a status change moves nothing. Exit 6, writing nothing, when anything is at that destination, or when the sprint's folder is a task, with a `README.md` of its own (`the sprint folder is a task: <path>`). Exit 5, writing nothing, when `sprint_folder` gives the sprint no folder name. The same sprint moves nothing, even from another folder, and a task whose folder is the destination already is not moved. In a status or sprint project, an `epic` other than the task's own, the last `epic=` pair winning, moves the task's folder the same way, into its parent's folder in the folder of its status or sprint, `<tasks_root>/<folder>/<parent>/<ID>/`, and `epic=` or `epic=-` moves it out to `<tasks_root>/<folder>/<ID>/`. A move for a status or a sprint keeps a child under its parent, `<tasks_root>/<new folder>/<parent>/<ID>/`. An `epic` that names no single task of the project names no parent, with `note: <label> <value> names no single task of <project>` on stderr, `<label>` being the profile's `parent_label`. A task that holds children moves its own entries alone (section 4), and its destination may be a folder named for it that holds one of them; an entry already there gives exit 6, writing nothing. A move that leaves a folder that holds tasks empty removes it, and prints `removed: <path>` after the `links:` lines |
 | `task tag <ID> add\|remove <tag> [--project P]` | the resulting topic tags | edits the `tags:` list; exit 5 for a `type/` or `status/` tag |
-| `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoted when needed; the first alias never changes. Exit 6 when the alias already names another task, exit 5 for an alias that names the folder `archive` or a status folder, in any letter case (section 4): `archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task alias`, and a status folder's name says `<alias> is the folder of the <status> tasks, not a task alias`, with `<alias>` as typed and `<status>` lowercased. Renaming a slug-named task to its ticket id is done by hand |
+| `task alias <ID> add <alias> [--project P]` | the resulting aliases | appends to `aliases:`, quoted when needed; the first alias never changes. Exit 6 when the alias already names another task, exit 5 for an alias that names the folder `archive` or a status folder, in any letter case (section 4): `archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task alias`, and a status folder's name says `<alias> is the folder of the <status> tasks, not a task alias`, with `<alias>` as typed and `<status>` lowercased. Exit 5 too for `backlog`, in any letter case: `backlog is the folder of the backlog tasks, not a task alias`. Renaming a slug-named task to its ticket id is done by hand |
 | `task dep <ID> add\|remove <ID> [--project P]` | the resulting `depends_on` links, or `-` when none is left | the second id is the task the first waits on, found by id or alias like the first; `--project` applies to both. `add` appends `"[[<vault path of its README, no .md>\|<its folder id>]]"` and puts the key after `carried_from`; a task already linked is not added twice. `remove` drops the item whose link leads to that README, whatever its display text, and leaves `depends_on: []` when none is left. Exit 1 for an unknown task, exit 5 for the task itself. No cycle check: the doctor's `depends-on` check reports one |
-| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault path | `--project` may be left out when the id's key names one project. In a status project the README is `<tasks_root>/planned/<ID>/README.md`, and every message names that path. Exit 6 when the task already has a README; when the id is a task in another folder, in every layout: at `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` or archived (`the task is archived: <path>` for an archived one, else `the task exists: <path>`); or when the id is another task's alias. A folder with no README gets one. Exit 5 for an id that names the folder `archive` or a status folder, in any letter case (section 4): `archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task id`, and a status folder's name says `<ID> is the folder of the <status> tasks, not a task id`, with `<ID>` as typed and `<status>` lowercased, as in `In-Review is the folder of the in-review tasks, not a task id`. Also exit 5 for `--envs` when the profile lists no environments, and when the README filled from a project's own template has no frontmatter (section 8). A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none. With `--envs` the subproject's own environments come first. It fills the project's own `task-readme.md.tmpl` when there is one (section 8) |
+| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]` | the new README's vault path | `--project` may be left out when the id's key names one project. In a status project the README is `<tasks_root>/planned/<ID>/README.md`, and in a sprint project `<tasks_root>/backlog/<ID>/README.md`, as a new task is in no sprint; every message names that path. Exit 6 when the task already has a README; when the id is a task in another folder, in every layout: at `<tasks_root>/<ID>/`, `<tasks_root>/<status>/<ID>/` or archived, or in `backlog/` or a sprint's folder (`the task is archived: <path>` for an archived one, else `the task exists: <path>`); or when the id is another task's alias; or when the folder has no README and holds a task, `<folder>/<ID>/README.md`, as a group folder such as a sprint's does (`the folder holds tasks: <path>`), since a README there would make it a task and take the tasks in it off the board. A folder with no README that holds no task gets one. Exit 5 for an id that names the folder `archive` or a status folder, in any letter case (section 4): `archive`, in any letter case, keeps the message `archive is the folder of the archived tasks, not a task id`, and a status folder's name says `<ID> is the folder of the <status> tasks, not a task id`, with `<ID>` as typed and `<status>` lowercased, as in `In-Review is the folder of the in-review tasks, not a task id`. Exit 5 too for `backlog`, in any letter case: `backlog is the folder of the backlog tasks, not a task id`. Also exit 5 for `--envs` when the profile lists no environments, and when the README filled from a project's own template has no frontmatter (section 8). A topic with no folder is still written, with a `note:` on stderr. `--subproject` writes the `subproject` key as `task set` does, exit 1 when it names none. With `--envs` the subproject's own environments come first. It fills the project's own `task-readme.md.tmpl` when there is one (section 8) |
 | `task note <ID> "<text>" [--project P] [--session S]` | the line it added | prepends a dated line under `## Status notes` |
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `spec <ID> [--project P]` | `key: value` lines: `id`, `delivery`, `spec_home`, `repo`, `dir`, `requirements`, `design`, `tasks` | `delivery` and `spec_home` are the values that hold for the task (section 3). `dir` is the spec folder: a vault path with `vault`, the absolute path of `spec/<ID>` in the story's repo with `repo`. The last three are the files in it, whether they exist or not. `repo` is the story's repo, or `-` when the project lists none. Exit 1 for an unknown task. With `repo`, also exit 1 when the project lists no repo, or the repo has no recorded location or no folder; the message says which. The lines are then still printed, with `dir` and the three files as `-`, so `delivery` can be read |
@@ -527,11 +632,11 @@ Rules that hold for every command:
 | `rename <path> <name> [--dry-run]` | the same lines as `move` | a new name in the same folder; `--` ends the options here too. The extension never changes: `<name>` may end with the file's own extension, in any letter case, or leave it out, and anything else is part of the name, so `api.v2` gives `api.v2.md`. Exit 5 when `<name>` holds a slash |
 | `sprint current <project>` | TSV: id, start, end, days_left, goal | exit 1 when no sprint is in progress. This and every other `sprint` command exits 5 with `<project> does not use sprints` when the profile says `uses_sprints: false` |
 | `sprint next <project>` | TSV: id, start, end | what `sprint open` would create with no `--end`; writes nothing; exit 1 when the profile has no `sprint_anchor_end` |
-| `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | exit 6 while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal. It moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>` |
+| `sprint open <project> [--end YYYY-MM-DD] [--goal G]` | the new sprint note's path, then one line per task it re-pointed | exit 6 while another sprint is in progress. With no `--end` it takes the first cadence end on or after today that has no note. It writes `sprint_anchor_end` only when the profile has none. It rewrites the board's sprint literal. It moves every open task (status not done or abandoned) whose `sprint` id has no sprint note onto the sprint being opened, printing `re-pointed: <ID> from <old> to <new>`. In a sprint project each task it re-points then moves to the new sprint's folder with `move`, after the note and the keys are written. Before any write, exit 6 naming the destination when anything is there, or when that folder is a task (`the sprint folder is a task: <path>`), and exit 5 when `sprint_folder` gives the sprint no folder name. A task already in that folder is re-pointed and not moved. A child moves into its parent's folder there, `<tasks_root>/<sprint folder>/<parent>/<ID>/`, and a task that holds children moves its own entries alone (section 4). A move that leaves a folder that holds tasks empty removes it, and prints `removed: <path>` after its `links:` lines. After the re-pointed lines come each moved task's new README path and its `links:` lines. A move that fails is named on stderr, the other tasks still move, and the command exits with the first failing code |
 | `sprint set <project> key=value...` | the changed keys | sets `goal` or `committed` on the sprint in progress; exit 1 when there is none, exit 5 for any other key |
-| `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at. In a status project it moves each task named in `--abandon` to `<tasks_root>/<status>/<ID>/` for its new status, `abandoned`, with `move`, after the sprint note is written, so the note's links follow. Before any write, exit 6 naming the destination when anything is there. A task whose folder is `abandoned/<ID>/` already is set abandoned and not moved. After the six summary lines come each moved task's new README path and its `links:` lines. A move that fails is named on stderr, the other tasks still move, and the command exits with the first failing code |
+| `sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]` | a summary: `sprint:`, `done:`, `carried:`, `backlog:`, `abandoned:`, `next:` | every open task of the sprint must be named in exactly one list, else exit 5 listing the problem. On tasks it writes `carried_from`, `sprint`, `status` and the tag. On the sprint note it writes the `## Close` lists, `completed`, `carried_over`, `status: done` and the tag. It writes no status notes; the caller adds the reason with `task note`. `next:` is the id carried tasks now point at. In a status project it moves each task named in `--abandon` to `<tasks_root>/<status>/<ID>/` for its new status, `abandoned`, with `move`, after the sprint note is written, so the note's links follow. In a sprint project it moves each task named in `--carry` to the next sprint's folder, `<tasks_root>/<sprint folder>/<ID>/`, and each named in `--backlog` to `<tasks_root>/backlog/<ID>/`, the same way; a done or abandoned task, and one named in `--abandon`, stays in the closed sprint's folder. Before any write, exit 6 naming the destination when anything is there. In a sprint project, a carried task also gives exit 6 when the next sprint's folder is a task, and exit 5 when `sprint_folder` gives that sprint no folder name. A task whose folder is `abandoned/<ID>/` already is set abandoned and not moved, and a task already in the folder its list sends it to is not moved either. A child moves into its parent's folder in the folder its list sends it to, such as `<tasks_root>/backlog/<parent>/<ID>/`, and a task that holds children moves its own entries alone (section 4). A move that leaves a folder that holds tasks empty removes it, and prints `removed: <path>` after its `links:` lines. After the six summary lines come each moved task's new README path and its `links:` lines. A move that fails is named on stderr, the other tasks still move, and the command exits with the first failing code |
 | `scaffold vault [DIR]` | the files it created | never overwrites; creates the index, the conventions note, `claude/README.md`, `claude/pull-request.md` and `claude/writing-style.md`. A file that exists is named on stderr as `exists: <path>` |
-| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags are written into a new profile, and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile's `uses_sprints` wins over the flag |
+| `scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints] [--parent-label feature\|epic]` | the files it created | never overwrites (`exists: <path>` on stderr); adds the index row; exit 6 when a key in `--keys` already belongs to another project. The three root flags are written into a new profile, and the hubs and board are created under them. `--topics-root .` creates no topics hub. When the profile exists its roots win and the flags are ignored. Exit 5 for a root that leaves the project, repeats another root, or sits inside the tasks root. `--no-sprints` writes `uses_sprints: false` into a new profile, creates no sprints hub and no map line for it, and writes the board without its sprint parts; exit 5 together with `--sprints-root`. An existing profile's `uses_sprints` wins over the flag. `--parent-label` writes `parent_label` into a new profile, in lower case, and takes `feature` or `epic` in any letter case; exit 5 for another value. An existing profile's `parent_label` wins over the flag. The board names its `epic` column by the profile's `parent_label` |
 | `scaffold subproject <project> <name> [--repos R1,R2]` | the files it created: the subproject note and the `README.md` of its docs folder | never overwrites (`exists: <path>` on stderr). Adds a link to the new docs hub under `## Topics` in the topics hub, once. A repo named twice in `--repos`, in any letter case, is written once. Exit 5 for a name that is not a folder name, or a repo name that holds a character outside letters, digits, `.`, `_` and `-`. Exit 6 when another subproject has that name in another letter case, or already lists one of the repos. Exit 1 for an unknown project or a missing profile. Writes no Code to doc map row: the user names the docs |
 | `pointer` | the absolute path of the folder the pointer leads to | exit 2 when there is no pointer, or when a real file or folder sits in its place. A pointer whose folder is gone still prints where it leads, with a `note:` on stderr |
 | `pointer set <DIR> [--replace]` | the folder the pointer now leads to | creates the pointer in the link directory: a symlink on macOS and Linux, a junction on Windows. Exit 5 when `DIR` has no `.obsidian` folder. A pointer that already leads to `DIR` is left alone. One that leads elsewhere, or to a folder that is gone, is kept, and the command exits 6 naming where it leads, unless `--replace` is given. A real file or folder in the pointer's place is never replaced: exit 6 |
@@ -539,7 +644,7 @@ Rules that hold for every command:
 | `link --foreign` | one row per foreign skill or agent: `name \| kind \| what \| target` | the foreign skills and agents of `### link, doctor, snapshot`. `what` is `folder`, `file` or `link`; `target` is where a link leads, else `-`. Exit 0, with no rows when there is none |
 | `link move <skill\|agent> <name> [--project P]` | `moved: <from> -> <to>`, or `copied:` for a link that leads out of the vault; for a link into the vault, then the `links:` lines of `move`; then `listed: <path>`; then the item's row as `link --check` prints it | takes one foreign skill or agent, as `link --foreign` lists it, into the vault's `claude/`, or into the `claude/` of the project `--project` names, as `### link, doctor, snapshot` says. Exit 1 when no foreign item has that kind and name, for an unknown project, or when the row is not `linked` at the end. Exit 5 for another kind, a name that holds a slash or a backslash, starts with a dot or cannot be written in a link (as `move` says), a project path that leaves the vault, a frontmatter `name` that is missing or not `<name>`, and, for a link into the vault, a symlink on the way that `move` does not look behind. Exit 6 when the destination exists. Nothing is moved before these checks pass |
 | `link drop-original <skill\|agent> <name> <path>` | `removed: <path>` | removes the original that `link move` copied in from out of the vault, the path of its `copied:` line, as `### link, doctor, snapshot` says. Exit 1, removing nothing, when no claude folder of the vault links the item, `<path>` is missing, or it differs from the copy. Exit 5 for another kind, a path that is not absolute, a link, the vault, a path inside the vault or one that holds it, a path that holds the link directory, and a path that is not a skill folder with `SKILL.md` or an agent `.md` file |
-| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`. It makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`. Then it fixes the tasks that `task-layout` names, each as `fixed: <ID> -> <new README path> (<project>)`, and prints the table. In an archive project it archives each one named `to-archive` through `task archive`, and never moves an open task. In a status project it moves each task to the folder of its status, as `task set` moves it; a task with no status of the five stays where it is, with `<ID> has no status of the five: left where it is` on stderr. Then it removes each empty `<tasks_root>/archive/<YYYY>/` folder, and then `archive` when it is empty, each as `fixed: <path> -> removed (<project>)`; a folder that holds any other file, such as an archive README, stays. It moves nothing in a project whose tasks root leaves it. A task that `task archive` or the move refuses stays where it is, with the reason on stderr |
+| `doctor [project] [--json] [--fix]` | one row per check: `result \| check \| scope \| count \| offenders \| fix` | exit 0 when no check fails, 1 when one does, 2 when there is no vault. `--fix` replaces a `pull-request` note that is older than the template and was never edited, `fixed: claude/pull-request.md -> version <n> (vault)`. It makes each `status/` tag follow its status, `fixed: <ID> -> <tag> (<project>)`. Then it fixes the tasks that `task-layout` names, each as `fixed: <ID> -> <new README path> (<project>)`, and prints the table. In an archive project it archives each one named `to-archive` through `task archive`, and never moves an open task. In a status project it moves each task to the folder of its status, as `task set` moves it, then removes each empty group folder other than the five status folders, such as `backlog/` or a sprint's folder, whether or not a move emptied it, each as `fixed: <path> -> removed (<project>)`; an empty status folder stays, and a task with no status of the five stays where it is, with `<ID> has no status of the five: left where it is` on stderr. In a sprint project it moves each task to the folder of its sprint, or to `backlog/` with none, as `task set` moves it, then removes each empty group folder, a status folder too, whether or not a move emptied it, each as `fixed: <path> -> removed (<project>)`; a task whose sprint gives no folder name stays where it is. Then, in a status or a sprint project, it removes each empty `<tasks_root>/archive/<YYYY>/` folder, and then `archive` when it is empty, each as `fixed: <path> -> removed (<project>)`; a folder that holds any other file, such as an archive README, stays. In a status or a sprint project a child moves into its parent's folder there, and a task whose `epic` names no single task of the project stays where it is, with `<ID>: its <label> <value> names no single task of <project>: left where it is` on stderr, `<label>` being the profile's `parent_label`. A folder that holds tasks that a move leaves empty is removed, `fixed: <path> -> removed (<project>)`. It moves nothing in a project whose tasks root leaves it. A task that `task archive` or the move refuses stays where it is, with the reason on stderr |
 | `snapshot [name]`, `compare [name]` | where the snapshot is, or the differences | stored under `<vault>/.second-brain/snapshots/`. `snapshot` exits 6 when the name exists. `compare` covers unresolved links, aliases, task ids and statuses, and links; it does not compare tags or doctor rows. It exits 0 with `no differences`, and 1 on a difference or when there is no snapshot |
 | `session-check [--cwd DIR]` | with no vault, one line; in a directory of a project of the index, the session block; else nothing | for the SessionStart hook, see session-check below; always exits 0. `--cwd` reads another directory than the working one |
 
@@ -717,7 +822,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | vault | `skill-size` | a scanned `SKILL.md` is over 150 lines (warn) |
 | vault | `old-namespace` | a line names a skill or agent of the plugin by its old name, `obsidian-dev-second-brain:<name>`: in a note of the vault outside its history (`<vault path>:<line>`), or in the link directory's `CLAUDE.md` (`~/.claude/CLAUDE.md:<line>`); or a string of a settings file holds `obsidian-dev-second-brain:`: in the link directory (`~/.claude/<file>:<string>`), the vault root (`.claude/<file>:<string>`) or a repo (`<repo>/.claude/<file>:<string>`) (warn). See the bullets under this table |
 | project | `profile` | the profile is missing, lacks a contract key, lacks one of the seven sections, or has a root that leaves the project (`<key>:leaves-project`) (fail) |
-| project | `board` | the board file is missing (fail). While a sprint is in progress: its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is not written as `sprint == "<id>"` (`tasks.base:filter`), or it has no such view (`tasks.base:no-view`) (warn); with no sprint in progress, or for a project that does not use sprints, the view is not looked at. For a project with a subproject note, a board with no `By subproject` view (`tasks.base:no-subproject-view`) (warn). For a project with `task_layout: archive`, a board whose own filters do not take `<tasks_root>/archive` (`tasks.base:no-archive-filter`) (warn). For a project with `task_layout: status`, a board whose own filters do not take each of the five status folders, as a quoted path ending in `/<status>` (`tasks.base:no-status-filter`) (warn) |
+| project | `board` | the board file is missing (fail). While a sprint is in progress: its `Current sprint` view filters on another sprint id (`tasks.base:<that id>`), its filter is not written as `sprint == "<id>"` (`tasks.base:filter`), or it has no such view (`tasks.base:no-view`) (warn); with no sprint in progress, or for a project that does not use sprints, the view is not looked at. For a project with a subproject note, a board with no `By subproject` view (`tasks.base:no-subproject-view`) (warn). For a project with `task_layout: archive`, a board whose own filters do not take `<tasks_root>/archive` (`tasks.base:no-archive-filter`) (warn). For a project with `task_layout: status`, a board whose own filters do not take each of the five status folders, as a quoted path ending in `/<status>` (`tasks.base:no-status-filter`) (warn). For a project with `task_layout: sprint`, a board whose own filters have no line `file.folder.split("/")[<digits>] == aliases[0]`, the branch that takes a task in a group folder (`tasks.base:no-sprint-filter`) (warn); with `uses_sprints: false` the board is not asked for it. For a status or a sprint project that has a child task, a board whose own filters have fewer than two such lines, as the branch that takes a task one level deeper adds the second (`tasks.base:no-child-filter`) (warn) |
 | project | `hubs` | a hub is missing or empty (warn): `README.md`, `claude/README.md`, `<tasks_root>/README.md`, `<topics_root>/README.md` unless the topics root is `.`, and `<sprints_root>/README.md` when the project uses sprints. Offenders are paths under the project, and a hub that two roots share is named once |
 | project | `placeholders` | a line of `README.md`, `claude/README.md`, `claude/profile.md` or a note in `claude/subprojects/` holds a placeholder of the template it was written from (warn, `<path under the project>:<line>`). A placeholder is text in angle brackets, with no blank after `<`, outside inline code unless it opens the code; only the template's own count, as written there. Frontmatter, fenced code and task READMEs are not read |
 | project | `task-template` | the project's own `claude/templates/task-readme.md.tmpl` lacks a frontmatter key or a section that `### A project's own templates` names (warn, the key, or the section's heading as `## <heading>`). A key is read from frontmatter that opens on the first line. A heading is a line that equals it without letter case and trailing blanks, outside fenced code, as `task note` finds it. Frontmatter is not read for one. A project with no such template is ok |
@@ -726,15 +831,15 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `status-tag` | the `status/` tag disagrees with `status` (warn; `--fix` repairs it) |
 | project | `yaml-traps` | an unquoted alias holding a colon and a space, an unquoted lone dash value, an unquoted sprint id (fail) |
 | project | `alias-unique` | one alias on two notes among task READMEs and hubs (fail) |
-| project | `no-readme` | a task folder without a README (warn), in every layout: a folder directly under the tasks root other than `archive` and the five status folders, one directly under a status folder, or one directly under `<tasks_root>/archive/<YYYY>/`. A status folder itself never needs a README |
-| project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` in one of the five status folders, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
-| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`). `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`). In both, a status folder that holds a task (`<status>:flat` or `<status>:archive`): its fix is to set `task_layout: status`, or to move each task in it back to `<tasks_root>/<ID>` with `move`. `status`: a task with a status of the five outside the folder of that status (`<ID>:<status>`; `--fix` moves it), and any task in the archive (`archive:status`). A task with no status of the five is left to `needs-a-status` |
+| project | `no-readme` | a task folder without a README (warn), in every layout: a folder directly under the tasks root other than `archive`, the five status folders, `backlog` and a group folder, one directly under a status folder, `backlog` or a group folder, or one directly under `<tasks_root>/archive/<YYYY>/`. A group folder here is, in a sprint project, each folder directly under the tasks root with no README, such as a sprint's folder; in another layout, one that holds a task, which `task-layout` names. A status folder itself never needs a README, and neither does `backlog` or a group folder. A folder with no README directly in a status folder, `backlog` or a group folder that holds a task holds tasks one level deeper (section 4): it needs no README, and each folder directly in it is read as one in a group folder is |
+| project | `task-location` | a note under the project has `type: task` in its frontmatter and is not `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` in one of the five status folders, `<tasks_root>/<folder>/<ID>/README.md` in `backlog` or another group folder, `<tasks_root>/<folder>/<parent>/<ID>/README.md` one level deeper in one of them, as a child task is (section 4), or `<tasks_root>/archive/<YYYY>/<ID>/README.md` (warn). Offenders are paths under the project. Dot folders are not read, and neither is the folder of another index project that sits inside this one |
+| project | `task-layout` | the tasks do not follow `task_layout` (warn). `flat`: an `archive` folder under the tasks root (`archive:flat`), and `task_layout: sprint` with `uses_sprints: false`, which reads as `flat` (`task_layout:no-sprints`): its fix is to set `uses_sprints: true`, or another layout. `archive`: an open task (planned, in progress or in review) in the archive (`<ID>:open`), a done or abandoned task outside it that is due by `archive_after_days` (`<ID>:to-archive`; `--fix` archives it), or an `archive_after_days` that is not a whole number (`archive_after_days:not-a-number`). In both, a status folder that holds a task (`<status>:flat` or `<status>:archive`): its fix is to set `task_layout: status`, or to move each task in it back to `<tasks_root>/<ID>` with `move`. `status`: a task with a status of the five outside the folder of that status (`<ID>:<status>`; `--fix` moves it), and any task in the archive (`archive:status`). A task with no status of the five is left to `needs-a-status`. In these three, a group folder that holds a task and is not the layout's own, `backlog` or a sprint's folder (`<folder>:<layout>`, as `backlog:flat` or `2026-10-14:status`). In `flat` and `archive` its fix is to set `task_layout: sprint`, with `uses_sprints: true` when sprints are off, or to move each task in it back to `<tasks_root>/<ID>` with `move`, and `--fix` moves nothing for it; in `status` each task in it is `<ID>:<status>` too, and `--fix` moves it. `sprint`: a task outside the folder of its sprint, or outside `backlog/` with no sprint, wherever it is, in the archive or a status folder too (`<ID>:<folder>`, the folder it belongs in; `--fix` moves it), and a `sprint_folder` that gives the sprint of a task no folder name, or, with no task in a sprint, gives none to a sprint ending today (`sprint_folder:invalid`). A task whose sprint gives no folder name is not named. In `status` and `sprint`, a child belongs in its parent's folder there, and its offender names that folder, `<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`; `--fix` moves it. A task that is no child belongs directly in the folder, even when it sits one level deeper. A task whose `epic` names no single task of the project is `<ID>:unknown-<label>`, `<label>` being the profile's `parent_label`, and `--fix` leaves it where it is. In every layout, a `parent_label` that is neither `feature` nor `epic`, in any letter case (`parent_label:invalid`) |
 | project | `topic-tags` | a topic tag on a task maps to no folder under the topics root (warn). The profile's `## Topics` section may hold exceptions as lines `- <tag> -> <folder>` |
 | project | `code-doc-map` | a repository in `repos` has no row in the profile's Code to doc map (warn) |
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
-| project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
+| project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`), and a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn) |
 | project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
 | project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A requirement is a `## ` heading whose first word is `R` and a number. Criteria and `- Serves:` lines are read as `## 4. A task` says; the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
@@ -875,12 +980,19 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - Every helper function is named `sb_*` and every command `cmd_*`.
 - A library must not redefine a function another library owns.
 - Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`, `sb_fm_edit`, `sb_fm_keys`,
-  `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_scan`, `sb_sprint_current_id`,
-  `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`, `sb_body_insert`, `sb_note`, `sb_md_files`,
-  `sb_board_sprint_literal`.
+  `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_groups`, `sb_task_nested`,
+  `sb_task_scan`, `sb_task_parent`, `sb_parent_label`,
+  `sb_sprint_current_id`, `sb_sprint_folder`, `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`,
+  `sb_body_insert`, `sb_note`, `sb_md_files`, `sb_board_sprint_literal`.
 - Every command that looks for a task goes through `sb_task_files`, which lists a tasks folder's
   task READMEs directly under it, in each of the five status folders and in the archive, and
   `sb_task_readme`, which finds one task folder's README in any of them.
+- Both also look in each group folder that `sb_task_groups` lists: the five status folders in
+  their order, `backlog`, then each other folder directly under the tasks root with no
+  `README.md`, sorted. `sb_sprint_folder` names a sprint's folder from `sprint_folder`.
+- In each group folder, both take a task one level deeper too, as section 4 says, from
+  `sb_task_nested`. `sb_task_parent` names a task's parent, and `sb_parent_label` the profile's
+  word for it.
 
 ## 8. Templates
 
@@ -901,7 +1013,7 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 | `project-claude-hub.md.tmpl` | `<project>/claude/README.md` | `PROJECT`, `PROJECT_PATH`, `VALIDATION_LINE` (empty when the profile's `validation_home` is `repo`) |
 | `profile.md.tmpl` | `<project>/claude/profile.md` | `PROJECT`, `PROJECT_PATH`, `TICKET_KEYS`, `TASKS_ROOT`, `TOPICS_ROOT`, `SPRINTS_ROOT` |
 | `hub.md.tmpl` | `tasks/README.md`, `docs/README.md`, `sprints/README.md` | `PROJECT`, `PROJECT_PATH`, `HUB_NAME`, `HUB_TITLE`, `HUB_INTRO` |
-| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |
+| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `CHILD_DEPTH`, `SPRINT_ID`, `PARENT_LABEL` |
 | `task-readme.md.tmpl` | a task README | `ID`, `TITLE`, `TOPIC_TAGS`, `UP_LINK` |
 | `task-envs.md.tmpl` | the environment-set additions | `ID`, `ENV` |
 | `ticket-description.md.tmpl` | paste-ready ticket text | none |
@@ -958,6 +1070,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - No skill uses a command that runs at load time.
 - When the helper is missing, the skill says so and stops. It does not guess paths.
 - Agents call skills through the Skill tool as `odsb:<name>`.
+- A skill names a project's parent stories by its `parent_label`: features or epics. The
+  frontmatter key it writes stays `epic`.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:
@@ -1022,8 +1136,42 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
   place, with the same name and model. For a task of a bundle, it is given that task alone.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
-- It sets a task `building` before each `implementer` launch or fix message, and `in-review`
-  before each `reviewer` launch on it. It sets each result as the agent reports it.
+- A notice that repeats a reply the skill took already, such as a named agent's last reply sent
+  again in its idle notice, is no new event. It changes no state and gets no reply.
+- **An agent with no report.** An agent can go idle before its report, such as on a reply that
+  says its checks still run. Its report is an `implementer`'s `Commit:` or `BLOCKED:` line, or a
+  `reviewer`'s JSON block.
+- Before the skill takes such a reply as final, it checks the branch, with `git log` and
+  `git status --porcelain`, and whether a check the agent started still runs.
+- A check that still runs is waited for. With none, the skill sends the agent one message to
+  finish its step and report. Its next reply is final.
+- That message holds no view of the result, so a `reviewer` gets it too.
+- **The owner's open orders.** The skill keeps the owner's open orders of a build in
+  `<project>/claude/lead-agent-task-memory.md`, linked from the project's `claude/README.md`.
+- The note holds each open order, with its date, its story, the owner's words and what works on
+  it now. Then the orders done, and one line per story on its last check.
+- The skill adds its order when a build starts or resumes. Two builds of the project share the
+  note, so once it is there the skill changes it only with edits, never a whole rewrite.
+- A note missing while an order of the story is open is written again.
+- An order closes when it is done, or when the owner stops the build or drops the order, at a stop
+  or not. The check's own prompt is no order.
+- Once no order of its story is open, the skill stops its check. Once no order of any story is
+  open, it removes the hub's line, then the note. Removing its own note is no destructive action.
+- **The lead's check.** While an order of its story is open, the skill checks on the agents, the
+  branch and the running checks against the orders, as often as the profile's
+  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward
+  it.
+- In Claude Code a session-only `CronCreate` job runs the check, off the hour and the half hour,
+  and `CronDelete` ends it. The skill keeps a job `CronList` shows with the same prompt. With no
+  scheduling tool, the skill checks on each notice that comes to it.
+- A process counts as the agent's check only when its working directory or command line is under
+  the repo's path.
+- The check goes on with an order no one works toward only when the owner has not since
+  interrupted the skill or told it to hold. Otherwise it waits for the owner and says so once,
+  not at each check.
+- The check never pushes, merges or takes another outside action.
+- The skill sets a task `building` before each `implementer` launch or fix message, and
+  `in-review` before each `reviewer` launch on it. It sets each result as the agent reports it.
 - It shows the owner `spec status <ID>` after each task's review, when the build stops or
   finishes, and when a session resumes a build.
 - A build resumes in a new session from `build.json`. A task cut off while `building` takes a
@@ -1255,6 +1403,16 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`
   read with no `offset` and no `limit`; a Bash command that runs grep, egrep, fgrep, rg, cat or
   sed.
+- A whole task note is also a `tasks/<folder>/<ID>/README.md` one group folder down, such as
+  `tasks/backlog/<ID>/README.md` or one in a sprint's folder. The hook takes a status folder,
+  `backlog` or a folder with no `README.md` of its own, looked up in the letter case of the path.
+- A README in a folder inside a task, such as `tasks/<ID>/notes/README.md`, is no task note, and
+  neither is one directly in `archive`, in any letter case.
+- One level deeper in such a group folder, `tasks/<folder>/<parent>/<ID>/README.md` is a whole
+  task note too when its `epic` names `<parent>`: its folder name, or an alias of
+  `<parent>/README.md`, without letter case. The hook reads the note's frontmatter for it.
+- With no `<parent>/README.md`, it is one when `<parent>` is named for a task found elsewhere in
+  the tasks folder, as `## 4. A task` says, so the hook and the helper take the same notes.
 - The warning is one JSON object whose `hookSpecificOutput.additionalContext` says what the call
   does, then the search and read rule. Otherwise it prints nothing.
 - A call reaches into the vault when one of its paths, or the working directory, holds the last
@@ -1263,8 +1421,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Letter case is ignored and a backslash counts as a slash, so `~/`, `$HOME/`, `C:\` and `/c/`
   forms all match. A Bash command also reaches into the vault when it holds `second-brain root`.
 - Edit and Write are never matched. A ranged Read, or a Read of another note, passes in silence.
-- It loads no library, starts one awk, and reads a long command in one pass. With no vault, or
-  with input it cannot read, it prints nothing.
+- It loads no library, starts one awk, and reads a long command in one pass. A Read one level
+  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder
+  for its READMEs, then the awk again over what it lists.
+- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a
+  shell reads, so a quote, a `$(...)`, a backquote or a `;` in a folder name runs nothing.
+- With no vault, or with input it cannot read, it prints nothing.
 
 ## 10. Writing rules for every file in this repo
 

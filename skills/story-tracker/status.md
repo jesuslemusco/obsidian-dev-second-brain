@@ -56,6 +56,8 @@ N active, N done/abandoned.
 - One phrase per field.
 - Add a field only when the user asks: `Sprint:` from the row, `Epic:` and `Last updated:` from
   `second-brain task head <ID>`.
+  - Name the `Epic:` field after the project's word, `Feature:` with `parent_label: feature`. The
+    `task head` line takes that word as its key too.
 - A row whose `envs` is not `-` is an environment set: one block, counted once, with the set's
   status.
 - Under the set's `ID:` line add an `Envs:` line built from the cell:

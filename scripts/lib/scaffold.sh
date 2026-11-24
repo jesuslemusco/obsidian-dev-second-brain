@@ -172,18 +172,22 @@ sb_board_drop_sprint() {
 sb_scaffold_project() {
   local name="" path="" keys="" use="" rows hit troot topics sroot depth cur intro k keylist
   local f_tasks="" f_topics="" f_sprints="" profile had_profile=0 line_validation line_tasks line_topics="" line_sprints="" q hit2
-  local no_sprints=0 sprints=1 views base hub_new=0
+  local no_sprints=0 sprints=1 views base hub_new=0 f_label="" label
   local nl=$'\n' cr=$'\r' tab=$'\t'
-  local usage="usage: second-brain scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]"
+  local usage="usage: second-brain scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT] [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints] [--parent-label feature|epic]"
   while [ $# -gt 0 ]; do
     case "$1" in
       --no-sprints)
         no_sprints=1
         shift
         ;;
-      --path | --keys | --use-when | --tasks-root | --topics-root | --sprints-root)
+      --path | --keys | --use-when | --tasks-root | --topics-root | --sprints-root | --parent-label)
         [ $# -ge 2 ] || sb_die 5 "$1 needs a value"
         case "$1" in
+          --parent-label)
+            f_label="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+            case "$f_label" in feature | epic) ;; *) sb_die 5 "--parent-label is feature or epic: $2" ;; esac
+            ;;
           --path) path="$2" ;;
           --keys) keys="$2" ;;
           --use-when) use="$2" ;;
@@ -261,6 +265,7 @@ sb_scaffold_project() {
     if [ "$no_sprints" -eq 1 ] && [ "$sprints" -eq 1 ]; then
       sb_note "the profile exists: it says the project uses sprints and --no-sprints is ignored"
     fi
+    [ -z "$f_label" ] || sb_note "the profile exists: its parent_label is used and --parent-label is ignored"
   else
     troot="${f_tasks:-tasks}"
     topics="${f_topics:-docs}"
@@ -302,6 +307,7 @@ sb_scaffold_project() {
       fi
     done
     [ "$sprints" -eq 1 ] || sb_fm_set_raw "$profile" uses_sprints false
+    [ -z "$f_label" ] || sb_fm_set_raw "$profile" parent_label "$f_label"
   fi
   sb_scaffold_validation "$path" "$name"
   views='`Current sprint`, `By topic`,
@@ -318,13 +324,16 @@ The live board over every task README. Its other views are $views. Nothing is ad
   sb_scaffold_file hub.md.tmpl "$path/$troot/README.md" "PROJECT=$name" "PROJECT_PATH=$path" \
     "HUB_NAME=$troot" "HUB_TITLE=Tasks Hub" "HUB_INTRO=$intro"
   depth="$(printf '%s\n' "$path/$troot" | awk -F/ '{ print NF + 1 }')"
+  # The board's epic column takes the profile's word for a parent story, capitalised.
+  label="$(SB_P_PATH="$path" sb_parent_label)"
+  label="$(printf '%s' "${label%"${label#?}"}" | tr '[:lower:]' '[:upper:]')${label#?}"
   cur="$(sb_sprint_current_id "$path")"
   base="$SB_ROOT/$path/$troot/tasks.base"
   if [ "$sprints" -eq 0 ] && [ ! -e "$base" ]; then
-    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "STATUS_DEPTH=$((depth + 1))" "SPRINT_ID=none"
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "STATUS_DEPTH=$((depth + 1))" "CHILD_DEPTH=$((depth + 2))" "SPRINT_ID=none" "PARENT_LABEL=$label"
     sb_board_drop_sprint "$base" || sb_die 1 "cannot write $path/$troot/tasks.base"
   else
-    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "STATUS_DEPTH=$((depth + 1))" "SPRINT_ID=${cur:-none}"
+    sb_scaffold_file tasks.base.tmpl "$path/$troot/tasks.base" "TASKS_PATH=$path/$troot" "TASK_DEPTH=$depth" "ARCHIVE_DEPTH=$((depth + 2))" "STATUS_DEPTH=$((depth + 1))" "CHILD_DEPTH=$((depth + 2))" "SPRINT_ID=${cur:-none}" "PARENT_LABEL=$label"
   fi
   if [ "$topics" != "." ]; then
     intro="The topics root. Each folder under \`$topics/\` is a topic, and its tag is the folder path below

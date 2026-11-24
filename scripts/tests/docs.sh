@@ -129,6 +129,15 @@ line_is "scrum-master: never closed twice" "$SM" \
   '  never closed again.'
 line_is "contract: the search rule names a task note in a status folder" "$here/docs/contract.md" \
   '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
+line_is "contract: the search rule names a task note one group folder down" "$here/docs/contract.md" \
+  '- A whole task note is also a `tasks/<folder>/<ID>/README.md` one group folder down, such as'
+line_is "contract: in backlog/ or a sprint's folder" "$here/docs/contract.md" \
+  '  `tasks/backlog/<ID>/README.md` or one in a sprint'"'"'s folder. The hook takes a status folder,'
+line_is "contract: the hook takes a folder with no README of its own" "$here/docs/contract.md" \
+  '  `backlog` or a folder with no `README.md` of its own, looked up in the letter case of the path.'
+line_is "contract: a README in a folder inside a task is no task note" "$here/docs/contract.md" \
+  '- A README in a folder inside a task, such as `tasks/<ID>/notes/README.md`, is no task note, and'
+file_lacks "contract: the hook no longer takes any folder" "$here/docs/contract.md" 'The hook cannot see whether a folder'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
 file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
 file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
@@ -175,7 +184,7 @@ file_has "contract: link move writes a block scalar description as -" "$here/doc
 
 # ---------------------------------------------------------------- the status layout in the contract, the conventions and the guide
 CS="$here/docs/contract.md"
-file_has "contract: task_layout takes status" "$CS" '- `task_layout` is `flat`, `archive` or `status`, in any letter case.'
+file_has "contract: task_layout takes status and sprint" "$CS" '- `task_layout` is `flat`, `archive`, `status` or `sprint`, in any letter case.'
 file_lacks "contract: task_layout is no longer flat or archive alone" "$CS" '`task_layout` is `flat` or `archive`'
 file_has "contract: a status project keeps a task in the folder of its status" "$CS" \
   '- `status`: each task sits in the folder of its status, `<tasks_root>/<status>/<ID>/`'
@@ -218,9 +227,9 @@ file_has "contract: sb_task_readme finds a task's README in any of them" "$CS" \
   '`sb_task_readme`, which finds one task folder'"'"'s README in any of them.'
 file_lacks "contract: the lookup no longer names two depths alone" "$CS" 'task READMEs at both depths'
 line_is "contract: the board template's placeholders take STATUS_DEPTH" "$CS" \
-  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `SPRINT_ID` |'
+  '| `tasks.base.tmpl` | `<project>/tasks/tasks.base` | `TASKS_PATH`, `TASK_DEPTH`, `ARCHIVE_DEPTH`, `STATUS_DEPTH`, `CHILD_DEPTH`, `SPRINT_ID`, `PARENT_LABEL` |'
 CV="$here/templates/obsidian-conventions.md.tmpl"
-file_has "conventions: task_layout takes status" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive` or `status`.'
+file_has "conventions: task_layout takes status and sprint" "$CV" '- The profile'"'"'s `task_layout` is `flat`, the default, `archive`, `status` or `sprint`.'
 file_has "conventions: the short version names the status folders" "$CV" 'With `status`, each'
 file_has "conventions: the path of a task in a status project" "$CV" '<project>/tasks/<status>/<TICKET-ID>/README.md'
 file_has "conventions: task set moves a status task" "$CV" '`second-brain task set <ID> status=<status>` moves it to `tasks/<status>/<ID>/`'
@@ -233,10 +242,136 @@ file_has "guide: task set moves the folder" "$GS" '`second-brain task set` moves
 file_has "guide: a sprint close moves the tasks it abandons" "$GS" 'each task it abandons moves to `tasks/abandoned/<ID>/`'
 file_has "guide: a project turned to status runs doctor --fix once" "$GS" 'then run `second-brain doctor --fix` once'
 
+# ---------------------------------------------------------------- the sprint layout in the contract, the conventions, the guide and the templates
+CS="$here/docs/contract.md"
+line_is "contract: the project tree names a task in backlog/" "$CS" \
+  '  tasks/backlog/<TICKET-ID>/README.md          a task in no sprint, with task_layout: sprint'
+line_is "contract: the project tree names a task in a sprint's folder" "$CS" \
+  '  tasks/<sprint folder>/<TICKET-ID>/README.md  a task in a sprint, with task_layout: sprint'
+file_has "contract: sprint with sprints off is flat" "$CS" 'and so is `sprint` with `uses_sprints: false`.'
+file_has "contract: a sprint project keeps a task in the folder of its sprint" "$CS" \
+  '- `sprint`: each task sits in the folder of its sprint, `<tasks_root>/<sprint folder>/<ID>/`, or'
+file_has "contract: or in backlog/ with no sprint, and moves when its sprint changes" "$CS" \
+  'in `<tasks_root>/backlog/<ID>/` with no sprint, and moves when its sprint changes'
+file_has "contract: sprint_folder is the pattern of a sprint's folder" "$CS" \
+  '- `sprint_folder` is the pattern that names a sprint'"'"'s folder in the sprint layout.'
+file_has "contract: no sprint_folder, or an empty one, is <end>" "$CS" \
+  'empty key is `"<end>"`, so the folder of sprint `2026-10-14` is `2026-10-14`.'
+file_has "contract: the three placeholders of the pattern" "$CS" \
+  '- In the pattern, `<end>` is the sprint id, `<start>` its first day and `<n>` its number.'
+file_has "contract: <start> of a sprint with no note is counted back from its id" "$CS" \
+  '`sprint_length_days` plus one day, as `sprint open` counts it.'
+file_has "contract: <n> counts the earlier sprint notes" "$CS" \
+  '- `<n>` is one more than the count of the project'"'"'s sprint notes with an earlier id'
+file_has "contract: a pattern that gives no folder name exits 5 with nothing written" "$CS" \
+  'would move a task there exits 5 naming the pattern, and nothing is written.'
+file_has "contract: what a folder name is" "$CS" \
+  '- A folder name is letters, digits, dots, hyphens and underscores, neither a dot nor a hyphen'
+file_has "contract: a project turned to sprint, or a renamed pattern, runs doctor --fix once" "$CS" \
+  '- To turn `sprint` on for a project that has tasks, or after a change to `sprint_folder`, set'
+file_has "contract: commands find a task in backlog/ and the group folders" "$CS" \
+  '- Commands find a task directly under the tasks root, in a status folder, in `backlog` or another'
+file_has "contract: a sprint task's path" "$CS" \
+  '`<project>/<tasks_root>/<sprint folder>/<ID>/README.md`, in the folder that `sprint_folder`'
+file_has "contract: a backlog task's path" "$CS" 'a task in no sprint is `<project>/<tasks_root>/backlog/<ID>/README.md`.'
+file_has "contract: a sprint change moves the folder" "$CS" '- There, a sprint change moves the task'"'"'s folder with `move`'
+file_has "contract: sprint open and close move the tasks they re-point, carry or send to the backlog" "$CS" \
+  'moves each task it re-points, and `sprint close` moves each task it carries or sends to the'
+file_has "contract: a status change moves nothing in a sprint project" "$CS" \
+  '- A done or abandoned task stays in the folder of its sprint, and a status change moves nothing.'
+file_has "contract: a folder with no README is a group folder" "$CS" \
+  'directly under the tasks root with no `README.md` of its own is a group folder'
+file_has "contract: backlog is never a task, nor its name an id or alias" "$CS" \
+  '`backlog` is no task either, and its name, in any letter case, is no task id and no alias.'
+file_has "contract: a task out of the archive into backlog/ or a sprint folder loses archived" "$CS" \
+  'into `backlog` or a sprint'"'"'s folder.'
+file_has "contract: the board's branch for a task in a group folder" "$CS" '- A last branch takes a task in a group folder'
+file_has "contract: a sprint project's board without the branch is named" "$CS" \
+  'in a sprint project, the doctor'"'"'s `board` check names one without it.'
+OUT="$(grep '^| `find ' "$CS")"
+out_has "contract: find looks in backlog/ and the group folders" 'in a status folder, in `backlog` or another group folder, or archived'
+OUT="$(grep '^| `task set ' "$CS")"
+out_has "contract: task set moves a sprint task when its sprint changes" \
+  'In a sprint project, a `sprint` other than the task'"'"'s own, the last `sprint=` pair winning, moves the task'"'"'s folder'
+out_has "contract: task set's destination is the sprint's folder, or backlog/ for none" \
+  'to the folder of that sprint, `<tasks_root>/<sprint folder>/<ID>/`, or to `<tasks_root>/backlog/<ID>/` for `sprint=`'
+out_has "contract: task set: there a status change moves nothing" 'there a status change moves nothing'
+out_has "contract: task set: a sprint folder that is a task gives exit 6" '(`the sprint folder is a task: <path>`)'
+out_has "contract: task set: a pattern that gives no folder name gives exit 5" \
+  'Exit 5, writing nothing, when `sprint_folder` gives the sprint no folder name'
+OUT="$(grep '^| `task new ' "$CS")"
+out_has "contract: task new writes into backlog/ in a sprint project" 'and in a sprint project `<tasks_root>/backlog/<ID>/README.md`'
+out_has "contract: task new finds the id in backlog/ or a sprint's folder" 'or archived, or in `backlog/` or a sprint'"'"'s folder ('
+out_has "contract: task new refuses backlog" 'Exit 5 too for `backlog`, in any letter case: `backlog is the folder of the backlog tasks, not a task id`'
+OUT="$(grep '^| `task alias ' "$CS")"
+out_has "contract: task alias refuses backlog" 'Exit 5 too for `backlog`, in any letter case: `backlog is the folder of the backlog tasks, not a task alias`'
+OUT="$(grep '^| `sprint open ' "$CS")"
+out_has "contract: sprint open moves each task it re-points" \
+  'In a sprint project each task it re-points then moves to the new sprint'"'"'s folder with `move`'
+out_has "contract: sprint open looks at each destination first" 'or when that folder is a task (`the sprint folder is a task: <path>`)'
+out_has "contract: sprint open: a task already in the folder is not moved" 'A task already in that folder is re-pointed and not moved'
+OUT="$(grep '^| `sprint close ' "$CS")"
+out_has "contract: sprint close moves each carried task to the next sprint's folder" \
+  'In a sprint project it moves each task named in `--carry` to the next sprint'"'"'s folder'
+out_has "contract: sprint close moves each backlog task to backlog/" 'each named in `--backlog` to `<tasks_root>/backlog/<ID>/`'
+out_has "contract: sprint close leaves a done or abandoned task where it is" 'stays in the closed sprint'"'"'s folder'
+out_has "contract: sprint close: a next sprint's folder that is a task gives exit 6" \
+  'a carried task also gives exit 6 when the next sprint'"'"'s folder is a task'
+OUT="$(grep '^| `doctor \[' "$CS")"
+out_has "contract: doctor --fix moves each task to the folder of its sprint" \
+  'In a sprint project it moves each task to the folder of its sprint, or to `backlog/` with none'
+out_has "contract: doctor --fix removes each empty group folder, emptied by a move or not" \
+  'then removes each empty group folder, a status folder too, whether or not a move emptied it,'
+out_lacks "contract: doctor --fix: not only the folders a move emptied" 'group folder left empty'
+OUT="$(grep '^| project | `board` ' "$CS")"
+out_has "contract: the board check names a sprint project's board with no sprint filter" \
+  'For a project with `task_layout: sprint`, a board whose own filters have no line'
+out_has "contract: the board check's row for it" '(`tasks.base:no-sprint-filter`) (warn)'
+OUT="$(grep '^| project | `no-readme` ' "$CS")"
+out_has "contract: no-readme reads backlog/ and the group folders" 'one directly under a status folder, `backlog` or a group folder'
+out_has "contract: no-readme: a group folder needs no README" 'neither does `backlog` or a group folder'
+OUT="$(grep '^| project | `task-location` ' "$CS")"
+out_has "contract: task-location takes a task in a group folder" \
+  '`<tasks_root>/<folder>/<ID>/README.md` in `backlog` or another group folder'
+OUT="$(grep '^| project | `task-layout` ' "$CS")"
+out_has "contract: task-layout names a task out of the folder of its sprint" '(`<ID>:<folder>`, the folder it belongs in; `--fix` moves it)'
+out_has "contract: task-layout names a pattern that gives no folder name" '(`sprint_folder:invalid`)'
+out_has "contract: task-layout names sprint with sprints off" '(`task_layout:no-sprints`'
+out_has "contract: task-layout names a group folder in another layout" '(`<folder>:<layout>`'
+out_has "contract: such as backlog/ in a flat project" '`backlog:flat`'
+file_has "contract: the lookup goes through the group folders of sb_task_groups" "$CS" \
+  '- Both also look in each group folder that `sb_task_groups` lists'
+CV="$here/templates/obsidian-conventions.md.tmpl"
+cv_version="$(sed -n 's/^conventions_version: *//p' "$CV" | head -1)"
+is "conventions: the child folders raise conventions_version to 10" "$cv_version" "10"
+file_has "conventions: the short version names the sprint folders" "$CV" 'With `sprint`,'
+line_is "conventions: the path of a task in backlog/" "$CV" \
+  '<project>/tasks/backlog/<TICKET-ID>/README.md          # a task in no sprint, in the sprint layout'
+line_is "conventions: the path of a task in a sprint's folder" "$CV" \
+  '<project>/tasks/<sprint folder>/<TICKET-ID>/README.md  # a task, in the folder of its sprint'
+file_has "conventions: the sprint folder is named by sprint_folder" "$CV" 'named by the profile'"'"'s `sprint_folder`'
+file_has "conventions: task set moves a sprint task" "$CV" '`second-brain task set <ID> sprint=<id>` moves it'
+file_has "conventions: no task is named backlog" "$CV" 'None is named `backlog` either.'
+file_has "conventions: a sprint edited in the board moves nothing" "$CV" '- With `sprint`, a sprint edited in the board moves nothing'
+line_is "guide: a section on the sprint folders" "$GS" '### Sprint folders'
+file_has "guide: sprint keeps a task in the folder of its sprint" "$GS" \
+  '`task_layout: sprint` in the profile keeps each task in the folder of its sprint'
+file_has "guide: a new story starts in backlog/" "$GS" '- A new story starts in `tasks/backlog/<ID>/`.'
+file_has "guide: sprint_folder names a sprint's folder" "$GS" 'A sprint'"'"'s folder is named by `sprint_folder` in the profile'
+file_has "guide: task set moves the folder when the sprint changes" "$GS" \
+  '`second-brain task set` moves the folder to that sprint'"'"'s folder'
+file_has "guide: a sprint close moves the carried and backlog tasks" "$GS" \
+  'each carried task moves to the next sprint'"'"'s folder'
+file_has "guide: doctor --fix moves a sprint edited in the board" "$GS" \
+  'A sprint edited in the board moves nothing: `second-brain doctor --fix` moves each task to the'
+VI="$here/templates/vault-index.md.tmpl"
+line_is "index template: a task note's place names the sprint folders" "$VI" \
+  '  With `task_layout: sprint`, it is under the folder of its sprint, or `tasks/backlog/` in none.'
+
 # ---------------------------------------------------------------- the status layout in the skill text and the changelog
 ST="$here/skills/story-tracker/SKILL.md"
-line_is "story-tracker: task_layout takes status" "$ST" \
-  '   - `task_layout` is `flat`, `archive` or `status`. A profile with no such line is `flat`.'
+line_is "story-tracker: task_layout takes status and sprint" "$ST" \
+  '   - `task_layout` is `flat`, `archive`, `status` or `sprint`. A profile with no such line is'
 file_lacks "story-tracker: task_layout is no longer flat or archive alone" "$ST" '`task_layout` is `flat` or `archive`'
 line_is "story-tracker: a status project's folder follows the status, with nothing to archive" "$ST" \
   '   - With `status`, a story'"'"'s folder follows its status, so there is nothing to archive and'
@@ -294,8 +429,8 @@ line_is "vault-setup adopt: doctor --fix runs once" "$AD" \
 file_has "vault-setup adopt: the run is a bulk move, made on a yes" "$AD" '- Offer that run, as a bulk move, and make it only on a yes:'
 file_has "vault-setup adopt: a task's place in a status folder" "$AD" '`<tasks_root>/<status>/<ID>/README.md` in a status'
 VS="$here/skills/vault-setup/SKILL.md"
-line_is "vault-setup: the task_layout row offers status" "$VS" \
-  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, or each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes | `archive`, `flat` or `status` |'
+line_is "vault-setup: the task_layout row offers status and sprint" "$VS" \
+  '   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes, or each task lives in the folder of its sprint, or `<tasks_root>/backlog/<ID>/` in none, and moves when its sprint changes | `archive`, `flat`, `status` or `sprint` |'
 file_lacks "vault-setup: task_layout is no longer archive or flat alone" "$VS" '| `archive` or `flat` |'
 VD="$here/skills/vault-doctor/SKILL.md"
 line_is "vault-doctor fix: a status move by --fix is a bulk change" "$VD" \
@@ -335,7 +470,7 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the status folders raise index_version to 6" "$vi_version" "6"
+is "index template: the sprint folders raise index_version to 7" "$vi_version" "7"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -343,9 +478,9 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.10.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.10.0 - unreleased"
+is "changelog: the newest section is 0.11.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.11.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
-st_top="$(lineno "$CG" '## 0.10.0 - unreleased')"
+st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
 is "changelog: the status layout is under 0.10.0" \
   "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
@@ -363,6 +498,55 @@ case "$cv_text" in
   *'The doctor'"'"'s `conventions` check warns about an older note.'*) pass "changelog: the version 8 line says the doctor warns on an older note" ;;
   *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
 esac
+# under_011 <desc> <line>: the line is in the 0.11.0 section, above 0.10.0.
+sp_top="$(lineno "$CG" '## 0.11.0 - unreleased')"
+under_011() {
+  local n
+  n="$(lineno "$CG" "$2")"
+  is "$1" "$((${sp_top:-0} > 0 && ${n:-0} > ${sp_top:-0} && ${n:-0} < ${st_top:-0}))" "1"
+}
+under_011 "changelog: the sprint layout is under 0.11.0" '- A project can keep each task in the folder of its sprint:'
+under_011 "changelog: sprint_folder is under 0.11.0" '- `sprint_folder` in the profile names a sprint'"'"'s folder'
+under_011 "changelog: the conventions note at version 9 is under 0.11.0" \
+  '- The conventions note is at version 9: it names the sprint layout. The doctor'"'"'s `conventions`'
+under_011 "changelog: the index's sprint line is under 0.11.0" \
+  '- The vault index names the sprint folders as a task'"'"'s place in a sprint project.'
+file_has "changelog: the index template is at version 7" "$CG" 'index template is now at `index_version: 7`'
+file_has "changelog: set index_version 7 once the task line is copied" "$CG" 'then set `index_version: 7`.'
+under_011 "changelog: a pattern with no folder name is under 0.11.0" \
+  '  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that'
+under_011 "changelog: task new and task set in a sprint project are under 0.11.0" \
+  '- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a'
+under_011 "changelog: task set's exit 6 is under 0.11.0" \
+  'destination or the sprint'"'"'s folder is a task. A status change moves nothing.'
+under_011 "changelog: sprint open and sprint close moves are under 0.11.0" \
+  '- `sprint open` moves each task it re-points to the new sprint'"'"'s folder. `sprint close` moves each'
+under_011 "changelog: done and abandoned tasks stay, under 0.11.0" \
+  'done and abandoned tasks stay in the closed sprint'"'"'s folder.'
+under_011 "changelog: the lookup in backlog/ and the group folders is under 0.11.0" \
+  '- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly'
+under_011 "changelog: task new and task alias refuse backlog, under 0.11.0" \
+  '`task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.'
+under_011 "changelog: the board's group folder branch is under 0.11.0" \
+  '- A new board'"'"'s filters take a task in a group folder. An existing board is not rewritten: in a'
+under_011 "changelog: tasks.base:no-sprint-filter is under 0.11.0" \
+  '  sprint project, the doctor'"'"'s `board` check warns on one without that branch,'
+under_011 "changelog: no-readme and task-location are under 0.11.0" \
+  '- The doctor'"'"'s `no-readme` check reads each folder under `backlog/` and a group folder, and'
+under_011 "changelog: task-layout's sprint rows are under 0.11.0" \
+  '  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder'
+under_011 "changelog: sprint_folder:invalid and task_layout:no-sprints are under 0.11.0" \
+  '  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),'
+under_011 "changelog: <folder>:<layout> is under 0.11.0" \
+  '  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).'
+under_011 "changelog: doctor --fix in a sprint project is under 0.11.0" \
+  '- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to'
+under_011 "changelog: turning the layout on with doctor --fix once is under 0.11.0" \
+  '  `sprint_folder`, set the key, then run `doctor --fix` once.'
+under_011 "changelog: the search rule's sprint line is under 0.11.0" \
+  '- The search rule warns on a whole Read of a task note in `backlog/` or a sprint'"'"'s folder too.'
+file_lacks "changelog: the sprint layout line describes, not points" "$CG" \
+  '`## 4. A task` in `docs/contract.md` and `### Sprint folders` in `docs/guide.md` say how.'
 OUT="$(check_line unresolved-links Fix)"
 out_has "checks unresolved-links: a task's link takes the path find prints" \
   'A task'"'"'s path is the one `second-brain find <ID> --project <project>` prints, written without `.md`: `[[<the path find prints, no .md>|EX-123]]`'
@@ -378,6 +562,227 @@ line_is "contract: a depends_on link holds the README's vault path" "$here/docs/
   '  - "[[<vault path of its README, no .md>|<other ID>]]"'
 file_lacks "contract: a depends_on link no longer builds the flat path" "$here/docs/contract.md" \
   '[[<project>/<tasks_root>/<other ID>/README|'
+
+# ---------------------------------------------------------------- the sprint layout in the skills, the agents and the changelog
+ST="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: sprint with sprints off is flat" "$ST" \
+  '     `flat`, and so is `sprint` with `uses_sprints: false`.'
+line_is "story-tracker: a sprint project's folder follows its sprint, with nothing to archive" "$ST" \
+  '   - With `sprint`, a story'"'"'s folder follows its sprint, so there is nothing to archive and'
+file_has "story-tracker: a new story is in backlog/" "$ST" 'A new story is in `<tasks_root>/backlog/<ID>/`;'
+file_has "story-tracker: task set moves a story to the folder of its sprint" "$ST" \
+  '`second-brain task set <ID> sprint=<id>` moves it to the folder of that sprint, and'
+line_is "story-tracker: a status change moves nothing in a sprint project" "$ST" \
+  '     `sprint=` back to `backlog/`. A status change moves nothing.'
+line_is "story-tracker: an archived story in a sprint project is left to the doctor" "$ST" \
+  '  - With `task_layout: sprint`, ask nothing and move nothing: the doctor'"'"'s `task-layout` row'
+line_is "story-tracker: doctor --fix moves it to the folder of its sprint" "$ST" \
+  '    names it, and `second-brain doctor --fix` moves it to the folder of its sprint, or `backlog/`.'
+line_is "story-tracker: a sprint project's story path is the one find prints" "$ST" \
+  '  - So is one in a `sprint` project, which changes when the story'"'"'s sprint does.'
+line_is "docs-keeper: a task's place names the sprint folders" "$DK" \
+  '  With `task_layout: sprint`, it is `<tasks_root>/<sprint folder>/<ID>/README.md` in a sprint,'
+line_is "docs-keeper: or backlog/ in none" "$DK" '  or `<tasks_root>/backlog/<ID>/README.md` in none.'
+SM="$here/agents/scrum-master.md"
+line_is "scrum-master: a sprint project's close moves the carried and backlog tasks" "$SM" \
+  '- With `task_layout: sprint`, the close moves each carried task to the next sprint'"'"'s folder and'
+file_has "scrum-master: done and abandoned tasks stay" "$SM" 'Done and abandoned tasks stay in the'
+file_has "scrum-master: a taken destination or a bad pattern is the user's" "$SM" \
+  'A taken destination, or a `sprint_folder` that gives the next sprint no'
+CL="$here/skills/sprint/close.md"
+line_is "sprint close: exit 6 is a taken destination in a sprint project" "$CL" \
+  '   - Exit 6, with `task_layout: sprint`: the folder a task in `--carry` or `--backlog` moves to is'
+line_is "sprint close: or the next sprint's folder is a task" "$CL" \
+  '     taken, or the next sprint'"'"'s folder is a task, and nothing was written. Show that path to the'
+line_is "sprint close: exit 5 names the sprint_folder pattern" "$CL" \
+  '   - Exit 5 that names the `sprint_folder` pattern, with `task_layout: sprint`: it gives the next'
+line_is "sprint close: a sprint project's close moves the carried and backlog tasks" "$CL" \
+  '   - With `task_layout: sprint`, it moves each task in `--carry` to the next sprint'"'"'s folder and'
+file_has "sprint close: done, abandoned and --abandon tasks stay" "$CL" \
+  'task, and one in `--abandon`, stays in the closed sprint'"'"'s folder.'
+line_is "sprint close: the doctor moves a failed move later, in a sprint project" "$CL" \
+  '     In a sprint project it moves it to the next sprint'"'"'s folder, or `backlog/`, instead.'
+cl_s5="$(lineno "$CL" '5. Exit 5 names the problem')"
+cl_sp6="$(lineno "$CL" '   - Exit 6, with `task_layout: sprint`')"
+cl_sp5="$(lineno "$CL" '   - Exit 5 that names the `sprint_folder` pattern')"
+cl_s6="$(lineno "$CL" '6. The same call closes the sprint note.')"
+cl_spmv="$(lineno "$CL" '   - With `task_layout: sprint`, it moves each task')"
+cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
+is "sprint close: a sprint project's exits are under step 5 and its moves under step 6" \
+  "$((${cl_s5:-0} < ${cl_sp6:-0} && ${cl_sp6:-0} < ${cl_sp5:-0} && ${cl_sp5:-0} < ${cl_s6:-0} && ${cl_s6:-0} < ${cl_spmv:-0} && ${cl_spmv:-0} < ${cl_s7:-0}))" "1"
+VS="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: no sprints offers no sprint layout" "$VS" '     no `sprint` for `task_layout`.'
+file_has "vault-setup: the sprint_folder row" "$VS" \
+  '| `sprint_folder` | with `sprint` only: how a sprint'"'"'s folder is named, its end date with none, or a pattern of `<end>`, `<start>` and `<n>`'
+AD="$here/skills/vault-setup/adopt.md"
+line_is "vault-setup adopt: a sprint project's tasks wait for doctor --fix" "$AD" \
+  '- With `task_layout: sprint`, the tasks already there stay where they are until'
+line_is "vault-setup adopt: the row names each task outside the folder of its sprint" "$AD" \
+  '  outside the folder of its sprint, or `backlog/` with no sprint.'
+file_has "vault-setup adopt: the run removes each empty group folder" "$AD" \
+  'It also removes each empty group folder, a status folder too,'
+line_is "vault-setup adopt: whether or not a move emptied it" "$AD" '  whether or not a move emptied it.'
+file_lacks "vault-setup adopt: not only the folders a move emptied" "$AD" 'group folder it leaves empty'
+file_has "vault-setup adopt: a task's place in backlog/ or a group folder" "$AD" \
+  '`<tasks_root>/<folder>/<ID>/README.md` in `backlog/` or another group folder'
+OUT="$(check_line board Means)"
+out_has "checks board: names a sprint project's board with no group folder branch" \
+  'the project has `task_layout: sprint`, with sprints on, and the board'"'"'s own `filters` block has no line `file.folder.split("/")[<digits>] == aliases[0]`'
+out_has "checks board: the row for it" '(`tasks.base:no-sprint-filter`)'
+OUT="$(check_line board Why)"
+out_has "checks board: says why the group folder branch matters" \
+  'Without the group folder branch, Obsidian shows no task in `backlog/` or a sprint'"'"'s folder'
+OUT="$(check_line board Fix)"
+out_has "checks board: the sprint filter's fix" '`no-sprint-filter`: the same replacement'
+OUT="$(check_line no-readme Means)"
+out_has "checks no-readme: backlog and a group folder are no task folder" '`backlog` and a group folder;'
+out_has "checks no-readme: reads each folder under backlog/ or a group folder" \
+  'one directly under a status folder, `backlog` or a group folder'
+out_has "checks no-readme: what a group folder is" \
+  'A group folder is, in a sprint project, each folder directly under the tasks root with no README'
+out_has "checks no-readme: backlog/ and a group folder need no README" 'Neither does `backlog` or a group folder.'
+OUT="$(check_line no-readme Fix)"
+out_has "checks no-readme: task new writes into backlog/ in a sprint project" \
+  'or `<tasks root>/backlog/<ID>/` in a sprint project'
+out_has "checks no-readme: then task set moves it to the folder of its sprint" \
+  '`second-brain task set <ID> sprint=<id>`, with the sprint the user names, then moves it to the folder of that sprint'
+OUT="$(check_line task-location Means)"
+out_has "checks task-location: a task's place in backlog/ or a group folder" \
+  '`<tasks root>/<folder>/<ID>/README.md` in `backlog` or another group folder'
+OUT="$(check_line task-location Fix)"
+out_has "checks task-location: a sprint project's task goes to backlog/" \
+  'In a sprint project, move it to `<project path>/<tasks root>/backlog/<ID>/README.md`'
+out_has "checks task-location: then the doctor moves it to the folder of its sprint" \
+  '`second-brain doctor --fix` moves it to the folder of its sprint'
+OUT="$(check_line task-layout Means)"
+out_has "checks task-layout: a group folder in another layout" '(`<folder>:<layout>`, as `backlog:flat` or `2026-10-14:status`)'
+out_has "checks task-layout: sprint with sprints off" '(`task_layout:no-sprints`)'
+out_has "checks task-layout: a task out of the folder of its sprint" '(`<ID>:<folder>`'
+out_has "checks task-layout: a pattern that gives no folder name" '(`sprint_folder:invalid`)'
+OUT="$(check_line task-layout Why)"
+out_has "checks task-layout: says why a sprint project's folders matter" 'With `sprint`, the folder shows a task'"'"'s sprint'
+OUT="$(check_line task-layout Fix)"
+out_has "checks task-layout: doctor --fix moves a task to the folder of its sprint" \
+  '`<ID>:<folder>`: `second-brain doctor --fix` moves each task to the folder of its sprint, or to `backlog/` with none'
+out_has "checks task-layout: and removes each empty group folder, emptied by a move or not" \
+  'then removes each empty group folder, a status folder too, whether or not a move emptied it'
+out_lacks "checks task-layout: not only the folders a move emptied" 'group folder it leaves empty'
+out_has "checks task-layout: an invalid pattern is the user's to fix" '`sprint_folder:invalid`: ask the user for a pattern'
+out_has "checks task-layout: no-sprints asks whether the project runs sprints" \
+  '`task_layout:no-sprints`: ask whether the project runs sprints'
+out_has "checks task-layout: on a yes the profile takes sprint" \
+  'set `task_layout: sprint` in the profile, with `uses_sprints: true` when sprints are off'
+VD="$here/skills/vault-doctor/SKILL.md"
+line_is "vault-doctor fix: a sprint move by --fix is a bulk change" "$VD" \
+  '   - So does a row with `<ID>:<folder>` offenders, in a sprint project: `--fix` moves each task to'
+line_is "vault-doctor fix: names each <ID>:<folder> offender" "$VD" \
+  '   - In a sprint project, name each `<ID>:<folder>` offender, with the folder it moves to.'
+line_is "vault-doctor fix: an archive project's <folder>:archive is no task" "$VD" \
+  '   - In an archive project, a `<folder>:archive` offender, such as `backlog:archive`, is no task'
+vd_far="$(lineno "$VD" '- In an archive project, a `<folder>:archive` offender')"
+is "vault-doctor fix: <folder>:archive comes after the archive project's list and before the five" \
+  "$((${vd_num:-0} < ${vd_far:-0} && ${vd_far:-0} < ${vd_five:-0}))" "1"
+line_is "vault-doctor fix: a sprint project's --fix removes each empty group folder" "$VD" \
+  '   - In a sprint project, every `--fix` run also removes each empty group folder, a status folder'
+line_is "vault-doctor fix: a sprint project's empty folders directly under the tasks root" "$VD" \
+  '     too, whether or not a move emptied it: each empty folder directly under the tasks root. An'
+line_is "vault-doctor fix: an empty folder inside one stays, said before the run" "$VD" \
+  '     empty folder inside one, such as `backlog/<ID>/`, stays. Say so before it runs.'
+file_lacks "vault-doctor fix: not only the folders a move emptied" "$VD" 'group folder it leaves empty'
+line_is "vault-doctor fix: sprint_folder:invalid is no task" "$VD" \
+  '   - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither'
+line_is "vault-doctor fix: compare proves a sprint move too" "$VD" \
+  '   - After a move to the folders of their sprint, run it too. It lists the aliases of each moved'
+vd_sname="$(lineno "$VD" '- In a sprint project, name each')"
+vd_smove="$(lineno "$VD" '- After a move to the folders of their sprint')"
+is "vault-doctor fix: the sprint names come after the others and before the snapshot" \
+  "$((${vd_name:-0} < ${vd_sname:-0} && ${vd_sname:-0} < ${vd_snap:-0}))" "1"
+is "vault-doctor fix: the sprint move's compare comes after the status move's and before the broken-link line" \
+  "$((${vd_move:-0} < ${vd_smove:-0} && ${vd_smove:-0} < ${vd_broke:-0}))" "1"
+under_011 "changelog: story-tracker asks nothing in a sprint project, under 0.11.0" \
+  'Nothing is archived, and story-tracker asks'
+under_011 "changelog: the sprint skill and scrum-master, under 0.11.0" \
+  'sprint skill and scrum-master say what a sprint project'"'"'s close moves'
+under_011 "changelog: docs-keeper names the sprint folders, under 0.11.0" \
+  '- docs-keeper names `tasks/backlog/` and the sprint folders as a task'"'"'s place in a sprint'
+under_011 "changelog: vault-setup offers the sprint layout, under 0.11.0" \
+  '`vault-setup project` and `adopt` offer `task_layout: sprint`'
+under_011 "changelog: vault-doctor fix counts a sprint project's moves, under 0.11.0" \
+  '- The vault-doctor `fix` mode counts a sprint project'"'"'s moves as a bulk change'
+RM="$here/README.md"
+line_is "README: a ticket's note, in a sprint project" "$RM" \
+  '  status. A project that keeps each task in the folder of its sprint has it at'
+line_is "README: in a sprint's folder, or backlog/ in none" "$RM" \
+  '  `<project>/tasks/<sprint folder>/<ID>/README.md`, or `<project>/tasks/backlog/<ID>/README.md`'
+line_is "README: the first story's note, in a sprint project" "$RM" \
+  '`<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a'
+SP="$here/skills/sprint/SKILL.md"
+line_is "sprint open: exit 6 names a taken destination in a sprint project" "$SP" \
+  '   - Exit 6 with `the destination exists: <path>` or `the sprint folder is a task: <path>`, in a'
+line_is "sprint open: the folder a re-pointed task moves to, with nothing written" "$SP" \
+  '     project with `task_layout: sprint`: the folder a re-pointed task moves to is taken, and'
+line_is "sprint open: exit 5 names the sprint_folder pattern" "$SP" \
+  '   - Exit 5 that names the `sprint_folder` pattern: it gives the new sprint no folder name, and'
+line_is "sprint open: each re-pointed task moves in a sprint project" "$SP" \
+  '   - With `task_layout: sprint`, each re-pointed task also moves to the new sprint'"'"'s folder. After'
+line_is "sprint open: a failed move leaves the sprint open" "$SP" \
+  '   - A move that fails is named on stderr, and the call exits with its code. The sprint is open'
+line_is "sprint open: the doctor moves the task later" "$SP" \
+  '     `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.'
+line_is "sprint plan: task set moves the folder in a sprint project" "$SP" \
+  '   - With `task_layout: sprint`, each call also moves the task'"'"'s folder, to the sprint'"'"'s folder or'
+line_is "sprint plan: exit 6 there, as in open" "$SP" \
+  '   - Exit 6 there, as in open: the destination is taken, or the sprint'"'"'s folder is a task, and'
+line_is "sprint plan: a failed move keeps the sprint written" "$SP" \
+  '   - A move that fails exits as `second-brain move` does, with the sprint written:'
+sp_o6="$(lineno "$SP" '6. Run `second-brain sprint open')"
+sp_oe6="$(lineno "$SP" '   - Exit 6 with `the destination exists: <path>`')"
+sp_o7="$(lineno "$SP" '7. Report the note it created')"
+sp_omv="$(lineno "$SP" '   - With `task_layout: sprint`, each re-pointed task')"
+sp_o8="$(lineno "$SP" '8. A goal given or changed later')"
+sp_p5="$(lineno "$SP" '5. Set each answer:')"
+sp_pmv="$(lineno "$SP" '   - With `task_layout: sprint`, each call also moves')"
+sp_p6="$(lineno "$SP" '6. A task that does not exist yet')"
+is "sprint open: the exits are under step 6 and the moves under step 7" \
+  "$((${sp_o6:-0} < ${sp_oe6:-0} && ${sp_oe6:-0} < ${sp_o7:-0} && ${sp_o7:-0} < ${sp_omv:-0} && ${sp_omv:-0} < ${sp_o8:-0}))" "1"
+is "sprint plan: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
+under_011 "changelog: the sprint skill's open and plan moves, under 0.11.0" \
+  'The sprint skill says the same of `sprint open` and of setting a task'"'"'s sprint in plan.'
+under_011 "changelog: doctor --fix removes each empty group folder, under 0.11.0" \
+  '  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not'
+file_lacks "changelog: doctor --fix: not only the folders a move emptied" "$CG" 'group folder it leaves empty'
+file_has "guide: doctor --fix removes each empty group folder" "$GS" \
+  'It also removes each empty group folder, a'
+line_is "guide: whether or not a move emptied it" "$GS" '  status folder too, whether or not a move emptied it.'
+file_lacks "guide: doctor --fix: not only the folders a move emptied" "$GS" 'removes the folders it leaves empty'
+under_011 "changelog: a status project's --fix removes each empty group folder, under 0.11.0" \
+  '- In a status project, `doctor --fix` now also removes each empty group folder other than the'
+file_has "changelog: a status project's --fix removes an empty folder directly under the tasks root" "$CG" \
+  '  five status folders, whether or not a move emptied it: an empty folder directly under the tasks'
+file_has "changelog: such as a task folder with no README there" "$CG" \
+  'a sprint'"'"'s folder or a task folder with no README there. An'
+file_has "changelog: an empty status folder stays, and an empty folder inside one" "$CG" \
+  '  empty status folder stays, and so does an empty folder inside one, such as `planned/<ID>/`.'
+file_lacks "changelog: no task folder below the tasks root's top" "$CG" \
+  '  README, whether or not a move emptied it. An empty status folder stays.'
+line_is "guide: every --fix run in a status project removes each empty folder directly under the tasks root" "$GS" \
+  '  Every run also removes the archive'"'"'s empty folders, and each empty folder directly under the'
+line_is "guide: such as a task folder with no README there" "$GS" \
+  '  a task folder with no README there, whether or not a move emptied it. An empty status folder'
+line_is "guide: an empty folder inside a status folder stays" "$GS" \
+  '  stays, and so does an empty folder inside one, such as `planned/<ID>/`.'
+file_lacks "guide: no longer the archive's empty folders alone" "$GS" '  also removes the archive'"'"'s empty folders.'
+line_is "vault-doctor fix: a status project's --fix removes each empty group folder" "$VD" \
+  '   - In a status project, every `--fix` run also removes each empty group folder other than the'
+line_is "vault-doctor fix: a status project's empty folders directly under the tasks root" "$VD" \
+  '     five status folders, whether or not a move emptied it: an empty folder directly under the'
+line_is "vault-doctor fix: an empty folder inside a status folder stays, said before the run" "$VD" \
+  '     `planned/<ID>/`. Say so before it runs.'
+file_lacks "vault-doctor fix: no task folder that no-readme names" "$VD" 'a task folder that'
+vd_sgr="$(lineno "$VD" '- In a sprint project, every `--fix` run also removes')"
+vd_tgr="$(lineno "$VD" '- In a status project, every `--fix` run also removes')"
+is "vault-doctor fix: the status project's removal is beside the sprint project's, before the snapshot" \
+  "$((${vd_sgr:-0} > 0 && ${vd_tgr:-0} == ${vd_sgr:-0} + 3 && ${vd_tgr:-0} < ${vd_snap:-0}))" "1"
 
 # ---------------------------------------------------------------- the spec skill and its agents
 SK="$here/skills/spec/SKILL.md"
@@ -1453,6 +1858,360 @@ file_has "changelog: only a missing block is asked again" "$here/CHANGELOG.md" \
   'asks once more only when the block is missing or does not parse. Otherwise it launches one'
 file_has "changelog: the worked examples" "$here/CHANGELOG.md" \
   '- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its'
+
+# ---------------------------------------------------------------- the build catches an agent with no report, and checks on the owner's orders
+BM="$here/skills/spec/build.md"
+CT="$here/docs/contract.md"
+CG="$here/CHANGELOG.md"
+q="'"
+for h in '### An agent with no report' "### The owner${q}s open orders" "### The lead${q}s check"; do
+  line_is "spec build: has $h" "$BM" "$h"
+  is "spec build: $h is in the launch section, before the verdict reading" \
+    "$(($(linex "$BM" '## 3. Launching an agent') < $(linex "$BM" "$h") && $(linex "$BM" "$h") < $(linex "$BM" '### Reading a verdict')))" "1"
+done
+line_is "spec build: a repeated reply is no new event" "$BM" \
+  '- A named agent can send its last reply twice: as its message, then again in its idle notice. A'
+line_is "spec build: it changes no state and gets no reply" "$BM" \
+  '  notice that repeats a reply you took already is no new event: it changes no state, and gets no'
+line_is "spec build: an implementer's report is a commit or a block" "$BM" \
+  "- An \`implementer\`${q}s: a \`Commit:\` line, or a first line \`BLOCKED:\`. A bundle${q}s run gives one per"
+line_is "spec build: a reviewer's report is its JSON block" "$BM" \
+  "- A \`reviewer\`${q}s: the JSON block of \`### Reading a verdict\`."
+line_is "spec build: an idle agent with no report is checked before its reply is final" "$BM" \
+  'Before you take the reply of an agent idle with no report as final:'
+line_is "spec build: it checks the branch with git log and git status" "$BM" \
+  '   - `git -C "<path>" log --oneline <start>..HEAD` and `git -C "<path>" status --porcelain`: what'
+line_is "spec build: and whether a check the agent started still runs" "$BM" \
+  '   - Whether a check it started still runs, such as its tests or a `validation run`: look for its'
+line_is "spec build: a process counts only under the repo's path" "$BM" \
+  '     process with `ps`. Count only a process whose working directory or command line is under'
+line_is "spec build: since another build may run its tests in another worktree" "$BM" \
+  "     \`<path>\`: another build${q}s tests may run in another worktree."
+line_is "spec build: work that still runs is waited for" "$BM" \
+  '2. Its check still runs: the work is real. Wait for its next reply.'
+line_is "spec build: nothing running gets one message" "$BM" \
+  '3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id'
+line_is "spec build: the message asks it to finish its step and report" "$BM" \
+  '   `Nothing you started is still running. Finish your step, then reply with your report.`'
+line_is "spec build: the message goes once" "$BM" '   - Send it once per launch or fix message, never twice.'
+line_is "spec build: then its next reply is final" "$BM" \
+  '4. Its next reply is final, with a report or not, unless its check still runs, as item 2 says.'
+is "spec build: the message comes before the reply is final" \
+  "$(($(lineno "$BM" '3. Nothing of it runs: send that agent one message') < $(lineno "$BM" '4. Its next reply is final, with a report or not')))" "1"
+bi_ptr='   - It is idle with no report: first take it as `### An agent with no report` says. Then read'
+is "spec build: Build it item 3 sends an idle implementer there first" \
+  "$(awk '/^### Build it$/ { on = 1 } /^### Review it$/ { on = 0 } on' "$BM" | grep -cxF -- "$bi_ptr")" "1"
+is "spec build: between items 3 and 4 of Build it" \
+  "$(($(lineno "$BM" '3. Its reply has no `Commit:` line, and does not start with `BLOCKED:`') < $(linex "$BM" "$bi_ptr") && \
+  $(linex "$BM" "$bi_ptr") < $(lineno "$BM" '4. Its reply starts with `BLOCKED:`, or no commit was found')))" "1"
+rv_ptr='   - A `reviewer` idle with no block at all: first take it as `### An agent with no report`'
+line_is "spec build: the verdict reading sends an idle reviewer there first" "$BM" "$rv_ptr"
+is "spec build: before it asks for the block alone" \
+  "$(($(lineno "$BM" '5. No block, or one that does not parse') < $(linex "$BM" "$rv_ptr") && \
+  $(linex "$BM" "$rv_ptr") < $(lineno "$BM" '6. A block that parses and is not good')))" "1"
+line_is "spec build: a bundle's run goes there too" "$BM" \
+  '      - It is idle with no report: first take it as `### An agent with no report` says.'
+line_is "spec build: the reviewer may get that message" "$BM" '  `### An agent with no report` gives, or the one that'
+line_is "spec build: the orders note's path" "$BM" "\`<project path>/claude/lead-agent-task-memory.md\`. It tells the lead${q}s check, and a new session,"
+line_is "spec build: an order is the owner's ask, in their words" "$BM" \
+  '- An order is what the owner asked you to do, in their words: the request that ran the skill, and'
+line_is "spec build: the note holds each open order with its date and the owner's words" "$BM" \
+  "- Under \`## Open orders\`, the note holds each open order: its date, its story, the owner${q}s words"
+line_is "spec build: and what works on it now" "$BM" \
+  '  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a'
+line_is "spec build: then the orders done and a last-check line per story" "$BM" \
+  '- Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per'
+line_is "spec build: another build of the project may share the note" "$BM" \
+  '- Another build of the project may keep its orders in the same note. Your own are the orders of'
+line_is "spec build: once the note is there, it is only edited" "$BM" \
+  '   - Once the note is there, change it only with the Edit tool, never a whole rewrite, so that you'
+line_is "spec build: so no session overwrites another's orders" "$BM" \
+  "     never overwrite another session${q}s orders."
+line_is "spec build: the hub links to the note" "$BM" \
+  "     \`- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner${q}s open orders.\`"
+line_is "spec build: no order of the story open stops its check" "$BM" \
+  "4. No order of \`<ID>\` open: stop the lead${q}s check, as its item 6 says."
+line_is "spec build: another story's open order keeps the note" "$BM" \
+  '   - An order of another story still open: leave the note and its hub line.'
+line_is "spec build: no order of any story open removes the hub's line, then the note" "$BM" \
+  "   - No order of any story open: remove the hub${q}s line, then the note:"
+line_is "spec build: removing its own note is no destructive action" "$BM" \
+  '     it is no destructive action of `## 8`.'
+file_has "spec build: it is the lead's own note" "$BM" '`rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing'
+for l in '## Open orders' '## Done' '> Up: [[<project path>/claude/README|<project> Claude Hub]]' \
+  "- <YYYY-MM-DD> <ID>: \"<the owner${q}s words, as written>\"" \
+  'Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.'; do
+  is "spec build: the note's shape has $l" \
+    "$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM" | grep -cxF -- "$l")" "1"
+done
+line_is "spec build: the start writes the order and starts the check" "$BM" \
+  "7. Write the order that ran the build in the orders note, as \`### The owner${q}s open orders\` says."
+is "spec build: right after the build's started or resumed note" \
+  "$(($(lineno "$BM" 'Build: resumed on <branch> at <short hash>.') < $(lineno "$BM" '7. Write the order that ran the build in the orders note') && \
+  $(lineno "$BM" '7. Write the order that ran the build in the orders note') < $(linex "$BM" '## 3. Launching an agent')))" "1"
+line_is "spec build: the check runs at the profile's pace while an order of the story is open" "$BM" \
+  'While an order of `<ID>` is open, check on it at the pace the profile sets. An agent can go idle'
+line_is "spec build: the pace is lead_check_minutes from the profile's keys" "$BM" \
+  '   - Its pace is the `lead_check_minutes` line of `second-brain profile "<project>" --keys`: 10,'
+line_is "spec build: the values the pace takes, and 20 otherwise" "$BM" \
+  '     12, 15, 20, 30 or 60 minutes. No line, `-` or any other value: 20.'
+line_is "spec build: the cron line starts at minute 7 and steps by the pace" "$BM" \
+  '   - Its cron line runs at minute 7, then once more each time that many minutes pass, up to'
+line_is "spec build: off the hour and the half hour, with the default's example" "$BM" \
+  '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+line_is "spec build: CronList first keeps a job with the same prompt and cron line" "$BM" \
+  '   - In Claude Code, run `CronList` first. A job that already has the prompt below and that cron'
+line_is "spec build: one with another cron line is deleted" "$BM" \
+  '     line is the check: keep it, and start none. One with the prompt and another line: delete it'
+line_is "spec build: CronCreate takes that cron line" "$BM" \
+  '   - Else create it with `CronCreate`: that cron line, `recurring: true`, and the prompt'
+file_lacks "spec build: no job on the hour or the half hour" "$BM" '*/10 * * * *'
+line_is "spec build: the prompt names build.md of the spec skill" "$BM" \
+  "     \`Check on the open orders of <ID>, as the lead${q}s check in build.md of the spec skill says.\`"
+line_is "spec build: in this session alone" "$BM" \
+  '   - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or'
+line_is "spec build: a missing note is written again, not a stop" "$BM" \
+  '   - The note is missing while an order of `<ID>` is open: write it again with your open orders,'
+file_has "spec build: and the check goes on" "$BM" 'says, and go on. Never stop the check for it.'
+line_is "spec build: the check goes on only when the owner has not interrupted or said to hold" "$BM" \
+  '   - No one works toward it, and the owner has not since interrupted you or told you to hold: go'
+line_is "spec build: otherwise it waits for the owner" "$BM" \
+  '     on with its next step now. Otherwise wait for the owner, and say so.'
+file_lacks "spec build: no longer goes on whatever the owner said" "$BM" '   - No one works toward it: go on with its next step now.'
+line_is "spec build: with no scheduling tool it checks on each notice" "$BM" \
+  '   - No scheduling tool: check on each notice that comes to you instead, from an agent or from a'
+line_is "spec build: the check asks of each order who works toward it" "$BM" \
+  '2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent'
+line_is "spec build: the check edits its story's last-check line" "$BM" \
+  '4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.'
+line_is "spec build: the check takes no outside action" "$BM" \
+  '5. The check never pushes, merges or takes another outside action.'
+line_is "spec build: CronDelete stops it once no order of the story is open" "$BM" \
+  '6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.'
+file_has "spec build: the finish closes the build's orders" "$BM" \
+  "   - Once \`finish.md\` is done, so are the build${q}s orders: take them to \`## Done\`, as"
+is "spec build: after finish.md" \
+  "$(($(lineno "$BM" '7. Read `finish.md`, next to this file') < $(lineno "$BM" '   - Once `finish.md` is done, so are the build')))" "1"
+line_is "spec build: an answer at a stop that sends the build on is an order" "$BM" \
+  '   - An answer that sends the build on is an order: add it to the orders note, as'
+file_has "spec build: the owner stopping closes the build's orders" "$BM" \
+  "     from it. Take the build${q}s orders to \`## Done\`, as \`### The owner${q}s open orders\` says."
+line_is "contract: the orders note is an optional file of the project" "$CT" \
+  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a spec build writes (section 9)"
+file_has "contract: an agent with no report" "$CT" '- **An agent with no report.** An agent can go idle before its report, such as on a reply that'
+file_has "contract: one message, then the next reply is final" "$CT" \
+  '- A check that still runs is waited for. With none, the skill sends the agent one message to'
+file_has "contract: a repeated reply is no new event" "$CT" \
+  '- A notice that repeats a reply the skill took already, such as a named agent'"${q}"'s last reply sent'
+file_has "contract: the owner's open orders" "$CT" \
+  "- **The owner${q}s open orders.** The skill keeps the owner${q}s open orders of a build in"
+file_has "contract: the lead's check" "$CT" \
+  "- **The lead${q}s check.** While an order of its story is open, the skill checks on the agents, the"
+file_has "contract: at the pace of the profile's lead_check_minutes" "$CT" '  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward'
+line_is "contract: the profile example has lead_check_minutes" "$CT" 'lead_check_minutes: 20'
+file_has "contract: lead_check_minutes is described with the profile keys" "$CT" \
+  '- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on'
+file_has "contract: it takes the values that space the checks through the hour" "$CT" \
+  '  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,'
+file_has "contract: the template leaves it out" "$CT" \
+  '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `delivery` check warns on a value'
+file_has "contract: the delivery row names lead_check_minutes:invalid" "$CT" \
+  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn) |'
+file_lacks "profile template: leaves lead_check_minutes out" "$here/templates/profile.md.tmpl" 'lead_check_minutes'
+file_has "vault-doctor checks: the delivery check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
+  'Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).'
+
+file_has "contract: builds of one project only edit the shared note" "$CT" \
+  '  note, so once it is there the skill changes it only with edits, never a whole rewrite.'
+file_has "contract: the check stops with its story, the note with every story" "$CT" \
+  '- Once no order of its story is open, the skill stops its check. Once no order of any story is'
+file_has "contract: the check holds when the owner interrupts or says to hold" "$CT" \
+  '- The check goes on with an order no one works toward only when the owner has not since'
+file_has "contract: a process counts only under the repo's path" "$CT" \
+  '- A process counts as the agent'"${q}"'s check only when its working directory or command line is under'
+line_is "contract: the building and in-review line names the skill" "$CT" \
+  '- The skill sets a task `building` before each `implementer` launch or fix message, and'
+file_lacks "contract: no bare It after the check's bullets" "$CT" '- It sets a task `building`'
+file_has "contract: the check takes no outside action" "$CT" '- The check never pushes, merges or takes another outside action.'
+line_is "spec build: the check's own prompt is no order" "$BM" "  check${q}s own prompt is no order."
+line_is "spec build: the owner stops the build or drops an order at any time" "$BM" \
+  '   - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the'
+file_lacks "spec build: no longer closes an order only at a stop" "$BM" 'The owner stops the build at a stop'
+line_is "spec build: a wait for the owner is said once" "$BM" '   - Waiting for the owner: say it once, not at each check.'
+is "spec build: and that is in the check" \
+  "$(awk '/^### The lead'"${q}"'s check$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
+file_has "contract: an order closes when the owner stops the build or drops it" "$CT" \
+  '- An order closes when it is done, or when the owner stops the build or drops the order, at a stop'
+file_has "contract: the check's prompt is no order" "$CT" "  or not. The check${q}s own prompt is no order."
+file_has "contract: the check says a wait once" "$CT" 'Otherwise it waits for the owner and says so once,'
+GD="$here/docs/guide.md"
+line_is "guide: a build writes the orders note" "$GD" \
+  "- A build writes your open orders to \`claude/lead-agent-task-memory.md\` in the project${q}s folder of"
+line_is "guide: and a hub line, both removed once no order is open" "$GD" \
+  "  your vault, with a line in the project${q}s \`claude/README.md\`, and removes both once no order is"
+line_is "guide: and runs a check at the profile's pace" "$GD" \
+  '  open. While one is open, it runs a check in your session, as often as `lead_check_minutes` in'
+line_is "guide: pointing to the two build.md headings" "$GD" \
+  "  the project${q}s profile says, as \`### The owner${q}s open orders\` and \`### The lead${q}s check\` in"
+for h in "### The owner${q}s open orders" "### The lead${q}s check"; do
+  is "guide: the build.md heading $h is under Spec-driven delivery" \
+    "$(awk '/^## Spec-driven delivery$/ { on = 1; next } /^## / { on = 0 } on' "$GD" | grep -cF -- "\`$h\`")" "1"
+done
+file_has "changelog: the owner can stop the build or drop an order" "$CG" \
+  'You can stop the build or drop an order at any time: it is then closed.'
+lc_files="$(cd "$here" && find skills agents docs templates hooks README.md CHANGELOG.md -type f | sort)"
+lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null)"
+is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
+lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
+is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \
+  'skills/spec/build.md:'"$(linex "$BM" '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.')"':     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+lc_min="$(awk '/^## 0\.11\.0 - unreleased$/ { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
+is "the lead's check: the changelog's 0.11.0 lines and the guide name no minutes" "$lc_min" ""
+line_is "the lead's check: the start links to the renamed heading" "$BM" \
+  "   Then start the lead${q}s check, as \`### The lead${q}s check\` says."
+file_lacks "the lead's check: no link to the old heading in build.md" "$BM" 'The check every'
+file_lacks "the lead's check: nor in the guide" "$GD" 'The check every'
+file_lacks "the lead's check: nor in the contract" "$CT" 'The check every'
+cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.10.0 - ')"
+for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \
+  '- An idle notice that repeats a reply the skill took already, as a named agent'"${q}"'s last reply comes' \
+  '- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,' \
+  '- While an order is open, the skill checks on the agents, the branch and the running checks' \
+  '- A profile key, `lead_check_minutes`, sets the pace of that check in one place, as'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
+done
+
+# ---------------------------------------------------------------- the child folders and the parent word
+CC="$here/docs/contract.md"
+file_has "contract: a child task is a word of the contract" "$CC" \
+  '| child task | A task whose `epic` names another task of its project, its parent.'
+file_has "contract: the project tree names a child task" "$CC" \
+  '  tasks/<status>/<parent>/<TICKET-ID>/README.md   a child task, with task_layout: status'
+file_has "contract: parent_label is feature or epic" "$CC" \
+  '- `parent_label` is the word for the project'"'"'s parent stories: `feature`, in any letter case, or'
+file_has "contract: the word changes labels only" "$CC" \
+  '- The word changes labels only: the skills, the board'"'"'s column and the helper'"'"'s output. A task'"'"'s'
+file_has "contract: children nest in status and sprint alone" "$CC" \
+  '- In `status` and `sprint`, a child task sits inside a folder named for its parent, one folder'
+file_has "contract: a child's path in a status project" "$CC" '`<project>/<tasks_root>/<status>/<parent>/<ID>/README.md`'
+file_has "contract: a child that joins a sprint leaves its parent's note in backlog/" "$CC" \
+  '`<sprint folder>/<parent>/<ID>/` while its parent'"'"'s note stays in `backlog/<parent>/`.'
+file_has "contract: a README inside a task is a child when its epic names the task" "$CC" \
+  '- A README one folder inside a task folder in a group folder is a child task when its `epic` names'
+file_has "contract: a parent's move takes its own files alone" "$CC" \
+  '- A move of a parent takes its own note and files alone: every entry of its folder but its'
+file_has "contract: a parent done or abandoned leaves its open children" "$CC" \
+  '- A parent that is done or abandoned leaves its open children where they are, and every command'
+file_has "contract: the board's branch for a task one level deeper" "$CC" '- A branch after it takes a task one level deeper'
+OUT="$(grep '^| `task set ' "$CC")"
+out_has "contract: task set moves a child into its parent's folder" \
+  'into its parent'"'"'s folder in the folder of its status or sprint, `<tasks_root>/<folder>/<parent>/<ID>/`'
+out_has "contract: task set prints the folder it removes" 'prints `removed: <path>` after the `links:` lines'
+OUT="$(grep '^| `task head ' "$CC")"
+out_has "contract: task head takes the parent word as the epic line's key" '`feature: <value>` where it is `feature`'
+OUT="$(grep '^| `scaffold project ' "$CC")"
+out_has "contract: scaffold project takes --parent-label" '[--parent-label feature\|epic]'
+OUT="$(grep '^| project | `task-layout` ' "$CC")"
+out_has "contract: task-layout names a child out of its parent's folder" '`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`'
+out_has "contract: task-layout names an epic that names no task" '`<ID>:unknown-<label>`'
+out_has "contract: task-layout names a parent_label of neither word" '(`parent_label:invalid`)'
+OUT="$(grep '^| project | `board` ' "$CC")"
+out_has "contract: the board check names a board with no child branch" '(`tasks.base:no-child-filter`) (warn)'
+line_is "contract: the hook takes a child task note" "$CC" \
+  '- One level deeper in such a group folder, `tasks/<folder>/<parent>/<ID>/README.md` is a whole'
+file_has "contract: a skill names parent stories by parent_label" "$CC" \
+  '- A skill names a project'"'"'s parent stories by its `parent_label`: features or epics. The'
+CVT="$here/templates/obsidian-conventions.md.tmpl"
+file_has "conventions: the short version names a child's folder" "$CVT" \
+  'In both, a task whose `epic` names another task sits inside a folder'
+line_is "conventions: the tree names a child task" "$CVT" \
+  '<project>/tasks/<status>/<parent>/<TICKET-ID>/README.md  # a child task, in the status layout'
+file_has "conventions: the parent word changes labels only" "$CVT" \
+  'calls its parent stories features or epics, as the profile'"'"'s `parent_label` says; the key stays'
+GDC="$here/docs/guide.md"
+line_is "guide: a section on the feature and epic folders" "$GDC" '### Feature and epic folders'
+file_has "guide: a child sits inside a folder named for its parent" "$GDC" \
+  '- In a status or sprint project, a child sits inside a folder named for its parent, in the folder'
+file_has "guide: a parent done or abandoned leaves its open children" "$GDC" \
+  '- A parent'"'"'s move takes its own files alone. A parent done or abandoned leaves its open children'
+file_has "guide: vault-setup asks for the word" "$GDC" \
+  '- `vault-setup` asks whether a project calls its parent stories features or epics, as'
+file_has "README: names the feature and epic folders" "$here/README.md" '- **Features and epics.** In those two kinds of project'
+VSK="$here/skills/vault-setup/SKILL.md"
+line_is "vault-setup: asks for the parent word" "$VSK" '   - whether it calls its parent stories features or epics.'
+line_is "vault-setup: features pass --parent-label feature" "$VSK" \
+  '   - Features: add `--parent-label feature`. It writes `parent_label: feature` into the profile,'
+file_has "vault-setup: adopt asks for the word too" "$VSK" '| `parent_label` | with adopt only, as step 1 asks it for a new project:'
+file_has "vault-setup adopt: asks whether the project calls its parent stories features or epics" \
+  "$here/skills/vault-setup/adopt.md" 'and whether it calls its parent stories features or'
+STK="$here/skills/story-tracker/SKILL.md"
+line_is "story-tracker: reads the parent word from the profile" "$STK" \
+  '   - `parent_label` is the word for a parent story: `feature`, or `epic` when the line is absent'
+file_has "story-tracker: epic= moves a story under its parent" "$STK" \
+  'named for that parent: `second-brain task set <ID> epic=<parent>` moves it in, `epic=` moves'
+file_has "story-tracker status: the Epic field takes the project's word" "$here/skills/story-tracker/status.md" \
+  '  - Name the `Epic:` field after the project'"'"'s word, `Feature:` with `parent_label: feature`. The'
+file_has "story-tracker create: the parent is the project's feature or epic" "$here/skills/story-tracker/create.md" \
+  'feature or epic, as Step 0 of `SKILL.md` names it.'
+SPK="$here/skills/sprint/SKILL.md"
+file_has "sprint: calls a parent story by the project's word" "$SPK" \
+  '- A task whose `epic` names another task is a child of that parent story. Call a parent story by'
+file_has "sprint: a move keeps a child under its parent" "$SPK" \
+  'parent, in the folder it moves to, and a parent'"'"'s move takes its own files alone.'
+file_has "sprint close: a child goes under its parent" "$here/skills/sprint/close.md" \
+  '   - In both, a child goes into a folder named for its parent in the folder it moves to, and a'
+file_has "scrum-master: calls a parent story by the project's word" "$here/agents/scrum-master.md" \
+  'parent moves its own files alone. Call a parent story by the project'"'"'s word, `feature` or'
+file_has "docs-keeper: a child task is one folder deeper" "$here/agents/docs-keeper.md" \
+  '  In both, a child task, one whose `epic` names another task, is one folder deeper, inside a'
+CHK="$here/skills/vault-doctor/checks.md"
+file_has "checks board: no-child-filter" "$CHK" '(`tasks.base:no-child-filter`).'
+file_has "checks task-layout: a child out of its parent's folder" "$CHK" '(`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`)'
+file_has "checks task-layout: an epic that names no task is left where it is" "$CHK" \
+  '`<ID>:unknown-<word>`: `--fix` leaves the task where it is'
+file_has "checks task-layout: parent_label:invalid is the user's to answer" "$CHK" \
+  '`parent_label:invalid`: ask the user whether the project calls its parent stories features or epics'
+line_is "vault-doctor fix: a child offender is a task it moves" "$here/skills/vault-doctor/SKILL.md" \
+  '     offender is a child it moves into a folder named for its parent: name it with that folder.'
+under_011 "changelog: the child folders are under 0.11.0" \
+  '- In a status or sprint project, a child task, one whose `epic` names another task, sits inside a'
+under_011 "changelog: epic= moves a child is under 0.11.0" \
+  '- `task set <ID> epic=<parent>` moves a child into that folder, and `epic=` moves it out. A status'
+under_011 "changelog: parent_label is under 0.11.0" \
+  '- `parent_label` in the profile names a project'"'"'s parent stories `feature`, or `epic` with no key.'
+under_011 "changelog: the board's child branch is under 0.11.0" \
+  '- A new board'"'"'s filters take a task one level deeper. An existing board is not rewritten: in a'
+under_011 "changelog: the conventions note at version 10 is under 0.11.0" \
+  '- The conventions note is at version 10: it names a child task'"'"'s folder. The doctor'"'"'s'
+file_has "contract: a folder with no README holds tasks when it is named for a task found elsewhere" "$CC" \
+  '  deeper, when it is named for a task found elsewhere, by its folder name or an alias, without'
+file_has "contract: what a task found elsewhere is" "$CC" \
+  '- A task found elsewhere is one directly under the tasks root, in a group folder or in the'
+file_has "contract: a folder named for no task holds none" "$CC" \
+  '- A folder with no `README.md` that is named for no task holds none: a README in it is no task,'
+file_has "contract: a parent's entries with a dot first move too" "$CC" \
+  '- An entry whose name starts with a dot moves too. `move` takes no such name, so it moves as it'
+file_has "contract: an epic of none or several tasks names no parent" "$CC" \
+  '- An `epic` that names no single task of the project, none or several, names no parent: a move'
+file_has "contract: the hook takes a folder named for a task found elsewhere" "$CC" \
+  '- With no `<parent>/README.md`, it is one when `<parent>` is named for a task found elsewhere in'
+file_has "contract: the hook runs one find for it" "$CC" \
+  '  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder'
+file_has "contract: the shell runs that find, and no path is text a shell reads" "$CC" \
+  '- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a'
+under_011 "changelog: the folder named for a task is under 0.11.0" \
+  '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
+
+# ---------------------------------------------------------------- the orders note indents with a tab
+BM="$here/skills/spec/build.md"
+line_is "spec build: the orders note's nested item is indented with a tab" "$BM" \
+  "$(printf '\t')- Now: <what works on it: you, an agent by its name, or a check that runs>."
+line_is "spec build: the template says to indent with a tab" "$BM" \
+  'The note, with each `<...>` filled. A nested item is indented with a tab, as the vault'"'"'s writing'
+is "spec build: no nested item of the orders note is indented with spaces" \
+  "$(awk '/^# <project> lead memory$/ { on = 1 } on && /^\`\`\`$/ { on = 0 } on && /^ +- /' "$BM" | wc -l | tr -d ' ')" "0"
 
 # ---------------------------------------------------------------- result
 result

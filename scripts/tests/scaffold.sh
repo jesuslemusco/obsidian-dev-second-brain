@@ -14,12 +14,15 @@ claude/writing-style.md"
 exists "scaffold vault: index" "$vault/CLAUDE.md"
 exists "scaffold vault: conventions" "$vault/obsidian-conventions.md"
 exists "scaffold vault: vault Claude hub" "$vault/claude/README.md"
-is "pull request format: the goal first, then the four headings, in order and bold" "$(grep '^## \*\*' "$vault/claude/pull-request.md" | tr '\n' '|')" \
-  "## **Goal**|## **What was changed?**|## **What was added?**|## **Dependencies:**|## **Risks:**|"
+is "pull request format: the goal first, then the four headings, in order, as bold lines" \
+  "$(awk '/^```/ { on = !on; next } on && /^\*\*[^*]+\*\*$/' "$vault/claude/pull-request.md" | tr '\n' '|')" \
+  "**Goal**|**What was changed?**|**What was added?**|**Dependencies:**|**Risks:**|"
+is "pull request format: no line of the format is a markdown heading" \
+  "$(awk '/^```/ { on = !on; next } on && /^#/ { n++ } END { print n + 0 }' "$vault/claude/pull-request.md")" "0"
 is "pull request format: every bullet of the format starts with a bold label" \
   "$(awk '/^```/ { on = !on; next } on && /^- / { n++; if (/^- \*\*<part>:\*\* </) b++ } END { print b + 0 "/" n + 0 }' "$vault/claude/pull-request.md")" "4/4"
 is "pull request format: the goal is one or two lines, not a bullet" \
-  "$(awk '/^## \*\*Goal\*\*$/ { on = 1; next } /^## / { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
+  "$(awk '/^\*\*Goal\*\*$/ { on = 1; next } /^\*\*[^*]+\*\*$/ || /^```/ { on = 0 } on && NF' "$vault/claude/pull-request.md")" \
   "<why this pull request exists, in one or two lines>"
 is "pull request format: the rules, word for word" "$(section_of "$vault/claude/pull-request.md" 'The rules')" \
   "- Write the description only from \`git log <target>..<source>\` and
@@ -32,7 +35,7 @@ is "pull request format: the rules, word for word" "$(section_of "$vault/claude/
 - Start each bullet with the part it is about, in bold: \`- **doctor:** warns on an old index\`.
 - Name the file, the command or the setting; leave out what the diff shows line by line.
 - Under a heading with nothing to say, write \`- **None.**\`"
-line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 3"
+line_is "pull request format: version property" "$vault/claude/pull-request.md" "pull_request_version: 4"
 file_has "pull request format: a project's own note wins" "$vault/claude/pull-request.md" \
   'A project that keeps its own'
 line_is "index: the pull request rule points to the note, and a project's own copy wins" "$vault/CLAUDE.md" \
@@ -91,7 +94,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 6"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 7"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -122,7 +125,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 8"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 10"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -205,7 +208,8 @@ line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base"
 line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
 # filters_of <board>: the board's own filters block, above its formulas and views.
 filters_of() { awk '/^[^ \t#-]/ { top = ($0 ~ /^filters:/) } top' "$1"; }
-# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root.
+# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root,
+# with the branch that takes a task one level deeper, such as a child task, last.
 filters_want() {
   local s
   printf '%s\n' "filters:" "  and:" "    - file.inFolder(\"$1\")" '    - file.name == "README"' "    - or:" \
@@ -213,6 +217,10 @@ filters_want() {
     "            - file.folder.split(\"/\").length == $(($2 + 2))" "        - and:" \
     "            - file.folder.split(\"/\").length == $(($2 + 1))" "            - or:"
   for s in planned in-progress in-review done abandoned; do printf '%s\n' "                - file.inFolder(\"$1/$s\")"; done
+  printf '%s\n' "        - and:" "            - file.folder.split(\"/\").length == $(($2 + 1))" \
+    "            - file.folder.split(\"/\")[$2] == aliases[0]"
+  printf '%s\n' "        - and:" "            - file.folder.split(\"/\").length == $(($2 + 2))" \
+    "            - file.folder.split(\"/\")[$(($2 + 1))] == aliases[0]"
 }
 is "board: the filters take a task in each status folder, one folder deeper than a flat task" \
   "$(filters_of "$vault/$P/tasks/tasks.base")" "$(filters_want "$P/tasks" 6)"
@@ -241,8 +249,8 @@ line_is "Claude hub: where project skills live, and their prefix" "$vault/$P/cla
 line_is "Claude hub: where project agents live" "$vault/$P/claude/README.md" 'Project agents live in `claude/agents/<name>.md`.'
 PF="$vault/$P/claude/profile.md"
 line_is "profile: facts only, the workflow is in the skills" "$PF" "The one settings note for Example. Keep it to facts: the workflow lives in the skills."
-line_is "profile: the three task layouts" "$PF" '- `task_layout:` above is `flat`, the default, `archive` or `status`. A `flat` project never'
-line_is "profile: flat moves no task" "$PF" '  moves a task.'
+line_is "profile: the four task layouts" "$PF" '- `task_layout:` above is `flat`, the default, `archive`, `status` or `sprint`. A `flat` project'
+line_is "profile: flat moves no task" "$PF" '  never moves a task.'
 line_is "profile: archive moves a done task once, with task archive" "$PF" \
   '- `archive` moves a done or abandoned task, once, with `second-brain task archive <ID>`, to'
 line_is "profile: the archive folder" "$PF" '  `archive/<YYYY>/<ID>/` under the tasks root.'
@@ -250,6 +258,17 @@ line_is "profile: status keeps a task in the folder of its status" "$PF" \
   '- `status` keeps each task in the folder of its status under the tasks root, such as `done/<ID>/`.'
 line_is "profile: task set moves a status task, and nothing is archived" "$PF" \
   '  `second-brain task set <ID> status=<status>` moves it there, and nothing is archived.'
+line_is "profile: sprint keeps a task in the folder of its sprint" "$PF" \
+  '- `sprint` keeps each task in the folder of its sprint under the tasks root, such as'
+line_is "profile: and a task in no sprint in backlog/" "$PF" \
+  '  `2026-12-04/<ID>/`, and a task in no sprint in `backlog/<ID>/`. `second-brain task set` moves it'
+line_is "profile: sprint with sprints off is flat" "$PF" \
+  '  when its sprint changes, and nothing is archived. With `uses_sprints: false` it is `flat`.'
+line_is "profile: sprint_folder names a sprint's folder" "$PF" \
+  '- With `sprint`, a `sprint_folder:` key added above names a sprint'"'"'s folder: its end date with no'
+line_is "profile: sprint_folder points to the contract" "$PF" \
+  '  key, or a pattern such as `sprint-<n>`, as `### Profile frontmatter` in the plugin'"'"'s'
+file_lacks "profile: sprint_folder adds no placeholder" "$PF" '`<end>`'
 file_lacks "profile: no longer says only archive moves a task" "$PF" 'Only `archive` moves'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'

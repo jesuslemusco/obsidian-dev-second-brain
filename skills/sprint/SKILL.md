@@ -54,6 +54,11 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 
 - A sprint is one note, named by its end date: `<sprints_root>/2026-01-14.md`. That date is its id.
 - A task joins a sprint through one property: `sprint: "2026-01-14"`.
+- A task whose `epic` names another task is a child of that parent story. Call a parent story by
+  the project's word: `feature` when `second-brain profile <project> --keys` prints
+  `parent_label: feature`, else `epic`. The key stays `epic`.
+- With `task_layout: status` or `sprint`, every move keeps a child inside a folder named for its
+  parent, in the folder it moves to, and a parent's move takes its own files alone.
 - Nobody keeps a task list by hand. The sprint note holds none.
 - `committed`, `completed` and `carried_over` on the sprint note are counts, not lists.
 
@@ -73,7 +78,19 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
    - Pass the date from 3 or 5 as `--end`.
    - It creates the note, adds the hub line and rewrites the board's sprint id.
    - Exit 6: a sprint is still in progress. Go back to 1.
+   - Exit 6 with `the destination exists: <path>` or `the sprint folder is a task: <path>`, in a
+     project with `task_layout: sprint`: the folder a re-pointed task moves to is taken, and
+     nothing was written. Show that path to the user: it is theirs to move away or delete. Then
+     run the call again.
+   - Exit 5 that names the `sprint_folder` pattern: it gives the new sprint no folder name, and
+     nothing was written. The pattern in the profile is the user's to fix. Then run the call again.
 7. Report the note it created and each `re-pointed:` line it prints.
+   - With `task_layout: sprint`, each re-pointed task also moves to the new sprint's folder. After
+     the `re-pointed:` lines it prints each moved task's new README path and its `links:` lines.
+     A child goes into a folder named for its parent there.
+   - A move that fails is named on stderr, and the call exits with its code. The sprint is open
+     all the same: never run the call again. Tell the user the task and the reason:
+     `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.
 8. A goal given or changed later: `second-brain sprint set <project> goal="<goal>"`.
 9. Go to plan.
 
@@ -88,6 +105,15 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 5. Set each answer:
    - Joining: `second-brain task set <ID> sprint=<id> --project <project>`.
    - Leaving: `second-brain task set <ID> sprint= --project <project>`.
+   - With `task_layout: sprint`, each call also moves the task's folder, to the sprint's folder or
+     back to `backlog/`, and prints its new README path and its `links:` lines after the keys.
+     A child goes into a folder named for its parent there, and its parent's note stays where it
+     is. A `removed: <path>` line names the folder named for the parent that it left empty.
+   - Exit 6 there, as in open: the destination is taken, or the sprint's folder is a task, and
+     nothing was written. Show that path to the user, then set that task again. Exit 5 that names
+     the `sprint_folder` pattern: as in open.
+   - A move that fails exits as `second-brain move` does, with the sprint written:
+     `second-brain doctor --fix` moves the task once the reason is handled.
 6. A task that does not exist yet: create it through the story-tracker skill, with the Skill tool
    as `odsb:story-tracker`. Then set its sprint as in 5.
 7. Run `second-brain board <project> "Current sprint"` and show the list back.

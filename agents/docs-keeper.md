@@ -193,6 +193,11 @@ Read cheapest first: a whole note is the last resort.
 - Find a note: `second-brain find <ID-or-alias> --project <project>`.
 - A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with
   `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.
+  With `task_layout: sprint`, it is `<tasks_root>/<sprint folder>/<ID>/README.md` in a sprint,
+  or `<tasks_root>/backlog/<ID>/README.md` in none.
+  In both, a child task, one whose `epic` names another task, is one folder deeper, inside a
+  folder named for that parent: `<tasks_root>/<status>/<parent>/<ID>/README.md`, for one. The
+  project calls its parent stories features or epics, as its profile's `parent_label` says.
 - Take a task's path from `find` or `task head`; never build it from the id.
 - Tasks on a topic: `second-brain topic <project> <tag>`.
 - Before you change or remove a note: `second-brain backlinks "<vault path>"`.

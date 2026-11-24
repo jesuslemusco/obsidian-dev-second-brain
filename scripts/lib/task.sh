@@ -89,7 +89,8 @@ EOF
 }
 
 # Print the short head of a task: properties, summary line and newest status note. With --json,
-# one JSON object with the same keys; topics and envs are arrays.
+# one JSON object with the same keys; topics and envs are arrays. The epic line takes its key from
+# the profile's parent_label.
 sb_task_head() {
   local id="" project="" json=0 usage="usage: second-brain task head <ID> [--project P] [--json]"
   while [ $# -gt 0 ]; do
@@ -113,7 +114,7 @@ sb_task_head() {
   done
   [ -n "$id" ] || sb_die 5 "$usage"
   sb_need_task "$id" "$project"
-  LC_ALL=C SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" SB_JSON="$json" awk "$(sb_awk_lib)"'
+  LC_ALL=C SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" SB_JSON="$json" SB_LABEL="$(sb_parent_label)" awk "$(sb_awk_lib)"'
     function addtag(v) {
       sub(/^#/, "", v)
       if (v == "" || substr(v, 1, 5) == "type/" || substr(v, 1, 7) == "status/") return
@@ -184,7 +185,7 @@ sb_task_head() {
       if (summary ~ /^<.*>$/) summary = ""
       show("id", id); show("path", ENVIRON["SB_REL"])
       show("title", title); show("status", status); show("next", nxt)
-      show("sprint", sprint); show("branch", branch); show("epic", epic)
+      show("sprint", sprint); show("branch", branch); show(ENVIRON["SB_LABEL"], epic)
       if (subp != "") show("subproject", subp)
       showlist("topics", topics, ntp, tp)
       showlist("envs", envs, nen, en)
@@ -195,9 +196,13 @@ sb_task_head() {
 }
 
 # Set or remove scalar properties of a task; status and its tag change together. In a status
-# project a status change then moves the task to the folder of its new status.
+# project a status change then moves the task to the folder of its new status, and in a sprint
+# project a sprint change to the folder of its new sprint, or to backlog/ for none. In both an epic
+# change moves it into its parent's folder there, or out of it, and a move keeps a child under its
+# parent.
 sb_task_set() {
-  local id="" project="" kv key value out="" n=0 i=0 status="" dest=""
+  local id="" project="" kv key value out="" n=0 i=0 status="" dest="" sprint="" has_sprint=0 layout
+  local epic="" has_epic=0 move=0 parent="" prc=0 cur echanged=0
   local pairs
   pairs=()
   while [ $# -gt 0 ]; do
@@ -274,19 +279,68 @@ sb_task_set() {
   # In a status project a new status moves the task to the folder of that status once the keys are
   # written, so the destination is looked at first. The last status pair wins. The same status
   # moves nothing, and a folder that already is the destination is not in its own way.
+  # In a sprint project a sprint other than the task's own moves it the same way, to the folder of
+  # that sprint, or to backlog/ for none; there a status change moves nothing. The last sprint pair
+  # wins. A sprint folder that is a task, with a README.md of its own, is in the way too, and a
+  # pattern that names no sprint folder exits 5 before anything is written.
+  # In both, an epic other than the task's own moves it into its parent's folder in the folder of
+  # its status or sprint, or out to that folder with none, and every move keeps a child under its
+  # parent. An epic that names no single task of the project names no parent.
   status=""
+  sprint=""
+  has_sprint=0
   i=0
   while [ "$i" -lt "$n" ]; do
-    case "${pairs[$i]}" in status=*) status="${pairs[$i]#status=}" ;; esac
+    case "${pairs[$i]}" in
+      status=*) status="${pairs[$i]#status=}" ;;
+      sprint=*)
+        sprint="${pairs[$i]#sprint=}"
+        has_sprint=1
+        ;;
+      epic=*)
+        epic="${pairs[$i]#epic=}"
+        has_epic=1
+        ;;
+    esac
     i=$((i + 1))
   done
-  if [ -n "$status" ] && [ "$(sb_task_layout)" = "status" ] &&
-    [ "$status" != "$(sb_fm_get "$SB_T_FILE" status)" ]; then
-    dest="$(sb_task_status_dir "$status")"
-    if [ "$dest" = "${SB_T_REL%/*}" ]; then
-      dest=""
+  layout="$(sb_task_layout)"
+  if [ "$layout" = "status" ] || [ "$layout" = "sprint" ]; then
+    if [ "$layout" = "status" ]; then
+      cur="$(sb_fm_get "$SB_T_FILE" status)" || cur=""
+      [ -z "$status" ] || [ "$status" = "$cur" ] || move=1
+      [ -n "$status" ] || status="$cur"
     else
-      sb_task_dest_free "$dest"
+      cur="$(sb_fm_get "$SB_T_FILE" sprint)" || cur=""
+      [ "$has_sprint" -eq 0 ] || [ "$sprint" = "$cur" ] || move=1
+      [ "$has_sprint" -eq 1 ] || sprint="$cur"
+    fi
+    # The parent is read only for a move: the new epic's, else the task's own.
+    if [ "$has_epic" -eq 1 ] && [ "$epic" != "$(sb_fm_get "$SB_T_FILE" epic)" ]; then
+      move=1
+      echanged=1
+      parent="$(sb_task_parent "$SB_T_FILE" "$epic")" || prc=$?
+    elif [ "$move" -eq 1 ]; then
+      parent="$(sb_task_parent "$SB_T_FILE")" || prc=$?
+    fi
+    [ "$prc" -eq 0 ] || parent=""
+    if [ "$prc" -eq 2 ] && [ "$echanged" -eq 1 ]; then
+      sb_note "$(sb_parent_label) $epic names no single task of $SB_P_NAME"
+    fi
+    if [ "$move" -eq 1 ] && [ "$layout" = "status" ]; then
+      # A task with no status of the five has no folder to move to.
+      case "$status" in
+        planned | in-progress | in-review | done | abandoned) dest="$(sb_task_status_dir "$status" "$parent")" ;;
+      esac
+    elif [ "$move" -eq 1 ]; then
+      dest="$(sb_task_sprint_dir "$sprint" "$parent")" || exit $?
+    fi
+    if [ -z "$dest" ] || [ "$dest" = "${SB_T_REL%/*}" ]; then
+      dest=""
+    elif [ "$layout" = "sprint" ] && [ -n "$sprint" ]; then
+      sb_task_sprint_dest_free "$dest" "$SB_T_FILE"
+    else
+      sb_task_dest_free "$dest" "$SB_T_FILE"
     fi
   fi
   i=0
@@ -432,13 +486,13 @@ sb_task_tag() {
   sb_task_topics "$SB_T_FILE"
 }
 
-# Return 0 when a name, lowercased, is archive or one of the five status folders, and print that
-# folder; such a name is no task id and no alias in any layout, since a file system that ignores
-# letter case would take it for that folder.
+# Return 0 when a name, lowercased, is in SB_TASK_RESERVED: archive, one of the five status folders
+# or backlog, and print that folder; such a name is no task id and no alias in any layout, since a
+# file system that ignores letter case would take it for that folder.
 sb_task_reserved() {
   local name s
   name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  for s in archive $SB_TASK_STATUSES; do
+  for s in $SB_TASK_RESERVED; do
     if [ "$name" = "$s" ]; then
       printf '%s\n' "$s"
       return 0
@@ -448,11 +502,13 @@ sb_task_reserved() {
 }
 
 # sb_task_refuse_reserved <name> <task id|task alias>: exit 5 when the name is reserved, naming its
-# folder: the name as typed, the status lowercased. Archive keeps its own message.
+# folder: the name as typed, the status lowercased. Archive keeps its own message, and backlog names
+# its folder lowercased.
 sb_task_refuse_reserved() {
   local folder
   folder="$(sb_task_reserved "$1")" || return 0
   [ "$folder" != "archive" ] || sb_die 5 "archive is the folder of the archived tasks, not a $2"
+  [ "$folder" != "backlog" ] || sb_die 5 "backlog is the folder of the backlog tasks, not a $2"
   sb_die 5 "$1 is the folder of the $folder tasks, not a $2"
 }
 
@@ -570,8 +626,9 @@ sb_topic_dir() {
   printf '%s\n' "$dir"
 }
 
-# Create a task folder and its README from the template, in planned/ in a status project; exit 6
-# when the folder exists or the id is a task in another folder.
+# Create a task folder and its README from the template, in planned/ in a status project and in
+# backlog/ in a sprint project; exit 6 when the folder exists, when it holds tasks, as a group
+# folder does, or when the id is a task in another folder.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
   local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" made d vdir
@@ -615,13 +672,22 @@ sb_task_new() {
   fi
   sb_need_project "$project"
   sb_need_profile
-  # In a status project a new task starts in planned/; in any other layout at the tasks root.
+  # In a status project a new task starts in planned/, in a sprint project in backlog/, as it has no
+  # sprint yet; in any other layout at the tasks root.
   vdir="$SB_P_PATH/$SB_TASKS_ROOT/$id"
-  [ "$(sb_task_layout)" != "status" ] || vdir="$(SB_T_ID="$id" sb_task_status_dir planned)"
+  case "$(sb_task_layout)" in
+    status) vdir="$(SB_T_ID="$id" sb_task_status_dir planned)" ;;
+    sprint) vdir="$(SB_T_ID="$id" sb_task_sprint_dir "")" ;;
+  esac
   dir="$SB_ROOT/$vdir"
   file="$dir/README.md"
   [ ! -e "$file" ] || sb_die 6 "the task already has a README: $vdir/README.md"
   if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $vdir"; fi
+  # A folder with no README that holds a task is a group folder, such as a sprint's: a README in it
+  # would make it a task, and the tasks inside would leave the board.
+  for d in "$dir"/*/README.md; do
+    [ ! -f "$d" ] || sb_die 6 "the folder holds tasks: $vdir"
+  done
   # The id is a task elsewhere: at the root, in a status folder or in the archive.
   other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)"
   case "$other" in
@@ -701,30 +767,165 @@ EOF
   sb_rel "$file"
 }
 
-# Print the vault path of the folder of the task in SB_T_ID for a status, in the status layout:
-# <project>/<tasks_root>/<status>/<ID>.
+# sb_task_status_dir <status> [parent]: print the vault path of the folder of the task in SB_T_ID
+# for a status, in the status layout: <project>/<tasks_root>/<status>/<ID>, or
+# <project>/<tasks_root>/<status>/<parent>/<ID> for a child of the task whose folder is <parent>.
 sb_task_status_dir() {
-  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/$SB_T_ID"
+  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$1/${2:+$2/}$SB_T_ID"
 }
 
-# sb_task_dest_free <dest>: exit 6 when anything is at the vault path dest, a link included, even a
-# dead one: move would put a task folder inside a folder that is there already, under its own name.
+# sb_task_sprint_dir <sprint id or empty> [parent]: print the vault path of the folder of the task
+# in SB_T_ID for a sprint, in the sprint layout: <project>/<tasks_root>/backlog/<ID> for no sprint,
+# else <project>/<tasks_root>/<the sprint's folder>/<ID>, named by sb_sprint_folder, with
+# <parent>/ before <ID> for a child. Exit 5 as sb_sprint_folder does.
+sb_task_sprint_dir() {
+  local folder=backlog
+  if [ -n "$1" ]; then folder="$(sb_sprint_folder "$1")" || exit $?; fi
+  printf '%s\n' "$SB_P_PATH/$SB_TASKS_ROOT/$folder/${2:+$2/}$SB_T_ID"
+}
+
+# sb_task_children <README>: print the folder name of each child task inside the folder of a task,
+# one per line: a folder in it whose README.md has an epic that names the task.
+sb_task_children() {
+  local d="${1%/README.md}" c rows="" tab=$'\t' nl=$'\n'
+  for c in "$d"/*/README.md; do [ -f "$c" ] && rows="${rows}C$tab$c$nl"; done
+  [ -n "$rows" ] || return 0
+  printf '%s' "$rows" | sb_task_kids | while IFS= read -r c; do
+    c="${c%/README.md}"
+    printf '%s\n' "${c##*/}"
+  done
+}
+
+# sb_task_own <README>: print the name of each entry of the folder of a task that is its own, one
+# per line, README.md first: every entry but its children's folders, a name with a dot first too.
+sb_task_own() {
+  local d="${1%/README.md}" e kids
+  kids="$(sb_task_children "$1")"
+  [ ! -e "$d/README.md" ] || printf 'README.md\n'
+  for e in "$d"/* "$d"/.[!.]* "$d"/..?*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    e="${e##*/}"
+    [ "$e" != "README.md" ] || continue
+    if [ -n "$kids" ] && printf '%s\n' "$kids" | grep -qxF -- "$e"; then continue; fi
+    printf '%s\n' "$e"
+  done
+}
+
+# sb_task_kin <dest> <README>: return 0 when the vault path dest is a folder that holds tasks, with
+# no README.md of its own and no link, that holds a child of the task whose README is given.
+sb_task_kin() {
+  local d="$SB_ROOT/$1" c rows="" name tab=$'\t' nl=$'\n'
+  [ -d "$d" ] && [ ! -L "$d" ] && [ ! -e "$d/README.md" ] && [ ! -L "$d/README.md" ] || return 1
+  name="${2%/README.md}"
+  name="${name##*/}"
+  for c in "$d"/*/README.md; do [ -f "$c" ] && rows="${rows}C$tab$c$tab$2$tab$name$nl"; done
+  [ -n "$rows" ] && [ -n "$(printf '%s' "$rows" | sb_task_kids)" ]
+}
+
+# sb_task_dest_free <dest> [<README>]: exit 6 when anything is at the vault path dest, a link
+# included, even a dead one: move would put a task folder inside a folder that is there already,
+# under its own name. With the README of the task that moves, a folder that holds one of its
+# children is no obstacle: its own entries go in beside them, each to a place that must be free.
 sb_task_dest_free() {
-  if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then sb_die 6 "the destination exists: $1"; fi
+  local e
+  if [ -e "$SB_ROOT/$1" ] || [ -L "$SB_ROOT/$1" ]; then
+    if [ -z "${2:-}" ] || ! sb_task_kin "$1" "$2"; then sb_die 6 "the destination exists: $1"; fi
+    while IFS= read -r e; do
+      [ -n "$e" ] || continue
+      if [ -e "$SB_ROOT/$1/$e" ] || [ -L "$SB_ROOT/$1/$e" ]; then sb_die 6 "the destination exists: $1/$e"; fi
+    done <<EOF
+$(sb_task_own "$2")
+EOF
+  fi
   return 0
 }
 
+# sb_task_sprint_dest_free <dest> [<README>]: for the vault path dest of a task in a sprint's
+# folder, exit 6 when that folder is a task, one with a README.md of its own, then as
+# sb_task_dest_free does. The sprint's folder is the first folder of dest below the tasks root, so
+# a child's parent folder may be a task. backlog/ is no sprint's folder: its README.md is in no
+# task's way.
+sb_task_sprint_dest_free() {
+  local folder="${1#"$SB_P_PATH/$SB_TASKS_ROOT/"}"
+  folder="$SB_P_PATH/$SB_TASKS_ROOT/${folder%%/*}"
+  [ ! -f "$SB_ROOT/$folder/README.md" ] || sb_die 6 "the sprint folder is a task: $folder"
+  sb_task_dest_free "$1" "${2:-}"
+}
+
+# sb_task_links <from> <dest> <entries>: read the output of the moves of the entries of a task's
+# folder, one at a time, on stdin; print one links: line per note, its counts added up, with the
+# path of a note inside a moved entry at its new place.
+sb_task_links() {
+  LC_ALL=C SB_F="$1" SB_D="$2" SB_M="$3" awk '
+    BEGIN { f = ENVIRON["SB_F"]; d = ENVIRON["SB_D"]; n = split(ENVIRON["SB_M"], m, "\n") }
+    /^links: / {
+      line = substr($0, 8); i = index(line, " | ")
+      if (i == 0) next
+      p = substr(line, 1, i - 1); c = substr(line, i + 3) + 0
+      for (k = 1; k <= n; k++) {
+        if (m[k] == "") continue
+        e = f "/" m[k]
+        if (p == e || substr(p, 1, length(e) + 1) == e "/") { p = d substr(p, length(f) + 1); break }
+      }
+      if (!(p in cnt)) order[++no] = p
+      cnt[p] += c
+    }
+    END { for (k = 1; k <= no; k++) print "links: " order[k] " | " cnt[order[k]] }'
+}
+
 # sb_task_relocate <dest>: move the folder of the task in SB_T_FILE to the vault path dest through
-# the move code, which rewrites every link into it. Exit 6 when anything is at dest. A move that
-# fails while the folder is still where it was returns its code, with nothing changed. Otherwise
-# SB_T_FILE and SB_T_REL name the README at dest, which is printed, then the move's links: lines;
-# a task that leaves the archive loses its archived key. Returns the move's code.
+# the move code, which rewrites every link into it. Exit 6 when anything is at dest. In a status or
+# sprint project, a task that holds children moves its own entries alone, one at a time, and dest
+# may be a folder that holds one of its children. A move that fails while the README is still
+# where it was returns its code, with nothing changed. Otherwise SB_T_FILE and SB_T_REL name the
+# README at dest, which is printed, then the move's links: lines; a task that leaves the archive
+# loses its archived key. In a status or sprint project, a folder that held the task one level
+# deeper in a group folder, with no README.md of its own, is removed when the move leaves it
+# empty, and printed as removed: <path>. Returns the move's code.
 sb_task_relocate() {
-  local dest="$1" from out rc=0 archive
+  local dest="$1" from out="" o rc=0 archive layout kids="" own e moved="" held r nl=$'\n'
   from="${SB_T_REL%/*}"
-  sb_task_dest_free "$dest"
-  out="$(cmd_move -- "$from" "$dest")" || rc=$?
-  if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
+  layout="$(sb_task_layout)"
+  case "$layout" in
+    status | sprint)
+      sb_task_dest_free "$dest" "$SB_T_FILE"
+      kids="$(sb_task_children "$SB_T_FILE")"
+      ;;
+    *) sb_task_dest_free "$dest" ;;
+  esac
+  if [ -z "$kids" ] && [ ! -e "$SB_ROOT/$dest" ] && [ ! -L "$SB_ROOT/$dest" ]; then
+    out="$(cmd_move -- "$from" "$dest")" || rc=$?
+    if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from" ]; then return "$rc"; fi
+  else
+    own="$(sb_task_own "$SB_T_FILE")"
+    while IFS= read -r e; do
+      [ -n "$e" ] || continue
+      case "$e" in
+        .*)
+          # move takes no name with a dot first, and no link leads into one: it moves as it is.
+          if [ -e "$SB_ROOT/$dest/$e" ] || [ -L "$SB_ROOT/$dest/$e" ] ||
+            ! mv -n "$SB_ROOT/$from/$e" "$SB_ROOT/$dest/$e" 2>/dev/null ||
+            [ -e "$SB_ROOT/$from/$e" ] || [ -L "$SB_ROOT/$from/$e" ]; then
+            printf 'second-brain: cannot move %s to %s\n' "$from/$e" "$dest/$e" >&2
+            rc=1
+            break
+          fi
+          ;;
+        *)
+          o="$(cmd_move -- "$from/$e" "$dest/$e")" || rc=$?
+          out="$out$o$nl"
+          [ "$rc" -eq 0 ] || break
+          ;;
+      esac
+      moved="$moved$e$nl"
+    done <<EOF
+$own
+EOF
+    if [ "$rc" -ne 0 ] && [ -e "$SB_ROOT/$from/README.md" ]; then return "$rc"; fi
+    out="$(printf '%s' "$out" | sb_task_links "$from" "$dest" "$moved")"
+    # The folder it left holds its children, or nothing, and then it goes.
+    rmdir "$SB_ROOT/$from" 2>/dev/null || true
+  fi
   SB_T_FILE="$SB_ROOT/$dest/README.md"
   SB_T_REL="$dest/README.md"
   printf '%s\n' "$SB_T_REL"
@@ -738,22 +939,56 @@ sb_task_relocate() {
       esac
       ;;
   esac
+  # A folder one level deeper in a group folder that held the task alone, and no README.md.
+  case "$layout" in
+    status | sprint)
+      r="${from#"$SB_P_PATH/$SB_TASKS_ROOT/"}"
+      held="${from%/*}"
+      case "$r" in
+        archive/* | */*/*/*) ;;
+        */*/*)
+          if [ -d "$SB_ROOT/$held" ] && [ ! -L "$SB_ROOT/$held" ] && [ ! -e "$SB_ROOT/$held/README.md" ] &&
+            rmdir "$SB_ROOT/$held" 2>/dev/null; then
+            printf 'removed: %s\n' "$held"
+          fi
+          ;;
+      esac
+      ;;
+  esac
   return "$rc"
 }
 
 # sb_task_to_status <ID> <project>: for the doctor's fix, move a task of a status project to the
-# folder of its status through sb_task_relocate, and print what it prints. Nothing when the task
-# is there already. Exit 5 when its status is none of the five.
+# folder of its status, a child into its parent's folder there, through sb_task_relocate, and print
+# what it prints. Nothing when the task is there already. Exit 5 when its status is none of the
+# five.
 sb_task_to_status() {
-  local status dest
+  local status dest parent
   sb_need_task "$1" "$2"
   status="$(sb_fm_get "$SB_T_FILE" status)" || status=""
   case "$status" in
     planned | in-progress | in-review | done | abandoned) ;;
     *) sb_die 5 "$SB_T_ID has no status of the five: ${status:-none}" ;;
   esac
-  dest="$(sb_task_status_dir "$status")"
+  parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
+  dest="$(sb_task_status_dir "$status" "$parent")"
   [ "$dest" != "${SB_T_REL%/*}" ] || return 0
+  sb_task_relocate "$dest"
+}
+
+# sb_task_to_sprint <ID> <project>: for the doctor's fix, move a task of a sprint project to the
+# folder of its sprint, or to backlog/ with none, a child into its parent's folder there, through
+# sb_task_relocate, and print what it prints. Nothing when the task is there already. Exit 5 when
+# its sprint gives no folder name, and 6 when the destination is taken, or the sprint's folder is a
+# task, with a README.md of its own.
+sb_task_to_sprint() {
+  local sprint dest parent
+  sb_need_task "$1" "$2"
+  sprint="$(sb_fm_get "$SB_T_FILE" sprint)" || sprint=""
+  parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
+  dest="$(sb_task_sprint_dir "$sprint" "$parent")" || exit $?
+  [ "$dest" != "${SB_T_REL%/*}" ] || return 0
+  [ -z "$sprint" ] || sb_task_sprint_dest_free "$dest" "$SB_T_FILE"
   sb_task_relocate "$dest"
 }
 

@@ -4,7 +4,10 @@
 # helper commands to use. It reads the hook's JSON on stdin and prints nothing, or one JSON object
 # with additionalContext and no permissionDecision, so the call goes on through the normal
 # permission flow: it never blocks, never approves, and always exits 0.
-# It runs on every Bash, Grep and Read call, so it loads no library and starts one awk.
+# It runs on every Bash, Grep and Read call, so it loads no library and starts one awk. Only a Read
+# one level deeper, in a folder with no README.md of its own, needs the READMEs of the tasks folder:
+# the awk then asks for them, and the shell runs one find with the path in a variable, never as
+# text a shell reads, and the awk again over what find lists.
 set -u
 
 # The vault as the helper finds it: the override, or the pointer in the link directory.
@@ -16,7 +19,7 @@ if [ -z "$v" ]; then
 fi
 if [ ! -d "$v/.obsidian" ] || ! cd -P "$v" 2>/dev/null; then exit 0; fi
 
-SB_RULE_VAULT="$v" SB_RULE_ROOT="$PWD" LC_ALL=C awk '
+rule='
 # The last two parts of a path, in lower case with forward slashes. Every form of the path ends
 # with them: through ~/ or $HOME/, in the drive form C:/ or in the Git Bash form /c/.
 function tail2(p,   n, a) {
@@ -28,8 +31,8 @@ function tail2(p,   n, a) {
   return (n > 1 ? a[n - 1] : "") "/" a[n]
 }
 # The string value of the first "<key>", with its escapes undone, every backslash made a slash and
-# blanks for line breaks, in lower case; empty when there is none.
-function str(k,   r) {
+# blanks for line breaks, in lower case, or as written when keep is set; empty when there is none.
+function str(k, keep,   r) {
   if (!match(s, "\"" k "\"[ \t\r\n]*:[ \t\r\n]*\"")) return ""
   r = substr(s, RSTART + RLENGTH)
   r = substr(r, 1, index(r, "\"") - 1)
@@ -38,7 +41,140 @@ function str(k,   r) {
   gsub(/\\/, "", r)
   gsub("\037", "\"", r)
   gsub("\036", "/", r)
-  return tolower(r)
+  return keep ? r : tolower(r)
+}
+# 1 when g, a folder name in lower case, is a group folder: a status folder, backlog, or a folder
+# with no README.md of its own, f, such as the folder of a sprint, looked up on disk in the letter
+# case of the path. archive is no group folder.
+function group(g, f,   line) {
+  if (g == "archive") return 0
+  if (g ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  if ((getline line < f) >= 0) { close(f); return 0 }
+  return 1
+}
+# The value of a key in the frontmatter of a note, unquoted and in lower case; for aliases, each item
+# with a newline before it. Empty when the note or the key is not there.
+function front(f, k,   line, n, key, v, out, nv, it, j) {
+  n = 0; key = ""; out = ""
+  while ((getline line < f) > 0) {
+    n++; sub(/\r$/, "", line)
+    if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+    if (line == "---") break
+    if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
+      key = line; sub(/:.*$/, "", key); v = line; sub(/^[^:]*:[ \t]*/, "", v)
+      if (key != k) continue
+      if (k != "aliases") { out = bare(v); break }
+      gsub(/^\[|\][ \t]*$/, "", v); nv = split(v, it, ",")
+      for (j = 1; j <= nv; j++) if (bare(it[j]) != "") out = out "\n" bare(it[j])
+    } else if (k == "aliases" && key == k && line ~ /^[ \t]*-([ \t]|$)/) {
+      v = line; sub(/^[ \t]*-[ \t]*/, "", v); out = out "\n" bare(v)
+    }
+  }
+  close(f)
+  return out
+}
+# A YAML scalar in lower case, with its blanks and quotes taken off.
+function bare(v) {
+  sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
+  if (v ~ /^".*"$/ || v ~ /^\047.*\047$/) v = substr(v, 2, length(v) - 2)
+  return tolower(v)
+}
+# A task found elsewhere in the tasks folder: its folder name counts at once, and its aliases once
+# a folder with no README of its own needs them.
+function found(f,   d) {
+  d = f; sub(/\/[^\/]*$/, "", d); sub(/^.*\//, "", d)
+  fname[tolower(d)] = 1; fsrc[++fns] = f
+}
+function fnamed(h,   i, k, m, it) {
+  if (h in fname) return 1
+  for (i = 1; i <= fns; i++) {
+    if (fsrc[i] in floaded) continue
+    floaded[fsrc[i]] = 1
+    m = split(front(fsrc[i], "aliases"), it, "\n")
+    for (k = 1; k <= m; k++) if (it[k] != "") falias[it[k]] = 1
+  }
+  return (h in falias)
+}
+# 1 when a folder g of the tasks folder is a group folder, as group() says, from the READMEs found.
+function isgroup(g) {
+  if (tolower(g) == "archive") return 0
+  if (tolower(g) ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  return !((g "/README.md") in fhas)
+}
+# 1 when want, a README one level deeper in a folder with no README of its own, under the tasks
+# folder td, is a task, as the helper finds it: when that folder is named for a task found
+# elsewhere in the tasks folder, by its folder name or an alias, without letter case. A task found
+# elsewhere is one directly under the tasks folder, in a group folder or in the archive, a child
+# inside its parent folder, or one such a folder holds. The READMEs of the tasks folder are the
+# lines read, as find lists them.
+function held(td, want,   line, rel, n, a, i, nl, lst, row, okr, nr, e, more, m, ls) {
+  m = split(s, ls, "\n")
+  nl = 0
+  for (i = 1; i <= m; i++) {
+    line = ls[i]
+    if (line == "" || substr(line, 1, length(td) + 1) != td "/") continue
+    rel = substr(line, length(td) + 2); lst[++nl] = rel; fhas[rel] = 1
+  }
+  nr = 0
+  for (i = 1; i <= nl; i++) {
+    rel = lst[i]; n = split(rel, a, "/")
+    if (n == 2) {
+      if (tolower(a[1]) !~ /^(archive|planned|in-progress|in-review|done|abandoned|backlog)$/) found(td "/" rel)
+    } else if (n == 3) {
+      if (isgroup(a[1])) found(td "/" rel)
+    } else if (n == 4 && tolower(a[1]) == "archive") {
+      if (a[2] ~ /^[0-9][0-9][0-9][0-9]$/) found(td "/" rel)
+    } else if (n == 4 && isgroup(a[1])) {
+      if ((a[1] "/" a[2] "/README.md") in fhas) {
+        e = front(td "/" rel, "epic")
+        if (e != "" && e != "-" && (e == tolower(a[2]) || index(front(td "/" a[1] "/" a[2] "/README.md", "aliases") "\n", "\n" e "\n"))) found(td "/" rel)
+      } else row[++nr] = rel
+    }
+  }
+  # A folder may lean on a task another such folder holds: go round until none is added.
+  do {
+    more = 0
+    for (i = 1; i <= nr; i++) {
+      if (i in okr) continue
+      split(row[i], a, "/")
+      if (fnamed(tolower(a[2]))) { okr[i] = 1; found(td "/" row[i]); more = 1 }
+    }
+  } while (more)
+  for (i = 1; i <= nr; i++) if ((i in okr) && tolower(row[i]) == want) return 1
+  return 0
+}
+# 1 when a README read as a task note, p in lower case and raw as written, is one: directly in a
+# folder under tasks/ or under a year of the archive, or in a folder under a group folder. A folder
+# with a README.md is a task, so a README in a folder inside it is no task note, but for a child
+# task: one level deeper, in tasks/<group>/<parent>/<ID>/, a README whose epic names <parent>, by
+# its folder name or an alias of <parent>/README.md. With no <parent>/README.md, held() decides:
+# this returns 2, with the tasks folder in heldtd and the README under it in heldwant.
+function tasknote(p, raw,   a, n, f, e, al, line) {
+  n = split(p, a, "/")
+  if (a[n - 2] == "tasks") return 1
+  if (a[n - 4] == "tasks" && a[n - 3] == "archive" && a[n - 2] ~ /^[0-9][0-9][0-9][0-9]$/) return 1
+  if (a[n - 3] == "tasks") {
+    f = raw
+    sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
+    return group(a[n - 2], f)
+  }
+  if (a[n - 4] != "tasks") return 0
+  f = raw
+  sub(/\/[^\/]*\/[^\/]*\/[^\/]*$/, "/README.md", f)
+  if (!group(a[n - 3], f)) return 0
+  f = raw
+  sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
+  if ((getline line < f) < 0) {
+    heldtd = raw; sub(/\/[^\/]*\/[^\/]*\/[^\/]*\/[^\/]*$/, "", heldtd)
+    heldwant = p; sub(/^.*\/tasks\//, "", heldwant)
+    return 2
+  }
+  close(f)
+  e = front(raw, "epic")
+  if (e == "" || e == "-") return 0
+  if (e == a[n - 2]) return 1
+  al = front(f, "aliases") "\n"
+  return (index(al, "\n" e "\n") > 0)
 }
 # A regex that matches the text itself: each character but a letter or a digit stands in brackets,
 # or after a backslash where brackets would not hold it.
@@ -60,8 +196,18 @@ function hit(p,   k) {
   for (k = 1; k <= nn; k++) if (p ~ re[k]) return 1
   return 0
 }
+# The warning: what the call does, then the search and read rule.
+function warn(what) {
+  printf "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"%s\"}}\n",
+    "second-brain: " what " The vault rule finds notes with `second-brain find <ID-or-alias>` or `second-brain search <project> <text>`, reads a task with `second-brain task head <ID>`, then `second-brain outline <path>` and a ranged Read, and a whole note last. It never runs grep, cat or sed on vault files."
+}
 { s = s $0 "\n" }
 END {
+  # The second run reads what find lists, and warns when the README is a task.
+  if (ENVIRON["SB_RULE_HELD"] == "1") {
+    if (held(ENVIRON["SB_RULE_TD"], ENVIRON["SB_RULE_WANT"])) warn("This Read takes a whole task note.")
+    exit
+  }
   # An escaped backslash, then an escaped quote, become one byte each, so a quote ends a string.
   gsub(/\\\\/, "\036", s)
   gsub(/\\"/, "\037", s)
@@ -75,8 +221,12 @@ END {
   what = ""
   if (tool == "read") {
     p = str("file_path")
-    if (hit(p) && p ~ /\/tasks\/((archive\/[0-9][0-9][0-9][0-9]|planned|in-progress|in-review|done|abandoned)\/)?[^\/]+\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/))
-      what = "This Read takes a whole task note."
+    if (hit(p) && p ~ /\/readme\.md$/ && !match(s, /"(offset|limit)"[ \t\r\n]*:[ \t\r\n]*[0-9]/)) {
+      k = tasknote(p, str("file_path", 1))
+      # A folder with no README of its own: ask the shell for the READMEs of the tasks folder.
+      if (k == 2) { print "sb-held"; print heldtd; print heldwant; exit }
+      if (k) what = "This Read takes a whole task note."
+    }
   } else if (tool == "grep") {
     p = str("path")
     if ((p == "" && here) || hit(p)) what = "This Grep call searches vault files."
@@ -89,7 +239,22 @@ END {
     }
   }
   if (what == "") exit
-  printf "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"%s\"}}\n",
-    "second-brain: " what " The vault rule finds notes with `second-brain find <ID-or-alias>` or `second-brain search <project> <text>`, reads a task with `second-brain task head <ID>`, then `second-brain outline <path>` and a ranged Read, and a whole note last. It never runs grep, cat or sed on vault files."
+  warn(what)
 }'
+nl='
+'
+out="$(SB_RULE_VAULT="$v" SB_RULE_ROOT="$PWD" LC_ALL=C awk "$rule")"
+case "$out" in
+  "sb-held$nl"*)
+    # The tasks folder and the README under it, one line each. The path stays in a variable: find
+    # gets it as one argument, after ./ when it would start with a hyphen.
+    rest="${out#*"$nl"}"
+    td="${rest%%"$nl"*}"
+    want="${rest#*"$nl"}"
+    case "$td" in /* | [A-Za-z]:*) ;; *) td="./$td" ;; esac
+    find "$td" -mindepth 2 -maxdepth 4 -name README.md 2>/dev/null |
+      SB_RULE_HELD=1 SB_RULE_TD="$td" SB_RULE_WANT="$want" LC_ALL=C awk "$rule"
+    ;;
+  ?*) printf '%s\n' "$out" ;;
+esac
 exit 0

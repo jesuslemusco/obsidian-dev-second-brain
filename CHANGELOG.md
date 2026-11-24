@@ -1,5 +1,111 @@
 # Changelog
 
+## 0.11.0 - unreleased
+
+- A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile
+  puts a task in a sprint at `<tasks_root>/<sprint folder>/<ID>/README.md`, and a task in no
+  sprint at `<tasks_root>/backlog/<ID>/README.md`. Nothing is archived, and story-tracker asks
+  nothing. With `uses_sprints: false` the key reads as `flat`.
+- `sprint_folder` in the profile names a sprint's folder: its end date with no key, or a pattern
+  of `<end>`, `<start>` and `<n>`, such as `sprint-<n>`, as `### Profile frontmatter` in
+  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that
+  would move a task there exit 5, writing nothing.
+- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a
+  new `sprint` moves the folder to that sprint's folder, and `sprint=` moves it back to
+  `backlog/`, rewriting each link to it. It exits 6, writing nothing, when something is at the
+  destination or the sprint's folder is a task. A status change moves nothing.
+- `sprint open` moves each task it re-points to the new sprint's folder. `sprint close` moves each
+  task named in `--carry` to the next sprint's folder, and each named in `--backlog` to
+  `backlog/`; done and abandoned tasks stay in the closed sprint's folder. Both look at every
+  destination before they write, and exit 6 on a taken one.
+- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly
+  under the tasks root with no `README.md` of its own holds tasks, such as a sprint's folder.
+  `task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.
+- A new board's filters take a task in a group folder. An existing board is not rewritten: in a
+  sprint project, the doctor's `board` check warns on one without that branch,
+  `tasks.base:no-sprint-filter`.
+- The doctor's `no-readme` check reads each folder under `backlog/` and a group folder, and
+  `task-location` takes a task in one. `task-layout` names a task of a sprint project outside the
+  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder
+  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),
+  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).
+- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to
+  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not
+  a move emptied it, and the archive's empty folders.
+  To switch a project that has tasks, or to rename its sprint folders with a new
+  `sprint_folder`, set the key, then run `doctor --fix` once.
+- In a status project, `doctor --fix` now also removes each empty group folder other than the
+  five status folders, whether or not a move emptied it: an empty folder directly under the tasks
+  root, such as an empty `backlog/`, a sprint's folder or a task folder with no README there. An
+  empty status folder stays, and so does an empty folder inside one, such as `planned/<ID>/`.
+- The search rule warns on a whole Read of a task note in `backlog/` or a sprint's folder too. The
+  sprint skill and scrum-master say what a sprint project's close moves, and what to do when it
+  cannot. The sprint skill says the same of `sprint open` and of setting a task's sprint in plan.
+- docs-keeper names `tasks/backlog/` and the sprint folders as a task's place in a sprint
+  project. `vault-setup project` and `adopt` offer `task_layout: sprint`, and `sprint_folder` with
+  it, and `adopt` offers the one `doctor --fix` run that moves the tasks already there.
+- The vault-doctor `fix` mode counts a sprint project's moves as a bulk change, with a snapshot
+  before it and `compare` after it. Its checks say what each new `board`, `no-readme`,
+  `task-location` and `task-layout` row means, and how to fix it.
+- The conventions note is at version 9: it names the sprint layout. The doctor's `conventions`
+  check warns about an older note.
+- The vault index names the sprint folders as a task's place in a sprint project. The plugin's
+  index template is now at `index_version: 7`, so the doctor's `index` check warns. Copy the task
+  bullet under `## Rules for notes that most often go wrong` from `templates/vault-index.md.tmpl`
+  into your vault's `CLAUDE.md`, then set `index_version: 7`.
+- The pull request format writes its five headings as bold lines with no `##`, as in `**Goal**`.
+  The note is at `pull_request_version: 4`, so the doctor's `pull-request` check warns about an
+  older note. `doctor --fix` replaces one that was never edited.
+- A spec build agent that goes idle with no report, such as one that says its checks still run,
+  no longer stalls the build. The `spec` skill checks the branch and whether a check the agent
+  started still runs. With none running, it sends the agent one message to finish its step and
+  report, then takes its next reply as final. Work that still runs is waited for.
+- An idle notice that repeats a reply the skill took already, as a named agent's last reply comes
+  twice, changes no state and gets no reply.
+- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,
+  linked from the project's `claude/README.md`: each order with its date and your words, what
+  works on it now, the orders done, and the last check of each story. Builds of one project
+  share the note and only edit it. It is removed with its hub line once no order of any story is
+  open. You can stop the build or drop an order at any time: it is then closed.
+- While an order is open, the skill checks on the agents, the branch and the running checks
+  against your orders, as often as the profile's `lead_check_minutes` says. In Claude Code it is
+  a session-only `CronCreate` job, off the hour and the half hour. It stops once no order of its
+  story is open. It never takes the build back after you interrupt it or tell it to hold. The
+  check never pushes, merges or takes another outside action.
+- A profile key, `lead_check_minutes`, sets the pace of that check in one place, as
+  `### Profile frontmatter` in `docs/contract.md` says. The doctor's `delivery` check warns on a
+  value it does not take, `lead_check_minutes:invalid`.
+- In a status or sprint project, a child task, one whose `epic` names another task, sits inside a
+  folder named for its parent, in the folder of its own status or sprint:
+  `<tasks_root>/<status>/<parent>/<ID>/README.md`, `<tasks_root>/backlog/<parent>/<ID>/README.md`
+  or `<tasks_root>/<sprint folder>/<parent>/<ID>/README.md`. The parent's own note stays where
+  its own status, or its sprint or `backlog/`, puts it. A flat or archive project moves nothing.
+- `task set <ID> epic=<parent>` moves a child into that folder, and `epic=` moves it out. A status
+  or sprint change, `sprint open` and `sprint close` keep a child under its parent. A parent's move
+  takes its own files alone, so a parent done or abandoned leaves its open children where they are.
+  A move that leaves a folder named for a parent empty removes it, `removed: <path>`.
+- Commands find a task one level deeper in a group folder: a child inside its parent's folder, and
+  each task in a folder named for a parent with no README of its own.
+- `parent_label` in the profile names a project's parent stories `feature`, or `epic` with no key.
+  `task head` prints the `epic` line as `feature:` where it is `feature`, and a new board names its
+  column after it. `scaffold project --parent-label` writes the key, and `vault-setup` asks for it.
+  The frontmatter key stays `epic`.
+- A new board's filters take a task one level deeper. An existing board is not rewritten: in a
+  status or sprint project with a child, the doctor's `board` check warns on one without that
+  branch, `tasks.base:no-child-filter`.
+- The doctor's `task-layout` check names a child outside its parent's folder
+  (`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`), which `doctor --fix` moves, a task whose
+  `epic` names no single task, none or several (`<ID>:unknown-<label>`), which it leaves where it
+  is, and a `parent_label` that is neither word (`parent_label:invalid`). `no-readme` and
+  `task-location` take a child in its place.
+- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it
+  is named for a task found elsewhere. A task folder that lost its README is still named by
+  `no-readme`, and nothing in it is taken for a task.
+- The search rule warns on a whole Read of a child task note too. story-tracker, the sprint skill,
+  scrum-master and docs-keeper name a child's folder and call parent stories by the project's word.
+- The conventions note is at version 10: it names a child task's folder. The doctor's
+  `conventions` check warns about an older note.
+
 ## 0.10.0 - 2026-11-22
 
 - A project can keep each task in the folder of its status: `task_layout: status` in the profile

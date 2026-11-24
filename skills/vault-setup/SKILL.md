@@ -64,11 +64,15 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
      `clients/acme/projects/example`;
    - the ticket key prefixes, such as `EX,EXOPS`, or none;
    - one line that says when the project applies;
-   - whether the project runs sprints.
+   - whether the project runs sprints;
+   - whether it calls its parent stories features or epics.
 2. Run `second-brain scaffold project <name> --path <path> --keys <K1,K2> --use-when "<one line>"`.
    It creates the project's notes and its index row, and prints what it created.
    - The folder already holds notes: use adopt instead.
-   - No sprints: add `--no-sprints`, and skip the two sprint rows of the interview in step 3.
+   - No sprints: add `--no-sprints`, skip the two sprint rows of the interview in step 3, and offer
+     no `sprint` for `task_layout`.
+   - Features: add `--parent-label feature`. It writes `parent_label: feature` into the profile,
+     and the board names its column `Feature`. Epics need no flag.
    - Exit 5: show the message and ask.
    - Exit 6: the name, the path or a key belongs to another project, which the message names.
      Show the message and ask for another one, or for different keys.
@@ -78,8 +82,10 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    |---|---|---|
    | `tracker` | where tickets live | `"Jira"` |
    | `persona` | the role a story's description opens with | `"Example engineer"` |
-   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, or each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes | `archive`, `flat` or `status` |
+   | `task_layout` | whether a done or abandoned task moves once to `<tasks_root>/archive/<YYYY>/<ID>/`, every task stays in its folder, each task lives in `<tasks_root>/<status>/<ID>/` and moves when its status changes, or each task lives in the folder of its sprint, or `<tasks_root>/backlog/<ID>/` in none, and moves when its sprint changes | `archive`, `flat`, `status` or `sprint` |
    | `archive_after_days` | with `archive` only: the days a done task stays in the live folder before the doctor names it | `14` |
+   | `parent_label` | with adopt only, as step 1 asks it for a new project: whether the project calls its parent stories features or epics; the word changes labels only, and a task's frontmatter key stays `epic` | `feature`, or no key for `epic` |
+   | `sprint_folder` | with `sprint` only: how a sprint's folder is named, its end date with none, or a pattern of `<end>`, `<start>` and `<n>`, as `### Profile frontmatter` in `docs/contract.md` says | `"sprint-<n>"`, or no key for the end date |
    | `repos` | folder names of the code repositories, the default for branch checks first | `[example-api, example-web]` |
    | `repos_root` | the one folder those repositories usually sit in on this machine | `"~/code/acme"` or `""` |
    | `repo_paths` | each repository stored somewhere else, as `name=path` | `["example-web=~/work/example-web"]` or `[]` |

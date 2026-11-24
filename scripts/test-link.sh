@@ -1176,6 +1176,106 @@ for st in planned in-progress in-review done abandoned; do
 done
 guard Read '{"file_path":"'"$vault/$P"'/tasks/done/EX-1/notes/README.md"}'
 silent "search rule: a Read of a note below a task in a status folder"
+# The sprint layout: a task note one group folder down, in backlog/ or a sprint's folder by any name.
+for g in backlog 2026-12-04 sprint-12; do
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md"}'
+  warns "search rule: a Read of a whole task note in $g/"
+  guard Read '{"file_path":"'"$vault/$P"'/tasks/'"$g"'/EX-1/README.md","offset":1,"limit":20}'
+  silent "search rule: a ranged Read of a task note in $g/"
+done
+guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in backlog/"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/2026-12-04/EX-1/notes/README.md"}'
+silent "search rule: a Read of a note below a task in a sprint's folder"
+# A folder with a README.md of its own is a task, not a group folder: a README in a folder inside it
+# is no task note. The folder's README is looked up in the letter case of the path.
+mkdir -p "$vault/$P/tasks/EX-9/notes" "$vault/$P/tasks/Ex-Notes/notes" "$vault/$P/tasks/backlog/EX-1"
+printf -- '---\naliases:\n  - EX-9\ntype: task\n---\n' >"$vault/$P/tasks/EX-9/README.md"
+printf -- '---\naliases:\n  - Ex-Notes\ntype: task\n---\n' >"$vault/$P/tasks/Ex-Notes/README.md"
+: >"$vault/$P/tasks/backlog/README.md"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/EX-9/notes/README.md"}'
+silent "search rule: a Read of a README in a folder inside a task at the tasks root"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/Ex-Notes/notes/README.md"}'
+silent "search rule: the task's README is found in the letter case of the path"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/EX-9/README.md"}'
+warns "search rule: the task itself is still a whole task note"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/README.md"}'
+warns "search rule: backlog/ is a group folder even with a README of its own"
+rm -r "$vault/$P/tasks/EX-9" "$vault/$P/tasks/Ex-Notes" "$vault/$P/tasks/backlog"
+# A child task note one level deeper, tasks/<folder>/<parent>/<ID>/README.md, is a whole task note
+# when its epic names <parent>: its folder name, or an alias of the parent's README, without letter
+# case. A folder named for the parent with no README of its own holds tasks too.
+TD="$vault/$P/tasks"
+mkdir -p "$TD/done/EX-1/EX-5" "$TD/done/EX-1/EX-6" "$TD/done/EX-1/notes" "$TD/backlog/EX-1/EX-7" \
+  "$TD/2026-12-04/EX-1/EX-8" "$TD/archive/2026/EX-1/EX-5"
+printf -- '---\naliases:\n  - EX-1\n  - "Billing parent"\ntype: task\n---\n' >"$TD/done/EX-1/README.md"
+printf -- '---\naliases:\n  - EX-5\nepic: EX-1\ntype: task\n---\n' >"$TD/done/EX-1/EX-5/README.md"
+printf -- '---\naliases:\n  - EX-6\nepic: "billing PARENT"\ntype: task\n---\n' >"$TD/done/EX-1/EX-6/README.md"
+printf -- '---\naliases:\n  - notes\nepic: EX-2\n---\n' >"$TD/done/EX-1/notes/README.md"
+printf -- '---\naliases:\n  - EX-7\nepic: ex-1\ntype: task\n---\n' >"$TD/backlog/EX-1/EX-7/README.md"
+printf -- '---\naliases:\n  - EX-8\nepic: EX-1\ntype: task\n---\n' >"$TD/2026-12-04/EX-1/EX-8/README.md"
+printf -- '---\naliases:\n  - EX-5\nepic: EX-1\ntype: task\n---\n' >"$TD/archive/2026/EX-1/EX-5/README.md"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-5/README.md"}'
+warns "search rule: a Read of a whole child task note inside its parent's folder"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-5/README.md","offset":1,"limit":20}'
+silent "search rule: a ranged Read of a child task note"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-6/README.md"}'
+warns "search rule: a child whose epic names the parent by an alias, in any letter case"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/notes/README.md"}'
+silent "search rule: a README inside a task whose epic names another task is no task note"
+guard Read '{"file_path":"'"$TD"'/backlog/EX-1/EX-7/README.md"}'
+warns "search rule: a child in a folder named for its parent in backlog/, with no README there"
+guard Read '{"file_path":"'"$TD"'/2026-12-04/EX-1/EX-8/README.md"}'
+warns "search rule: a child in a folder named for its parent in a sprint's folder"
+guard Read '{"file_path":"'"$TD"'/archive/2026/EX-1/EX-5/README.md"}'
+silent "search rule: a README one level deeper in the archive is no task note"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-9/README.md"}'
+silent "search rule: a child note that is not there is read for no epic"
+# A folder with no README of its own holds tasks only when it is named for a task found elsewhere,
+# by its folder name or an alias, as the helper finds it.
+mkdir -p "$TD/2026-12-11/SP-1" "$TD/backlog/SP-1/SP-3" "$TD/planned/ST-9/notes" "$TD/in-review/billing/EX-4"
+printf -- '---\naliases:\n  - SP-1\n  - "Stack parent"\ntype: task\n---\n' >"$TD/2026-12-11/SP-1/README.md"
+printf -- '---\naliases:\n  - SP-3\nepic: "stack parent"\ntype: task\n---\n' >"$TD/backlog/SP-1/SP-3/README.md"
+printf -- '---\ntype: note\n---\n' >"$TD/planned/ST-9/notes/README.md"
+printf -- '---\naliases: [EX-1, billing]\ntype: task\n---\n' >"$TD/done/EX-1/README.md"
+printf -- '---\naliases:\n  - EX-4\ntype: task\n---\n' >"$TD/in-review/billing/EX-4/README.md"
+guard Read '{"file_path":"'"$TD"'/backlog/SP-1/SP-3/README.md"}'
+warns "search rule: a child whose epic is an alias of a parent in a sprint folder, in a folder named for it"
+guard Read '{"file_path":"'"$TD"'/planned/ST-9/notes/README.md"}'
+silent "search rule: a README in a folder with no README, named for no task, is no task note"
+guard Read '{"file_path":"'"$TD"'/in-review/billing/EX-4/README.md"}'
+warns "search rule: a folder with no README named for an alias of a task holds tasks"
+rm -r "$TD/done" "$TD/backlog" "$TD/2026-12-04" "$TD/archive" "$TD/2026-12-11" "$TD/planned" "$TD/in-review"
+# A path is never shell text: in a project folder whose name holds a quote, a $(...), a backquote,
+# a semicolon or a blank, the hook takes the child note as it does in a plain one, writes nothing
+# on stderr, and runs nothing. A command it ran would leave a file in the folder it runs from, or
+# in the vault, where the hook goes first.
+mkdir -p "$tmp/hookcwd"
+cd "$tmp/hookcwd" || exit 2
+# jpath <path>: a path as a JSON string's text.
+jpath() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+for name in "plain" "x'q" "x'; touch pwned1; 'q" 'x"q' 'x"; touch pwned2; "q' 'x$(touch pwned3)q' \
+  'x`touch pwned4`q' 'x;touch pwned5;q' 'x y'; do
+  W="$vault/work/$name/tasks"
+  mkdir -p "$W/2026-12-11/A" "$W/done/A/B" "$W/done/C/D"
+  printf -- '---\naliases:\n  - A\ntype: task\n---\n' >"$W/2026-12-11/A/README.md"
+  printf -- '---\naliases:\n  - B\ntype: task\n---\n' >"$W/done/A/B/README.md"
+  printf -- '---\naliases:\n  - D\ntype: task\n---\n' >"$W/done/C/D/README.md"
+  guard Read '{"file_path":"'"$(jpath "$W/done/A/B/README.md")"'"}'
+  warns "search rule, path [$name]: a child in a folder named for a task found elsewhere"
+  is "search rule, path [$name]: nothing on stderr" "$ERR" ""
+  guard Read '{"file_path":"'"$(jpath "$W/done/C/D/README.md")"'"}'
+  silent "search rule, path [$name]: a README in a folder named for no task"
+  is "search rule, path [$name]: nothing on stderr there either" "$ERR" ""
+  rm -r "$vault/work/$name"
+done
+is "search rule: no command ran from a path, here or in the vault, where the hook runs" \
+  "$(ls -A "$tmp/hookcwd"; cd "$vault" && ls -d pwned* 2>/dev/null)" ""
+cd "$here" || exit 2
+guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
+silent "search rule: a Read of a README directly in the archive, which is no group folder"
+guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'
+silent "search rule: nor in Archive, in any letter case"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/notes/EX-1/README.md"}'
 silent "search rule: a Read of a note in the archive outside a year folder"
 guard Read '{"file_path":"'"$vault/$P"'/README.md"}'

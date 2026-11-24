@@ -100,6 +100,13 @@ A story moves:
 - With `task_layout: status`, the close moves each task it abandons into `abandoned/` and asks
   nothing. A taken `abandoned/<ID>` folder is the user's to clear, and a sprint that closed is
   never closed again.
+- With `task_layout: sprint`, the close moves each carried task to the next sprint's folder and
+  each backlog task into `backlog/`, and asks nothing. Done and abandoned tasks stay in the
+  closed sprint's folder. A taken destination, or a `sprint_folder` that gives the next sprint no
+  folder name, is the user's to clear, as in a status project.
+- In both, a child task goes into a folder named for its parent in the folder it moves to, and a
+  parent moves its own files alone. Call a parent story by the project's word, `feature` or
+  `epic`, as the profile's `parent_label` says.
 - The profile names an achievements skill: offer a sprint-end sweep, so every finished story has
   a matching achievement entry.
 - Then offer to open the next sprint.

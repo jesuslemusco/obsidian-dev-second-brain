@@ -99,6 +99,19 @@ sb task head BRD-6
 rc_is "lookup: task head reads no task directly in archive/, exit 1" 1
 sb find sprint-12 --project Board
 rc_is "lookup: a sprint folder is no task, exit 1" 1
+# task new with the name of a group folder that holds tasks would make it a task, and the tasks in
+# it would leave the board: it exits 6 with nothing written.
+for l in flat archive; do
+  edit "$BP" "s/^task_layout: .*\$/task_layout: $l/"
+  project_tree "$vault/$B" >"$tmp/board.before"
+  sb task new sprint-12 --project Board
+  rc_is "task new: the name of a group folder that holds tasks gives exit 6 ($l)" 6
+  err_has "task new: the message names the folder that holds tasks ($l)" "the folder holds tasks: $B/tasks/sprint-12"
+  project_tree "$vault/$B" >"$tmp/board.after"
+  is "task new: nothing written into the group folder ($l)" \
+    "$(cmp -s "$tmp/board.before" "$tmp/board.after" && printf same)" "same"
+done
+edit "$BP" 's/^task_layout: .*$/task_layout: flat/'
 # backlog/ with a README of its own still holds tasks, and its README is no task.
 printf '# Backlog hub\n\nThe tasks of no sprint.\n' >"$BT/backlog/README.md"
 sb board Board All

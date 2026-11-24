@@ -1087,6 +1087,10 @@ edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: status/'
 doc Example
 is "task-location: in a status project the fix names the folder of the task's status" "$(fix_of task-location)" \
   "move it with second-brain move to $P/tasks/<status>/<ID>/README.md, with the task's status, and tie it to its topic with a tag"
+edit "$vault/$P/claude/profile.md" 's/^task_layout: .*/task_layout: sprint/'
+doc Example
+is "task-location: in a sprint project the fix names backlog/, from where doctor --fix moves a task with a sprint" "$(fix_of task-location)" \
+  "move it with second-brain move to $P/tasks/backlog/<ID>/README.md, from where second-brain doctor --fix moves a task with a sprint to its sprint's folder, and tie it to its topic with a tag"
 reset
 stray "$P/tasks/EX-3.md" '"task"'
 doc Example

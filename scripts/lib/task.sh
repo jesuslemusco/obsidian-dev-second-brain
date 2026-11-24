@@ -598,7 +598,8 @@ sb_topic_dir() {
 }
 
 # Create a task folder and its README from the template, in planned/ in a status project and in
-# backlog/ in a sprint project; exit 6 when the folder exists or the id is a task in another folder.
+# backlog/ in a sprint project; exit 6 when the folder exists, when it holds tasks, as a group
+# folder does, or when the id is a task in another folder.
 sb_task_new() {
   local id="" project="" title="" topics="" envs=0 rows count dir file taglines="" tag topics_dir
   local hub alias uplink envlist="" envblock="" env block usage rc=0 troot bad other sub="" made d vdir
@@ -653,6 +654,11 @@ sb_task_new() {
   file="$dir/README.md"
   [ ! -e "$file" ] || sb_die 6 "the task already has a README: $vdir/README.md"
   if [ -e "$dir" ] && [ ! -d "$dir" ]; then sb_die 6 "a file is in the way: $vdir"; fi
+  # A folder with no README that holds a task is a group folder, such as a sprint's: a README in it
+  # would make it a task, and the tasks inside would leave the board.
+  for d in "$dir"/*/README.md; do
+    [ ! -f "$d" ] || sb_die 6 "the folder holds tasks: $vdir"
+  done
   # The id is a task elsewhere: at the root, in a status folder or in the archive.
   other="$(sb_task_readme "$SB_P_DIR/$SB_TASKS_ROOT" "$id" | head -1)"
   case "$other" in

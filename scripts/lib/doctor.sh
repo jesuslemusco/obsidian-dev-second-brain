@@ -1061,12 +1061,13 @@ sb_doc_check_task_location() {
       close(file)
       if (closed && type == "task") print substr(path, length(dir) + 1)
     }' | LC_ALL=C sort)"
-  # In a status project a task's place is the folder of its status.
-  if [ "$(sb_task_layout)" = "status" ]; then
-    to="${to%/.}/<status>/<ID>/README.md, with the task's status,"
-  else
-    to="${to%/.}/<ID>/README.md,"
-  fi
+  # In a status project a task's place is the folder of its status. In a sprint project it is
+  # backlog/, where task new writes, and doctor --fix then moves a task with a sprint on.
+  case "$(sb_task_layout)" in
+    status) to="${to%/.}/<status>/<ID>/README.md, with the task's status," ;;
+    sprint) to="${to%/.}/backlog/<ID>/README.md, from where second-brain doctor --fix moves a task with a sprint to its sprint's folder," ;;
+    *) to="${to%/.}/<ID>/README.md," ;;
+  esac
   sb_doc_report warn task-location "$SB_P_NAME" "$bad" \
     "move it with second-brain move to $to and tie it to its topic with a tag" 120
 }

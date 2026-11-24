@@ -51,8 +51,8 @@ and each story in the shape its section 1 gives:
 On the approval, write the draft as approved: the epic first, then each story in order.
 
 1. Write each one through steps 1 to 5 of `## 3. Create the story` in `create.md`.
-   - Step 3 sets `status=planned`, `branch="none yet"`, the `next` from the draft and, for a
-     story, `epic=<its parent>`.
+   - Step 3 sets `status=planned`, `branch="none yet"`, a `next` that names its first action
+     and, for a story, `epic=<its parent>`.
    - Its `**Branch:**` line is `none yet`, with the ref the draft was checked at.
    - The status note of step 5 is `Planned: the owner approved this text.`
    - Work on it has not started, so step 6 does not weigh it yet.

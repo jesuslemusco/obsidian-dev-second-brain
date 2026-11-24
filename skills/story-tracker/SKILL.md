@@ -1,11 +1,11 @@
 ---
-name: story-track
+name: story-tracker
 description: Use for any question or change on a vault ticket - where it stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
 
-# Story track
+# Story tracker
 
 A story is a task's `README.md` in the vault. This skill handles one ticket at a time.
 

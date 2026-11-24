@@ -26,7 +26,7 @@ Write nothing, no file, no key and no note, until the owner approves the draft.
 
 ## 2. The draft
 
-Read story-track's `create.md` once, at the path `## Workflows` in `SKILL.md` gives. Draft the
+Read story-tracker's `create.md` once, at the path `## Workflows` in `SKILL.md` gives. Draft the
 release in this chat:
 
 - `Release goals:`, one to three bullets, in the owner's words.
@@ -58,8 +58,8 @@ release in this chat:
 
 On the approval, write the draft as approved, in this order:
 
-1. Each new epic, then each story: invoke the story-track skill with the Skill tool, as
-   `odsb:story-track` with its id, to start it. It writes the task note from the approved text,
+1. Each new epic, then each story: invoke the story-tracker skill with the Skill tool, as
+   `odsb:story-tracker` with its id, to start it. It writes the task note from the approved text,
    as `planned`, with its parent.
    - Invoke it, never Read its files: the Skill tool fills in the paths and the session id its
      `SKILL.md` names, and a Read leaves them as written.
@@ -75,7 +75,7 @@ On the approval, write the draft as approved, in this order:
 6. Report the note's path, and each story's path and the tasks it waits on.
    - A sprint in progress: offer sprint-planning, to pick the new stories into it.
 
-A change to a story's text once it is written: show it, and write it through the story-track
+A change to a story's text once it is written: show it, and write it through the story-tracker
 skill only once the owner approves it.
 
 ## 5. The note

@@ -89,9 +89,9 @@ Then:
      the `sprint_folder` pattern: nothing was written, and the pattern is the user's to fix.
    - A move that fails exits as `second-brain move` does, with the sprint written:
      `second-brain doctor --fix` moves the task once the reason is handled.
-6. A task that does not exist yet: start it in the start mode of `story-track.md`, at the path
-   `## Workflows` in `SKILL.md` gives. It shows the owner the story's text before it writes it.
-   Then set its sprint as in 5.
+6. A task that does not exist yet: start it through the story-track skill, with the Skill tool
+   as `odsb:story-track`. It shows the owner the story's text before it writes it. Then set its
+   sprint as in 5.
 7. Run `second-brain board <project> "Current sprint"` and show the list back.
 8. Freeze its row count: `second-brain sprint set <project> committed=<count>`.
    - The sprint started before today: ask before changing `committed`.
@@ -174,6 +174,6 @@ Then:
 - Write into the sprint note by hand only under `## Notes`, and only when the user asks.
   `sprint open`, `sprint set` and `sprint close` write the rest.
 - Report a missing or non-standard status as "Needs a status". Never set one without asking.
-- Task files belong to the story-track workflow. Never create one from this one.
+- Task files belong to the story-track skill. Never create one from this workflow.
 - This workflow touches a task only through `second-brain task set`, `second-brain task note`, the
   sprint commands that move tasks and, after a yes at close, `second-brain task archive`.

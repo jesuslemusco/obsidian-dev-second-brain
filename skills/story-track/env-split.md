@@ -26,18 +26,14 @@ envs:
   prod: { id: EX-151, status: planned }
 ```
 
-- `aliases` lists every id. Any of them finds this file, as `## Find the story` in
-  `story-track.md` says.
-- Link to the set as `## Links` in `story-track.md` says: an alias does not make a bare link
-  resolve.
+- `aliases` lists every id. Any of them finds this file, as `## Find the story` in `SKILL.md` says.
+- Link to the set as `## Links` in `SKILL.md` says: an alias does not make a bare link resolve.
 - Top-level `status` is the set's: the least advanced environment still open.
 - The set is `done` only when the last environment is done.
 - Each environment's status lives in `envs:`.
 - `envs:` is the one part of the frontmatter edited by hand. Keep its shape.
-- One branch serves the whole set, as `## Branch check (start, update, recall)` in
-  `story-track.md` says.
-- The overview shows the set as one block, counted once. `## Render` in `story-track-status.md`
-  has the format.
+- One branch serves the whole set, as `## Branch check (start, update, recall)` in `SKILL.md` says.
+- The overview shows the set as one block, counted once. `## Render` in `status.md` has the format.
 
 ## Shared and per environment
 
@@ -52,7 +48,7 @@ envs:
 
 ## Add the next environment
 
-Edit the existing file. A later id never gets a folder, as `## Find the story` in `story-track.md` says.
+Edit the existing file. A later id never gets a folder, as `## Find the story` in `SKILL.md` says.
 
 1. Ask for the new ticket id. Never assume it is the previous one plus one.
 2. Run `second-brain task alias EX-123 add EX-151`.

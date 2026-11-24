@@ -26,20 +26,19 @@ Write nothing, no file, no key and no note, until the owner approves the draft.
 
 ## 2. The draft
 
-Read `story-track-create.md` once, at the path `## Workflows` in `SKILL.md` gives. Draft the
+Read story-track's `create.md` once, at the path `## Workflows` in `SKILL.md` gives. Draft the
 release in this chat:
 
 - `Release goals:`, one to three bullets, in the owner's words.
-- Each new epic and story in the shape section 1 of `story-track-create.md` gives: a title, the
-  Summary, the Description in its three-line shape with its context, Findings only from evidence,
-  and at most 4 acceptance criteria.
+- Each new epic and story in the shape section 1 of `create.md` gives: a title, the Summary, the
+  Description in its three-line shape with its context, Findings only from evidence, and at most
+  4 acceptance criteria.
 - An epic's criteria say when it is done, such as each of its stories done. Its context lists its
   stories, one line each: the id and the title.
 - Each story's topics, and its subproject in a project that has subprojects.
 - Under each story, two lines: `Parent: <ID or ->` and `Waits on: <IDs or ->`. A task it waits on
   may be one that exists already.
-- Check each claim about the code read-only, as section 2 of `story-track-create.md` says, and
-  name the ref.
+- Check each claim about the code read-only, as section 2 of `create.md` says, and name the ref.
 - Last, the release's section of the note as it will read, in the shape of `## 5. The note`.
 
 ## 3. The approval
@@ -59,9 +58,11 @@ release in this chat:
 
 On the approval, write the draft as approved, in this order:
 
-1. Each new epic, then each story: start it with its id, as the start mode of `story-track.md`
-   says. Read that file once. It writes the task note from the approved text, as `planned`, with
-   its parent.
+1. Each new epic, then each story: invoke the story-track skill with the Skill tool, as
+   `odsb:story-track` with its id, to start it. It writes the task note from the approved text,
+   as `planned`, with its parent.
+   - Invoke it, never Read its files: the Skill tool fills in the paths and the session id its
+     `SKILL.md` names, and a Read leaves them as written.
 2. Link each story to each task it waits on: `second-brain task dep <ID> add <other ID>`.
 3. In each new epic's list, link each story as `[[<its path, no .md>|<ID>]]`, with the path
    `second-brain find <ID> --project <project>` prints.
@@ -74,8 +75,8 @@ On the approval, write the draft as approved, in this order:
 6. Report the note's path, and each story's path and the tasks it waits on.
    - A sprint in progress: offer sprint-planning, to pick the new stories into it.
 
-A change to a story's text once it is written: show it, and write it in the update mode of
-`story-track.md` only once the owner approves it.
+A change to a story's text once it is written: show it, and write it through the story-track
+skill only once the owner approves it.
 
 ## 5. The note
 

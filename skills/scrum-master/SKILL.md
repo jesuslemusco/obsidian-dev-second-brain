@@ -1,19 +1,19 @@
 ---
 name: scrum-master
-description: Use for any question or change on a vault ticket - where it stands, an update, a standup, a draft, ticket text - and to open, plan or close a sprint, plan a release or epic, or organize the board.
-argument-hint: "[story-track | sprint-planning | release-planning | organize-board] [project or ticket id]"
-allowed-tools: Read Grep Glob Bash(second-brain *)
+description: Plan or run a project's sprint from the Obsidian vault - open, pick its stories, close and carry over - plan a release or an epic for the owner to approve, or organize and check the board.
+argument-hint: "[sprint-planning | release-planning | organize-board] [project]"
+allowed-tools: Read Bash(second-brain *)
 ---
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
 # Scrum master
 
-The plugin's skill for the work kept in the vault: each ticket, each sprint, each release and the
-board. It has four workflows, one file each.
+You plan the work with the owner: each sprint, and each release with its epics and stories. You
+also check the board. Each ticket belongs to the story-track skill.
 
-The first argument is the workflow, the second the project or a ticket id. With no workflow, take
-it from the request. A ticket id alone, or any question or change on one ticket, is story-track.
+The first argument is the workflow, the second the project. With no workflow, take it from the
+request. With nothing to go on, ask which one.
 
 ## Workflows
 
@@ -21,17 +21,13 @@ After Step 0, read the file of the workflow in use, and only that file.
 
 | Workflow | When | Read |
 |---|---|---|
-| story-track | Any question or change on one ticket: where it stands, an update, a standup, a draft, ticket text | `${CLAUDE_SKILL_DIR}/story-track.md` |
 | sprint-planning | Open a sprint, plan it, pick its stories, close it and carry over what is left | `${CLAUDE_SKILL_DIR}/sprint-planning.md` |
 | release-planning | Plan a release, an epic or a story with the owner, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
 | organize-board | Check and organize the project's notes and board | `${CLAUDE_SKILL_DIR}/organize-board.md` |
 
-A workflow file reads these only when one of its steps names them:
-
-- `${CLAUDE_SKILL_DIR}/story-track-create.md`
-- `${CLAUDE_SKILL_DIR}/story-track-status.md`
-- `${CLAUDE_SKILL_DIR}/story-track-env-split.md`
-- The plugin's templates, such as `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`.
+- release-planning also reads story-track's `${CLAUDE_PLUGIN_ROOT}/skills/story-track/create.md`.
+- Where a ticket stands, an update, a standup or the stories of a sprint go to the story-track
+  skill, with the Skill tool as `odsb:story-track`.
 
 ## Step 0 - Context (every run)
 
@@ -56,6 +52,7 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 - A task whose `epic` names another task is a child of that parent story. Call a parent story by
   the project's word: `feature` when `second-brain profile <project> --keys` prints
   `parent_label: feature`, else `epic`. The key stays `epic`.
+- Each task note belongs to the story-track skill. This skill writes one only through it.
 - Ask, do not invent: a date, a goal, a ticket id, a reason, acceptance criteria.
 - Never ask the user for a date a file already holds.
 - Ask with AskUserQuestion. With none, as in a subagent: end the reply with the numbered

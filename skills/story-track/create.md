@@ -1,8 +1,7 @@
 # Start a story
 
-Start mode reads this after `## Context`, the find (nothing found) and the branch check in
-`story-track.md`.
-Draft mode reads section 1 only, after `## Context`.
+Start mode reads this after Step 0, the find (nothing found) and the branch check in `SKILL.md`.
+Draft mode reads section 1 only, after Step 0.
 
 ## 1. Lock down the framing
 
@@ -34,9 +33,9 @@ commits, the files already in the task folder.
   - `second-brain profile <project> topics` holds only spelling exceptions.
   - A story about no single folder gets no topic tag.
 
-- Anything unclear or missing: ask for exactly that, as `## Story rules` in `story-track.md` says.
-  For example: "What has to be true for EX-123 to be done?", "Is EX-123 about
-  docs/billing/invoices, or wider?"
+- Anything unclear or missing: ask for exactly that, as `## Story rules` in `SKILL.md` says. For
+  example: "What has to be true for EX-123 to be done?", "Is EX-123 about docs/billing/invoices,
+  or wider?"
 - One pending detail may go in the file as `> OPEN: ...`. The rest must be real.
 - The ticket holds no "Implementation notes", "Validation notes", "Out of scope" or "References".
   That depth goes in the README's Approach / Key decisions, Code verification and Verification
@@ -48,7 +47,7 @@ commits, the files already in the task folder.
 - Stay in the repository and on the ref the branch check settled.
 - Say so when you read a file at another ref.
 - Another repository the ticket touches: get its path as
-  `## Branch check (start, update, recall)` in `story-track.md` says.
+  `## Branch check (start, update, recall)` in `SKILL.md` says.
 - Work has started: run `git -C "<repo path>" log --oneline <base>..<branch>` and
   `git -C "<repo path>" diff <base>...<branch>`, with `<base>` the `base_branch` the branch
   check reads.
@@ -62,8 +61,8 @@ commits, the files already in the task folder.
 ## 3. Create the story
 
 Show the owner the text from section 1 first, and write nothing until they approve it, as
-`## 3. The approval` in `release-planning.md` says. A change they ask for is shown again before it
-is written.
+`## 3. The approval` in `skills/scrum-master/release-planning.md` says. A change they ask for is
+shown again before it is written.
 
 A story release-planning got approved is approved already. Write it from that text, as
 `planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
@@ -73,7 +72,7 @@ has not started, so step 6 waits until it does.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root
      `docs` is the tag `billing/invoices`.
    - Add `--project <P>` when the id's key does not name one project.
-   - Add `--envs` for an environment set, and read `story-track-env-split.md`.
+   - Add `--envs` for an environment set, and read `env-split.md`.
    - Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`
      from Step 0, or the subproject the user named.
    - No such line, while `second-brain subproject <project>` lists subprojects:
@@ -89,7 +88,7 @@ has not started, so step 6 waits until it does.
      `second-brain task tag EX-123 remove <tag>` and ask the user.
 3. `second-brain task set EX-123 status=<planned or in-progress> next="<the next action>"
    branch="<branch or none yet>"`, plus `epic=<ID>` when the story has a parent, the project's
-   feature or epic, as `## Context` in `story-track.md` names it.
+   feature or epic, as Step 0 of `SKILL.md` names it.
    - With `task_layout: status` or `sprint`, the call moves the story into a folder named for its
      parent, and prints its new path after the keys.
 4. Fill the sections the template leaves empty:
@@ -101,4 +100,4 @@ has not started, so step 6 waits until it does.
    - Approach / Key decisions, Changes and Verification fill in as the work proceeds.
    - Add no section the README lacks: a project's own template may leave some out.
 5. `second-brain task note EX-123 "<where the story stands>" --session <session id from SKILL.md>`.
-6. Weigh how the story is built, as `## Spec-driven stories` in `story-track.md` says.
+6. Weigh how the story is built, as `## Spec-driven stories` in `SKILL.md` says.

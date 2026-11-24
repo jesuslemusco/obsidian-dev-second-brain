@@ -16,8 +16,9 @@ It can also build a story from a spec you approve, one task at a time, each test
   ticket sits inside a folder named for that parent, such as
   `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
   or epics.
-- **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
-  carried over.
+- **Planning.** Claude refines the epics and stories with you, and plans each release's goals,
+  epics and stories in the project's planned-releases note. It writes only what you approve.
+- **Sprints.** Claude opens a sprint, plans it, and closes it with the open work carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
 - **Spec-driven builds.** You approve a story's requirements, design and tasks. Claude then builds
@@ -63,30 +64,45 @@ type a skill's name, as in the headings below. Which requests load which skill i
 
 ### `/odsb:story-tracker`
 
-Drafts, starts, updates and recalls tickets, and gives a standup.
+Drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
 
 - Use it for any question or change on a ticket.
 - Starting a ticket writes its story: a summary, a description and up to four acceptance
-  criteria, checked against the code.
+  criteria, checked against the code. It shows you the text first, and writes it once you approve.
 - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
   current.
 - When work starts, it builds a simple story direct, and asks you when a spec would help.
+- A story set to done goes to `docs-keeper`. Then its achievement is logged, when the project's
+  profile names a skill for it.
 
 ```
 Where does EX-2 stand?
 Update EX-2: the sort is merged, move it to in review.
 ```
 
-### `/odsb:sprint`
+### `/odsb:scrum-master`
 
-Opens, plans, shows and closes a project's sprint, and carries open work over.
+Refines the stories and plans the sprints and releases with you, and checks the board. It has
+four workflows, each a file of its own in `skills/scrum-master/`, read only when it runs.
 
-- Use it to start a sprint, pick its stories, see its status or close it.
-- A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md` says.
+- `refinement`: drafts or refines an epic and its stories, or one story, with you. Each story has
+  a summary, a description, up to four acceptance criteria, its parent and the tasks it waits on.
+  It writes nothing until you approve the draft, and shows a change you ask for again first. Then
+  story-tracker writes each story.
+- `sprint-planning`: opens a sprint, picks its stories, and closes it with the open work carried
+  over. A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md`
+  says.
+- `release-planning`: sets a release's goals, epics and stories with you, in the project's
+  planned-releases note, once you approve it. A story or epic that does not exist yet goes through
+  refinement first.
+- `organize-board`: runs the doctor on the project, says what each failing row means, and changes
+  nothing without asking.
 
 ```
+Refine EX-1 for the Example project: split it into stories.
+Plan the 0.2.0 release for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
-/odsb:sprint close Example
+/odsb:scrum-master sprint-planning Example
 ```
 
 ### `/odsb:spec`
@@ -160,7 +176,6 @@ Most are started by a skill, and you can ask for any of them by name.
 | Agent | Does | Started by |
 |---|---|---|
 | `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
-| `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
@@ -174,7 +189,8 @@ Start EX-123: the invoice export drops the tax column.
 ```
 
 Claude finds no story for EX-123 and checks the repo's branch. It asks you for anything it cannot
-tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
+tell, and shows you the story's text. Once you approve it, Claude writes
+`<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
 in a project that keeps each task in the folder of its status, or
 `<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a
 summary, a description and up to four acceptance criteria, checked against the code. A simple story
@@ -297,7 +313,7 @@ Claude writes notes in the style of the note `claude/writing-style.md` in your v
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,
-  spec-driven delivery, Windows, the tests and releases.
+  planning, spec-driven delivery, Windows, the tests and releases.
 - [docs/contract.md](docs/contract.md): every helper command and note format.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

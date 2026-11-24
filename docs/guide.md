@@ -20,7 +20,10 @@ skill next to it:
 | Where does EX-2 stand? | `story-tracker` |
 | Standup for the Example project: what is in progress, and what comes next? | `story-tracker` |
 | Update EX-2: the sort is merged, move it to in review. | `story-tracker` |
-| Open a new sprint for the Mobile project. | `sprint` |
+| Refine EX-2 for the Example project: split it into two stories. | `scrum-master` |
+| Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories. | `scrum-master` |
+| Open a new sprint for the Mobile project. | `scrum-master` |
+| Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
 | Implement EX-2 spec-driven, starting with its requirements. | `spec` |
 
@@ -112,7 +115,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - When a story is set done, Claude asks once whether to archive it now, as
   `## Edit an existing story` in `skills/story-tracker/SKILL.md` says.
 - When a sprint closes, Claude asks once whether to archive its done tasks, as
-  `skills/sprint/close.md` says.
+  `## Close` in `skills/scrum-master/sprint-planning.md` says.
 - `second-brain task archive EX-1` archives one task by hand.
 - `second-brain doctor --fix` archives each task that is due, as
   `## fix` in `skills/vault-doctor/SKILL.md` says.
@@ -171,6 +174,28 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - `vault-setup` asks whether a project calls its parent stories features or epics, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
   in a task's frontmatter stays `epic`.
+
+## Planning
+
+- The `scrum-master` skill plans with you. It has four workflows, each a file of its own, read only
+  when it runs: `refinement`, `sprint-planning`, `release-planning` and `organize-board`. Its
+  `SKILL.md` routes each request to one of them.
+- Ask for an epic and its stories, or one story, as under [What to say](#what-to-say), and
+  `refinement` drafts them with you, in story-tracker's shape, with at most four acceptance
+  criteria, its parent and the tasks it waits on, as `## 2. The draft` in
+  `skills/scrum-master/refinement.md` says.
+- It shows you the draft in short chunks and writes nothing until you approve it. A change you ask
+  for is shown again first, as `## 3. The approval` in `skills/scrum-master/refinement.md` says.
+- Then story-tracker writes each story, and the skill links each one to the tasks it waits on
+  with `second-brain task dep`.
+- A ticket you start with no story is shown to you the same way before story-tracker writes it.
+- `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as
+  `## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.
+- `release-planning` keeps each release's goals, epics and stories in `planned-releases.md`, in
+  the project's topics root, `docs/` by default. Its shape is under `### Planned releases` in
+  `docs/contract.md`. A story or epic that does not exist yet goes through `refinement` first.
+- `organize-board` runs the doctor on the project and says what each failing row means. It changes
+  nothing without asking. `/odsb:vault-doctor fix` makes the repairs.
 
 ## Spec-driven delivery
 

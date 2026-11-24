@@ -13,6 +13,7 @@ for word in "ticket text" summary description "acceptance criteria" draft "where
   case "$st_desc" in *"$word"*) pass "story-tracker: the description names $word" ;; *) fail "story-tracker: the description names $word" "in: $st_desc" ;; esac
 done
 is "story-tracker: the description is under the doctor's 200 characters" "$((${#st_desc} < 200))" "1"
+line_is "story-tracker: the name is the folder's" "$ST" "name: story-tracker"
 draft_row="$(grep '^| draft |' "$ST")"
 case "$draft_row" in
   *"with or without an id"*ticket-description.md.tmpl*"reply with the text"*"Write no file until the id arrives"*) pass "story-tracker: a draft mode row fills the template and writes no file" ;;
@@ -30,7 +31,6 @@ line_is "story-tracker: else the plugin's template" "$ST" \
   '- Else fill `${CLAUDE_PLUGIN_ROOT}/templates/ticket-description.md.tmpl`. Never write it freehand.'
 line_is "story-tracker: a new story keeps the shape of the project's README template" "$here/skills/story-tracker/create.md" \
   "   - Add no section the README lacks: a project's own template may leave some out."
-file_has "sprint: its rules send a request to write a ticket to story-tracker" "$here/skills/sprint/SKILL.md" "goes to the story-tracker skill in \`draft\` mode"
 file_lacks "vault-doctor: a request to check the vault may load it" "$here/skills/vault-doctor/SKILL.md" "disable-model-invocation"
 line_is "vault-setup: it runs only by name" "$here/skills/vault-setup/SKILL.md" "disable-model-invocation: true"
 
@@ -57,17 +57,17 @@ file_has "story-tracker: a story in production starts docs-keeper" "$ST" 'start 
 file_has "story-tracker: it hands over the ticket id and the README path" "$ST" 'with the project, the ticket id and the README path'
 file_lacks "story-tracker: no longer tells Claude not to start it" "$ST" 'Do not start it yourself.'
 file_has "story-tracker: a session that cannot start an agent names docs-keeper" "$ST" 'When the session cannot start an agent, say so and'
-file_has "sprint close: reports done tasks with unticked docs through the helper" "$here/skills/sprint/close.md" '`second-brain task docs <done ids> --project <project>`'
-file_lacks "sprint close: no Grep" "$here/skills/sprint/close.md" 'Grep'
-file_has "scrum-master: carries docs-keeper as an action for the caller" "$here/agents/scrum-master.md" 'start `docs-keeper` Workflow 5 for <ID>, <README path>'
-file_has "sprint close: does not start docs-keeper" "$here/skills/sprint/close.md" 'Do not start it here: the close only reports.'
-file_has "scrum-master: still does not spawn docs-keeper" "$here/agents/scrum-master.md" 'Do not spawn it.'
+file_has "sprint close: reports done tasks with unticked docs through the helper" "$here/skills/scrum-master/sprint-planning.md" '`second-brain task docs <done ids> --project <project>`'
+file_lacks "sprint close: no Grep" "$here/skills/scrum-master/sprint-planning.md" 'Grep'
+file_has "story-tracker: a done story's achievement comes after the docs-keeper hand-off" "$here/skills/story-tracker/SKILL.md" \
+  '- The story is set to `done`: after the docs-keeper hand-off, log its achievement when Step 0'"'"'s'
+file_has "sprint close: does not start docs-keeper" "$here/skills/scrum-master/sprint-planning.md" 'Do not start it here: the close only reports.'
 file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
 # ---------------------------------------------------------------- skills follow the subproject and layout standards
 ST="$here/skills/story-tracker/SKILL.md"
 STC="$here/skills/story-tracker/create.md"
-CL="$here/skills/sprint/close.md"
+CL="$here/skills/scrum-master/sprint-planning.md"
 file_has "story-tracker create: task new takes the subproject from context" "$STC" 'Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`'
 file_has "story-tracker create: asks when the repo is in no subproject" "$STC" 'ask which one the story is in, or none'
 file_has "story-tracker create: a name that is no subproject is asked about" "$STC" 'Exit 1 with `--subproject`: the name is no'
@@ -83,7 +83,7 @@ file_has "sprint close: it archives through the helper" "$CL" '`second-brain tas
 file_has "sprint close: never archives without a yes" "$CL" 'Never archive a task without that yes.'
 is "sprint close: the archive question comes after the achievements and before the report" \
   "$(($(lineno "$CL" '8. Run `second-brain profile') < $(lineno "$CL" '9. `task_layout: archive`') && $(lineno "$CL" '9. `task_layout: archive`') < $(lineno "$CL" '10. Report the summary')))" "1"
-file_has "sprint: its rules allow task archive after a yes at close" "$here/skills/sprint/SKILL.md" 'a yes at close, `second-brain task archive`'
+file_has "sprint-planning: its rules allow task archive after a yes at close" "$here/skills/scrum-master/sprint-planning.md" 'a yes at close, `second-brain task archive`'
 file_has "vault-setup: the profile interview asks for task_layout" "$here/skills/vault-setup/SKILL.md" '| `task_layout` |'
 file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKILL.md" '| `archive_after_days` | with `archive` only'
 file_has "vault-setup adopt: asks for task_layout through the project interview" "$here/skills/vault-setup/adopt.md" 'Fill the frontmatter keys as steps 3 to 6 of `## project <name>` in `SKILL.md` say.'
@@ -95,8 +95,7 @@ file_has "vault-setup subproject: sets it through task set" "$here/skills/vault-
 file_has "docs-keeper: the path task head prints wins" "$DK" 'The `path:` line wins over the path'
 file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/archive/<YYYY>/<ID>/README.md` once'
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
-file_has "scrum-master: a story's path comes from task head" "$here/agents/scrum-master.md" 'path from the `path:` line of `second-brain task head <ID> --project <project>`'
-file_has "scrum-master: the close's archive answer is the user's" "$here/agents/scrum-master.md" 'archive the sprint'"'"'s done tasks; that answer is the user'"'"'s too.'
+file_has "story-tracker: the achievement's story path comes from task head" "$here/skills/story-tracker/SKILL.md" '`path:` line of `second-brain task head <ID> --project <project>`, and its sprint note when'
 line_is "sprint close: exit 6 is a taken abandoned folder in a status project" "$CL" \
   '   - Exit 6, with `task_layout: status`: the folder `abandoned/<ID>` of a task in `--abandon` is'
 line_is "sprint close: exit 6 wrote nothing, and the folder is the user's" "$CL" \
@@ -120,13 +119,8 @@ cl_mv="$(lineno "$CL" '   - With `task_layout: status`, the call also moves')"
 cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
 is "sprint close: exit 6 is under step 5 and the move under step 6" \
   "$((${cl_e5:-0} < ${cl_e6:-0} && ${cl_e6:-0} < ${cl_s6:-0} && ${cl_s6:-0} < ${cl_mv:-0} && ${cl_mv:-0} < ${cl_s7:-0}))" "1"
-SM="$here/agents/scrum-master.md"
-line_is "scrum-master: a status project's close moves the abandoned tasks" "$SM" \
-  '- With `task_layout: status`, the close moves each task it abandons into `abandoned/` and asks'
-line_is "scrum-master: a taken folder is the user's, and a closed sprint is not closed again" "$SM" \
-  '  nothing. A taken `abandoned/<ID>` folder is the user'"'"'s to clear, and a sprint that closed is'
-line_is "scrum-master: never closed twice" "$SM" \
-  '  never closed again.'
+absent "scrum-master: the agent is gone" "$here/agents/scrum-master.md"
+absent "scrum-master: the sprint skill is gone" "$here/skills/sprint"
 line_is "contract: the search rule names a task note in a status folder" "$here/docs/contract.md" \
   '  `tasks/<ID>/README.md`, `tasks/<status>/<ID>/README.md` or `tasks/archive/<YYYY>/<ID>/README.md`'
 line_is "contract: the search rule names a task note one group folder down" "$here/docs/contract.md" \
@@ -470,7 +464,7 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the sprint folders raise index_version to 7" "$vi_version" "7"
+is "index template: the scrum-master skill raises index_version to 8" "$vi_version" "8"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -557,7 +551,7 @@ line_is "README: a ticket's note, in a flat project" "$RM" \
 line_is "README: a ticket's note, in a status project" "$RM" \
   '  `<project>/tasks/<status>/<ID>/README.md` in a project that keeps each task in the folder of its'
 line_is "README: the first story's note, in a status project" "$RM" \
-  'tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`'
+  '`<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`'
 line_is "contract: a depends_on link holds the README's vault path" "$here/docs/contract.md" \
   '  - "[[<vault path of its README, no .md>|<other ID>]]"'
 file_lacks "contract: a depends_on link no longer builds the flat path" "$here/docs/contract.md" \
@@ -583,13 +577,7 @@ line_is "story-tracker: a sprint project's story path is the one find prints" "$
 line_is "docs-keeper: a task's place names the sprint folders" "$DK" \
   '  With `task_layout: sprint`, it is `<tasks_root>/<sprint folder>/<ID>/README.md` in a sprint,'
 line_is "docs-keeper: or backlog/ in none" "$DK" '  or `<tasks_root>/backlog/<ID>/README.md` in none.'
-SM="$here/agents/scrum-master.md"
-line_is "scrum-master: a sprint project's close moves the carried and backlog tasks" "$SM" \
-  '- With `task_layout: sprint`, the close moves each carried task to the next sprint'"'"'s folder and'
-file_has "scrum-master: done and abandoned tasks stay" "$SM" 'Done and abandoned tasks stay in the'
-file_has "scrum-master: a taken destination or a bad pattern is the user's" "$SM" \
-  'A taken destination, or a `sprint_folder` that gives the next sprint no'
-CL="$here/skills/sprint/close.md"
+CL="$here/skills/scrum-master/sprint-planning.md"
 line_is "sprint close: exit 6 is a taken destination in a sprint project" "$CL" \
   '   - Exit 6, with `task_layout: sprint`: the folder a task in `--carry` or `--backlog` moves to is'
 line_is "sprint close: or the next sprint's folder is a task" "$CL" \
@@ -604,7 +592,7 @@ line_is "sprint close: the doctor moves a failed move later, in a sprint project
   '     In a sprint project it moves it to the next sprint'"'"'s folder, or `backlog/`, instead.'
 cl_s5="$(lineno "$CL" '5. Exit 5 names the problem')"
 cl_sp6="$(lineno "$CL" '   - Exit 6, with `task_layout: sprint`')"
-cl_sp5="$(lineno "$CL" '   - Exit 5 that names the `sprint_folder` pattern')"
+cl_sp5="$(lineno "$CL" '   - Exit 5 that names the `sprint_folder` pattern, with `task_layout: sprint`')"
 cl_s6="$(lineno "$CL" '6. The same call closes the sprint note.')"
 cl_spmv="$(lineno "$CL" '   - With `task_layout: sprint`, it moves each task')"
 cl_s7="$(lineno "$CL" '7. Add one status note per touched task')"
@@ -716,7 +704,8 @@ line_is "README: in a sprint's folder, or backlog/ in none" "$RM" \
   '  `<project>/tasks/<sprint folder>/<ID>/README.md`, or `<project>/tasks/backlog/<ID>/README.md`'
 line_is "README: the first story's note, in a sprint project" "$RM" \
   '`<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a'
-SP="$here/skills/sprint/SKILL.md"
+SP="$here/skills/scrum-master/sprint-planning.md"
+SPP="$here/skills/scrum-master/sprint-planning.md"
 line_is "sprint open: exit 6 names a taken destination in a sprint project" "$SP" \
   '   - Exit 6 with `the destination exists: <path>` or `the sprint folder is a task: <path>`, in a'
 line_is "sprint open: the folder a re-pointed task moves to, with nothing written" "$SP" \
@@ -729,23 +718,23 @@ line_is "sprint open: a failed move leaves the sprint open" "$SP" \
   '   - A move that fails is named on stderr, and the call exits with its code. The sprint is open'
 line_is "sprint open: the doctor moves the task later" "$SP" \
   '     `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.'
-line_is "sprint plan: task set moves the folder in a sprint project" "$SP" \
+line_is "sprint pick: task set moves the folder in a sprint project" "$SPP" \
   '   - With `task_layout: sprint`, each call also moves the task'"'"'s folder, to the sprint'"'"'s folder or'
-line_is "sprint plan: exit 6 there, as in open" "$SP" \
+line_is "sprint pick: exit 6 there, as in open" "$SPP" \
   '   - Exit 6 there, as in open: the destination is taken, or the sprint'"'"'s folder is a task, and'
-line_is "sprint plan: a failed move keeps the sprint written" "$SP" \
+line_is "sprint pick: a failed move keeps the sprint written" "$SPP" \
   '   - A move that fails exits as `second-brain move` does, with the sprint written:'
 sp_o6="$(lineno "$SP" '6. Run `second-brain sprint open')"
 sp_oe6="$(lineno "$SP" '   - Exit 6 with `the destination exists: <path>`')"
 sp_o7="$(lineno "$SP" '7. Report the note it created')"
 sp_omv="$(lineno "$SP" '   - With `task_layout: sprint`, each re-pointed task')"
 sp_o8="$(lineno "$SP" '8. A goal given or changed later')"
-sp_p5="$(lineno "$SP" '5. Set each answer:')"
-sp_pmv="$(lineno "$SP" '   - With `task_layout: sprint`, each call also moves')"
-sp_p6="$(lineno "$SP" '6. A task that does not exist yet')"
+sp_p5="$(lineno "$SPP" '5. Set each answer:')"
+sp_pmv="$(lineno "$SPP" '   - With `task_layout: sprint`, each call also moves')"
+sp_p6="$(lineno "$SPP" '6. A task that does not exist yet')"
 is "sprint open: the exits are under step 6 and the moves under step 7" \
   "$((${sp_o6:-0} < ${sp_oe6:-0} && ${sp_oe6:-0} < ${sp_o7:-0} && ${sp_o7:-0} < ${sp_omv:-0} && ${sp_omv:-0} < ${sp_o8:-0}))" "1"
-is "sprint plan: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
+is "sprint pick: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
 under_011 "changelog: the sprint skill's open and plan moves, under 0.11.0" \
   'The sprint skill says the same of `sprint open` and of setting a task'"'"'s sprint in plan.'
 under_011 "changelog: doctor --fix removes each empty group folder, under 0.11.0" \
@@ -960,12 +949,14 @@ file_has "contract: story-tracker weighs a story with no delivery of its own" \
   '- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and'
 file_has "contract: points to the weighing in story-tracker" "$here/docs/contract.md" \
   'the story'"'"'s own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.'
-st_desc="$(sed -n 's/^description: //p' "$ST")"
-st_check="story-tracker: the description leaves spec requests to the spec skill"
-case "$st_desc" in
-  *[Ss][Pp][Ee][Cc]*) fail "$st_check" "in: $st_desc" ;;
-  *) pass "$st_check" ;;
-esac
+for sk in story-tracker scrum-master; do
+  st_desc="$(sed -n 's/^description: //p' "$here/skills/$sk/SKILL.md")"
+  st_check="$sk: the description leaves spec requests to the spec skill"
+  case "$st_desc" in
+    *[Ss][Pp][Ee][Cc]*) fail "$st_check" "in: $st_desc" ;;
+    *) pass "$st_check" ;;
+  esac
+done
 file_has "guide: the spec request is under What to say" "$here/docs/guide.md" '| Implement EX-2 spec-driven, starting with its requirements. | `spec` |'
 file_has "e2e: asks the same spec request" "$here/scripts/e2e-claude.sh" '"Implement EX-2 spec-driven, starting with its requirements."'
 
@@ -1316,7 +1307,7 @@ for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The 
   file_has "guide: points to $ph in $pf" "$GD" "\`$ph\` in \`$pf\`"
   line_is "guide: $pf has the heading $ph" "$here/$pf" "$ph"
 done
-for pf in skills/sprint/close.md skills/spec/SKILL.md skills/spec/build.md .github/workflows/test.yml \
+for pf in skills/scrum-master/sprint-planning.md skills/spec/SKILL.md skills/spec/build.md .github/workflows/test.yml \
   .github/workflows/e2e.yml scripts/e2e-claude.sh .claude-plugin/plugin.json CHANGELOG.md; do
   file_has "guide: points to $pf" "$GD" "\`$pf\`"
   exists "guide: $pf exists" "$here/$pf"
@@ -2505,15 +2496,13 @@ file_has "story-tracker status: the Epic field takes the project's word" "$here/
   '  - Name the `Epic:` field after the project'"'"'s word, `Feature:` with `parent_label: feature`. The'
 file_has "story-tracker create: the parent is the project's feature or epic" "$here/skills/story-tracker/create.md" \
   'feature or epic, as Step 0 of `SKILL.md` names it.'
-SPK="$here/skills/sprint/SKILL.md"
-file_has "sprint: calls a parent story by the project's word" "$SPK" \
+SPK="$here/skills/scrum-master/SKILL.md"
+file_has "scrum-master: calls a parent story by the project's word" "$SPK" \
   '- A task whose `epic` names another task is a child of that parent story. Call a parent story by'
-file_has "sprint: a move keeps a child under its parent" "$SPK" \
+file_has "sprint-planning: a move keeps a child under its parent" "$here/skills/scrum-master/sprint-planning.md" \
   'parent, in the folder it moves to, and a parent'"'"'s move takes its own files alone.'
-file_has "sprint close: a child goes under its parent" "$here/skills/sprint/close.md" \
+file_has "sprint close: a child goes under its parent" "$here/skills/scrum-master/sprint-planning.md" \
   '   - In both, a child goes into a folder named for its parent in the folder it moves to, and a'
-file_has "scrum-master: calls a parent story by the project's word" "$here/agents/scrum-master.md" \
-  'parent moves its own files alone. Call a parent story by the project'"'"'s word, `feature` or'
 file_has "docs-keeper: a child task is one folder deeper" "$here/agents/docs-keeper.md" \
   '  In both, a child task, one whose `epic` names another task, is one folder deeper, inside a'
 CHK="$here/skills/vault-doctor/checks.md"
@@ -2562,6 +2551,163 @@ line_is "spec build: the template says to indent with a tab" "$BM" \
   'The note, with each `<...>` filled. A nested item is indented with a tab, as the vault'"'"'s writing'
 is "spec build: no nested item of the orders note is indented with spaces" \
   "$(awk '/^# <project> lead memory$/ { on = 1 } on && /^\`\`\`$/ { on = 0 } on && /^ +- /' "$BM" | wc -l | tr -d ' ')" "0"
+
+# ---------------------------------------------------------------- the scrum-master skill and story-tracker's new steps
+SMD="$here/skills/scrum-master"
+SMS="$SMD/SKILL.md"
+SMF="$SMD/refinement.md"
+SMR="$SMD/release-planning.md"
+SMG="$SMD/sprint-planning.md"
+SMO="$SMD/organize-board.md"
+STD="$here/skills/story-tracker"
+STS="$STD/SKILL.md"
+line_is "scrum-master: the name is the folder's" "$SMS" "name: scrum-master"
+sm_desc="$(sed -n 's/^description: //p' "$SMS")"
+is "scrum-master: the description is under 200 characters" "$((${#sm_desc} < 200))" "1"
+for word in Refine stories epics sprint open pick close "carry over" release organize check board approval; do
+  case "$sm_desc" in *"$word"*) pass "scrum-master: the description names $word" ;; *) fail "scrum-master: the description names $word" "in: $sm_desc" ;; esac
+done
+for word in ticket standup; do
+  case "$sm_desc" in *"$word"*) fail "scrum-master: the description leaves $word to story-tracker" "in: $sm_desc" ;; *) pass "scrum-master: the description leaves $word to story-tracker" ;; esac
+done
+case "$sm_desc" in *': '*) fail "scrum-master: the description holds no colon and blank" "in: $sm_desc" ;; *) pass "scrum-master: the description holds no colon and blank" ;; esac
+line_is "scrum-master: the argument hint lists the four workflows" "$SMS" \
+  'argument-hint: "[refinement | sprint-planning | release-planning | organize-board] [project]"'
+is "scrum-master: SKILL.md is under the doctor's 150 lines" "$(($(wc -l <"$SMS") <= 150))" "1"
+is "scrum-master: the workflow table has four rows" \
+  "$(grep -cE '^\| (refinement|sprint-planning|release-planning|organize-board) \| ' "$SMS")" "4"
+for m in refinement sprint-planning release-planning organize-board; do
+  row="$(grep "^| $m | " "$SMS")"
+  case "$row" in
+    *'| `${CLAUDE_SKILL_DIR}/'"$m"'.md` |') pass "scrum-master: $m reads $m.md" ;;
+    *) fail "scrum-master: $m reads $m.md" "got: $row" ;;
+  esac
+  file_has "scrum-master: $m.md is read only when it runs" "$SMD/$m.md" "Read this in $m only"
+  # A workflow file is read with the Read tool, which fills in no variable: only SKILL.md names one.
+  file_lacks "scrum-master: $m.md names no path variable" "$SMD/$m.md" '${CLAUDE_'
+  file_lacks "scrum-master: $m.md has no daily status" "$SMD/$m.md" 'daily status'
+done
+is "scrum-master: SKILL.md and the four workflow files" "$(ls "$SMD" | tr '\n' ' ')" \
+  "SKILL.md organize-board.md refinement.md release-planning.md sprint-planning.md "
+file_has "scrum-master: SKILL.md gives the path of story-tracker's create.md" "$SMS" '`${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`'
+file_has "scrum-master: a ticket goes to the story-tracker skill" "$SMS" 'skill, with the Skill tool as `odsb:story-tracker`.'
+file_lacks "scrum-master: no daily status" "$SMS" 'daily status'
+is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
+file_has "story-tracker: the start row takes refinement's stories" "$STS" \
+  'or the scrum-master'"'"'s refinement hands over a story the owner approved |'
+file_has "story-tracker: a done story's achievement goes to the profile's skill" "$STS" \
+  '  - Invoke that skill with the Skill tool, by that exact name. Hand it the story'"'"'s README, the'
+file_has "story-tracker: the sprint keys are the scrum-master's" "$STS" \
+  '- Leave `sprint` and `carried_from` to the scrum-master'"'"'s sprint-planning unless the user asks.'
+STC="$STD/create.md"
+file_has "story-tracker create: a new story waits for the owner's approval" "$STC" \
+  '`## 3. The approval` in `skills/scrum-master/refinement.md` says. A change they ask for is shown'
+line_is "story-tracker create: a story refinement got approved is approved already" "$STC" \
+  'A story refinement got approved is approved already. Write it from that text, as'
+absent "skills: the sprint skill is gone" "$here/skills/sprint"
+absent "agents: the scrum-master agent is gone" "$here/agents/scrum-master.md"
+line_is "refinement: nothing is written before the approval" "$SMF" \
+  'Write nothing, no file, no key and no note, until the owner approves the draft.'
+file_has "refinement: at most 4 acceptance criteria" "$SMF" 'at most 4 acceptance criteria.'
+file_has "refinement: each story names its parent and what it waits on" "$SMF" '`Parent: <ID or ->` and `Waits on: <IDs or ->`'
+file_has "refinement: the chunks end with a question" "$SMF" '- End each chunk with the line `What'"'"'s wrong or missing?` as plain text, not an AskUserQuestion'
+line_is "refinement: a change is shown again before the next ask" "$SMF" \
+  '- A change: make it in the draft, show each story it changed again in full, then ask again.'
+file_has "refinement: a change while writing is shown first" "$SMF" 'stop. Show the change, and write it only once the owner approves'
+file_has "refinement: a new story starts through story-tracker" "$SMF" \
+  '1. Each new epic or story: invoke the story-tracker skill with the Skill tool, as'
+file_has "refinement: a changed story is updated through story-tracker" "$SMF" \
+  '2. Each story or epic that exists and changed: invoke the story-tracker skill with its id, to'
+file_has "refinement: it invokes story-tracker, and says why" "$SMF" \
+  '   - Invoke it, never Read its files: the Skill tool fills in the paths and the session id its'
+file_has "refinement: links what a story waits on" "$SMF" '`second-brain task dep <ID> add <other ID>`'
+is "refinement: the approval comes before the write" \
+  "$(($(lineno "$SMF" '## 3. The approval') < $(lineno "$SMF" '## 4. Write')))" "1"
+for h in '## Open' '## Pick' '## Close' '## Rules'; do
+  line_is "sprint-planning: has $h" "$SMG" "$h"
+done
+is "sprint-planning: open, then pick, then close" \
+  "$(($(linex "$SMG" '## Open') < $(linex "$SMG" '## Pick') && $(linex "$SMG" '## Pick') < $(linex "$SMG" '## Close')))" "1"
+file_has "sprint-planning: reads the sprint rules and the sprint in progress" "$SMG" 'second-brain sprint current "<project>"'
+file_has "sprint-planning: a task that does not exist yet starts through story-tracker" "$SMG" \
+  '6. A task that does not exist yet: start it through the story-tracker skill, with the Skill tool'
+line_is "release-planning: writes only its section and the Epics lines" "$SMR" \
+  'note: its release'"'"'s section and the `## Epics` lines.'
+file_has "release-planning: the note's path" "$SMR" '`<project path>/<topics_root>/planned-releases.md`'
+file_has "release-planning: release goals in the draft" "$SMR" '- `Release goals:`, one to three bullets'
+file_has "release-planning: a story or epic that does not exist goes through refinement first" "$SMR" \
+  '- A story or epic that does not exist yet goes through refinement first. Read `refinement.md`, at'
+line_is "release-planning: a change is shown again before the next ask" "$SMR" \
+  '- A change: make it in the draft, show each part it changed again in full, then ask again.'
+file_has "release-planning: never rewrites the note" "$SMR" 'Never rewrite the note.'
+file_lacks "release-planning: writes no task" "$SMR" 'odsb:story-tracker'
+is "release-planning: the approval comes before the write" \
+  "$(($(lineno "$SMR" '## 3. The approval') < $(lineno "$SMR" '## 4. Write')))" "1"
+for l in '## Epics' '## 0.2.0 - next' 'Release goals:'; do
+  line_is "release-planning: the note's shape has $l" "$SMR" "$l"
+done
+is "release-planning: an epic's stories nest with a tab" "$(grep -c "$(printf '^\t- STORY: ')" "$SMR")" "2"
+for l in '- Run `second-brain doctor <project>`.' '- Change nothing without asking. Never pass `--fix` on your own.' \
+  '- A fix the user wants: offer `/odsb:vault-doctor fix`.' \
+  '- Docs that have drifted from the code: recommend the `docs-keeper` agent. Do not spawn it.'; do
+  line_is "organize-board: $l" "$SMO" "$l"
+done
+CT="$here/docs/contract.md"
+line_is "contract: defines the planned-releases note" "$CT" "### Planned releases"
+file_has "contract: the release in work is next" "$CT" '- The release in work is `## <version> - next`. Only one release is `next`.'
+file_has "contract: a release once out is dated" "$CT" '- A release once out is `## <version> - released <YYYY-MM-DD>`.'
+file_has "contract: the scrum-master writes nothing before the approval" "$CT" \
+  '- The skill shows the owner the whole draft and writes nothing until the owner approves it.'
+file_has "contract: the note is in the project's tree" "$CT" '  <topics_root>/planned-releases.md'
+file_has "contract: two skills keep the work" "$CT" '- **Two skills keep the work.** `story-tracker` owns each ticket. `scrum-master` refines the'
+file_has "contract: the scrum-master's four workflows" "$CT" '  skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and'
+file_has "contract: no daily status" "$CT" '- Neither skill has a daily status.'
+sm_left="$(cd "$here" && grep -rnE 'story-track([^e]|$)|odsb:sprint([^-a-z]|$)|skills/sprint/|agents/scrum-master|the sprint skill|`sprint` skill|scrum-master (open|pick|close|status|done|hygiene|plan)([^-a-z]|$)|daily status' \
+  README.md docs skills agents hooks templates bin scripts .claude-plugin .github 2>/dev/null | grep -v '^scripts/tests/docs.sh:' | grep -v '^docs/contract.md:.*- Neither skill has a daily status.')"
+is "skills: no file outside the changelog names the sprint skill, the scrum-master agent, an old mode or a daily status" "$sm_left" ""
+file_has "index template: names the scrum-master for planning" "$here/templates/vault-index.md.tmpl" \
+  '`scrum-master` refines the stories and plans the sprints and releases'
+file_lacks "index template: no scrum-master agent" "$here/templates/vault-index.md.tmpl" 'Agents: `scrum-master`'
+file_lacks "README: no scrum-master agent row" "$here/README.md" '| `scrum-master` |'
+for w in refinement sprint-planning release-planning organize-board; do
+  file_has "README: names the $w workflow" "$here/README.md" "- \`$w\`: "
+done
+file_has "guide: the refinement request is under What to say" "$here/docs/guide.md" \
+  '| Refine EX-2 for the Example project: split it into two stories. | `scrum-master` |'
+file_has "e2e: asks the same refinement request" "$here/scripts/e2e-claude.sh" \
+  '"Refine EX-2 for the Example project: split it into two stories."'
+file_has "guide: the release request is under What to say" "$here/docs/guide.md" \
+  '| Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories. | `scrum-master` |'
+file_has "e2e: asks the same release request" "$here/scripts/e2e-claude.sh" \
+  '"Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories."'
+file_has "guide: the board request is under What to say" "$here/docs/guide.md" '| Organize the board of the Example project. | `scrum-master` |'
+file_has "e2e: asks the same board request" "$here/scripts/e2e-claude.sh" '"Organize the board of the Example project."'
+file_has "guide: the sprint request loads scrum-master" "$here/docs/guide.md" '| Open a new sprint for the Mobile project. | `scrum-master` |'
+for ph in '## 2. The draft' '## 3. The approval'; do
+  file_has "guide: points to $ph in refinement" "$here/docs/guide.md" "\`$ph\` in"
+  line_is "guide: refinement.md has the heading $ph" "$SMF" "$ph"
+done
+file_has "guide: points to the sprint-planning sections" "$here/docs/guide.md" \
+  '`## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.'
+file_has "guide: points to the contract's planned-releases shape" "$here/docs/guide.md" '`### Planned releases` in'
+cg12_top="$(lineno "$CG" '## 0.12.0 - unreleased')"
+cg12_end="$(lineno "$CG" '## 0.11.0 - ')"
+# under_012 <desc> <line>: the line is in the 0.12.0 section, above 0.11.0.
+under_012() {
+  local n
+  n="$(lineno "$CG" "$2")"
+  is "$1" "$((${cg12_top:-0} > 0 && ${n:-0} > ${cg12_top:-0} && ${n:-0} < ${cg12_end:-0}))" "1"
+}
+under_012 "changelog: the scrum-master skill is under 0.12.0" \
+  '- The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four'
+under_012 "changelog: /odsb:sprint moved to sprint-planning, under 0.12.0" '- `/odsb:sprint` is now `/odsb:scrum-master sprint-planning`'
+under_012 "changelog: refinement is under 0.12.0" '- `refinement` drafts or refines an epic and its stories'
+under_012 "changelog: release-planning is under 0.12.0" '- `release-planning` sets a release'"'"'s goals, epics and stories with you'
+under_012 "changelog: organize-board is under 0.12.0" '- `organize-board` is the agent'"'"'s hygiene pass'
+under_012 "changelog: no daily status, under 0.12.0" '- The daily status is gone.'
+under_012 "changelog: story-tracker's approval and achievement, under 0.12.0" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
+under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
+under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
 
 # ---------------------------------------------------------------- result
 result

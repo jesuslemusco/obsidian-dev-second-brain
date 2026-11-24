@@ -7,7 +7,7 @@ allowed-tools: Read Grep Glob Bash(second-brain *)
 
 # Story tracker
 
-A story is a task's `README.md` in the vault.
+A story is a task's `README.md` in the vault. This skill handles one ticket at a time.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
@@ -52,7 +52,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 | Mode | When | Do |
 |---|---|---|
 | draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
-| start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
+| start | Work begins on a ticket with no story, often signalled by a branch named for it, or the scrum-master's refinement hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
 | status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
@@ -175,6 +175,15 @@ move to `in-progress`.
     project with no environments.
   - Start it with or without a `## Docs to update` section.
   - When the session cannot start an agent, say so and name `docs-keeper` as the one to run now.
+- The story is set to `done`: after the docs-keeper hand-off, log its achievement when Step 0's
+  `achievements_skill` names a skill. `-` means none.
+  - Invoke that skill with the Skill tool, by that exact name. Hand it the story's README, the
+    `path:` line of `second-brain task head <ID> --project <project>`, and its sprint note when
+    it has one.
+  - The skill takes the outcome and its impact from that file, not from your summary.
+  - Any doubt over what counts as the delivered outcome: confirm the wording with the user first.
+  - Never log an achievement for work that is not done, or that no finished story backs.
+  - The session does not offer that skill: say so and go on.
 - The story is set to `done` or `abandoned` and the profile says `task_layout: archive`: after
   the docs-keeper hand-off, ask once whether to archive it now.
   - On a yes, run `second-brain task archive <ID>` and report the path it prints.
@@ -233,5 +242,5 @@ it only on a yes.
 - Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log.
 - Write absolute dates in notes. Never "yesterday" or "last week".
 - Say "ticket" and "tracker". The tracker's name is the profile's `tracker`.
-- Leave `sprint` and `carried_from` to the sprint skill unless the user asks.
+- Leave `sprint` and `carried_from` to the scrum-master's sprint-planning unless the user asks.
 - Keep story state in the vault only: never in Claude's memory or the code repo.

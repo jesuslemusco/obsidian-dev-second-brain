@@ -684,10 +684,10 @@ symlink "$vault/claude/skills/my-skill" "$home/skills/my-skill"
 doc
 chk "links: ok once it is linked" links vault "ok | 0 | -"
 symlink "$here/skills/story-tracker" "$home/skills/story-tracker"
-symlink "$here/agents/scrum-master.md" "$home/agents/scrum-master.md"
+symlink "$here/agents/docs-keeper.md" "$home/agents/docs-keeper.md"
 symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
-chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/scrum-master.md"
+chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/docs-keeper.md"
 
 # ---------------------------------------------------------------- foreign
 chk "foreign: a vault link, links into the plugin and a link to a folder with no SKILL.md do not warn" foreign vault "ok | 0 | -"
@@ -766,10 +766,10 @@ N="$vault/$P/docs/rename.md"
 if block 40; then
 doc
 chk "old-namespace: ok on a fresh vault" old-namespace vault "ok | 0 | -"
-printf '%s\n' '---' "next: \"Run /${OLD}sprint open\"" '---' '# Rename' '' \
+printf '%s\n' '---' "next: \"Run /${OLD}scrum-master sprint-planning\"" '---' '# Rename' '' \
   "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
   '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
-  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}sprint" '' \
+  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}scrum-master" '' \
   '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}reviewer" \
   '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}reviewer." >"$N"
 printf '%s\n' '# Changes' '' "- ${OLD}spec stopped working." >"$vault/$P/docs/CHANGELOG.md"
@@ -2463,8 +2463,8 @@ sb task set EX-2 sprint=2026-01-28
 doc Example
 rc_is "sprints: exit 1 for a sprint id with no note" 1
 chk "sprints: a made-up id, and a done task on the next id, are still reported" sprints Example "fail | 2 | EX-2:2026-01-28, EX-3:2026-03-01"
-is "sprints: tasks alone are left to the sprint skill" "$(fix_of sprints)" \
-  "open the next sprint through the sprint skill; do not re-point carried tasks by hand"
+is "sprints: tasks alone are left to the scrum-master skill" "$(fix_of sprints)" \
+  "open the next sprint through the scrum-master skill; do not re-point carried tasks by hand"
 sb task set EX-3 sprint=
 sb task set EX-2 sprint=
 edit "$vault/$P/claude/profile.md" 's/^sprint_anchor_end: .*/sprint_anchor_end: ""/'
@@ -2693,7 +2693,7 @@ rc_is "no sprints: a sprint left in progress is no failure" 0
 chk "no sprints: a sprint left in progress is a warning" sprints Kanban "warn | 1 | 2026-01-14:in-progress"
 chk "no sprints: the board is not asked for a Current sprint view" board Kanban "ok | 0 | -"
 is "no sprints: the way to close it is given" "$(fix_of sprints Kanban)" \
-  "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
+  "set uses_sprints to true, close the sprint through the scrum-master skill, then set it to false again"
 fi
 
 # ---------------------------------------------------------------- arguments and setup

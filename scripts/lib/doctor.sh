@@ -2066,7 +2066,7 @@ EOF
       nxt="$(sb_fm_get "$f" next 2>/dev/null)"
       printf 'story: %s - %s, next: %s\n' "$(sb_rel "$f")" "${status:--}" "${nxt:--}"
     else
-      printf 'story: none - run scrum-master story-track start\n'
+      printf 'story: none - run story-track start\n'
     fi
   fi
   printf 'rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.\n'

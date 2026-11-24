@@ -2594,7 +2594,7 @@ out_has "session-check: the working directory is the default" "ticket: EX-1"
 on_branch "$R" 'ref: refs/heads/fix/ex-9-later'
 sb session-check --cwd "$R"
 out_has "session-check: a key in another letter case names the ticket as the index spells it" "ticket: EX-9"
-out_has "session-check: a ticket branch with no story says how to start one" "story: none - run scrum-master story-track start"
+out_has "session-check: a ticket branch with no story says how to start one" "story: none - run story-track start"
 is "session-check: the block ends with the search and read rule" "$(printf '%s\n' "$OUT" | tail -1)" "$RULE"
 on_branch "$R" 'ref: refs/heads/feature/hex-12-and-EX-3'
 sb session-check --cwd "$R"

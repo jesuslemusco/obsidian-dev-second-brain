@@ -1157,6 +1157,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Every story whose text the owner approved, in start mode or in refinement, gets the status note
   `Planned: the owner approved this text.` first. The `build` skill builds only a story with that
   note.
+- Refinement writes it too on each story of an approved draft that exists and lacks it, changed
+  or not: the owner may approve a story as it is.
 - A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
   does the sprint close: only an achievements skill tracks them.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
@@ -1212,6 +1214,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   - `Build: review <n> failed at <short hash>: <k> defects.`
   - `Build: review <n> failed at <short hash>: the owner ruled a fix.`
   - `Build: review <n> blocked at <short hash>.`
+  - `Build: review <n> gave no verdict at <short hash>.`
   - `Build: stopped: <why>.`
   - `Build: the owner ruled: <the ruling, as written>.`
   - `Build: finished; review <n> passed, the branch is at <short hash>.`
@@ -1254,6 +1257,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A push runs only on the owner's word, asked for once the checks pass, and named before it runs.
 - Once the merge is done, or the owner says not to merge, the skill removes the story's worktree
   with `git worktree remove`, never with `--force`, and the branch stays.
+- `git worktree remove` refuses a worktree with a change, but deletes its ignored files, such as a
+  `.env`. So the skill first lists them, the `!!` paths of `git status --porcelain --ignored`,
+  and removes a worktree that holds one only on the owner's word.
+- A session can end after a story passed and before its worktree is removed. An `in-review` story
+  with a `Build: finished` note whose worktree is still there goes on from the merge, or from the
+  removal once a merged or kept note shows the merge is settled.
 - It keeps the owner's orders note, the lead's check with each order's `Done when:`, the rule for
   an agent with no report, a repeated notice taken as no event, the rulings, and the lists of
   rulings and follow-ups at a finish or a stop, as a spec build does. Until the spec flow is
@@ -1518,7 +1527,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - It logs each defect and each follow-up as a status note, `<n>` its round, in the shapes the
   `build` skill's list above gives.
 - A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
-  fixes each of its `Defect <m>:` notes.
+  fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and
+  takes the fix the same way.
 - A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`
   and `validation run` with `--path <worktree>`.
 - `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds

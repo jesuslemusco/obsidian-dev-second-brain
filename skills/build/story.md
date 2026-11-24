@@ -35,9 +35,11 @@ The notes of this build are the status notes newer than the newest
   1. Its newest `Build:` note is `Build: stopped: <why>.`: the owner has not answered. Ask first,
      as `## 7. When the story stops` says.
   2. Its newest review note is `Build: review <m> passed`: `## 6. When the story passed`.
-  3. Commits on the branch since the hash of its newest review note, or since `<base>` with none:
+  3. Its newest review note is `Build: review <m> blocked`, or `Build: review <m> gave no
+     verdict`: the owner has answered its stop, as item 1 shows. `### Review it`.
+  4. Commits on the branch since the hash of its newest review note, or since `<base>` with none:
      `git -C "<worktree>" log --oneline <hash>..HEAD`. Some: `### Review it`.
-  4. None, with `fails` 1 or more: `### The fix loop`. With `fails` 0: `### Build it`.
+  5. None, with `fails` 1 or more: `### The fix loop`. With `fails` 0: `### Build it`.
 
 ## 2. The worktree
 
@@ -149,7 +151,8 @@ Then `### Build it`, whether the baseline ran or not.
   - `Session: <session id>.`
   - Last, the ruling lines, one per ruling of this build, as `### Rulings in each prompt` says.
 - The fix message, sent with SendMessage to an `implementer` by its name, one line each:
-  - `Fix: review <m> failed. Its defects are the story's Defect <m>: status notes.`
+  - `Fix: review <m> failed. Its defects are the story's Defect <m>: status notes.`, with `<m>`
+    from the newest `Build: review <m> failed at <hash>` note.
   - `Session: <session id>.`
   - The ruling lines.
 - `reviewer`'s prompt in story mode, one line each:
@@ -250,9 +253,11 @@ loop. A follow-up is a `Follow-up:` status note: it changes no count.
    `Your reply has no JSON verdict block that parses. Reply with the block alone.`
    - A `reviewer` idle with no block at all: first take it as `### An agent with no report`
      says. Ask here only when its final reply has no block that parses either.
-5. A block that parses and is not good, or no good block after item 4: launch one fresh
-   `reviewer` in its place, with the same prompt.
-6. No good block from the fresh `reviewer` either: take it as BLOCKED.
+5. A block that parses and is not good, or no good block after item 4: first
+   `second-brain task note <ID> "Build: review <n> gave no verdict at <short hash>."`. The
+   `Defect <n>:` notes that reviewer logged stay its own. Then launch one fresh `reviewer` in
+   its place, with the same prompt but the next round, `<n>` plus one, as `## 1` counts it.
+6. No good block from the fresh `reviewer` either: take it as BLOCKED, in its own round.
 
 ### The fix loop
 
@@ -286,8 +291,12 @@ round, across every session.
      item 3 of `## 7. When the story stops` says.
 4. Merge it, as `### The merge` says.
 5. Once the merge is done, or the owner says not to merge, remove the worktree:
-   `git -C "<path>" worktree remove "<worktree>"`. The branch stays, with every commit.
-   - Never pass `--force`. It fails, as on a change left in the worktree: ask the owner.
+   - The branch stays, with every commit.
+   - First run `git -C "<worktree>" status --porcelain --ignored`. Each `!!` path is an ignored
+     file the removal deletes, such as a `.env`. Show the owner each one, and go on only on their
+     word.
+   - Then `git -C "<path>" worktree remove "<worktree>"`. Never pass `--force`. It fails, as on a
+     change left in the worktree: ask the owner.
 6. Test each order of the build, as item 3 of `## The owner's open orders` in `lead.md` says.
 7. Go on with the next story of the run, as Step 3 of `SKILL.md` says.
 
@@ -309,7 +318,8 @@ merge is local. A push is another step, on the owner's word alone.
 3. `<where>` holds `<target>`: the `worktree` line above a `branch refs/heads/<target>` line in
    `git -C "<path>" worktree list --porcelain`.
    - None: `git -C "<path>" worktree add "<path>-<ID>-merge" <target>`, and `<where>` is that
-     folder. Remove it with `git worktree remove` once item 9 is done, or the merge stops.
+     folder. Remove it once item 9 is done, or the merge stops, as item 5 of
+     `## 6. When the story passed` removes the story's: its ignored files first.
    - Never merge in the owner's own checkout when it is on another branch.
 4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner.
 5. Note `<before>`, what `git -C "<where>" rev-parse HEAD` prints. Then merge:
@@ -359,8 +369,9 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
    - A ruling to fix the story, such as one that passed, or a follow-up the owner wants fixed:
      the same note. Then log it as the defect of the next round, `<n>`:
      `second-brain task note <ID> "Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>"`,
-     then `second-brain task note <ID> "Build: review <n> failed at <short hash>: the owner ruled a fix."`.
-     Then `## 2. The worktree`, as for a resumed build, and `### The fix loop`.
+     then `second-brain task note <ID> "Build: review <n> failed at <short hash>: the owner ruled a fix."`,
+     with `<short hash>` what `git -C "<path>" rev-parse --short <branch>` prints: the worktree
+     may be gone. Then `## 2. The worktree`, as for a resumed build, and `### The fix loop`.
    - The owner reverses a ruling of yours: their ruling, as above. It wins over yours.
    - The story needs a change, such as to a criterion a ruling touched: offer
      `/odsb:scrum-master refinement`. The build goes on once the owner approves the change.
@@ -382,8 +393,9 @@ waits for the owner, as `## 7. When the story stops` says:
 - An order whose words give no `Done when:` condition: ask the owner in your reply, as item 2 of
   `## The owner's open orders` in `lead.md` says. It stops nothing.
 - Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.
-- Removing the story's worktree with `git worktree remove` is no destructive action: it holds
-  nothing that is not committed, or the command fails.
+- `git worktree remove` refuses a worktree with a change, but deletes its ignored files. Removing
+  one that holds no ignored file is no destructive action. One that holds some waits for the
+  owner's word, as item 5 of `## 6. When the story passed` says.
 - A merge and a push each wait for the owner's own answer, as `### The merge` asks for it: never
   take the passing review, or an earlier yes, for one.
 - The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the

@@ -1219,7 +1219,7 @@ line_is "implementer: it reports it skipped and leaves it to the review" "$IM" \
 line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
   '- A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,'
 line_is "implementer: commits only when every check passed or was skipped" "$IM" \
-  '- Commit only when every check under `## Checks` passed or was skipped. A row `validation run`'
+  '- Commit only when every check passed or was skipped: in task mode each under `## Checks`, in'
 file_has "implementer: never changes a test so that it passes" "$IM" \
   'Never change a test or a check'
 is "implementer: checks before it commits" \
@@ -2504,7 +2504,7 @@ for c in '`git -C "<path>" worktree list --porcelain`' \
   file_has "story build: runs $c" "$BY" "$c"
 done
 line_is "story build: a worktree removed only without --force" "$BY" \
-  '   - Never pass `--force`. It fails, as on a change left in the worktree: ask the owner.'
+  '   - Then `git -C "<path>" worktree remove "<worktree>"`. Never pass `--force`. It fails, as on a'
 file_has "story build: the branch stays" "$BY" 'The branch stays, with'
 for n in 'Build: started on <branch> at <short hash>.' 'Build: resumed on <branch> at <short hash>.' \
   'Build: review <n> passed at <short hash>.' 'Build: review <n> failed at <short hash>: <k> defects.' \
@@ -2529,6 +2529,7 @@ $BY|Build: review <n> passed at <short hash>.
 $BY|Build: review <n> failed at <short hash>: <k> defects.
 $BY|Build: review <n> failed at <short hash>: the owner ruled a fix.
 $BY|Build: review <n> blocked at <short hash>.
+$BY|Build: review <n> gave no verdict at <short hash>.
 $BY|Build: stopped: <why>.
 $BY|Build: the owner ruled: <the ruling, as written>.
 $BY|Build: finished; review <n> passed, the branch is at <short hash>.
@@ -2568,7 +2569,9 @@ for l in '  - `Mode: story.`' '  - `Story: <ID>, project <project>.`' '  - `Repo
   line_is "story build: a prompt line $l" "$BY" "$l"
 done
 line_is "story build: the fix message names the failed review" "$BY" \
-  '  - `Fix: review <m> failed. Its defects are the story'"${q}"'s Defect <m>: status notes.`'
+  '  - `Fix: review <m> failed. Its defects are the story'"${q}"'s Defect <m>: status notes.`, with `<m>`'
+line_is "story build: the fix message's review is the newest failed one" "$BY" \
+  '    from the newest `Build: review <m> failed at <hash>` note.'
 line_is "story build: a re-review names the review it follows" "$BY" \
   '  - A re-review: `Last failed: review <m> at <hash>.`, from the newest'
 line_is "story build: has an agent with no report" "$BY" '### An agent with no report'
@@ -2576,7 +2579,7 @@ file_has "story build: counts only a process under the worktree" "$BY" '`<worktr
 file_has "story build: a repeated notice is no new event" "$BY" \
   'notice that repeats a reply you took already is no new event: it changes no state, and gets no'
 line_is "story build: a PASS logs no defect" "$BY" '     holds no `Defect <n>:` note too.'
-file_has "story build: a post-pass fix comes back through the worktree" "$BY" '     Then `## 2. The worktree`, as for a resumed build, and `### The fix loop`.'
+file_has "story build: a post-pass fix comes back through the worktree" "$BY" '  may be gone. Then `## 2. The worktree`, as for a resumed build, and `### The fix loop`.'
 file_has "build skill: an in-review story is built again only on a ruling to fix it" "$BS" \
   '- A story named alone that is `in-review` has passed: say so. Build it again only on the owner'"${q}"'s'
 file_has "story build: a FAIL logs one defect or more" "$BY" \
@@ -2709,7 +2712,7 @@ in_mg "merge: asks the owner for the go" '2. Ask the owner with AskUserQuestion:
 in_mg "merge: no target asks where in the same question" '   - No `<target>` found: ask where it merges in the same question, as item 5 of'
 in_mg "merge: never in the owner's checkout on another branch" "   - Never merge in the owner's own checkout when it is on another branch."
 in_mg "merge: adds a worktree for the target when none holds it" '`git -C "<path>" worktree add "<path>-<ID>-merge" <target>`'
-in_mg "merge: its own worktree goes when the merge ends or stops" 'Remove it with `git worktree remove` once item 9 is done, or the merge stops.'
+in_mg "merge: its own worktree goes when the merge ends or stops" 'folder. Remove it once item 9 is done, or the merge stops, as item 5 of'
 in_mg "merge: a clean target first" '4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner.'
 in_mg "merge: runs with the merge base in each block" \
   '`git -C "<where>" -c merge.conflictStyle=diff3 merge --no-ff <branch> -m "Merge <branch> into <target>"`.'
@@ -2758,6 +2761,80 @@ gf_line="$(lineno "$CG" '- The build skill reads the project'"${q}"'s git flow')
 gf_top="$(lineno "$CG" '## 0.12.0 - ')"
 gf_end="$(lineno "$CG" '## 0.11.0 - ')"
 is "changelog: the git flow is under 0.12.0" "$(( ${gf_line:-0} > ${gf_top:-0} && ${gf_line:-0} < ${gf_end:-0} ))" "1"
+
+# ---------------------------------------------------------------- a story build resumes, relaunches and cleans up without losing its place
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RF="$here/skills/scrum-master/refinement.md"
+q="'"
+# A resume after a blocked review, or one with no verdict, reviews again.
+file_has "story build: a resume after a blocked review goes to Review it" "$BY" \
+  '  3. Its newest review note is `Build: review <m> blocked`, or `Build: review <m> gave no'
+r3="$(lineno "$BY" '  3. Its newest review note is `Build: review <m> blocked`')"
+r4="$(lineno "$BY" '  4. Commits on the branch since the hash of its newest review note')"
+r1="$(lineno "$BY" '  1. Its newest `Build:` note is `Build: stopped: <why>.`')"
+is "story build: after the unanswered stop, before the commits rung" "$(( ${r1:-0} > 0 && ${r1:-0} < ${r3:-0} && ${r3:-0} < ${r4:-0} ))" "1"
+# A fresh reviewer gets a round of its own.
+file_has "story build: a block with no verdict is noted first" "$BY" \
+  '`second-brain task note <ID> "Build: review <n> gave no verdict at <short hash>."`. The'
+file_has "story build: the fresh reviewer takes the next round" "$BY" \
+  'its place, with the same prompt but the next round, `<n>` plus one, as `## 1` counts it.'
+file_has "contract: lists the no-verdict note" "$CT" '  - `Build: review <n> gave no verdict at <short hash>.`'
+# The owner's fix after a pass takes its hash from the branch.
+file_has "story build: the owner's fix note takes the branch's hash" "$BY" \
+  'with `<short hash>` what `git -C "<path>" rev-parse --short <branch>` prints: the worktree'
+# A worktree is removed only once its ignored files are shown.
+file_has "story build: lists the ignored files before the removal" "$BY" \
+  '   - First run `git -C "<worktree>" status --porcelain --ignored`. Each `!!` path is an ignored'
+file_has "story build: and goes on only on the owner's word" "$BY" \
+  '     file the removal deletes, such as a `.env`. Show the owner each one, and go on only on their'
+file_lacks "story build: no claim that a removal keeps every file" "$BY" 'nothing that is not committed, or the command fails'
+file_has "story build: removal deletes ignored files" "$BY" '- `git worktree remove` refuses a worktree with a change, but deletes its ignored files. Removing'
+file_has "contract: the removal lists ignored files first" "$CT" \
+  '- `git worktree remove` refuses a worktree with a change, but deletes its ignored files, such as a'
+file_has "guide: the worktree goes after the merge, once its ignored files are shown" "$GD" \
+  '- Once the merge is done, or you say not to merge, the story'"'"'s worktree is removed, after Claude'
+# A session cut off before the removal ends it next time.
+file_has "build skill: an in-review story with its worktree left ends the build" "$BS" \
+  '- An `in-review` story with a `Build: finished` note whose worktree is still there, on its branch'
+file_has "build skill: and goes on from the merge" "$BS" '  `## 6. When the story passed` in `story.md`: from item 4, the merge, or from item 5 when a'
+file_has "build skill: or from the removal once the merge is settled" "$BS" \
+  '  `Build: merged` or `Build: the owner kept` note is newer than its `Build: finished` note.'
+file_has "contract: a cut-off session ends the removal" "$CT" \
+  '- A session can end after a story passed and before its worktree is removed. An `in-review` story'
+# A fresh implementer on a fix round takes the fix.
+file_has "implementer: a prompt with a Fix line takes the story fix" "$IM" \
+  '   - A prompt with a `Fix: review <m> failed` line, as a fresh `implementer` gets on a fix round:'
+file_has "implementer: the story fix covers a prompt too" "$IM" \
+  'A message that starts with `Fix: review <m> failed`, or a story prompt with that line, names a'
+file_has "implementer: a fresh one reads the story first" "$IM" \
+  '- A fresh `implementer`, launched with that line: read the story and the code first, as steps 2'
+file_has "contract: a fresh implementer takes the fix from its prompt" "$CT" \
+  'fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and'
+# The commit and read rules are scoped to their mode.
+file_has "implementer: the commit message is task mode's last line" "$IM" \
+  '- In task mode, commit with the message the prompt'"${q}"'s last line gives. In story mode, give each'
+file_lacks "implementer: no unscoped commit-message rule" "$IM" '- Commit with the message the prompt'"${q}"'s last line gives.'
+file_has "implementer: stages the worktree's files in story mode" "$IM" \
+  '- Stage the files by name: `git -C "<repo_path>" add <file>...`, or with `git -C "<worktree>"` in'
+file_has "implementer: the packet-only read rule is task mode's" "$IM" \
+  '- In task mode, read nothing outside `repo_path` but your packets: not the vault, not the spec,'
+# Refinement has the approval note written on each story of the draft.
+file_has "refinement: each existing story of the draft gets the approval note" "$RF" \
+  '   - Each story of the draft that exists, changed or approved as it is, and has no status note'
+file_has "refinement: story-tracker writes it" "$RF" '     `Planned: the owner approved this text.`: have story-tracker write it, with that id, in the'
+file_has "contract: refinement writes the note on existing stories" "$CT" \
+  '- Refinement writes it too on each story of an approved draft that exists and lacks it, changed'
+file_has "guide: refinement writes the note on new and existing stories" "$GD" \
+  '  it starts a story, and refinement has it written on each story you approve, new or not, as'
+file_has "README: an existing story approved as it is" "$here/README.md" '  refinement, as it is or changed.'
+file_has "README: the worktree goes once its ignored files are shown" "$here/README.md" \
+  'without your word. Then its worktree is removed, once any ignored file in it is shown to you.'
+file_has "story build: the merge's own worktree goes the same way" "$BY" \
+  '`## 6. When the story passed` removes the story'"'"'s: its ignored files first.'
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"

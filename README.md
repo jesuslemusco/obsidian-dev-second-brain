@@ -110,13 +110,15 @@ Builds approved stories, one at a time, each in a git worktree of its own.
 
 - Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
   set.
-- It builds only a story whose text you approved, in refinement or when story-tracker started it.
+- It builds only a story whose text you approved: when story-tracker started it, or in
+  refinement, as it is or changed.
 - One `implementer` builds each story test-first and checks its own change. Then a fresh
   `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
 - A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
 - A passed story merges where your project's git flow says, written under `## Rules` in its
   Claude hub, only on your go. The checks run on the merged branch, and nothing is pushed
-  without your word. Then its worktree is removed. The branch stays.
+  without your word. Then its worktree is removed, once any ignored file in it is shown to you.
+  The branch stays.
 - Progress is kept in the story's status notes, so a new session picks the build up where it
   stopped.
 

@@ -110,11 +110,12 @@ Builds approved stories, one at a time, each in a git worktree of its own.
 
 - Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
   set.
-- It builds only a story whose text you approved, in refinement or when story-tracker started it.
+- It builds only a story whose text you approved: when story-tracker started it, or in
+  refinement, as it is or changed.
 - One `implementer` builds each story test-first and checks its own change. Then a fresh
   `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
 - A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
-- A passed story waits for your go to merge, and its worktree is removed. The branch stays.
+- A passed story's worktree is removed, and its branch stays and waits for your go to merge.
 - Progress is kept in the story's status notes, so a new session picks the build up where it
   stopped.
 

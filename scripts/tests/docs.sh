@@ -783,7 +783,10 @@ for a in implementer reviewer; do
   ad="$(sed -n 's/^description: //p' "$AF")"
   is "$a: the description is under 200 characters" "$((${#ad} < 200))" "1"
   file_has "$a: carries the conventions pointer" "$AF" 'Conventions: before writing notes, run `second-brain conventions`'
+  line_is "$a: sets omitClaudeMd, so no CLAUDE.md adds to what it is given" "$AF" 'omitClaudeMd: true'
 done
+file_has "contract: both build agents set omitClaudeMd" "$here/docs/contract.md" \
+  '- `implementer` and `reviewer` set `omitClaudeMd: true`, so no `CLAUDE.md` adds to what they are'
 for AF in "$here"/agents/*.md; do
   a="$(basename "$AF" .md)"
   if grep -q '^tools:.*Agent' "$AF"; then fail "$a: has no Agent tool"; else pass "$a: has no Agent tool"; fi
@@ -1354,6 +1357,13 @@ is "reviewer: the worked FAIL sorts the repeat as a follow-up" \
 is "reviewer: the worked FAIL logs the repeat as a Follow-up note" "$(example_of 'A FAIL' | grep -c '^  `Follow-up:` note, to cut it.$')" "1"
 case "$(json_of 'A FAIL')" in *'"verdict": "FAIL", "issues": 1,'*) pass "reviewer: the worked FAIL counts no follow-up" ;;
   *) fail "reviewer: the worked FAIL counts no follow-up" "in: $(json_of 'A FAIL')" ;; esac
+file_has "reviewer: the worked FAIL logs its defect and its follow-up as notes" "$RV" \
+  '- Line 96 goes in as a `Defect <n>:` note, with its fix, to name the heading. Line 87 goes in as a'
+file_has "reviewer: the worked FAIL's follow-up note cuts the repeat" "$RV" '  `Follow-up:` note, to cut it.'
+file_has "reviewer: the worked PASS sorts the misleading name as a follow-up" "$RV" \
+  '  named `tmp`: a name that misleads. No criterion or rule names it, so it is a follow-up. It goes'
+file_has "reviewer: the worked PASS logs it as a Follow-up note that fails nothing" "$RV" \
+  '  in as a `Follow-up:` note, and fails nothing.'
 is "reviewer: the worked PASS logs a follow-up as a note" "$(example_of 'A PASS' | grep -c '^  in as a `Follow-up:` note, and fails nothing.$')" "1"
 is "reviewer: the worked PASS's follow-up is a name in code" "$(example_of 'A PASS' | grep -c '^  named `tmp`: a name that misleads.')" "1"
 case "$(json_of 'A PASS')" in *'"verdict": "PASS", "issues": 0,'*) pass "reviewer: the worked PASS still passes with its follow-up" ;;

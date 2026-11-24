@@ -73,6 +73,13 @@
 - A story build keeps its progress in the story's status notes: a `Build: review <n>` note after
   each verdict, and the reviewer's `Defect <n>:` and `Follow-up:` notes. It keeps the owner's
   orders note and the lead's check in `skills/build/lead.md`.
+- The build skill reads the project's git flow from `## Rules` in its Claude hub: where a story's
+  branch is cut, and where a passed story merges, such as the open `release/<version>`. With no
+  flow written, it asks the owner where the story merges, and offers to write the answer there.
+- A passed story merges on the owner's go, locally. A conflict where both sides only add lines,
+  with an empty merge base in `diff3` style, keeps both. Any other conflict is shown, and the
+  merge aborted. The repo's checks run on the merged tree unless it is the one the review read,
+  and a push runs only on the owner's word. The story's worktree is removed after the merge.
 - `implementer` and `reviewer` build and review a whole story in its git worktree, in story mode.
   Before it commits, the implementer checks its whole change against the story's criteria and the
   reviewer's `## Defects and follow-ups` and `## Code quality`.

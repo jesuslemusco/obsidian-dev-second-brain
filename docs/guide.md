@@ -216,8 +216,14 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under
   `## 8. When to ask the owner` in `skills/build/story.md`.
-- Once a story passed, its worktree is removed, after Claude shows you any ignored file in it,
-  such as a `.env`. The branch stays, and waits for your go to merge.
+- A passed story merges where your project's git flow says, as you write it under `## Rules` in
+  the project's `claude/README.md`, such as into the open `release/<version>`. With none written,
+  Claude asks you, and offers to write your answer there.
+- The merge is local, and only on your go. A conflict where both sides only add lines keeps both.
+  Any other is shown to you. The checks run on the merged branch, and Claude pushes only on your
+  word, as `### The merge` in `skills/build/story.md` says.
+- Once the merge is done, or you say not to merge, the story's worktree is removed, after Claude
+  shows you any ignored file in it, such as a `.env`. The branch stays.
 - Progress is kept in the story's status notes, so a new session goes on where the build stopped.
 - Once the build has started, Claude settles any other question itself, such as a criterion an
   agent reads two ways, and records it as a status note,

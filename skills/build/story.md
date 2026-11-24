@@ -48,7 +48,8 @@ The notes of this build are the status notes newer than the newest
    prints.
    - The branch is the story's `branch`, from `second-brain task head <ID>`.
    - No branch yet: name it by `branch_pattern`, then record it with
-     `second-brain task set <ID> branch=<branch>`. Item 2 cuts it.
+     `second-brain task set <ID> branch=<branch>`. Item 2 cuts it from `<from>`, as
+     `### The git flow` says.
 2. Run `git -C "<path>" worktree list --porcelain`, and look whether `<worktree>` is there.
    - A new build, and anything is at `<worktree>`, a worktree or a folder: say what is there, from
      that list or `ls -A "<worktree>"`, and stop. Never reuse it, and never delete it.
@@ -59,8 +60,7 @@ The notes of this build are the status notes newer than the newest
      one worktree at a time.
    - Nothing there, and the branch exists: `git -C "<path>" worktree add "<worktree>" <branch>`.
    - Nothing there, and no branch yet:
-     `git -C "<path>" worktree add -b <branch> "<worktree>" <from>`, with `<from>` the branch it
-     is cut from, as the branch check says.
+     `git -C "<path>" worktree add -b <branch> "<worktree>" <from>`.
 3. `git -C "<worktree>" status --porcelain` must print nothing. Otherwise ask the owner to commit
    or discard the changes. Never stash or discard them yourself.
 4. `second-brain validation "<project>" <repo> --path "<worktree>"` must print the repo's steps,
@@ -72,6 +72,36 @@ The notes of this build are the status notes newer than the newest
 7. Write the order that ran the build in the orders note, as `## The owner's open orders` in
    `lead.md` says. Then start the lead's check, as `## The lead's check` there says.
 8. A new build: `## 3. The baseline`. A resumed one: as `## 1. Where the story stands` says.
+
+### The git flow
+
+The project's git flow says where a story's branch is cut, `<from>`, and where a passed story
+merges, `<target>`. It is the project's own rules: read them, never guess them.
+
+1. Read `## Rules` in `<project path>/claude/README.md`, with `second-brain outline` and a ranged
+   read. When `task head` names a subproject, read the `## Rules` of its note too, at the path
+   `second-brain subproject <project> <subproject>` names.
+2. Take the rules that say where a story's branch is cut and where it merges, as written. Each
+   names a branch, such as `main`, or a pattern, such as `release/<version>`.
+   - A rule for a story that needs another story's code, such as one cut from that story's
+     branch, wins for such a story.
+3. A pattern stands for its open branch:
+   - List the branches that match it, highest first, local and remote once each:
+     `git -C "<path>" for-each-ref --format='%(refname)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sed -E 's#^refs/(heads|remotes/[^/]+)/##' | sort -rVu`,
+     with `<prefix>` the pattern's text before `<version>`, slashes and all. The version of each
+     is its name after `<prefix>`.
+   - A version has shipped when a tag holds it, as written or with a `v`:
+     `git -C "<path>" tag --list "<version>" "v<version>"` prints a line.
+   - The open branch is the highest that matches, when its version has not shipped. Look at the
+     highest two alone: an old branch left untagged below them is no open one.
+   - The highest has shipped: none is open. The next one has not shipped either: two are open.
+     Either way, ask the owner which.
+4. No rule says where a branch is cut: `<from>` is as `## Branch check (start, update, recall)` in
+   `skills/story-tracker/SKILL.md` says.
+5. No rule says where a story merges: ask the owner, when `### The merge` asks for the go. Then
+   offer to write the answer as a rule under `## Rules` in `<project path>/claude/README.md`.
+   - Write it only on the owner's yes, in their words, with the Edit tool. A hub with no
+     `## Rules` gets the heading, after the list at its top.
 
 ## 3. The baseline
 
@@ -260,10 +290,10 @@ round, across every session.
    `### The list of follow-ups` says.
    - The owner answers with a ruling to fix the story, such as a follow-up to fix: take it as
      item 3 of `## 7. When the story stops` says.
-4. The merge: say that `<branch>` passed its review and waits for the owner's go to merge, as the
-   project's git flow says. Merge nothing here: a merge is an outside effect, item 3 of
-   `## 8. When to ask the owner`.
-5. Remove the worktree. The branch stays, with every commit.
+4. Merge it, as `### The merge` says.
+5. Once the merge is done, or the owner says not to merge, remove the worktree, when it is still
+   there:
+   - The branch stays, with every commit.
    - First run `git -C "<worktree>" status --porcelain --ignored`. Each `!!` path is an ignored
      file the removal deletes, such as a `.env`. Show the owner each one, and go on only on their
      word.
@@ -271,6 +301,70 @@ round, across every session.
      change left in the worktree: ask the owner.
 6. Test each order of the build, as item 3 of `## The owner's open orders` in `lead.md` says.
 7. Go on with the next story of the run, as Step 3 of `SKILL.md` says.
+
+### The merge
+
+A passed story merges into `<target>`, as `### The git flow` finds it, on the owner's go. The
+merge is local. A push is another step, on the owner's word alone.
+
+1. A story cut from another story's branch merges after that story.
+   - No `<target>` found: ask where it merges first, as item 5 of `### The git flow` says, then
+     run this check.
+   - `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:
+     - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.
+     - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner's go to merge"`.
+     - Say the story waits on that one, and go on at item 5 of `## 6. When the story passed`. A
+       later run takes it up again, as Step 1 of `SKILL.md` says.
+2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it
+   unmerged. The owner may name another target in the free-text answer.
+   - No `<target>` found: ask where it merges in the same question, as item 5 of
+     `### The git flow` says.
+   - Keep it: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go
+     on at item 5 of `## 6. When the story passed`.
+3. `<where>` holds `<target>`: the `worktree` line above a `branch refs/heads/<target>` line in
+   `git -C "<path>" worktree list --porcelain`.
+   - It may be the owner's own checkout, `<path>`: merge there only when item 4 finds it clean.
+   - None holds it: `git -C "<path>" worktree add "<path>-<ID>-merge" <target>`, and `<where>`
+     is that folder.
+   - The merge ends at item 9's answer, at a stop, on a kept branch, or once the owner answers a
+     failing check. Then remove a worktree this item added, as item 5 of
+     `## 6. When the story passed` removes the story's: its ignored files first.
+4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner: never merge
+   over a change, in their checkout or any other.
+5. Note `<before>`, what `git -C "<where>" rev-parse HEAD` prints. Then merge:
+   `git -C "<where>" -c merge.conflictStyle=diff3 merge --no-ff <branch> -m "Merge <branch> into <target>"`.
+6. A conflict: `git -C "<where>" diff --name-only --diff-filter=U` names its files. Read each
+   one's conflict blocks: `<<<<<<<`, then the target's lines, `|||||||`, the merge base's lines,
+   `=======`, the story's lines, `>>>>>>>`.
+   - A block whose base part is empty only adds lines: neither side removed or changed one there.
+     Keep both: the target's lines, then the story's, with no marker left.
+   - Not when the two sides of that block share a line: keeping both would hold it twice.
+   - Not in a file with no base, one both sides added: `git -C "<where>" ls-files -u -- <file>`
+     lists no stage 1 line, and keeping both would join two files.
+   - Any other conflict, such as one of those, a block with base lines, or a file one side deleted
+     or renamed: show the owner each one, with its file and its block. Then
+     `git -C "<where>" merge --abort`, and stop, as `## 7. When the story stops` says.
+   - Every block kept: no line in the files starts with a marker. Then
+     `git -C "<where>" add <file>...` and `git -C "<where>" commit --no-edit`.
+7. `second-brain task note <ID> "Build: merged <branch> into <target> at <short hash>."`, with the
+   hash of the merge in `<where>`. Then
+   `second-brain task set <ID> next="Merged into <target>; waits for the owner's go to push"`.
+8. The checks on the merged tree. Compare `git -C "<where>" rev-parse HEAD^{tree}` with
+   `git -C "<path>" rev-parse <hash>^{tree}`, with `<hash>` that of the passing review's note.
+   - The same tree: the review ran the checks on it. Skip them, and say so.
+   - Another tree: `second-brain validation run "<project>" <repo> --when each-build --path "<where>"`,
+     with the Bash tool's `run_in_background: true`, and wait for its notice.
+   - A `fail` row: push nothing, and skip item 9. Show the owner its lines, and ask what to do:
+     a ruling to fix the story, as item 3 of `## 7. When the story stops` says, or undoing the
+     merge. Undoing it, `git -C "<where>" reset --hard <before>`, is a destructive action: only
+     on their word.
+   - Undone: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go on
+     at item 5 of `## 6. When the story passed`, as for a branch kept unmerged.
+9. Every check passed or was skipped: ask the owner with AskUserQuestion whether to push
+   `<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their
+   yes.
+   - Pushed: `second-brain task note <ID> "Build: pushed <target> at <short hash>."`, and
+     `second-brain task set <ID> next="Merged into <target> and pushed"`.
 
 ## 7. When the story stops
 
@@ -316,6 +410,10 @@ waits for the owner, as `## 7. When the story stops` says:
 - `git worktree remove` refuses a worktree with a change, but deletes its ignored files. Removing
   one that holds no ignored file is no destructive action. One that holds some waits for the
   owner's word, as item 5 of `## 6. When the story passed` says.
+- A merge and a push each wait for the owner's own answer, as `### The merge` asks for it: never
+  take the passing review, or an earlier yes, for one.
+- The offer to write a merge rule under `## Rules`, as item 5 of `### The git flow` says, goes in
+  the merge question. It stops nothing.
 - The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the
   owner has just run the skill.
 

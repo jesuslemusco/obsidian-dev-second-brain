@@ -2,7 +2,7 @@
 
 ## 0.12.0 - unreleased
 
-- The test workflow runs the doctor tests as four parallel jobs: `test-doctor.sh --shard <n>/4`.
+- The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
 
 ## 0.11.0 - 2026-11-23
 

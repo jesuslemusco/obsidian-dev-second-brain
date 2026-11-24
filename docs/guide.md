@@ -325,8 +325,6 @@ claude plugin validate . --strict
   sections that write the vault. A change to what such a section writes goes into those copies too.
 - `bash scripts/test-doctor.sh --shard 2/4` runs the second of four shards of the doctor tests.
   The shards together run each case once.
-- The doctor cases come in blocks. Each starts from the scratch vault the setup built, and the
-  blocks go to the shards in turn.
 - A new block follows the comment above `block()` in `scripts/test-doctor.sh`.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request

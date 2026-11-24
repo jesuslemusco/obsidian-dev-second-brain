@@ -72,8 +72,7 @@ Drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
 - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
   current.
 - When work starts, it builds a simple story direct, and asks you when a spec would help.
-- A story set to done goes to `docs-keeper`. Then its achievement is logged, when the project's
-  profile names a skill for it.
+- A story set to done goes to `docs-keeper`, which brings the project's docs in step.
 
 ```
 Where does EX-2 stand?

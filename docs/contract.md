@@ -206,7 +206,8 @@ tags:
   starting with `~`.
 - `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
 - Both may be empty. A repo's location is then unknown, and the skills ask for it.
-- `achievements_skill` names a skill to hand finished stories to, or is empty.
+- `achievements_skill` is kept for the plugin's achievements skill, which is planned. No skill
+  reads it until then. Only that skill tracks achievements.
 - `delivery` is how a story is built. `direct`: from its README. `spec`: from a spec of
   requirements, design and tasks that the owner approves first.
 - A subproject's note and a task may set `delivery` too. The most specific value wins: the
@@ -1113,6 +1114,14 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   updates in place.
 - Frontmatter: `name` (equals the folder or file name), `description` (one sentence, under 200
   characters, quoted if it contains `: `).
+- A skill's `allowed-tools` names each tool its steps use. One that edits notes names `Edit`, one
+  that writes a whole note `Write`, and one that hands work to another skill
+  `Skill(odsb:<that skill> *)`. `Skill(<name>)` matches only a call with no arguments, and the
+  call names a ticket id.
+- A command other than the helper gets a pattern only where nothing its wildcard can take, an
+  option or a `-c` setting, can make it write a file or run a program, such as `Bash(ls -d *)`.
+- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path
+  can take `-c gpg.program=<command>`, which a signature check runs.
 - A skill that runs only by name sets `disable-model-invocation: true`.
   `vault-setup` is the one: it writes the pointer and the links into `~/.claude`.
 - Claude may call `vault-doctor` from a request: its check writes nothing, and its fix repairs only
@@ -1139,10 +1148,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   environment set. Its files are `create.md`, `status.md` and `env-split.md`.
 - Its start mode shows a new story's text and writes it only on the owner's approval. A change the
   owner asks for is shown again before it is written.
-- A story refinement got approved is approved already, and gets the status note
+- Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
+  The scrum-master's refinement and release planning read them there.
+- A story that refinement got approved is approved already, and gets the status note
   `Planned: the owner approved this text.`
-- A story it sets to `done` goes to `docs-keeper`, as below. Then it logs the story's achievement
-  through the profile's `achievements_skill`, when it names one.
+- A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
+  does the sprint close: only an achievements skill tracks them.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
   skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and
   `organize-board.md`.
@@ -1156,6 +1167,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   new story, and its update mode for each one that changed. Then it links each story to the tasks
   it waits on with `task dep`, and links the stories in the epic's list.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
+- A request to close the sprint goes to its close. With no sprint in progress, it says so and
+  stops: it opens one only when the user asks.
 - `release-planning` sets a release's goals, epics and stories with the owner, in the project's
   planned-releases note (section 3). A story or epic that does not exist yet goes through
   refinement first.

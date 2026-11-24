@@ -43,11 +43,9 @@ epic and each story in the shape its section 1 gives:
 - End each chunk with the line `What's wrong or missing?` as plain text, not an AskUserQuestion
   call. Then stop for the owner's answer.
 - Fix what the owner names before you show the next chunk.
-- After the last chunk, ask with AskUserQuestion whether to approve the draft or change it. The
-  owner says what to change in the free-text answer.
+- After the last chunk, ask for the approval of the whole draft as `## 3. Create the story` in
+  `create.md` says, without showing the draft again.
 - A change: make it in the draft, show each story it changed again in full, then ask again.
-- Only the owner's approval counts. Never take a change, a question or silence for one.
-- No AskUserQuestion, as in a subagent: show the draft, end with the question, and write nothing.
 
 ## 4. Write
 

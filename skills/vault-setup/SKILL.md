@@ -95,7 +95,6 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    | `environments` | environment names in promotion order, or none | `[dev, staging, prod]` or `[]` |
    | `sprint_length_days` | the sprint length in days | `14` |
    | `sprint_anchor_end` | the end date of the current or next sprint | `"2026-01-14"` |
-   | `achievements_skill` | the skill finished stories are handed to, if any | `"<skill name>"` or `""` |
    | `delivery` | what a story with no `delivery` of its own falls back to, as `### Profile frontmatter` in `docs/contract.md` says: an approved spec, or straight from the README | `spec` or `direct` |
    | `spec_home` | with `spec`: whether a story's spec lives in its task folder or in `spec/<ID>/` in the repo | `vault` or `repo` |
    | `validation_home` | whether `validation.md`, how to run and check each repo, is `claude/validation.md` or a file at each repo's root | `vault` or `repo` |
@@ -107,6 +106,9 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
      quotes a backslash is an escape.
    - Never remove or reorder a key.
    - Add a key from the table only when the profile lacks it.
+   - Ask nothing for `achievements_skill`. When the profile lacks it, write
+     `achievements_skill: ""`: no skill reads it until the plugin's achievements skill, which is
+     planned.
 5. A key the user gave no answer for stays as the scaffold wrote it. Say which keys are still
    open.
    - An empty `repos_root` is fine.

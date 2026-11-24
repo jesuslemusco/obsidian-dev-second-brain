@@ -2,7 +2,7 @@
 name: scrum-master
 description: Refine stories and epics, plan or run a sprint (open, pick, close, carry over), plan a release, or organize and check the board, from the Obsidian vault, with the owner's approval.
 argument-hint: "[refinement | sprint-planning | release-planning | organize-board] [project]"
-allowed-tools: Read Bash(second-brain *)
+allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker *) Bash(second-brain *) Bash(ls -d *)
 ---
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
@@ -26,7 +26,8 @@ After Step 0, read the file of the workflow in use, and only that file.
 | release-planning | Plan a release: its goals, epics and stories, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
 | organize-board | Check and organize the project's notes and board | `${CLAUDE_SKILL_DIR}/organize-board.md` |
 
-- refinement also reads story-tracker's `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
+- refinement and release-planning also read story-tracker's
+  `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
 - Where a ticket stands, an update, a standup or the stories of a sprint go to the story-tracker
   skill, with the Skill tool as `odsb:story-tracker`.
 

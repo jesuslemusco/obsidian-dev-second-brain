@@ -2465,6 +2465,16 @@ for f in "$BS" "$BY" "$BL"; do
   file_lacks "build skill: ${f##*/} points into no spec file, which is retired next" "$f" 'skills/spec/'
 done
 line_is "build skill: its name" "$BS" 'name: build'
+line_is "build skill: it may read, edit and write the orders note, and run the helper" "$BS" \
+  'allowed-tools: Read Edit Write Bash(second-brain *)'
+bs_tools="$(sed -n 's/^allowed-tools: //p' "$BS")"
+case "$bs_tools" in
+  *'Bash(git'*) fail "allowed-tools: build has no git pattern, so its git commands prompt" "got: $bs_tools" ;;
+  *) pass "allowed-tools: build has no git pattern, so its git commands prompt" ;;
+esac
+is "allowed-tools: build has no other command pattern" \
+  "$(printf '%s\n' "$bs_tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)')" ""
+is "build skill: its text runs git -C, which prompts" "$(grep -c '`git -C "<path>" worktree add' "$BY")" "2"
 bs_desc="$(sed -n 's/^description: //p' "$BS")"
 is "build skill: its description is under 200 characters" "$(( ${#bs_desc} < 200 ))" "1"
 case "$bs_desc" in *worktree*implementer*reviewer*) pass "build skill: its description names the worktree and both agents" ;;

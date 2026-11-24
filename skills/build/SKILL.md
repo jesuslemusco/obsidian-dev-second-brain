@@ -2,7 +2,7 @@
 name: build
 description: Build an approved story, or an approved epic's open stories in dependency order, each in a git worktree of its own, with one implementer and an independent reviewer until it passes.
 argument-hint: "<story or epic id>"
-allowed-tools: Read Bash(second-brain *) Bash(git *)
+allowed-tools: Read Edit Write Bash(second-brain *)
 ---
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.

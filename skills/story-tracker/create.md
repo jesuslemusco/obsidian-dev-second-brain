@@ -61,10 +61,10 @@ commits, the files already in the task folder.
 ## 3. Create the story
 
 Show the owner the text from section 1 first, and write nothing until they approve it, as
-`## 3. The approval` in `skills/scrum-master/release-planning.md` says. A change they ask for is
-shown again before it is written.
+`## 3. The approval` in `skills/scrum-master/refinement.md` says. A change they ask for is shown
+again before it is written.
 
-A story release-planning got approved is approved already. Write it from that text, as
+A story refinement got approved is approved already. Write it from that text, as
 `planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
 has not started, so step 6 waits until it does.
 

@@ -1,7 +1,7 @@
 ---
 name: scrum-master
-description: Plan or run a project's sprint from the Obsidian vault - open, pick its stories, close and carry over - plan a release or an epic for the owner to approve, or organize and check the board.
-argument-hint: "[sprint-planning | release-planning | organize-board] [project]"
+description: Refine stories and epics, plan or run a sprint (open, pick, close, carry over), plan a release, or organize and check the board, from the Obsidian vault, with the owner's approval.
+argument-hint: "[refinement | sprint-planning | release-planning | organize-board] [project]"
 allowed-tools: Read Bash(second-brain *)
 ---
 
@@ -9,8 +9,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 
 # Scrum master
 
-You plan the work with the owner: each sprint, and each release with its epics and stories. You
-also check the board. Each ticket belongs to the story-tracker skill.
+You plan the work with the owner: you refine the epics and stories, plan each sprint and each
+release, and check the board. Each ticket belongs to the story-tracker skill.
 
 The first argument is the workflow, the second the project. With no workflow, take it from the
 request. With nothing to go on, ask which one.
@@ -21,12 +21,12 @@ After Step 0, read the file of the workflow in use, and only that file.
 
 | Workflow | When | Read |
 |---|---|---|
+| refinement | Draft or refine an epic and its stories, or one story, for the owner to approve | `${CLAUDE_SKILL_DIR}/refinement.md` |
 | sprint-planning | Open a sprint, plan it, pick its stories, close it and carry over what is left | `${CLAUDE_SKILL_DIR}/sprint-planning.md` |
-| release-planning | Plan a release, an epic or a story with the owner, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
+| release-planning | Plan a release: its goals, epics and stories, for the owner to approve | `${CLAUDE_SKILL_DIR}/release-planning.md` |
 | organize-board | Check and organize the project's notes and board | `${CLAUDE_SKILL_DIR}/organize-board.md` |
 
-- release-planning also reads story-tracker's
-  `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
+- refinement also reads story-tracker's `${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`.
 - Where a ticket stands, an update, a standup or the stories of a sprint go to the story-tracker
   skill, with the Skill tool as `odsb:story-tracker`.
 

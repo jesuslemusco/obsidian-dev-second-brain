@@ -1,6 +1,6 @@
 ---
 name: story-tracker
-description: Use for any question or change on a vault ticket - where it stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
+description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
 allowed-tools: Read Grep Glob Bash(second-brain *)
 ---
@@ -52,7 +52,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 | Mode | When | Do |
 |---|---|---|
 | draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
-| start | Work begins on a ticket with no story, often signalled by a branch named for it, or release-planning hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
+| start | Work begins on a ticket with no story, often signalled by a branch named for it, or the scrum-master's refinement hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
 | status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |

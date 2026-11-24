@@ -307,12 +307,14 @@ round, across every session.
 A passed story merges into `<target>`, as `### The git flow` finds it, on the owner's go. The
 merge is local. A push is another step, on the owner's word alone.
 
-1. A story cut from another story's branch merges after that story:
-   `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:
-   - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.
-   - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner's go to merge"`.
-   - Say the story waits on that one, and go on at item 5 of `## 6. When the story passed`. A
-     later run takes it up again, as Step 1 of `SKILL.md` says.
+1. A story cut from another story's branch merges after that story.
+   - No `<target>` found: ask where it merges first, as item 5 of `### The git flow` says, then
+     run this check.
+   - `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:
+     - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.
+     - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner's go to merge"`.
+     - Say the story waits on that one, and go on at item 5 of `## 6. When the story passed`. A
+       later run takes it up again, as Step 1 of `SKILL.md` says.
 2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it
    unmerged. The owner may name another target in the free-text answer.
    - No `<target>` found: ask where it merges in the same question, as item 5 of

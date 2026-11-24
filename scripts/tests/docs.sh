@@ -2712,6 +2712,13 @@ file_lacks "worktree: the cut is no longer the branch check's alone" "$BY" 'is c
 line_is "merge: has its section" "$BY" '### The merge'
 in_mg "merge: local, and pushed only on the owner's word" 'merge is local. A push is another step, on the owner'"${q}"'s word alone.'
 in_mg "merge: a story cut from another merges after it" '`git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:'
+in_mg "merge: with no target, item 1 asks where it merges before the check" \
+  '   - No `<target>` found: ask where it merges first, as item 5 of `### The git flow` says, then'
+mg_ask="$(lineno "$BY" 'No `<target>` found: ask where it merges first')"
+mg_chk="$(lineno "$BY" '   - `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:')"
+mg_two="$(lineno "$BY" '2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it')"
+is "merge: the ask comes before the check, both in item 1" \
+  "$(( ${mg_ask:-0} > 0 && ${mg_ask:-0} < ${mg_chk:-0} && ${mg_chk:-0} < ${mg_two:-0} ))" "1"
 in_mg "merge: the wait is noted" '   - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.'
 in_mg "merge: and named in next" '   - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner'"${q}"'s go to merge"`.'
 in_mg "merge: a later run takes it up again" '     later run takes it up again, as Step 1 of `SKILL.md` says.'
@@ -2740,10 +2747,17 @@ file_has "build skill: a waiting story is taken up again" "$here/skills/build/SK
   '- An `in-review` story whose newest `Build:` note is `Build: <branch> waits for <that branch> in <target>.`'
 file_has "build skill: straight to the merge once the branch is in the target found" "$here/skills/build/SKILL.md" \
   '    `<target>` found, take it to `### The merge` in `story.md`, from item 2. Else say it still'
-file_has "build skill: the target is found again, never taken from the note" "$here/skills/build/SKILL.md" \
-  '  waits to merge. Find its `<target>` again first, as items 2 and 3 of `### The git flow` in'
+file_has "build skill: the target is found again from the rules, never taken from the note" "$here/skills/build/SKILL.md" \
+  '  waits to merge. Find its `<target>` again first, as items 1 to 3 of `### The git flow` in'
+file_has "build skill: and the owner is asked when no rule names it" "$here/skills/build/SKILL.md" \
+  '  `story.md` say, and item 5 when no rule names it, never from the note: the release it named'
+file_lacks "build skill: the pickup reads the rules too" "$here/skills/build/SKILL.md" 'items 2 and 3 of `### The git flow`'
+file_has "contract: with no rule, the target is asked before the check" "$CT" \
+  '- With no rule that names its target, the skill asks the owner where it merges first, as for any'
+file_has "contract: a later run reads the rules and asks when none names the target" "$CT" \
+  '- It reads the project'"'"'s rules for that, and asks the owner where the story merges when no rule'
 file_has "build skill: a shipped branch is no open one, so the owner is asked" "$here/skills/build/SKILL.md" \
-  '  shipped branch is no open one, so the git flow asks the owner.'
+  'a shipped branch is no open one, so the git flow asks the owner.'
 wt_find="$(lineno "$here/skills/build/SKILL.md" 'waits to merge. Find its `<target>` again first')"
 wt_merge="$(lineno "$here/skills/build/SKILL.md" '`<target>` found, take it to `### The merge`')"
 is "build skill: the target is found before the ancestor check and the merge" "$(( ${wt_find:-0} > 0 && ${wt_find:-0} < ${wt_merge:-0} ))" "1"

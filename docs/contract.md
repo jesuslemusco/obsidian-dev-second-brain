@@ -1244,11 +1244,14 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A story cut from another story's branch merges only once that story is in the target. Until
   then the skill writes `Build: <branch> waits for <that branch> in <target>.`, and sets `next`
   to say so.
+- With no rule that names its target, the skill asks the owner where it merges first, as for any
+  story, and checks that the other story is in it after the answer.
 - A later run takes up an `in-review` story whose newest `Build:` note is that wait. It finds the
   target again, as the git flow says, since the release the wait named may have shipped: a
-  shipped branch is no open one, so the skill asks the owner. Then it goes straight to the merge
-  once that branch is in the target found. It merges from the story's branch, so the story's
-  worktree is not needed again.
+  shipped branch is no open one, so the skill asks the owner.
+- It reads the project's rules for that, and asks the owner where the story merges when no rule
+  names it. Then it goes straight to the merge once that branch is in the target found. It merges
+  from the story's branch, so the story's worktree is not needed again.
 - No rule says where a story merges: the skill asks the owner, and offers to write the answer
   under `## Rules`. It writes it only on the owner's yes. No rule says where a branch is cut: it
   is cut as story-tracker's branch check says.

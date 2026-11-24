@@ -43,9 +43,9 @@ The id names one story, or an epic.
 - Take the open stories: `status` `planned` or `in-progress`. Leave the `in-review`, `done` and
   `abandoned` ones out.
 - An `in-review` story whose newest `Build:` note is `Build: <branch> waits for <that branch> in <target>.`
-  waits to merge. Find its `<target>` again first, as items 2 and 3 of `### The git flow` in
-  `story.md` say, never from the note: the release it named may have shipped since, and a
-  shipped branch is no open one, so the git flow asks the owner.
+  waits to merge. Find its `<target>` again first, as items 1 to 3 of `### The git flow` in
+  `story.md` say, and item 5 when no rule names it, never from the note: the release it named
+  may have shipped since, and a shipped branch is no open one, so the git flow asks the owner.
   - Once `git -C "<path>" merge-base --is-ancestor <that branch> <target>` exits 0 for the
     `<target>` found, take it to `### The merge` in `story.md`, from item 2. Else say it still
     waits, and leave it out.

@@ -115,7 +115,7 @@ skills="$(field "$tmp/second.jsonl" "$init_of | .skills[]")"
 agents="$(field "$tmp/second.jsonl" "$init_of | .agents[]")"
 holds "skills: the vault's own skill is found through its link" "$skills" "e2e-vault-skill"
 holds "skills: a project's skill is found through its link" "$skills" "e2e-project-skill"
-holds "skills: the plugin's skills are loaded" "$skills" "story-tracker"
+holds "skills: the plugin's skills are loaded" "$skills" "scrum-master"
 holds "agents: the vault's own agent is found through its link" "$agents" "e2e-vault-agent"
 holds "agents: a project's agent is found through its link" "$agents" "e2e-project-agent"
 holds "agents: the plugin's agents are loaded" "$agents" "docs-keeper"
@@ -140,29 +140,31 @@ trigger() {
   esac
 }
 ask "$tmp/recall.jsonl" "Where does EX-2 stand?"
-trigger "trigger: where a ticket stands loads story-tracker" "$tmp/recall.jsonl" story-tracker
+trigger "trigger: where a ticket stands loads scrum-master" "$tmp/recall.jsonl" scrum-master
 ask "$tmp/standup.jsonl" "Standup for the Example project: what is in progress, and what comes next?"
-trigger "trigger: a standup loads story-tracker" "$tmp/standup.jsonl" story-tracker
+trigger "trigger: a standup loads scrum-master" "$tmp/standup.jsonl" scrum-master
 ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
-trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
+trigger "trigger: an update to a ticket loads scrum-master" "$tmp/update.jsonl" scrum-master
 ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
 trigger "trigger: a sprint request loads scrum-master" "$tmp/sprint.jsonl" scrum-master
-ask "$tmp/plan.jsonl" "Plan an epic for the Example project: export the invoices as CSV, in three stories."
-trigger "trigger: a request to plan an epic loads scrum-master" "$tmp/plan.jsonl" scrum-master
+ask "$tmp/plan.jsonl" "Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories."
+trigger "trigger: a request to plan a release loads scrum-master" "$tmp/plan.jsonl" scrum-master
+ask "$tmp/board.jsonl" "Organize the board of the Example project."
+trigger "trigger: a request to organize the board loads scrum-master" "$tmp/board.jsonl" scrum-master
 ask "$tmp/health.jsonl" "Check my vault for problems."
 trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
 ask "$tmp/spec.jsonl" "Implement EX-2 spec-driven, starting with its requirements."
 trigger "trigger: a spec-driven request loads spec" "$tmp/spec.jsonl" spec
 
-printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
-# With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
+printf '== ticket text: a request to write a ticket loads scrum-master ==\n'
+# With no persona, section 1 of story-track-create.md asks for one, and a headless run cannot answer.
 sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&
   mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
 holds "trigger: the profile has a persona" "$(bash "$SB" profile Example --keys)" "developer"
 ask "$tmp/third.jsonl" "For the Example project: give me summary, description and AC for a new ticket, no id.
 The ticket: the task board should show each task's branch."
-holds "trigger: the request loads story-tracker" \
-  "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-tracker"
+holds "trigger: the request loads scrum-master" \
+  "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "scrum-master"
 got="$(field "$tmp/third.jsonl" 'select(.type == "result") | .result')"
 # The text may follow a line that says what it is; the template's first line opens a line of its own.
 if printf '%s\n' "$got" | tr -d '\r' | grep -q '^[[:space:]]*\*As a\*'; then
@@ -173,11 +175,13 @@ fi
 printf '== search rule: a fresh session recalls a story with the helper ==\n'
 step "task new: a tracked story" bash "$SB" task new EX-1 --project Example --title "Show each task's branch on the board"
 step "task set: its next action" bash "$SB" task set EX-1 status=in-progress "next=Add a branch column to the board view"
-# Read, Grep, cat, sed and grep are allowed too, so a whole-file read could come first.
+# Read, Grep, cat, sed and grep are allowed too, so a whole-file read could come first. A read of
+# the plugin's own files, such as a workflow file of a skill, is no read of a note.
 ask "$tmp/fourth.jsonl" "Where does story EX-1 stand, and what is its next action? Answer in one line." \
   Read Grep "Bash(cat *)" "Bash(sed *)" "Bash(grep *)"
 uses='select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | if .name == "Bash" then "bash " + (.input.command | gsub("\n"; " ")) elif .name == "Read" then "read " + .input.file_path + (if (.input.offset // .input.limit) then " ranged" else "" end) else .name end'
-first="$(field "$tmp/fourth.jsonl" "$uses" | awk '
+first="$(field "$tmp/fourth.jsonl" "$uses" | awk -v own="read $plugin/" '
+  index($0, own) == 1 { next }
   /^bash .*second-brain +(task +head|outline|search)/ { print "helper: " $0; exit }
   /^read / && !/ ranged$/ { print "whole: " $0; exit }
   /^Grep$/ || /^bash .*[^a-z](cat|sed|grep|head|tail)[ \t]/ { print "whole: " $0; exit }')"

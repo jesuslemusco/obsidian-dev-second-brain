@@ -16,10 +16,9 @@ It can also build a story from a spec you approve, one task at a time, each test
   ticket sits inside a folder named for that parent, such as
   `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
   or epics.
-- **Planning.** Claude drafts an epic and its stories, or one story, with you, and writes them
-  only once you approve the draft.
-- **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
-  carried over.
+- **Releases.** Claude plans a release with you: its goals, epics and stories, in the project's
+  planned-releases note. It writes each story only once you approve the draft.
+- **Sprints.** Claude opens a sprint, plans it, and closes it with the open work carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
 - **Spec-driven builds.** You approve a story's requirements, design and tasks. Claude then builds
@@ -63,41 +62,37 @@ Claude loads most skills when your request matches one, so you seldom type them.
 type a skill's name, as in the headings below. Which requests load which skill is under
 `## What to say` in `docs/guide.md`.
 
-### `/odsb:story-tracker`
+### `/odsb:scrum-master`
 
-Drafts, starts, updates and recalls tickets, and gives a standup.
+Keeps each ticket, plans the sprints and releases with you, and checks the board. It has four
+workflows, each a file of its own in `skills/scrum-master/`, read only when it runs.
 
-- Use it for any question or change on a ticket.
-- Starting a ticket writes its story: a summary, a description and up to four acceptance
-  criteria, checked against the code.
-- An update adds a dated status note, ticks the criteria that are met and keeps the branch line
-  current.
-- When work starts, it builds a simple story direct, and asks you when a spec would help.
+- `story-track`: drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
+  Use it for any question or change on a ticket.
+  - Starting a ticket writes its story: a summary, a description and up to four acceptance
+    criteria, checked against the code. It shows you the text first, and writes it once you
+    approve.
+  - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
+    current.
+  - When work starts, it builds a simple story direct, and asks you when a spec would help.
+  - A story set to done goes to `docs-keeper`. Then its achievement is logged, when the project's
+    profile names a skill for it.
+- `sprint-planning`: opens a sprint, picks its stories, and closes it with the open work carried
+  over. A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md`
+  says.
+- `release-planning`: sets a release's goals, epics and stories with you, in the project's
+  planned-releases note. Each story has a summary, a description, up to four acceptance criteria,
+  its parent and the tasks it waits on. It writes nothing until you approve the draft, and shows
+  a change you ask for again first. Then `story-track` writes each story.
+- `organize-board`: runs the doctor on the project, says what each failing row means, and changes
+  nothing without asking.
 
 ```
 Where does EX-2 stand?
 Update EX-2: the sort is merged, move it to in review.
-```
-
-### `/odsb:scrum-master`
-
-Plans epics and stories with you, and runs a project's sprint: opens it, picks its stories, shows
-its status, closes it and carries open work over.
-
-- Use it to plan an epic and its stories, or one story, and for each step of a sprint.
-- `plan` drafts each story with a summary, a description, up to four acceptance criteria, its
-  parent and the tasks it waits on.
-- It shows you the draft and writes nothing until you approve it. A change you ask for is shown
-  again before it is written.
-- `open`, `pick`, `status` and `close` run the sprint. `done` logs a finished story's
-  achievement, and `hygiene` runs the doctor on a project.
-- Each mode is a file of its own in `skills/scrum-master/`, read only when that mode runs.
-- A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md` says.
-
-```
-Plan an epic for the Example project: export the invoices as CSV.
+Plan the 0.2.0 release for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
-/odsb:scrum-master close Example
+/odsb:scrum-master sprint-planning Example
 ```
 
 ### `/odsb:spec`
@@ -170,7 +165,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `scrum-master`'s `story-track` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
@@ -292,9 +287,9 @@ A project can give its stories its own shape. Copy `templates/task-readme.md.tmp
 same name, and edit it there.
 
 - `second-brain task new` fills the project's README template in place of the plugin's.
-- story-tracker fills the project's ticket text template for a draft or ticket text.
+- `story-track` fills the project's ticket text template for a draft or ticket text.
 - A project with no template of its own gets the plugin's.
-- The helper and story-tracker write some frontmatter keys and sections of the README template.
+- The helper and `story-track` write some frontmatter keys and sections of the README template.
   The doctor's `task-template` check warns when the project's template lacks one.
 - What a project's template must keep is under `### A project's own templates` in
   `docs/contract.md`.

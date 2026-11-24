@@ -2738,11 +2738,20 @@ file_has "story build: the story's worktree may be gone after a wait" "$BY" \
   '5. Once the merge is done, or the owner says not to merge, remove the worktree, when it is still'
 file_has "build skill: a waiting story is taken up again" "$here/skills/build/SKILL.md" \
   '- An `in-review` story whose newest `Build:` note is `Build: <branch> waits for <that branch> in <target>.`'
-file_has "build skill: straight to the merge once the branch is in" "$here/skills/build/SKILL.md" \
-  '  take it to `### The merge` in `story.md`, from item 2. Else say it still waits, and leave it'
+file_has "build skill: straight to the merge once the branch is in the target found" "$here/skills/build/SKILL.md" \
+  '    `<target>` found, take it to `### The merge` in `story.md`, from item 2. Else say it still'
+file_has "build skill: the target is found again, never taken from the note" "$here/skills/build/SKILL.md" \
+  '  waits to merge. Find its `<target>` again first, as items 2 and 3 of `### The git flow` in'
+file_has "build skill: a shipped branch is no open one, so the owner is asked" "$here/skills/build/SKILL.md" \
+  '  shipped branch is no open one, so the git flow asks the owner.'
+wt_find="$(lineno "$here/skills/build/SKILL.md" 'waits to merge. Find its `<target>` again first')"
+wt_merge="$(lineno "$here/skills/build/SKILL.md" '`<target>` found, take it to `### The merge`')"
+is "build skill: the target is found before the ancestor check and the merge" "$(( ${wt_find:-0} > 0 && ${wt_find:-0} < ${wt_merge:-0} ))" "1"
 file_has "contract: the wait is recorded" "$CT" '  then the skill writes `Build: <branch> waits for <that branch> in <target>.`, and sets `next`'
 file_has "contract: a later run takes the waiting story up again" "$CT" \
-  '- A later run takes up an `in-review` story whose newest `Build:` note is that wait, and goes'
+  '- A later run takes up an `in-review` story whose newest `Build:` note is that wait. It finds the'
+file_has "contract: and finds the target again, as a release may have shipped" "$CT" \
+  '  target again, as the git flow says, since the release the wait named may have shipped: a'
 file_has "contract: the owner's checkout only when it holds the target and is clean" "$CT" \
   '- That worktree may be the owner'"${q}"'s own checkout: the skill merges there only when it holds the'
 file_lacks "contract: no never-in-the-owner's-checkout rule left" "$CT" '  owner'"${q}"'s own checkout.'

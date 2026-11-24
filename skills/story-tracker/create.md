@@ -60,12 +60,16 @@ commits, the files already in the task folder.
 
 ## 3. Create the story
 
-Show the owner the text from section 1 first, and write nothing until they approve it, as
-`## 3. The approval` in `skills/scrum-master/refinement.md` says. A change they ask for is shown
-again before it is written.
+Show the owner the text from section 1 first, and write nothing until they approve it:
 
-A story refinement got approved is approved already. Write it from that text, as
-`planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
+- Show it whole, then ask with AskUserQuestion whether to write it or change it. The owner says
+  what to change in the free-text answer.
+- A change: make it, show the changed text again, then ask again.
+- Only the owner's approval counts. Never take a change, a question or silence for one.
+- No AskUserQuestion, as in a subagent: show the text, end with the question, and write nothing.
+
+A story the scrum-master's refinement got approved is approved already. Write it from that text,
+as `planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
 has not started, so step 6 waits until it does.
 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.

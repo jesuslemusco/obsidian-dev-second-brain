@@ -118,7 +118,7 @@ holds "skills: a project's skill is found through its link" "$skills" "e2e-proje
 holds "skills: the plugin's skills are loaded" "$skills" "story-tracker"
 holds "agents: the vault's own agent is found through its link" "$agents" "e2e-vault-agent"
 holds "agents: a project's agent is found through its link" "$agents" "e2e-project-agent"
-holds "agents: the plugin's agents are loaded" "$agents" "scrum-master"
+holds "agents: the plugin's agents are loaded" "$agents" "docs-keeper"
 holds "bin: second-brain runs from the Bash tool" "$(field "$tmp/second.jsonl" "$tool_out")" "vault: "
 holds "import: the index is read through the pointer" "$(field "$tmp/second.jsonl" 'select(.type == "result") | .result')" "$token"
 
@@ -146,7 +146,9 @@ trigger "trigger: a standup loads story-tracker" "$tmp/standup.jsonl" story-trac
 ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
 trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
 ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
-trigger "trigger: a sprint request loads sprint" "$tmp/sprint.jsonl" sprint
+trigger "trigger: a sprint request loads scrum-master" "$tmp/sprint.jsonl" scrum-master
+ask "$tmp/plan.jsonl" "Plan an epic for the Example project: export the invoices as CSV, in three stories."
+trigger "trigger: a request to plan an epic loads scrum-master" "$tmp/plan.jsonl" scrum-master
 ask "$tmp/health.jsonl" "Check my vault for problems."
 trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
 ask "$tmp/spec.jsonl" "Implement EX-2 spec-driven, starting with its requirements."

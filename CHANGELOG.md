@@ -2,6 +2,23 @@
 
 ## 0.12.0 - unreleased
 
+- The `scrum-master` skill replaces the `scrum-master` agent and the `sprint` skill. Each of its
+  modes is a file of its own, read only in that mode: `plan`, `open`, `pick`, `status`, `close`,
+  `done` and `hygiene`, as `## 9. Skills and agents` in `docs/contract.md` says.
+- Its `plan` mode drafts an epic and its stories, or one story, in story-tracker's shape, with at
+  most 4 acceptance criteria and the `task dep` links of each story. It shows you the draft and
+  writes it only once you approve it. A change you ask for is shown again before it is written.
+- Run the sprint as `/odsb:scrum-master <mode>`: `open`, `status` and `close` keep their names,
+  and `plan` is now `pick`.
+- story-tracker's start mode shows a new story's text, and writes it only once you approve it.
+- The doctor's `sprints` fixes name the scrum-master skill.
+- The vault index names the scrum-master skill, and no scrum-master agent. The plugin's index
+  template is now at `index_version: 8`, so the doctor's `index` check warns. Copy the bullet
+  that starts `- Call a plugin skill or agent` under `## In every session` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 8`.
+- A note or a settings rule of your own that names `odsb:sprint` or the scrum-master agent:
+  change it to the `odsb:scrum-master` skill.
+
 ## 0.11.0 - 2026-11-23
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile

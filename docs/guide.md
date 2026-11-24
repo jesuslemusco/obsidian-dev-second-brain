@@ -20,7 +20,8 @@ skill next to it:
 | Where does EX-2 stand? | `story-tracker` |
 | Standup for the Example project: what is in progress, and what comes next? | `story-tracker` |
 | Update EX-2: the sort is merged, move it to in review. | `story-tracker` |
-| Open a new sprint for the Mobile project. | `sprint` |
+| Plan an epic for the Example project: export the invoices as CSV, in three stories. | `scrum-master` |
+| Open a new sprint for the Mobile project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
 | Implement EX-2 spec-driven, starting with its requirements. | `spec` |
 
@@ -112,7 +113,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - When a story is set done, Claude asks once whether to archive it now, as
   `## Edit an existing story` in `skills/story-tracker/SKILL.md` says.
 - When a sprint closes, Claude asks once whether to archive its done tasks, as
-  `skills/sprint/close.md` says.
+  `skills/scrum-master/close.md` says.
 - `second-brain task archive EX-1` archives one task by hand.
 - `second-brain doctor --fix` archives each task that is due, as
   `## fix` in `skills/vault-doctor/SKILL.md` says.
@@ -171,6 +172,20 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - `vault-setup` asks whether a project calls its parent stories features or epics, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
   in a task's frontmatter stays `epic`.
+
+## Planning
+
+- Ask for an epic and its stories, or one story, as under [What to say](#what-to-say). The
+  `scrum-master` skill plans them with you.
+- It drafts each one in story-tracker's shape, with at most four acceptance criteria, its parent
+  and the tasks it waits on, as `## 2. The draft` in `skills/scrum-master/plan.md` says.
+- It shows you the draft in short chunks and writes nothing until you approve it. A change you ask
+  for is shown again first, as `## 3. The approval` in `skills/scrum-master/plan.md` says.
+- Then it writes the epic first, then each story, and links each one to the tasks it waits on
+  with `second-brain task dep`.
+- A ticket you start with no story is shown to you the same way before story-tracker writes it.
+- The same skill runs the sprint: `open`, `pick`, `status` and `close`. Each mode is a file of its
+  own, read only when that mode runs.
 
 ## Spec-driven delivery
 

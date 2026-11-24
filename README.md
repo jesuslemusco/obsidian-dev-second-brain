@@ -16,6 +16,8 @@ It can also build a story from a spec you approve, one task at a time, each test
   ticket sits inside a folder named for that parent, such as
   `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
   or epics.
+- **Planning.** Claude drafts an epic and its stories, or one story, with you, and writes them
+  only once you approve the draft.
 - **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
   carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
@@ -77,16 +79,25 @@ Where does EX-2 stand?
 Update EX-2: the sort is merged, move it to in review.
 ```
 
-### `/odsb:sprint`
+### `/odsb:scrum-master`
 
-Opens, plans, shows and closes a project's sprint, and carries open work over.
+Plans epics and stories with you, and runs a project's sprint: opens it, picks its stories, shows
+its status, closes it and carries open work over.
 
-- Use it to start a sprint, pick its stories, see its status or close it.
+- Use it to plan an epic and its stories, or one story, and for each step of a sprint.
+- `plan` drafts each story with a summary, a description, up to four acceptance criteria, its
+  parent and the tasks it waits on.
+- It shows you the draft and writes nothing until you approve it. A change you ask for is shown
+  again before it is written.
+- `open`, `pick`, `status` and `close` run the sprint. `done` logs a finished story's
+  achievement, and `hygiene` runs the doctor on a project.
+- Each mode is a file of its own in `skills/scrum-master/`, read only when that mode runs.
 - A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md` says.
 
 ```
+Plan an epic for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
-/odsb:sprint close Example
+/odsb:scrum-master close Example
 ```
 
 ### `/odsb:spec`
@@ -160,7 +171,6 @@ Most are started by a skill, and you can ask for any of them by name.
 | Agent | Does | Started by |
 |---|---|---|
 | `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
-| `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
@@ -174,7 +184,8 @@ Start EX-123: the invoice export drops the tax column.
 ```
 
 Claude finds no story for EX-123 and checks the repo's branch. It asks you for anything it cannot
-tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
+tell, and shows you the story's text. Once you approve it, Claude writes
+`<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
 in a project that keeps each task in the folder of its status, or
 `<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a
 summary, a description and up to four acceptance criteria, checked against the code. A simple story
@@ -297,7 +308,7 @@ Claude writes notes in the style of the note `claude/writing-style.md` in your v
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,
-  spec-driven delivery, Windows, the tests and releases.
+  planning, spec-driven delivery, Windows, the tests and releases.
 - [docs/contract.md](docs/contract.md): every helper command and note format.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

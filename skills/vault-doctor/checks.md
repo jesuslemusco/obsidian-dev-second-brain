@@ -197,23 +197,17 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 - Why: the `By subproject` view and `second-brain board <project> --subproject <name>` file the task under a name that leads nowhere, and the skills find no branches or docs for it, as they read them from the note.
 - Fix: ask which subproject the task belongs to, then `second-brain task set <ID> subproject=<name>`, which checks the name. A task in no subproject: `second-brain task set <ID> subproject=`.
 
-### delivery
+### settings
 
-- Means: a `delivery` that is not `direct` or `spec`, or a `spec_home` or `validation_home` that is not `vault` or `repo`, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task (`<ID>:delivery`). Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).
-- Why: a value that is not allowed means the default, so a story meant to be built from a spec is built straight from its README, or its spec and checks are looked for in the wrong place. A `lead_check_minutes` that is not allowed means 20, so the lead of a spec build checks on its orders at a pace the owner did not set.
-- Fix: ask which value was meant and write it. A task's `delivery`: `second-brain task set <ID> delivery=<direct or spec>`, or `delivery=` to take the subproject's or the profile's. A key in the profile or a subproject note: edit it there.
+- Means: a `validation_home` that is not `vault` or `repo`, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`). Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`). A `delivery` or `spec_home` key left from the retired spec flow is not read.
+- Why: a `validation_home` that is not allowed means `vault`, so a repo's checks are looked for in the wrong place. A `lead_check_minutes` that is not allowed means 20, so the lead of a build checks on its orders at a pace the owner did not set.
+- Fix: ask which value was meant and write it in the profile or the subproject note, or remove the key.
 
 ### validation
 
 - Means: a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds the template's `<...>` text, or a placeholder an earlier template had (`<repo>:placeholders`). A repo whose `validation.md` is in the repo and whose location is not recorded: `<repo>:no-location`. A project with no repo and no `claude/validation.md`: `claude/validation.md:missing`.
 - Why: the agents that build and review a change run the steps in its repo's section, so with none a change is called done on the builder's word.
 - Fix: `no-location`: record where the repo is, in `repos_root` or `repo_paths`. Otherwise run `second-brain validation new <project> <repo>`, which writes the file or adds the section and never changes one that is there. Then ask how the repo is set up and started, which checks must pass, how a change is checked as a user would and what a pass is. Look first in the repo's README, scripts and CI config; write only what the user confirms. Never invent a step.
-
-### spec-trace
-
-- Means: an open story whose `delivery`, its own or inherited, is `spec` has a criterion, a `- [ ]`, `- [x]` or `- [X]` line under its README's `## Acceptance criteria`, that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`, the n-th criterion); or a `## R<n>` requirement has no `- Serves:` line, names no criterion, or names an item that is not an `AC<n>` the story has (`<ID>:R<n>`). Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder.
-- Why: the `- Serves:` lines show the owner that the spec covers the story. A criterion no requirement serves is never built or reviewed; a requirement that serves none is work the story did not ask for.
-- Fix: add the criterion's `AC<n>` to the `- Serves:` line of the requirement that meets it, or write a requirement for it, and give every requirement a `- Serves:` line that names only criteria the story has. Ask the owner which requirement meets a criterion; `--fix` changes nothing here.
 
 ### sprints
 

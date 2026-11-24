@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Area validation-run: validation run, the checks of a packet, and who runs which check.
+# Area validation-run: validation run, and who runs which check.
 # Usage: bash scripts/test.sh validation-run, or bash scripts/tests/validation-run.sh
 . "$(dirname "$0")/lib.sh"
 
@@ -50,46 +50,6 @@ cat >"$RVF" <<'EOF'
 
 - Every check passes.
 EOF
-# The packet names the checks implementer runs before it commits: the task's own, then each command
-# validation run --when each-task runs, in order.
-sb task new RN-1 --project Runs --title "Checks story"
-sb task set RN-1 delivery=spec branch=feature/RN-1
-sb spec new RN-1
-DR="$vault/$RN/tasks/RN-1/spec"
-printf '%s\n' '# RN-1 - Requirements' '' '## R1 - One' '' 'WHEN a user runs it, THE app SHALL pass.' >"$DR/requirements.md"
-printf '%s\n' '# RN-1 - Tasks' '' '- [ ] T1 - With a check' '  - Requirements: R1' '  - Files: marker.txt' \
-  '  - Check: `test -f marker.txt` - expected: exit 0' \
-  '- [ ] T2 - No check' '  - Requirements: R1' \
-  '- [ ] T3 - The template' '  - Requirements: R1' \
-  '  - Check: <The command or step the implementer and the reviewer run.> - expected: <What it prints or shows.>' \
-  '- [ ] T4 - None' '  - Requirements: R1' '  - Check: None' >"$DR/tasks.md"
-sb spec packet RN-1 T1
-rc_is "spec packet: a task with a check exits 0" 0
-out_has "spec packet: names the task's check, then each each-task command, in order" "## Checks
-
-- task: \`test -f marker.txt\` - expected: exit 0
-- each task: test -f marker.txt
-- each task: test -z \"\$(cat)\"
-- each task: echo long
-- each task: echo \`tick\` ${NL}${NL}## Validation"
-for c in "echo build-only" "all good" "echo odd" "echo e2e" "A note with no command" "echo nested"; do
-  is "spec packet: no each-task line for $c" "$(printf '%s\n' "$OUT" | grep -c -- "^- each task: .*$c" || true)" "0"
-done
-for t in T2 T3 T4; do
-  sb spec packet RN-1 "$t"
-  out_has "spec packet: $t has no check of its own, and still the each-task ones" "## Checks
-
-- task: none
-- each task: test -f marker.txt"
-done
-mv "$RVF" "$RVF.away"
-sb spec packet RN-1 T1
-rc_is "spec packet: no validation.md still exits 0" 0
-out_has "spec packet: and says so" "validation: none (missing)"
-is "spec packet: its Checks part is the task's line alone" "$(printf '%s\n' "$OUT" | sed -n '/^## Checks$/,$p')" "## Checks
-
-- task: \`test -f marker.txt\` - expected: exit 0"
-mv "$RVF.away" "$RVF"
 ODIR="${TMPDIR:-}"
 export TMPDIR="$tmp/tmpr"
 OUT="$(printf 'some input\n' | "$SB" validation run Runs run-app --when each-task 2>"$tmp/stderr")"
@@ -282,7 +242,6 @@ file_has "contract: validation takes --path" "$CT" '| `validation <project> <rep
 file_has "contract: a worktree is checked in place" "$CT" '  take `--path <worktree>`, so the checks run on the branch under review, not on the repo'"'"'s'
 file_has "contract: the fix loop's rounds" "$CT" '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
 file_has "contract: the build-wide run has no agent" "$CT" '- When every task has passed, the skill runs `validation run <project> <repo> --when each-build`'
-file_has "contract: a task's fails come from its history" "$CT" '- A task'"'"'s `fails` is the number of `failed` review states in its history, from every session.'
 file_has "guide: each task is reviewed right after it is built" "$here/docs/guide.md" '- Each task is reviewed right after it is built, before the next one starts, so no task builds on'
 file_has "guide: names validation run" "$here/docs/guide.md" '`second-brain validation run <project> <repo> --when each-task`'
 file_has "changelog: validation takes --path" "$here/CHANGELOG.md" '- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder'
@@ -345,8 +304,6 @@ file_has "contract: the reviewer runs the task's checks again" "$CT" \
   '- It runs the task'"'"'s `Check` and the `each task` checks again, through'
 file_has "contract: implementer's reply names each check's result" "$CT" \
   '`Check:` line with the result of each check it ran.'
-file_has "contract: the packet has a Checks part" "$CT" \
-  '`## Checks` (the checks `implementer` runs before it commits: `- task: <the item'"'"'s Check, as written>`'
 GD="$here/docs/guide.md"
 file_has "guide: implementer builds test-first" "$GD" '- `implementer` builds each task test-first. It writes a test that fails for the task'"'"'s'
 file_has "guide: says who runs which check" "$GD" \

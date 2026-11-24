@@ -338,7 +338,9 @@ file_has "contract: the lookup goes through the group folders of sb_task_groups"
   '- Both also look in each group folder that `sb_task_groups` lists'
 CV="$here/templates/obsidian-conventions.md.tmpl"
 cv_version="$(sed -n 's/^conventions_version: *//p' "$CV" | head -1)"
-is "conventions: the child folders raise conventions_version to 10" "$cv_version" "10"
+is "conventions: the retired spec type and delivery key raise conventions_version to 11" "$cv_version" "11"
+file_lacks "conventions: no delivery key, as the spec flow is retired" "$CV" "delivery"
+file_lacks "conventions: no spec note type" "$CV" '`spec`'
 file_has "conventions: the short version names the sprint folders" "$CV" 'With `sprint`,'
 line_is "conventions: the path of a task in backlog/" "$CV" \
   '<project>/tasks/backlog/<TICKET-ID>/README.md          # a task in no sprint, in the sprint layout'
@@ -857,12 +859,8 @@ file_has "spec skill: shows the phase in chunks" "$SK" \
   '4. Show the owner the path, then the phase in chunks, as `## The chat` in `phases.md` says.'
 file_has "spec skill: spec-checker reads design and tasks before approval" "$SK" \
   '5. Design and tasks: have `spec-checker` read the spec, and close its gaps with the owner, as'
-line_is "spec tasks template: the check names its expected result, and who runs it" "$here/templates/spec-tasks.md.tmpl" \
-  '  - Check: <The command or step the implementer and the reviewer run.> - expected: <What it prints or shows.>'
 line_is "contract: spec-checker and its tools" "$here/docs/contract.md" \
   '| `spec-checker` | Read, Glob, Grep | reads the spec files it is given and lists what it could not build from them; writes nothing |'
-line_is "contract: a task check names its expected result" "$here/docs/contract.md" \
-  '  `- Check: <command or step> - expected: <what it prints or shows>`.'
 file_has "README: lists spec-checker" "$here/README.md" \
   '| `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. |'
 file_has "changelog: names spec-checker" "$here/CHANGELOG.md" \
@@ -938,18 +936,8 @@ file_has "story-tracker: the answer is written" "$ST" \
 line_is "story-tracker: an answered spec offers the spec skill" "$ST" \
   '  - `spec`: offer `/odsb:spec <ID>`.'
 line_is "story-tracker: direct goes on" "$ST" '  - `direct`: go on here.'
-file_has "conventions: a task's delivery is set when work starts" \
-  "$here/templates/obsidian-conventions.md.tmpl" \
-  '  - `delivery` - `spec` or `direct`, how the story is built, set when work starts on it.'
 file_lacks "guide: the profile's delivery is no default" "$here/docs/guide.md" \
   "A project's default, and where"
-file_has "contract: an inherited delivery is what spec falls back to" "$here/docs/contract.md" \
-  '- A value a story inherits from its subproject or the profile is what `spec <ID>` and the `spec`'
-file_has "contract: story-tracker weighs a story with no delivery of its own" \
-  "$here/docs/contract.md" \
-  '- When work starts on a story with no `delivery` of its own, `story-tracker` weighs it and'
-file_has "contract: points to the weighing in story-tracker" "$here/docs/contract.md" \
-  'the story'"'"'s own, as `## Spec-driven stories` in `skills/story-tracker/SKILL.md` says.'
 for sk in story-tracker scrum-master; do
   st_desc="$(sed -n 's/^description: //p' "$here/skills/$sk/SKILL.md")"
   st_check="$sk: the description leaves spec requests to the spec skill"
@@ -1236,14 +1224,11 @@ line_is "contract: the skill takes each report from the agent's result" "$CT" \
   '- The skill takes each report from the agent'"'"'s result. Nothing is relayed by hand.'
 file_has "contract: the agents run spec packet themselves" "$CT" \
   '`spec packet <ID> <task>` themselves. The skill never prints a packet into the owner'"'"'s session.'
-file_has "contract: build progress is build.json in the vault" "$CT" \
-  "- A spec story's build progress is \`build.json\` in its task folder in the vault, whatever its"
 file_has "guide: the build runs in your session" "$here/docs/guide.md" \
   '- The build runs in your session. The `spec` skill launches `implementer` and `reviewer` one at a'
 file_has "guide: progress is in build.json, never in the README" "$here/docs/guide.md" 'issues and times are in `build.json`, never in the'
 file_has "changelog: names build.md" "$here/CHANGELOG.md" '`skills/spec/build.md`'
 file_has "changelog: names build.json" "$here/CHANGELOG.md" 'build progress is in `build.json`'
-file_has "spec tasks template: each task is reviewed right after it is built" "$here/templates/spec-tasks.md.tmpl" "Each task is built, then reviewed right after, before the next one"
 file_has "spec phases: written for the build build.md runs" "$here/skills/spec/phases.md" "Write every phase for the build \`build.md\` runs."
 file_has "spec phases: a whole-branch check is the final validation's" "$here/skills/spec/phases.md" "belongs to the final validation, not to one task's review."
 
@@ -1506,8 +1491,6 @@ file_has "reviewer: follows a ruling on one task of a bundle" "$RV" \
   '- An `Owner on <task>:` line is the owner'"'"'s ruling on that task alone: follow it there.'
 file_has "contract: a bundle task with no report is looked for by its commit" "$CT" \
   '- A task the run gives no report on, or no commit line, is looked for by its commit first, in the'
-file_has "contract: a task of a bundle uses none of it" "$CT" '- A task of a bundle uses no other task of its bundle on its `- Uses:` line.'
-file_has "contract: spec tasks refuses such a Uses line" "$CT" 'or when a task'"'"'s `- Uses:` line names a task of its own bundle'
 file_has "spec phases: spec tasks checks the bundle rules" "$PH" 'bundle. `spec tasks` checks both.'
 file_has "changelog: a resumed task never takes the tick commit" "$here/CHANGELOG.md" \
   '- A resumed task cut off while `building` no longer takes the tick commit of a `spec_home: repo`'
@@ -1537,8 +1520,6 @@ file_has "spec phases: the owner approves the bundles with the tasks" "$PH" \
   '- Show the bundles with the task list. The owner approves them with the tasks.'
 file_has "spec phases: spec tasks must succeed and name each bundle" "$PH" \
   '- Run `second-brain spec tasks <ID>`. It must succeed, and its last column names each task'"'"'s'
-file_has "spec tasks template: says how a bundle builds" "$here/templates/spec-tasks.md.tmpl" \
-  'Tasks next to each other with the same `- Bundle: <n>` line are one bundle: built in one'
 file_has "implementer: builds a bundle one task at a time" "$IM" \
   'per task. Build them one at a time, in that order, each as a task alone:'
 file_has "implementer: fetches each packet as it starts the task" "$IM" '1. Fetch its packet only when you start it, and check where you are, as `## 0. Get your packet`'
@@ -1556,9 +1537,6 @@ for a in implementer reviewer; do
   case "$d" in *bundle*) [ "${#d}" -lt 200 ] && ok="ok" ;; esac
   is "$a: the description names a bundle, under 200 characters" "$ok" "ok"
 done
-file_has "contract: a task item may name its bundle" "$CT" '- A task item may add `- Bundle: <n>`, a whole number. The tasks with the same number are one'
-file_has "contract: spec tasks prints the bundle" "$CT" 'title (`-` when none), bundle (`-` when none).'
-file_has "contract: spec tasks --json has the bundle key" "$CT" '`--json` prints the rows with the keys `id`, `state`, `title` and `bundle`'
 file_has "contract: the baseline is skipped on a start on the base branch" "$CT" \
   '- The branch starts on the base branch when `git merge-base --is-ancestor HEAD <base>` exits 0.'
 file_has "contract: names the skip note" "$CT" '`Build: baseline skipped: the branch starts at <short hash> on <base>.`'
@@ -2272,11 +2250,11 @@ file_has "contract: lead_check_minutes is described with the profile keys" "$CT"
 file_has "contract: it takes the values that space the checks through the hour" "$CT" \
   '  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,'
 file_has "contract: the template leaves it out" "$CT" \
-  '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `delivery` check warns on a value'
-file_has "contract: the delivery row names lead_check_minutes:invalid" "$CT" \
-  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn) |'
+  '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `settings` check warns on a value'
+file_has "contract: the settings row names lead_check_minutes:invalid" "$CT" \
+  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn).'
 file_lacks "profile template: leaves lead_check_minutes out" "$here/templates/profile.md.tmpl" 'lead_check_minutes'
-file_has "vault-doctor checks: the delivery check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
+file_has "vault-doctor checks: the settings check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
   'Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).'
 
 file_has "contract: builds of one project only edit the shared note" "$CT" \

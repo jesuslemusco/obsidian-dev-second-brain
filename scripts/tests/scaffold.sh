@@ -127,7 +127,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 10"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 11"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -274,11 +274,10 @@ file_lacks "profile: sprint_folder adds no placeholder" "$PF" '`<end>`'
 file_lacks "profile: no longer says only archive moves a task" "$PF" 'Only `archive` moves'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
-file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \
-  '- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back'
-line_is "profile: delivery points to the contract" "$PF" \
-  "  as \`### Profile frontmatter\` in the plugin's \`docs/contract.md\` says."
-line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
+for k in delivery spec_home; do
+  file_lacks "profile: no $k key, as the spec flow is retired" "$PF" "$k"
+  file_lacks "subproject template: no $k key" "$here/templates/subproject.md.tmpl" "$k"
+done
 line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
 line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
 line_is "profile: what repos_root holds" "$PF" '- `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.'

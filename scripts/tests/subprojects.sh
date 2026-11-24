@@ -78,8 +78,6 @@ base_branch: develop
 production_branch: release
 branch_pattern: feature/<ID>-<slug>
 environments: dev, prod
-delivery: direct
-spec_home: vault
 validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 SF="$vault/$M/claude/subprojects/infra.md"
@@ -95,8 +93,6 @@ base_branch: main
 production_branch: release
 branch_pattern: infra/<ID>
 environments: staging, live
-delivery: direct
-spec_home: vault
 validation_home: vault
 repo_paths: multi-infra=$oT/mcode/multi-infra"
 

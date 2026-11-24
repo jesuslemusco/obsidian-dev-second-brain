@@ -8,6 +8,13 @@
 - `reviewer` grades code quality on a failing task too, so that one fix round answers every
   finding. A re-review still grades the quality of the fix's commits alone.
 - The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
+- Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a
+  file or a branch state can test, such as `git merge-base --is-ancestor <branch> release/<version>`
+  exiting 0. The lead writes it from the owner's words when it takes the order, and asks the owner
+  only when the words give none.
+- The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
+  closes an order whose condition holds, never one whose condition does not, and never changes a
+  condition without the owner. The finish closes only the orders whose condition holds.
 
 ## 0.11.0 - 2026-11-23
 

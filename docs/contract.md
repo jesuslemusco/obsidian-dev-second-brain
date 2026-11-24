@@ -1148,19 +1148,30 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - That message holds no view of the result, so a `reviewer` gets it too.
 - **The owner's open orders.** The skill keeps the owner's open orders of a build in
   `<project>/claude/lead-agent-task-memory.md`, linked from the project's `claude/README.md`.
-- The note holds each open order, with its date, its story, the owner's words and what works on
-  it now. Then the orders done, and one line per story on its last check.
+- The note holds each open order, with its date, its story, the owner's words, its `Done when:`
+  condition and what works on it now. Then the orders done, and one line per story on its last
+  check.
+- `Done when:` is one condition that a command, a file or a branch state shows to hold or not,
+  such as `git merge-base --is-ancestor <branch> release/<version>` exiting 0. A judgement is no
+  condition.
+- The skill writes it from the owner's words when it takes the order. It asks the owner only when
+  their words give none, in its reply, and then the order cannot close until they answer.
+- A condition's command only reads. Only the owner changes or drops a condition.
 - The skill adds its order when a build starts or resumes. Two builds of the project share the
   note, so once it is there the skill changes it only with edits, never a whole rewrite.
 - A note missing while an order of the story is open is written again.
-- An order closes when it is done, or when the owner stops the build or drops the order, at a stop
-  or not. The check's own prompt is no order.
+- An order closes when its `Done when:` condition holds, or when the owner stops the build or
+  drops the order, at a stop or not. The check's own prompt is no order.
 - Once no order of its story is open, the skill stops its check. Once no order of any story is
   open, it removes the hub's line, then the note. Removing its own note is no destructive action.
 - **The lead's check.** While an order of its story is open, the skill checks on the agents, the
   branch and the running checks against the orders, as often as the profile's
-  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward
-  it.
+  `lead_check_minutes` says (section 3). Of each order it tests the `Done when:` condition, and
+  asks whether it or an agent works toward it.
+- The check closes an order whose condition holds, and never one whose condition does not. It
+  never changes a condition.
+- A condition the check cannot test, such as one whose command is not found, does not hold. The
+  check says so once, not at each check.
 - In Claude Code a session-only `CronCreate` job runs the check, off the hour and the half hour,
   and `CronDelete` ends it. The skill keeps a job `CronList` shows with the same prompt. With no
   scheduling tool, the skill checks on each notice that comes to it.

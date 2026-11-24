@@ -2005,8 +2005,8 @@ line_is "spec build: an order is the owner's ask, in their words" "$BM" \
   '- An order is what the owner asked you to do, in their words: the request that ran the skill, and'
 line_is "spec build: the note holds each open order with its date and the owner's words" "$BM" \
   "- Under \`## Open orders\`, the note holds each open order: its date, its story, the owner${q}s words"
-line_is "spec build: and what works on it now" "$BM" \
-  '  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a'
+line_is "spec build: and its done-when and what works on it now" "$BM" \
+  '  as written, a `Done when:` line, and a `Now:` line on what works on it, such as you, an agent by'
 line_is "spec build: then the orders done and a last-check line per story" "$BM" \
   '- Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per'
 line_is "spec build: another build of the project may share the note" "$BM" \
@@ -2028,6 +2028,7 @@ line_is "spec build: removing its own note is no destructive action" "$BM" \
 file_has "spec build: it is the lead's own note" "$BM" '`rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing'
 for l in '## Open orders' '## Done' '> Up: [[<project path>/claude/README|<project> Claude Hub]]' \
   "- <YYYY-MM-DD> <ID>: \"<the owner${q}s words, as written>\"" \
+  "$(printf '\t- Done when: <one condition that a command, a file or a branch state shows>.')" \
   'Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.'; do
   is "spec build: the note's shape has $l" \
     "$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM" | grep -cxF -- "$l")" "1"
@@ -2068,18 +2069,19 @@ line_is "spec build: otherwise it waits for the owner" "$BM" \
 file_lacks "spec build: no longer goes on whatever the owner said" "$BM" '   - No one works toward it: go on with its next step now.'
 line_is "spec build: with no scheduling tool it checks on each notice" "$BM" \
   '   - No scheduling tool: check on each notice that comes to you instead, from an agent or from a'
-line_is "spec build: the check asks of each order who works toward it" "$BM" \
-  '2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent'
+line_is "spec build: the check tests each order's condition and asks who works toward it" "$BM" \
+  '2. Read the orders note. Of each open order of `<ID>`, test its `Done when:` condition, then ask:'
 line_is "spec build: the check edits its story's last-check line" "$BM" \
   '4. Write the `Last check:` line of `<ID>` with the Edit tool: the time, and what the check found.'
 line_is "spec build: the check takes no outside action" "$BM" \
   '5. The check never pushes, merges or takes another outside action.'
 line_is "spec build: CronDelete stops it once no order of the story is open" "$BM" \
   '6. Stop it once no order of `<ID>` is open. In Claude Code, run `CronDelete` with the job id.'
-file_has "spec build: the finish closes the build's orders" "$BM" \
-  "   - Once \`finish.md\` is done, so are the build${q}s orders: take them to \`## Done\`, as"
-is "spec build: after finish.md" \
-  "$(($(lineno "$BM" '7. Read `finish.md`, next to this file') < $(lineno "$BM" '   - Once `finish.md` is done, so are the build')))" "1"
+line_is "spec build: the finish closes the orders whose condition holds" "$BM" \
+  '   - Once `finish.md` is done, test each order of the build: take each whose `Done when:` holds'
+fn_read="$(lineno "$BM" '7. Read `finish.md`, next to this file')"
+fn_done="$(lineno "$BM" '   - Once `finish.md` is done, test each order of the build')"
+is "spec build: after finish.md" "$((${fn_read:-0} < ${fn_done:-0}))" "1"
 line_is "spec build: an answer at a stop that sends the build on is an order" "$BM" \
   '   - An answer that sends the build on is an order: add it to the orders note, as'
 file_has "spec build: the owner stopping closes the build's orders" "$BM" \
@@ -2095,7 +2097,7 @@ file_has "contract: the owner's open orders" "$CT" \
   "- **The owner${q}s open orders.** The skill keeps the owner${q}s open orders of a build in"
 file_has "contract: the lead's check" "$CT" \
   "- **The lead${q}s check.** While an order of its story is open, the skill checks on the agents, the"
-file_has "contract: at the pace of the profile's lead_check_minutes" "$CT" '  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward'
+file_has "contract: at the pace of the profile's lead_check_minutes" "$CT" '  `lead_check_minutes` says (section 3). Of each order it tests the `Done when:` condition, and'
 line_is "contract: the profile example has lead_check_minutes" "$CT" 'lead_check_minutes: 20'
 file_has "contract: lead_check_minutes is described with the profile keys" "$CT" \
   '- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on'
@@ -2128,9 +2130,9 @@ file_lacks "spec build: no longer closes an order only at a stop" "$BM" 'The own
 line_is "spec build: a wait for the owner is said once" "$BM" '   - Waiting for the owner: say it once, not at each check.'
 is "spec build: and that is in the check" \
   "$(awk '/^### The lead'"${q}"'s check$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
-file_has "contract: an order closes when the owner stops the build or drops it" "$CT" \
-  '- An order closes when it is done, or when the owner stops the build or drops the order, at a stop'
-file_has "contract: the check's prompt is no order" "$CT" "  or not. The check${q}s own prompt is no order."
+file_has "contract: an order closes when its condition holds or the owner stops or drops it" "$CT" \
+  '- An order closes when its `Done when:` condition holds, or when the owner stops the build or'
+line_is "contract: the check's prompt is no order" "$CT" "  drops the order, at a stop or not. The check${q}s own prompt is no order."
 file_has "contract: the check says a wait once" "$CT" 'Otherwise it waits for the owner and says so once,'
 GD="$here/docs/guide.md"
 line_is "guide: a build writes the orders note" "$GD" \
@@ -2172,6 +2174,91 @@ for l in '- A spec build agent that goes idle with no report, such as one that s
   n="$(linex "$CG" "$l")"
   is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
 done
+
+# ---------------------------------------------------------------- each order says when it is done, and the lead's check tests it
+BM="$here/skills/spec/build.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+q="'"
+oo="$(awk '/^### The owner'"${q}"'s open orders$/ { on = 1; next } /^### / { on = 0 } on' "$BM")"
+lk="$(awk '/^### The lead'"${q}"'s check$/ { on = 1; next } /^### / { on = 0 } on' "$BM")"
+in_oo() { case "$oo" in *"$2"*) pass "$1" ;; *) fail "$1" "missing in the orders section: $2" ;; esac; }
+in_lk() { case "$lk" in *"$2"*) pass "$1" ;; *) fail "$1" "missing in the lead's check: $2" ;; esac; }
+in_oo "spec build: done-when is one condition a command, a file or a branch state shows" \
+  '- `Done when:` is one condition that a command, a file or a branch state shows to hold or not.'
+in_oo "spec build: a condition names what shows it" \
+  '  Name what shows it: a command and its exit code or what it prints, a file and the line it holds,'
+in_oo "spec build: a judgement is no condition" '- A judgement, such as "the build looks good", is no condition.'
+in_oo "spec build: a condition's command only reads" '- Its command only reads: never one that pushes, merges, fetches or writes.'
+for c in '`git -C "<path>" merge-base --is-ancestor <branch> release/<version>` exits 0.' \
+  '`git -C "<path>" ls-remote --tags origin v<version>` prints a line.' \
+  'in `<path>`, `gh pr checks <number>` exits 0.' \
+  '`grep -qxF "<line>" "<path>/<file>"` exits 0.' \
+  'the story holds a `Finish:` status note newer'; do
+  in_oo "spec build: a condition a check can test: ${c:0:40}" "$c"
+done
+ex="$(printf '%s\n' "$oo" | awk '/^- Conditions that a check can test:$/ { on = 1; next } /^- / { on = 0 } on')"
+is "spec build: the example conditions are five" "$(printf '%s\n' "$ex" | grep -c '^  - ')" "5"
+is "spec build: no example condition writes" "$(printf '%s\n' "$ex" | grep -cE 'git push|git merge |git fetch|gh pr merge|gh pr create')" "0"
+in_oo "spec build: never changes a condition without the owner" \
+  '- Never change or drop a `Done when:` line without the owner, even when it looks out of reach. A'
+in_oo "spec build: the owner's condition replaces it" "  condition the owner gives replaces it, and their words join the order${q}s."
+in_oo "spec build: the condition is written as the order is taken" \
+  '   - Write its `Done when:` line from the owner'"${q}"'s words as you add it, for the order that ran the'
+in_oo "spec build: asks the owner only when the words give none" \
+  '   - Their words give no condition, such as "keep an eye on it": ask the owner for one in your'
+in_oo "spec build: an order waiting on the owner never holds" \
+  '     reply. Until they answer, its line is `Done when: asked the owner.`, which never holds.'
+in_oo "spec build: an order is done when its condition holds" \
+  '   - It is done when its `Done when:` condition holds. Name what showed it, such as the command'
+file_lacks "spec build: no order is done just because finish.md is" "$BM" 'orders are done when `finish.md` is done'
+file_lacks "spec build: the finish closes no order whose condition fails" "$BM" 'so are the build'"${q}"'s orders'
+tpl="$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM")"
+tp_done="$(printf '%s\n' "$tpl" | grep -nP '^\t- Done when: ' | cut -d: -f1)"
+tp_now="$(printf '%s\n' "$tpl" | grep -nP '^\t- Now: ' | cut -d: -f1)"
+is "spec build: the note's done-when line is a tab-indented item before Now" "$((${tp_done:-0} > 0 && ${tp_done:-0} < ${tp_now:-0}))" "1"
+in_lk "spec build: the check runs the command as written" \
+  '   - Run the condition'"${q}"'s command as it is written, or read its file or branch. It holds only when'
+in_lk "spec build: it holds only when what it names shows" '     what it names shows, such as exit 0 or the line.'
+in_lk "spec build: a condition it cannot test does not hold" \
+  '   - A condition you cannot test, such as one whose command is not found: it does not hold. Say'
+in_lk "spec build: an order with no condition gets one" '   - An order with no `Done when:` line: write one from its words, as item 2 of'
+in_lk "spec build: the check closes an order whose condition holds" \
+  '   - Its condition holds: take it to `## Done`, as `### The owner'"${q}"'s open orders` says.'
+in_lk "spec build: never closes one whose condition fails, nor changes it" \
+  '   - Never close an order whose condition does not hold, and never change a condition to close'
+in_lk "spec build: the check stays read-only" '5. The check never pushes, merges or takes another outside action.'
+line_is "spec build: the ask for a condition is no stop" "$BM" \
+  '- An order whose words give no `Done when:` condition: ask the owner in your reply, as item 2 of'
+line_is "spec build: it stops nothing" "$BM" '  `### The owner'"${q}"'s open orders` says. It stops nothing.'
+ask_l="$(lineno "$BM" '- An order whose words give no `Done when:` condition')"
+own_l="$(lineno "$BM" '- Any other question you decide yourself')"
+is "spec build: the ask comes before any other question is decided" "$((${ask_l:-0} < ${own_l:-0} && ${ask_l:-0} > 0))" "1"
+file_has "contract: the note holds each order's condition" "$CT" \
+  '- The note holds each open order, with its date, its story, the owner'"${q}"'s words, its `Done when:`'
+file_has "contract: done-when is one condition a command, a file or a branch state shows" "$CT" \
+  '- `Done when:` is one condition that a command, a file or a branch state shows to hold or not,'
+file_has "contract: with its example" "$CT" '  such as `git merge-base --is-ancestor <branch> release/<version>` exiting 0. A judgement is no'
+file_has "contract: written from the owner's words" "$CT" \
+  '- The skill writes it from the owner'"${q}"'s words when it takes the order. It asks the owner only when'
+line_is "contract: a condition reads, and only the owner changes it" "$CT" \
+  '- A condition'"${q}"'s command only reads. Only the owner changes or drops a condition.'
+file_has "contract: the check closes an order whose condition holds" "$CT" \
+  '- The check closes an order whose condition holds, and never one whose condition does not. It'
+file_has "contract: a condition it cannot test does not hold" "$CT" \
+  '- A condition the check cannot test, such as one whose command is not found, does not hold. The'
+file_has "guide: each order has a done-when line" "$GD" \
+  '- Each order has a `Done when:` line, a condition a command, a file or a branch state can test.'
+file_has "guide: only you change a condition" "$GD" 'order when its condition holds, and only you change a condition.'
+file_has "changelog: each order has a done-when line" "$CG" \
+  '- Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a'
+file_has "changelog: the check tests it at the profile's pace" "$CG" \
+  '- The lead'"${q}"'s check tests each open order'"${q}"'s condition, at the pace `lead_check_minutes` sets. It'
+dw_line="$(lineno "$CG" '- Each order in `lead-agent-task-memory.md` has a `Done when:` line')"
+dw_top="$(lineno "$CG" '## 0.12.0 - ')"
+dw_end="$(lineno "$CG" '## 0.11.0 - ')"
+is "changelog: the done-when lines are under 0.12.0" "$((${dw_line:-0} > ${dw_top:-0} && ${dw_line:-0} < ${dw_end:-0}))" "1"
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"

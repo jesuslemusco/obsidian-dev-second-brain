@@ -35,8 +35,8 @@ The notes of this build are the status notes newer than the newest
   1. Its newest `Build:` note is `Build: stopped: <why>.`: the owner has not answered. Ask first,
      as `## 7. When the story stops` says.
   2. Its newest review note is `Build: review <m> passed`: `## 6. When the story passed`.
-  3. Its newest review note is `Build: review <m> blocked`, or `Build: review <m> gave no
-     verdict`: the owner has answered its stop, as item 1 shows. `### Review it`.
+  3. Its newest review note is `Build: review <m> blocked`, for a stop the owner answered, as
+     item 1 shows, or `Build: review <m> gave no verdict`: `### Review it`.
   4. Commits on the branch since the hash of its newest review note, or since `<base>` with none:
      `git -C "<worktree>" log --oneline <hash>..HEAD`. Some: `### Review it`.
   5. None, with `fails` 1 or more: `### The fix loop`. With `fails` 0: `### Build it`.

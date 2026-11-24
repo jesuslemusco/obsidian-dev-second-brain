@@ -2813,7 +2813,7 @@ RF="$here/skills/scrum-master/refinement.md"
 q="'"
 # A resume after a blocked review, or one with no verdict, reviews again.
 file_has "story build: a resume after a blocked review goes to Review it" "$BY" \
-  '  3. Its newest review note is `Build: review <m> blocked`, or `Build: review <m> gave no'
+  '  3. Its newest review note is `Build: review <m> blocked`, for a stop the owner answered, as'
 r3="$(lineno "$BY" '  3. Its newest review note is `Build: review <m> blocked`')"
 r4="$(lineno "$BY" '  4. Commits on the branch since the hash of its newest review note')"
 r1="$(lineno "$BY" '  1. Its newest `Build:` note is `Build: stopped: <why>.`')"
@@ -2841,9 +2841,25 @@ file_has "guide: the worktree goes after the merge, once its ignored files are s
 # A session cut off before the removal ends it next time.
 file_has "build skill: an in-review story with its worktree left ends the build" "$BS" \
   '- An `in-review` story with a `Build: finished` note whose worktree is still there, on its branch'
-file_has "build skill: and goes on from the merge" "$BS" '  `## 6. When the story passed` in `story.md`: from item 4, the merge, or from item 5 when a'
-file_has "build skill: or from the removal once the merge is settled" "$BS" \
-  '  `Build: merged` or `Build: the owner kept` note is newer than its `Build: finished` note.'
+file_has "build skill: reads story.md, then finishes the leftover" "$BS" \
+  '  `story.md` names them: its session ended before the worktree went. Read `story.md`, and'
+file_has "build skill: merges a leftover first when no merge note settles it" "$BS" \
+  '  - No `Build: merged` or `Build: the owner kept` note is newer than its `Build: finished` note:'
+line_is "build skill: then removes the worktree by item 5, and back to Step 1" "$BS" \
+  '  - Then remove the worktree as item 5 of `## 6. When the story passed` says, and go on with'
+file_lacks "build skill: never jumps out of Step 1 to the next story" "$BS" 'items 5 to 7 of'
+file_has "build skill: a waiting story comes back to Step 1 after its merge" "$BS" \
+  '  - Then remove its worktree, when it is still there, as item 5 of `## 6. When the story passed`'
+file_has "build skill: a merge taken from Step 1 comes back to it" "$BS" \
+  '- A story that Step 1 takes to `### The merge` comes back to Step 1, with `story.md` read first.'
+file_has "build skill: and takes item 5 alone, never 6 and 7" "$BS" \
+  '  Where the merge says to go on at item 5 of `## 6. When the story passed`, take item 5 alone:'
+gb_rule="$(lineno "$BS" '- A story that Step 1 takes to `### The merge` comes back to Step 1')"
+gb_wait="$(lineno "$BS" 'waits to merge. Find its `<target>` again first')"
+gb_left="$(lineno "$BS" 'its session ended before the worktree went. Read `story.md`, and')"
+is "build skill: the come-back rule follows both entries it covers" "$(( ${gb_wait:-0} > 0 && ${gb_left:-0} > ${gb_wait:-0} && ${gb_rule:-0} > ${gb_left:-0} ))" "1"
+file_has "story build: a no-verdict resume follows no stop" "$BY" \
+  '     item 1 shows, or `Build: review <m> gave no verdict`: `### Review it`.'
 file_has "contract: a cut-off session ends the removal" "$CT" \
   '- A session can end after a story passed and before its worktree is removed. An `in-review` story'
 # A fresh implementer on a fix round takes the fix.

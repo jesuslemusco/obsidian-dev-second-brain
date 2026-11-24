@@ -19,12 +19,12 @@ The session id for notes is `${CLAUDE_SESSION_ID}`.
 2. The ticket id is the argument. With none, ask.
 3. `second-brain project --key <ID>` names the project. Then run
    `second-brain spec <ID> --project "<project>"`.
-   - No task found: the story is not tracked. Offer the `story-track` skill to start it, and stop.
+   - No task found: the story is not tracked. Offer story-tracker to start it, and stop.
    - Exit 1 about a repo: say which case it is and stop.
 4. `delivery: direct`: ask whether to build this story from a spec. Yes:
    `second-brain task set <ID> delivery=spec`.
 5. `delivery: spec`: run `second-brain task set <ID> delivery=spec`. A value that came from the
-   subproject or the profile becomes the story's own, so `story-track` never weighs it.
+   subproject or the profile becomes the story's own, so story-tracker never weighs it.
 
 ## Step 1 - Where the spec stands
 

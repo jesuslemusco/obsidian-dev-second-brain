@@ -28,7 +28,7 @@ to you as its result.
 ## 2. Ready to build
 
 1. Check the branch as `## Branch check (start, update, recall)` in
-   `skills/story-track/SKILL.md` says.
+   `skills/story-tracker/SKILL.md` says.
    - The repo is the one `second-brain spec <ID>` names, at the path
      `second-brain repo <project> <repo>` prints.
    - The branch is the story's `branch`, from `second-brain task head <ID>`.
@@ -478,8 +478,8 @@ A resumed build with every task passed comes straight here.
 5. `second-brain task note <ID> "Build: finished; every task passed review, the branch is at <short hash>."`.
 6. Show the owner `second-brain spec status <ID>` and the final validation result.
    - Then list the rulings of the build, as `### The list of rulings` says.
-7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: the
-   `story-track` skill takes it from there.
+7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
+   takes it from there.
    - Once `finish.md` is done, so are the build's orders: take them to `## Done`, as
      `### The owner's open orders` says.
 

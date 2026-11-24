@@ -132,7 +132,7 @@ one project are in the `## Docs` section of its profile.
 
 ## Workflow 5 - Ticket marked done
 
-The caller, usually the `story-track` skill, gives the project, the ticket id and its README path.
+The caller, usually the `story-tracker` skill, gives the project, the ticket id and its README path.
 
 1. Read the ticket: `second-brain task head <ID> --project <project>`, then its
    `## Docs to update` section and its `**Branch:**` line.

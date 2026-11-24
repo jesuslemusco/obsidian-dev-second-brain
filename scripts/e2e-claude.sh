@@ -115,7 +115,7 @@ skills="$(field "$tmp/second.jsonl" "$init_of | .skills[]")"
 agents="$(field "$tmp/second.jsonl" "$init_of | .agents[]")"
 holds "skills: the vault's own skill is found through its link" "$skills" "e2e-vault-skill"
 holds "skills: a project's skill is found through its link" "$skills" "e2e-project-skill"
-holds "skills: the plugin's skills are loaded" "$skills" "story-track"
+holds "skills: the plugin's skills are loaded" "$skills" "story-tracker"
 holds "agents: the vault's own agent is found through its link" "$agents" "e2e-vault-agent"
 holds "agents: a project's agent is found through its link" "$agents" "e2e-project-agent"
 holds "agents: the plugin's agents are loaded" "$agents" "docs-keeper"
@@ -140,11 +140,11 @@ trigger() {
   esac
 }
 ask "$tmp/recall.jsonl" "Where does EX-2 stand?"
-trigger "trigger: where a ticket stands loads story-track" "$tmp/recall.jsonl" story-track
+trigger "trigger: where a ticket stands loads story-tracker" "$tmp/recall.jsonl" story-tracker
 ask "$tmp/standup.jsonl" "Standup for the Example project: what is in progress, and what comes next?"
-trigger "trigger: a standup loads story-track" "$tmp/standup.jsonl" story-track
+trigger "trigger: a standup loads story-tracker" "$tmp/standup.jsonl" story-tracker
 ask "$tmp/update.jsonl" "Update EX-2: the sort is merged, move it to in review."
-trigger "trigger: an update to a ticket loads story-track" "$tmp/update.jsonl" story-track
+trigger "trigger: an update to a ticket loads story-tracker" "$tmp/update.jsonl" story-tracker
 ask "$tmp/sprint.jsonl" "Open a new sprint for the Mobile project."
 trigger "trigger: a sprint request loads scrum-master" "$tmp/sprint.jsonl" scrum-master
 ask "$tmp/plan.jsonl" "Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories."
@@ -156,15 +156,15 @@ trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl"
 ask "$tmp/spec.jsonl" "Implement EX-2 spec-driven, starting with its requirements."
 trigger "trigger: a spec-driven request loads spec" "$tmp/spec.jsonl" spec
 
-printf '== ticket text: a request to write a ticket loads story-track ==\n'
-# With no persona, section 1 of story-track's create.md asks for one, and a headless run cannot answer.
+printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
+# With no persona, section 1 of create.md asks for one, and a headless run cannot answer.
 sed 's/^persona: ""$/persona: "developer"/' "$vault/$P/claude/profile.md" >"$tmp/profile.md" &&
   mv "$tmp/profile.md" "$vault/$P/claude/profile.md"
 holds "trigger: the profile has a persona" "$(bash "$SB" profile Example --keys)" "developer"
 ask "$tmp/third.jsonl" "For the Example project: give me summary, description and AC for a new ticket, no id.
 The ticket: the task board should show each task's branch."
-holds "trigger: the request loads story-track" \
-  "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-track"
+holds "trigger: the request loads story-tracker" \
+  "$(field "$tmp/third.jsonl" 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | .input.skill')" "story-tracker"
 got="$(field "$tmp/third.jsonl" 'select(.type == "result") | .result')"
 # The text may follow a line that says what it is; the template's first line opens a line of its own.
 if printf '%s\n' "$got" | tr -d '\r' | grep -q '^[[:space:]]*\*As a\*'; then

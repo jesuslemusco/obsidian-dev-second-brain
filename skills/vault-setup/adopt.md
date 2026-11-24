@@ -63,8 +63,8 @@ moves nothing, renames nothing and rewrites no note body.
 - Offer that run the same way. It also removes each empty group folder, a status folder too,
   whether or not a move emptied it.
 - With `status` or `sprint`, that run also moves each child task, one whose `epic` names another
-  task, into a folder named for its parent. A task whose `epic` names no task stays where it is,
-  and the row names it `<ID>:unknown-<word>`, the word being the project's `parent_label`.
+  task, into a folder named for its parent. A task whose `epic` names no single task stays where
+  it is, and the row names it `<ID>:unknown-<word>`, the word being the project's `parent_label`.
 - Ask how a deployment is confirmed. Write the answer in the opening paragraph of `## Docs`.
 - For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
   `repo.md` says.

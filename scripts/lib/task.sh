@@ -285,7 +285,7 @@ sb_task_set() {
   # pattern that names no sprint folder exits 5 before anything is written.
   # In both, an epic other than the task's own moves it into its parent's folder in the folder of
   # its status or sprint, or out to that folder with none, and every move keeps a child under its
-  # parent. An epic that names no task of the project names no parent.
+  # parent. An epic that names no single task of the project names no parent.
   status=""
   sprint=""
   has_sprint=0
@@ -325,7 +325,7 @@ sb_task_set() {
     fi
     [ "$prc" -eq 0 ] || parent=""
     if [ "$prc" -eq 2 ] && [ "$echanged" -eq 1 ]; then
-      sb_note "$(sb_parent_label) $epic names no task of $SB_P_NAME"
+      sb_note "$(sb_parent_label) $epic names no single task of $SB_P_NAME"
     fi
     if [ "$move" -eq 1 ] && [ "$layout" = "status" ]; then
       # A task with no status of the five has no folder to move to.
@@ -797,12 +797,12 @@ sb_task_children() {
 }
 
 # sb_task_own <README>: print the name of each entry of the folder of a task that is its own, one
-# per line, README.md first: every entry but its children's folders and the names with a dot first.
+# per line, README.md first: every entry but its children's folders, a name with a dot first too.
 sb_task_own() {
   local d="${1%/README.md}" e kids
   kids="$(sb_task_children "$1")"
   [ ! -e "$d/README.md" ] || printf 'README.md\n'
-  for e in "$d"/*; do
+  for e in "$d"/* "$d"/.[!.]* "$d"/..?*; do
     [ -e "$e" ] || [ -L "$e" ] || continue
     e="${e##*/}"
     [ "$e" != "README.md" ] || continue
@@ -900,9 +900,23 @@ sb_task_relocate() {
     own="$(sb_task_own "$SB_T_FILE")"
     while IFS= read -r e; do
       [ -n "$e" ] || continue
-      o="$(cmd_move -- "$from/$e" "$dest/$e")" || rc=$?
-      out="$out$o$nl"
-      [ "$rc" -eq 0 ] || break
+      case "$e" in
+        .*)
+          # move takes no name with a dot first, and no link leads into one: it moves as it is.
+          if [ -e "$SB_ROOT/$dest/$e" ] || [ -L "$SB_ROOT/$dest/$e" ] ||
+            ! mv -n "$SB_ROOT/$from/$e" "$SB_ROOT/$dest/$e" 2>/dev/null ||
+            [ -e "$SB_ROOT/$from/$e" ] || [ -L "$SB_ROOT/$from/$e" ]; then
+            printf 'second-brain: cannot move %s to %s\n' "$from/$e" "$dest/$e" >&2
+            rc=1
+            break
+          fi
+          ;;
+        *)
+          o="$(cmd_move -- "$from/$e" "$dest/$e")" || rc=$?
+          out="$out$o$nl"
+          [ "$rc" -eq 0 ] || break
+          ;;
+      esac
       moved="$moved$e$nl"
     done <<EOF
 $own

@@ -73,9 +73,12 @@
   branch, `tasks.base:no-child-filter`.
 - The doctor's `task-layout` check names a child outside its parent's folder
   (`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`), which `doctor --fix` moves, a task whose
-  `epic` names no task (`<ID>:unknown-<label>`), which it leaves where it is, and a `parent_label`
-  that is neither word (`parent_label:invalid`). `no-readme` and `task-location` take a child in its
-  place.
+  `epic` names no single task, none or several (`<ID>:unknown-<label>`), which it leaves where it
+  is, and a `parent_label` that is neither word (`parent_label:invalid`). `no-readme` and
+  `task-location` take a child in its place.
+- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it
+  is named for a task found elsewhere. A task folder that lost its README is still named by
+  `no-readme`, and nothing in it is taken for a task.
 - The search rule warns on a whole Read of a child task note too. story-tracker, the sprint skill,
   scrum-master and docs-keeper name a child's folder and call parent stories by the project's word.
 - The conventions note is at version 10: it names a child task's folder. The doctor's

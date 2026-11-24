@@ -76,12 +76,79 @@ function bare(v) {
   if (v ~ /^".*"$/ || v ~ /^\047.*\047$/) v = substr(v, 2, length(v) - 2)
   return tolower(v)
 }
+# A path in single quotes, for the shell.
+function shq(t) { gsub(/\047/, "\047\\\\\047\047", t); return "\047" t "\047" }
+# A task found elsewhere in the tasks folder: its folder name counts at once, and its aliases once
+# a folder with no README of its own needs them.
+function found(f,   d) {
+  d = f; sub(/\/[^\/]*$/, "", d); sub(/^.*\//, "", d)
+  fname[tolower(d)] = 1; fsrc[++fns] = f
+}
+function fnamed(h,   i, k, m, it) {
+  if (h in fname) return 1
+  for (i = 1; i <= fns; i++) {
+    if (fsrc[i] in floaded) continue
+    floaded[fsrc[i]] = 1
+    m = split(front(fsrc[i], "aliases"), it, "\n")
+    for (k = 1; k <= m; k++) if (it[k] != "") falias[it[k]] = 1
+  }
+  return (h in falias)
+}
+# 1 when a folder g of the tasks folder is a group folder, as group() says, from the READMEs found.
+function isgroup(g) {
+  if (tolower(g) == "archive") return 0
+  if (tolower(g) ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  return !((g "/README.md") in fhas)
+}
+# 1 when raw, a README one level deeper in a folder with no README of its own, is a task, as the
+# helper finds it: when that folder is named for a task found elsewhere in the tasks folder, by its
+# folder name or an alias, without letter case. A task found elsewhere is one directly under the
+# tasks folder, in a group folder or in the archive, a child inside its parent folder, or one such a
+# folder holds. One find lists the READMEs of the tasks folder.
+function held(raw, p,   td, cmd, line, rel, n, a, i, nl, lst, row, okr, nr, e, more, want) {
+  td = raw; sub(/\/[^\/]*\/[^\/]*\/[^\/]*\/[^\/]*$/, "", td)
+  want = p; sub(/^.*\/tasks\//, "", want)
+  cmd = "find " shq(td) " -mindepth 2 -maxdepth 4 -name README.md 2>/dev/null"
+  nl = 0
+  while ((cmd | getline line) > 0) {
+    if (substr(line, 1, length(td) + 1) != td "/") continue
+    rel = substr(line, length(td) + 2); lst[++nl] = rel; fhas[rel] = 1
+  }
+  close(cmd)
+  nr = 0
+  for (i = 1; i <= nl; i++) {
+    rel = lst[i]; n = split(rel, a, "/")
+    if (n == 2) {
+      if (tolower(a[1]) !~ /^(archive|planned|in-progress|in-review|done|abandoned|backlog)$/) found(td "/" rel)
+    } else if (n == 3) {
+      if (isgroup(a[1])) found(td "/" rel)
+    } else if (n == 4 && tolower(a[1]) == "archive") {
+      if (a[2] ~ /^[0-9][0-9][0-9][0-9]$/) found(td "/" rel)
+    } else if (n == 4 && isgroup(a[1])) {
+      if ((a[1] "/" a[2] "/README.md") in fhas) {
+        e = front(td "/" rel, "epic")
+        if (e != "" && e != "-" && (e == tolower(a[2]) || index(front(td "/" a[1] "/" a[2] "/README.md", "aliases") "\n", "\n" e "\n"))) found(td "/" rel)
+      } else row[++nr] = rel
+    }
+  }
+  # A folder may lean on a task another such folder holds: go round until none is added.
+  do {
+    more = 0
+    for (i = 1; i <= nr; i++) {
+      if (i in okr) continue
+      split(row[i], a, "/")
+      if (fnamed(tolower(a[2]))) { okr[i] = 1; found(td "/" row[i]); more = 1 }
+    }
+  } while (more)
+  for (i = 1; i <= nr; i++) if ((i in okr) && tolower(row[i]) == want) return 1
+  return 0
+}
 # 1 when a README read as a task note, p in lower case and raw as written, is one: directly in a
 # folder under tasks/ or under a year of the archive, or in a folder under a group folder. A folder
 # with a README.md is a task, so a README in a folder inside it is no task note, but for a child
 # task: one level deeper, in tasks/<group>/<parent>/<ID>/, a README whose epic names <parent>, by
-# its folder name or an alias of <parent>/README.md.
-function tasknote(p, raw,   a, n, f, e, al) {
+# its folder name or an alias of <parent>/README.md. With no <parent>/README.md, held() decides.
+function tasknote(p, raw,   a, n, f, e, al, line) {
   n = split(p, a, "/")
   if (a[n - 2] == "tasks") return 1
   if (a[n - 4] == "tasks" && a[n - 3] == "archive" && a[n - 2] ~ /^[0-9][0-9][0-9][0-9]$/) return 1
@@ -94,11 +161,13 @@ function tasknote(p, raw,   a, n, f, e, al) {
   f = raw
   sub(/\/[^\/]*\/[^\/]*\/[^\/]*$/, "/README.md", f)
   if (!group(a[n - 3], f)) return 0
+  f = raw
+  sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
+  if ((getline line < f) < 0) return held(raw, p)
+  close(f)
   e = front(raw, "epic")
   if (e == "" || e == "-") return 0
   if (e == a[n - 2]) return 1
-  f = raw
-  sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
   al = front(f, "aliases") "\n"
   return (index(al, "\n" e "\n") > 0)
 }

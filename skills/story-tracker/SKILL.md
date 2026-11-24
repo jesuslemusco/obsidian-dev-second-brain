@@ -157,8 +157,8 @@ move to `in-progress`.
 - Set scalar keys (`status`, `title`, `next`, `branch`, `epic`) through the helper, never by hand:
   `second-brain task set <ID> status=in-review next="<one phrase, the next action>"`.
   - An unknown status exits 5.
-  - `note: <word> <value> names no task of <project>` on stderr: the parent the user named is no
-    story of the project. Say so, and ask for its id.
+  - `note: <word> <value> names no single task of <project>` on stderr: the parent the user
+    named is no story of the project, or names several. Say so, and ask for its id.
 - Keep `title` and `next` current.
 - Log what happened: `second-brain task note <ID> "<text>" --session <session id>`.
 - Tick the acceptance criteria that are now met.

@@ -1961,6 +1961,22 @@ under_011 "changelog: the board's child branch is under 0.11.0" \
   '- A new board'"'"'s filters take a task one level deeper. An existing board is not rewritten: in a'
 under_011 "changelog: the conventions note at version 10 is under 0.11.0" \
   '- The conventions note is at version 10: it names a child task'"'"'s folder. The doctor'"'"'s'
+file_has "contract: a folder with no README holds tasks when it is named for a task found elsewhere" "$CC" \
+  '  deeper, when it is named for a task found elsewhere, by its folder name or an alias, without'
+file_has "contract: what a task found elsewhere is" "$CC" \
+  '- A task found elsewhere is one directly under the tasks root, in a group folder or in the'
+file_has "contract: a folder named for no task holds none" "$CC" \
+  '- A folder with no `README.md` that is named for no task holds none: a README in it is no task,'
+file_has "contract: a parent's entries with a dot first move too" "$CC" \
+  '- An entry whose name starts with a dot moves too. `move` takes no such name, so it moves as it'
+file_has "contract: an epic of none or several tasks names no parent" "$CC" \
+  '- An `epic` that names no single task of the project, none or several, names no parent: a move'
+file_has "contract: the hook takes a folder named for a task found elsewhere" "$CC" \
+  '- With no `<parent>/README.md`, it is one when `<parent>` is named for a task found elsewhere in'
+file_has "contract: the hook runs one find for it" "$CC" \
+  '  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder'
+under_011 "changelog: the folder named for a task is under 0.11.0" \
+  '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
 
 # ---------------------------------------------------------------- result
 result

@@ -171,11 +171,11 @@ $S/tasks/planned/ST-3/README.md"
 sb task set ST-3 epic=ST-1
 sb task set ST-3 epic=-
 out_has "status clear: epic=- moves it out too" "$S/tasks/planned/ST-3/README.md"
-# An epic that names no task names no parent: the task moves out to its folder, with a note.
+# An epic that names no single task names no parent: the task moves out to its folder, with a note.
 sb task set ST-5 epic=ST-900
-rc_is "status unknown: an epic that names no task, exit 0" 0
+rc_is "status unknown: an epic that names no single task, exit 0" 0
 out_is "status unknown: it prints the key and moves nothing from its folder" "epic: ST-900"
-err_has "status unknown: the note names the parent word and the project" "note: epic ST-900 names no task of Stat"
+err_has "status unknown: the note names the parent word and the project" "note: epic ST-900 names no single task of Stat"
 exists "status unknown: the task stays in planned/" "$ST/planned/ST-5/README.md"
 sb task set ST-5 epic=ST-5
 out_is "status unknown: an epic that names the task itself names no parent" "epic: ST-5"
@@ -198,6 +198,7 @@ rmdir "$ST/planned/ST-1/ST-4"
 sb task set ST-4 epic=ST-1 status=in-progress
 out_has "status parent: a child set in progress sits in in-progress/ST-1/" "$S/tasks/in-progress/ST-1/ST-4/README.md"
 printf '# Notes of ST-1\n' >"$ST/planned/ST-1/notes.md"
+printf 'hidden\n' >"$ST/planned/ST-1/.hidden"
 sb task set ST-1 status=in-progress
 rc_is "status parent: the parent set in progress, exit 0" 0
 out_is "status parent: its new README path and one links: line per note, the counts added up" "status: in-progress
@@ -209,7 +210,8 @@ exists "status parent: its spec went with it" "$ST/in-progress/ST-1/spec/design.
 exists "status parent: and its other files" "$ST/in-progress/ST-1/notes.md"
 exists "status parent: the child already there stays" "$ST/in-progress/ST-1/ST-4/README.md"
 exists "status parent: its planned child stays in planned/ST-1/" "$ST/planned/ST-1/ST-2/README.md"
-is "status parent: planned/ST-1 holds the child alone, and no README" "$(ls "$ST/planned/ST-1" | tr '\n' ' ')" "ST-2 "
+is "status parent: planned/ST-1 holds the child alone, and no README" "$(ls -A "$ST/planned/ST-1" | tr '\n' ' ')" "ST-2 "
+exists "status parent: an entry with a dot first moves with the parent" "$ST/in-progress/ST-1/.hidden"
 line_is "status parent: the spec's up link follows the README" "$ST/in-progress/ST-1/spec/design.md" \
   "> Up: [[$S/tasks/in-progress/ST-1/README|ST-1]]"
 line_is "status parent: the links to it and its spec follow" "$vault/$S/links.md" \
@@ -252,6 +254,14 @@ err_has "status merge: the message names the entry" "the destination exists: $S/
 project_tree "$vault/$S" >"$tmp/stat.after"
 same "status merge: nothing written" "$tmp/stat.before" "$tmp/stat.after"
 rmdir "$ST/in-review/ST-1/spec"
+printf 'other\n' >"$ST/in-review/ST-1/.hidden"
+project_tree "$vault/$S" >"$tmp/stat.before"
+sb task set ST-1 status=in-review
+rc_is "status merge: an entry with a dot first already in the folder it goes into gives exit 6" 6
+err_has "status merge: the message names that entry" "the destination exists: $S/tasks/in-review/ST-1/.hidden"
+project_tree "$vault/$S" >"$tmp/stat.after"
+same "status merge: nothing written for it" "$tmp/stat.before" "$tmp/stat.after"
+rm "$ST/in-review/ST-1/.hidden"
 mkdir -p "$ST/done/ST-1"
 sb task set ST-1 status=done
 rc_is "status merge: an empty folder named for the parent, with no child in it, gives exit 6" 6
@@ -369,6 +379,44 @@ sb board Spr All
 is "sprint close: the board still has a row for each task" "$(lines "$OUT")" "5"
 sb unresolved Spr
 out_is "sprint close: unresolved lists nothing after the moves" ""
+# A child whose epic is an alias of its parent, in a folder named for the parent in backlog/ while
+# the parent's note is in a sprint's folder, is a task.
+sb task alias SP-1 add "Stack parent"
+sb task set SP-1 sprint=2026-10-22
+out_has "sprint holder: the parent joins a sprint, its children stay in backlog/SP-1/" "$R/tasks/2026-10-22/SP-1/README.md"
+sb task set SP-4 epic="stack PARENT"
+rc_is "sprint holder: an epic that names the parent by an alias, exit 0" 0
+exists "sprint holder: the child stays in backlog/SP-1/" "$RT/backlog/SP-1/SP-4/README.md"
+sb find SP-4
+out_is "sprint holder: find takes it as a task" "$R/tasks/backlog/SP-1/SP-4/README.md"
+
+# ---------------------------------------------------------------- a folder with no README
+# A folder with no README of its own holds tasks one level deeper only when it is named for a task
+# found elsewhere, by its folder name or an alias. A task folder that lost its README is named for
+# no task: a README in it is no task, in every layout.
+for l in flat sprint; do
+  N="work/lost-$l"
+  NT="$vault/$N/tasks"
+  sb scaffold project "Lost $l" --path "$N" --keys "Q$(printf '%s' "$l" | cut -c1 | tr '[:lower:]' '[:upper:]')"
+  edit "$vault/$N/claude/profile.md" "s/^task_layout: flat\$/task_layout: $l/"
+  mkdir -p "$NT/planned/ST-9/notes"
+  printf -- '---\ntype: note\n---\n\n# Notes\n' >"$NT/planned/ST-9/notes/README.md"
+  sb find notes --project "Lost $l"
+  rc_is "lost README: find sees no task in a folder named for no task, exit 1 ($l)" 1
+  sb task head notes --project "Lost $l"
+  rc_is "lost README: task head reads no task there, exit 1 ($l)" 1
+  sb board "Lost $l" All
+  out_is "lost README: the board lists nothing there ($l)" ""
+done
+# A folder named for an alias of a task found elsewhere holds tasks.
+N="work/lost-flat"
+NT="$vault/$N/tasks"
+sb task new QF-1 --project "Lost flat" --title "Lost QF-1"
+sb task alias QF-1 add notes-home
+mkdir -p "$NT/planned/notes-home/QF-2"
+sed 's/^  - QF-1$/  - QF-2/' "$NT/QF-1/README.md" >"$NT/planned/notes-home/QF-2/README.md"
+sb find QF-2
+out_is "lost README: a folder named for an alias of a task holds tasks" "$N/tasks/planned/notes-home/QF-2/README.md"
 
 # ---------------------------------------------------------------- flat and archive change nothing
 for l in flat archive; do

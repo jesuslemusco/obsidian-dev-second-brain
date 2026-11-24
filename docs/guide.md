@@ -167,7 +167,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   where they are, and every command still finds them.
 - A child's own move removes the folder named for its parent that it leaves empty.
 - `second-brain doctor --fix` moves a child that is outside its parent's folder. It leaves one
-  whose `epic` names no task where it is, and the doctor names it.
+  whose `epic` names no single task where it is, and the doctor names it.
 - `vault-setup` asks whether a project calls its parent stories features or epics, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
   in a task's frontmatter stays `epic`.

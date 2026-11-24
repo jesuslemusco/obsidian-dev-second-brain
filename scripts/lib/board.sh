@@ -49,11 +49,13 @@ sb_parent_label() {
 }
 
 # Read rows on stdin and print the README of each that is a task one level deeper in a group
-# folder, in the order they come. A row "T<TAB><README>" is one in a folder that holds tasks, with
-# no README.md of its own: it is a task. A row "C<TAB><README>[<TAB><parent README><TAB><parent
-# name>]" is one inside a task's folder: it is a child task when its epic names that task, by its
-# folder name or an alias of its README, without letter case. With no parent fields, the parent is
-# the task whose folder holds the folder of the README.
+# folder, in the order they come. A row "C<TAB><README>[<TAB><parent README><TAB><parent name>]" is
+# one inside a task's folder: it is a child task when its epic names that task, by its folder name
+# or an alias of its README, without letter case. With no parent fields, the parent is the task
+# whose folder holds the folder of the README. A row "T<TAB><README>" is one in a folder with no
+# README.md of its own: it is a task when that folder is named for a task found elsewhere, by its
+# folder name or an alias, without letter case. A task found elsewhere is a row "S<TAB><README>",
+# which is never printed, a child task the C rows find, or a task another T row finds.
 sb_task_kids() {
   LC_ALL=C awk -F'\t' "$(sb_awk_lib)"'
     # The epic of a note, unquoted and in lower case; empty when it has none.
@@ -89,25 +91,68 @@ sb_task_kids() {
       }
       return ((path "\034" want) in al)
     }
-    $1 == "T" { print $2; next }
+    # The folder name of a README, and the name of the folder above that.
+    function folder(path) { sub(/\/[^\/]*$/, "", path); sub(/^.*\//, "", path); return path }
+    function above(path) { sub(/\/[^\/]*\/[^\/]*$/, "", path); sub(/^.*\//, "", path); return path }
+    # A task found elsewhere: its folder name counts at once, its aliases once a holder needs them.
+    function found(path) { name[tolower(folder(path))] = 1; src[++ns] = path }
+    function named(h,   i, line, n, key, v, k, m, it, f) {
+      if (h in name) return 1
+      for (i = 1; i <= ns; i++) {
+        f = src[i]
+        if (f in loaded) continue
+        loaded[f] = 1; n = 0; key = ""
+        while ((getline line < f) > 0) {
+          n++; sub(/\r$/, "", line)
+          if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+          if (line == "---") break
+          if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
+            k = index(line, ":"); key = substr(line, 1, k - 1); v = trim(substr(line, k + 1))
+            if (key != "aliases") continue
+            if (substr(v, 1, 1) == "[") { m = split_inline(v, it); for (k = 1; k <= m; k++) aset[tolower(it[k])] = 1 }
+            else if (v != "") aset[tolower(unq(v))] = 1
+          } else if (key == "aliases" && line ~ /^[ \t]*-([ \t]|$)/) {
+            v = line; sub(/^[ \t]*-[ \t]*/, "", v); aset[tolower(unq(v))] = 1
+          }
+        }
+        close(f)
+      }
+      return (h in aset)
+    }
+    $1 == "S" { found($2); next }
+    $1 == "T" { row[++nr] = $2; kind[nr] = "T"; next }
     $1 == "C" {
       pr = $3; pn = $4
       if (pr == "") {
         pr = $2; sub(/\/[^\/]*\/[^\/]*$/, "", pr)
         pn = pr; sub(/^.*\//, "", pn); pr = pr "/README.md"
       }
+      row[++nr] = $2; kind[nr] = "C"
       e = epic_of($2)
       if (e == "" || e == "-") next
-      if (e == tolower(pn) || aliased(pr, e)) print $2
+      if (e == tolower(pn) || aliased(pr, e)) { ok[nr] = 1; found($2) }
+    }
+    END {
+      # A T row may lean on a task another T row finds: go round until none is added.
+      do {
+        more = 0
+        for (i = 1; i <= nr; i++) {
+          if (kind[i] != "T" || (i in ok)) continue
+          if (named(tolower(above(row[i])))) { ok[i] = 1; found(row[i]); more = 1 }
+        }
+      } while (more)
+      for (i = 1; i <= nr; i++) if (i in ok) print row[i]
     }'
 }
 
-# sb_task_nested <group folder>...: print the task READMEs one level deeper in each group folder,
-# one absolute path per line, in the order of the folders: in a folder that holds tasks, one with no
-# README.md of its own, each <folder>/<ID>/README.md; in a task's folder, each <ID>/README.md whose
-# epic names that task, a child task. In every layout.
+# sb_task_nested <found> <group folder>...: print the task READMEs one level deeper in each group
+# folder, one absolute path per line, in the order of the folders: in a task's folder, each
+# <ID>/README.md whose epic names that task, a child task; in a folder with no README.md of its own
+# that is named for a task found elsewhere, each <folder>/<ID>/README.md, as sb_task_kids says.
+# <found> holds the task READMEs found at the shallower levels, one per line. In every layout.
 sb_task_nested() {
-  local g d c rows="" tab=$'\t' nl=$'\n'
+  local g d c rows="" tab=$'\t' nl=$'\n' found="$1"
+  shift
   for g in "$@"; do
     for d in "$g"/*/; do
       d="${d%/}"
@@ -118,7 +163,7 @@ sb_task_nested() {
       done
     done
   done
-  [ -z "$rows" ] || printf '%s' "$rows" | sb_task_kids
+  [ -z "$rows" ] || { printf '%s\n' "$found" | awk 'length($0) { print "S\t" $0 }'; printf '%s' "$rows"; } | sb_task_kids
 }
 
 # Print the task READMEs of a tasks folder, one absolute path per line: those directly inside it,
@@ -127,31 +172,33 @@ sb_task_nested() {
 # ones, archive/<YYYY>/<ID>/README.md. In every layout. A folder named in SB_TASK_RESERVED is never
 # a task.
 sb_task_files() {
-  local f g s groups list
+  local f g s groups list shallow="" archived="" nl=$'\n'
   list=()
   for f in "$1"/*/README.md; do
     for s in $SB_TASK_RESERVED; do [ "$f" != "$1/$s/README.md" ] || continue 2; done
-    [ -f "$f" ] && printf '%s\n' "$f"
+    [ -f "$f" ] && shallow="$shallow$f$nl"
   done
   groups="$(sb_task_groups "$1")"
   while IFS= read -r g; do
     [ -n "$g" ] || continue
     list[${#list[@]}]="$g"
-    for f in "$g"/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
+    for f in "$g"/*/README.md; do [ -f "$f" ] && shallow="$shallow$f$nl"; done
   done <<EOF
 $groups
 EOF
-  [ "${#list[@]}" -eq 0 ] || sb_task_nested "${list[@]}"
-  for f in "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
+  for f in "$1"/archive/[0-9][0-9][0-9][0-9]/*/README.md; do [ -f "$f" ] && archived="$archived$f$nl"; done
+  printf '%s' "$shallow"
+  [ "${#list[@]}" -eq 0 ] || sb_task_nested "$shallow$archived" "${list[@]}"
+  printf '%s' "$archived"
   return 0
 }
 
 # Print the README of one task folder of a tasks folder: directly inside it, in a group folder, in
 # the order of sb_task_groups, one level deeper in a group folder, as sb_task_nested takes it, or
 # archived, in that order; nothing when it has none. A folder named in SB_TASK_RESERVED is never a
-# task.
+# task. One in a folder with no README.md of its own is a task when sb_task_files lists it.
 sb_task_readme() {
-  local f g s d rows="" tab=$'\t' nl=$'\n' groups
+  local f g s d rows="" held="" tab=$'\t' nl=$'\n' groups all
   f="$1/$2/README.md"
   for s in $SB_TASK_RESERVED; do [ "$f" != "$1/$s/README.md" ] || f=""; done
   [ -z "$f" ] || [ ! -f "$f" ] || printf '%s\n' "$f"
@@ -162,12 +209,21 @@ sb_task_readme() {
     for f in "$g"/*/"$2"/README.md; do
       [ -f "$f" ] || continue
       d="${f%/*/README.md}"
-      if [ -f "$d/README.md" ]; then rows="${rows}C$tab$f$nl"; else rows="${rows}T$tab$f$nl"; fi
+      if [ -f "$d/README.md" ]; then rows="${rows}C$tab$f$nl"; else held="$held$f$nl"; fi
     done
   done <<EOF
 $groups
 EOF
   [ -z "$rows" ] || printf '%s' "$rows" | sb_task_kids
+  # Whether a folder with no README holds tasks rests on every task found elsewhere.
+  if [ -n "$held" ]; then
+    all="$(sb_task_files "$1")"
+    while IFS= read -r f; do
+      [ -z "$f" ] || ! printf '%s\n' "$all" | grep -qxF -- "$f" || printf '%s\n' "$f"
+    done <<EOF
+$held
+EOF
+  fi
   for f in "$1"/archive/[0-9][0-9][0-9][0-9]/"$2"/README.md; do [ -f "$f" ] && printf '%s\n' "$f"; done
   return 0
 }

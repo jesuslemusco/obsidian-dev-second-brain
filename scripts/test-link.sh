@@ -1231,7 +1231,21 @@ guard Read '{"file_path":"'"$TD"'/archive/2026/EX-1/EX-5/README.md"}'
 silent "search rule: a README one level deeper in the archive is no task note"
 guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-9/README.md"}'
 silent "search rule: a child note that is not there is read for no epic"
-rm -r "$TD/done" "$TD/backlog" "$TD/2026-12-04" "$TD/archive"
+# A folder with no README of its own holds tasks only when it is named for a task found elsewhere,
+# by its folder name or an alias, as the helper finds it.
+mkdir -p "$TD/2026-12-11/SP-1" "$TD/backlog/SP-1/SP-3" "$TD/planned/ST-9/notes" "$TD/in-review/billing/EX-4"
+printf -- '---\naliases:\n  - SP-1\n  - "Stack parent"\ntype: task\n---\n' >"$TD/2026-12-11/SP-1/README.md"
+printf -- '---\naliases:\n  - SP-3\nepic: "stack parent"\ntype: task\n---\n' >"$TD/backlog/SP-1/SP-3/README.md"
+printf -- '---\ntype: note\n---\n' >"$TD/planned/ST-9/notes/README.md"
+printf -- '---\naliases: [EX-1, billing]\ntype: task\n---\n' >"$TD/done/EX-1/README.md"
+printf -- '---\naliases:\n  - EX-4\ntype: task\n---\n' >"$TD/in-review/billing/EX-4/README.md"
+guard Read '{"file_path":"'"$TD"'/backlog/SP-1/SP-3/README.md"}'
+warns "search rule: a child whose epic is an alias of a parent in a sprint folder, in a folder named for it"
+guard Read '{"file_path":"'"$TD"'/planned/ST-9/notes/README.md"}'
+silent "search rule: a README in a folder with no README, named for no task, is no task note"
+guard Read '{"file_path":"'"$TD"'/in-review/billing/EX-4/README.md"}'
+warns "search rule: a folder with no README named for an alias of a task holds tasks"
+rm -r "$TD/done" "$TD/backlog" "$TD/2026-12-04" "$TD/archive" "$TD/2026-12-11" "$TD/planned" "$TD/in-review"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
 silent "search rule: a Read of a README directly in the archive, which is no group folder"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'

@@ -1884,19 +1884,20 @@ chk "task-location: a task note inside a task whose epic names another task warn
   "warn | 1 | tasks/abandoned/EX-1/notes/README.md"
 rm -r "$T/abandoned/EX-1/notes"
 reset
-# A child whose epic names no task stays where it is, and the doctor names it in the profile's word.
+# A child whose epic names no single task stays where it is, and the doctor names it in the
+# profile's word.
 sb task set EX-3 epic=EX-900
 layout status
 doc Example
-chk "children: an epic that names no task warns as unknown-epic" task-layout Example \
+chk "children: an epic that names no single task warns as unknown-epic" task-layout Example \
   "warn | 3 | EX-1:in-progress, EX-2:done, EX-3:unknown-epic"
 is "children: the fix says how to mend it" "$(fix_of task-layout)" \
   "run second-brain doctor --fix to move each task to the folder of its status; set epic on each <ID>:unknown-epic to a task of the project, or clear it with second-brain task set <ID> epic="
 doc Example --fix
-is "children --fix: a task whose epic names no task is left where it is" "$(fixed_moves)/$(ls "$T/EX-3")" \
+is "children --fix: a task whose epic names no single task is left where it is" "$(fixed_moves)/$(ls "$T/EX-3")" \
   "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
 fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)/README.md"
-case "$ERR" in *"EX-3: its epic EX-900 names no task of Example: left where it is"*) pass "children --fix: stderr names it, with its epic" ;;
+case "$ERR" in *"EX-3: its epic EX-900 names no single task of Example: left where it is"*) pass "children --fix: stderr names it, with its epic" ;;
   *) fail "children --fix: stderr names it, with its epic" "in stderr: $ERR" ;; esac
 edit "$vault/$P/claude/profile.md" 's/^persona: \(.*\)$/persona: \1\
 parent_label: Feature/'
@@ -1905,7 +1906,7 @@ chk "children: with parent_label: Feature the offender takes that word" task-lay
 is "children: and so does the fix" "$(fix_of task-layout)" \
   "set epic on each <ID>:unknown-feature to a task of the project, or clear it with second-brain task set <ID> epic="
 doc Example --fix
-case "$ERR" in *"EX-3: its feature EX-900 names no task of Example: left where it is"*) pass "children --fix: stderr takes the word too" ;;
+case "$ERR" in *"EX-3: its feature EX-900 names no single task of Example: left where it is"*) pass "children --fix: stderr takes the word too" ;;
   *) fail "children --fix: stderr takes the word too" "in stderr: $ERR" ;; esac
 edit "$vault/$P/claude/profile.md" 's/^parent_label: .*/parent_label: story/'
 doc Example
@@ -1964,6 +1965,21 @@ doc Example
 chk "children --fix: then every task is in its place" task-layout Example "ok | 0 | -"
 sb unresolved Example
 is "children --fix: unresolved lists nothing after the sprint moves" "$RC/$OUT" "0/"
+reset
+
+# A task folder that lost its README is named for no task: a README in it is no task, so no-readme
+# still names the folder, and --fix moves nothing out of it, in a sprint project too.
+layout sprint
+doc Example --fix
+mkdir -p "$T/planned/ST-9/notes"
+printf '%s\n' '---' 'type: note' '---' '' '# Notes' >"$T/planned/ST-9/notes/README.md"
+sb find notes --project Example
+rc_is "lost README: find sees no task in a folder named for no task, exit 1" 1
+doc Example
+chk "lost README: no-readme still names the folder" no-readme Example "warn | 1 | ST-9"
+chk "lost README: task-layout names nothing in it" task-layout Example "ok | 0 | -"
+doc Example --fix
+is "lost README: --fix moves nothing out of it" "$(fixed_moves)/$(ls "$T/planned/ST-9/notes")" "fixed: nothing/README.md"
 reset
 
 # ---------------------------------------------------------------- board, the child folders

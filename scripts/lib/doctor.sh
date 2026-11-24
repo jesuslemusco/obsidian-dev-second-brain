@@ -1146,7 +1146,7 @@ sb_doc_sprint_map() {
 # sb_doc_sprint_drift <map>: for the rows of sb_doc_sprint_map, print id, file and the folder it
 # belongs in for each task of a sprint project not at <root>/<folder>/<ID>/README.md: backlog with
 # no sprint, else its sprint's folder, and <folder>/<parent> for a child. A task whose sprint gives
-# no folder is left out, and a task whose epic names no task gives unknown-<label>.
+# no folder is left out, and a task whose epic names no single task gives unknown-<label>.
 sb_doc_sprint_drift() {
   printf '%s\n\034\n%s\n\034\n%s\n' "$1" "$(sb_doc_parents)" "$SB_DOC_SCAN" |
     SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_L="$(sb_parent_label)" LC_ALL=C awk -F'\t' '
@@ -1172,7 +1172,7 @@ sb_doc_sprint_drift() {
 # In a status project: id, file and status for each task not at <root>/<status>/<ID>/README.md,
 # or <status>/<parent> for a child not at <root>/<status>/<parent>/<ID>/README.md; id, file and
 # no-status for a task with no status of the five; and id, file and unknown-<label> for a task
-# whose epic names no task.
+# whose epic names no single task.
 # In a sprint project: id, file and the folder it belongs in, backlog or its sprint's folder, for
 # each task not at <root>/<folder>/<ID>/README.md, as sb_doc_sprint_drift says.
 # Nothing in a flat project.
@@ -1283,7 +1283,7 @@ EOF
     bad="$(sb_doc_layout_drift | awk -F'\t' '$3 != "no-status" { print $1 ":" $3 }')"
     case "$nl$SB_DOC_FILES" in *"$nl$root/archive/"*) bad="$bad${nl}archive:status" ;; esac
     bad="${bad#"$nl"}"
-    # An epic that names no task moves nothing: the move is named for every other offender.
+    # An epic that names no single task moves nothing: the move is named for every other offender.
     if printf '%s\n' "$bad$nl$folders" | grep -v ":unknown-$label\$" | grep -q .; then
       fix="run second-brain doctor --fix to move each task to the folder of its status"
       fix="$fix$(sb_doc_child_move "$bad" "$label")"
@@ -1330,8 +1330,8 @@ sb_doc_child_move() {
   fi
 }
 
-# sb_doc_child_unknown <offenders> <label>: print how to mend an epic that names no task, when an
-# offender, one per line, is <ID>:unknown-<label>.
+# sb_doc_child_unknown <offenders> <label>: print how to mend an epic that names no single task,
+# when an offender, one per line, is <ID>:unknown-<label>.
 sb_doc_child_unknown() {
   if printf '%s\n' "$1" | grep -q ":unknown-$2\$"; then
     printf 'set epic on each <ID>:unknown-%s to a task of the project, or clear it with second-brain task set <ID> epic=' "$2"
@@ -1847,8 +1847,8 @@ sb_doc_fix_pull_request() {
 # sb_task_groups, then each empty year folder of the archive, and the archive when it is empty. In a
 # sprint project each task goes to the folder of its sprint, or to backlog/ with none, then each
 # empty group folder is removed, a status folder too, then the archive's as in a status project.
-# In both a child goes into its parent's folder there, a task whose epic names no task stays where
-# it is, and a folder one level deeper that a move leaves empty is removed.
+# In both a child goes into its parent's folder there, a task whose epic names no single task stays
+# where it is, and a folder one level deeper that a move leaves empty is removed.
 sb_doc_fix() {
   local name path keys id file status tag new out reason layout d groups n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
@@ -1873,10 +1873,10 @@ EOF
     layout="$(sb_task_layout)"
     while IFS=$'\t' read -r id file reason <&4; do
       [ -n "$file" ] || continue
-      # A task whose epic names no task stays where it is, in a status or a sprint project.
+      # A task whose epic names no single task stays where it is, in a status or a sprint project.
       case "$reason" in
         unknown-*)
-          printf '%s: its %s %s names no task of %s: left where it is\n' "$id" "${reason#unknown-}" \
+          printf '%s: its %s %s names no single task of %s: left where it is\n' "$id" "${reason#unknown-}" \
             "$(sb_fm_get "$file" epic 2>/dev/null)" "$name" >&2
           continue
           ;;

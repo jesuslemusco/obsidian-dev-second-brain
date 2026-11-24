@@ -215,7 +215,7 @@ rc_is "board --subproject: a name that is no subproject gives exit 1" 1
 err_has "board --subproject: the message says how to list them" "second-brain subproject Multi"
 sb board Multi --subproject
 rc_is "board --subproject: no value gives exit 5" 5
-file_has "story-tracker status: inside a subproject's repo, every board call takes its name" "$here/skills/story-tracker/status.md" \
+file_has "story-track status: inside a subproject's repo, every board call takes its name" "$here/skills/scrum-master/story-track-status.md" \
   'add `--subproject <name>` to every `board` call'
 file_has "conventions: the board lists the tasks of one subproject" "$vault/obsidian-conventions.md" '`second-brain board <project> --subproject <name>`'
 

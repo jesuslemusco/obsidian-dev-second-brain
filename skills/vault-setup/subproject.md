@@ -43,8 +43,8 @@ In one round:
 A task of the subproject stays in the project's one tasks folder. It names the subproject in its
 frontmatter, `subproject: <name>`, spelled as the note is named.
 
-- A new task: story-tracker writes it, as step 1 of `## 3. Create the story` in
-  `skills/story-tracker/create.md` says.
+- A new task: the scrum-master's `story-track` writes it, as step 1 of `## 3. Create the story`
+  in `skills/scrum-master/story-track-create.md` says.
 - Tasks that exist: offer to set it. Show `second-brain board <project>`, ask which tasks belong
   to the subproject, then run `second-brain task set <ID> subproject=<name>` for each.
 - Exit 1 from `task set`: the name is no subproject.

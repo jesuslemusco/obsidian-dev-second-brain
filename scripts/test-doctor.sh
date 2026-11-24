@@ -572,11 +572,11 @@ chk "links: an unlinked skill fails" links vault "fail | 1 | my-skill:missing"
 symlink "$vault/claude/skills/my-skill" "$home/skills/my-skill"
 doc
 chk "links: ok once it is linked" links vault "ok | 0 | -"
-symlink "$here/skills/story-tracker" "$home/skills/story-tracker"
+symlink "$here/skills/scrum-master" "$home/skills/scrum-master"
 symlink "$here/agents/docs-keeper.md" "$home/agents/docs-keeper.md"
 symlink "$tmp/userdir" "$home/skills/elsewhere"
 doc
-chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/story-tracker, agents/docs-keeper.md"
+chk "double-registration: links into the plugin warn" double-registration vault "warn | 2 | skills/scrum-master, agents/docs-keeper.md"
 
 # ---------------------------------------------------------------- foreign
 chk "foreign: a vault link, links into the plugin and a link to a folder with no SKILL.md do not warn" foreign vault "ok | 0 | -"
@@ -653,7 +653,7 @@ OLD='obsidian-dev-second-brain:'
 N="$vault/$P/docs/rename.md"
 doc
 chk "old-namespace: ok on a fresh vault" old-namespace vault "ok | 0 | -"
-printf '%s\n' '---' "next: \"Run /${OLD}scrum-master open\"" '---' '# Rename' '' \
+printf '%s\n' '---' "next: \"Run /${OLD}scrum-master sprint-planning\"" '---' '# Rename' '' \
   "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
   '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
   '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}scrum-master" '' \
@@ -679,7 +679,7 @@ doc
 chk "old-namespace: ok once the live lines are rewritten, with the history left as written" old-namespace vault "ok | 0 | -"
 reset
 mkdir -p "$vault/claude/skills/mine" "$home/skills"
-printf '%s\n' '---' 'name: mine' 'description: A skill of my own.' '---' "Call ${OLD}story-tracker first." >"$vault/claude/skills/mine/SKILL.md"
+printf '%s\n' '---' 'name: mine' 'description: A skill of my own.' '---' "Call ${OLD}scrum-master first." >"$vault/claude/skills/mine/SKILL.md"
 symlink "$vault/claude/skills/mine" "$home/skills/mine"
 printf '## Status notes\r\n- %sspec\r\n## Next\r\n- Run %sspec.\r\n' "$OLD" "$OLD" >"$vault/$P/docs/crlf.md"
 printf '%s\n' '# Mine' "- Run ${OLD}vault-doctor after an update." '- Then odsb:vault-doctor fix.' >"$home/CLAUDE.md"
@@ -2152,18 +2152,18 @@ reset
 R="$tmp/nscode"
 mkdir -p "$R/example-api/.claude" "$R/example-web/.claude" "$vault/.claude"
 set_repos '[example-api, example-web, gone-repo]' "$R" '[]'
-printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}story-tracker)\"] } }" >"$R/example-api/.claude/settings.local.json"
+printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}scrum-master)\"] } }" >"$R/example-api/.claude/settings.local.json"
 printf '%s\n' "{ \"permissions\": { \"deny\": [\"Skill(${OLD}vault-setup)\"] } }" >"$R/example-web/.claude/settings.json"
 printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}spec)\"] } }" >"$vault/.claude/settings.local.json"
 doc
 chk "old-namespace: the settings of the vault root, then of each repo the profile lists with a folder" old-namespace vault \
-  "warn | 3 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker), example-web/.claude/settings.json:Skill(${OLD}vault-setup)"
+  "warn | 3 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}scrum-master), example-web/.claude/settings.json:Skill(${OLD}vault-setup)"
 is "old-namespace: the fix leaves a repo's settings rules to the owner" "$(fix_of old-namespace vault)" \
   "change the settings rules to odsb: yourself, as nothing edits a settings file"
 set_repos '[example-api, example-web]' "$R" "[\"example-web=$vault\"]"
 doc
 chk "old-namespace: a repo whose folder is the vault root has its settings read once" old-namespace vault \
-  "warn | 2 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker)"
+  "warn | 2 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}scrum-master)"
 reset
 
 # ---------------------------------------------------------------- code-doc-map
@@ -2594,7 +2594,7 @@ out_has "session-check: the working directory is the default" "ticket: EX-1"
 on_branch "$R" 'ref: refs/heads/fix/ex-9-later'
 sb session-check --cwd "$R"
 out_has "session-check: a key in another letter case names the ticket as the index spells it" "ticket: EX-9"
-out_has "session-check: a ticket branch with no story says how to start one" "story: none - run story-tracker start"
+out_has "session-check: a ticket branch with no story says how to start one" "story: none - run scrum-master story-track start"
 is "session-check: the block ends with the search and read rule" "$(printf '%s\n' "$OUT" | tail -1)" "$RULE"
 on_branch "$R" 'ref: refs/heads/feature/hex-12-and-EX-3'
 sb session-check --cwd "$R"

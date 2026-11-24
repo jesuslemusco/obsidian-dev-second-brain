@@ -104,9 +104,10 @@ every="$(awk '/^## / { on = ($0 == "## In every session") } on' "$vault/CLAUDE.m
 is "index: the every-session section says where the vault is" "$(printf '%s\n' "$every" | tr '\n' ' ' | grep -c -E 'The vault is +`~/\.claude/second-brain-vault/`')" "1"
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
-file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
-is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
-file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
+file_has "index: the scrum-master is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`scrum-master\` for any question or change on a ticket (where it stands, a standup, an"
+file_has "index: through its story-track workflow" "$vault/CLAUDE.md" "update) through its \`story-track\` workflow, and to plan sprints and releases;"
+is "index: the ticket text rule is said once, in the bullet that sends it to story-track" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
+file_has "index: ticket text is never written freehand and goes to story-track" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use the scrum-master's \`story-track\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
   "$(($(lineno "$vault/CLAUDE.md" '## Rules for notes that most often go wrong') < $(lineno "$vault/CLAUDE.md" '- Ticket text is never')))" "1"
 file_has "index: a rule about one project goes under the project's Rules" "$vault/CLAUDE.md" 'A rule about one project goes under `## Rules` in `<Path>/claude/README.md`'

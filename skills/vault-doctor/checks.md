@@ -115,8 +115,8 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 ### task-template
 
-- Means: the project's own task README template, `claude/templates/task-readme.md.tmpl` in the project, lacks a frontmatter key the helper writes (`aliases`, `title`, `status`, `next`, `branch`, `epic`, `type`) or a section the helper or story-tracker writes under (`## Status notes`, `## Discovery log`). Each offender is the key or the heading. A heading in fenced code does not count. A project with no such template is ok.
-- Why: `second-brain task new` fills that template in place of the plugin's, so each new story starts without the key or the section: a story with no `aliases` fails `task-frontmatter`, the board and `task head` show another key as empty, and `task note` and story-tracker add the section where the project did not plan it.
+- Means: the project's own task README template, `claude/templates/task-readme.md.tmpl` in the project, lacks a frontmatter key the helper writes (`aliases`, `title`, `status`, `next`, `branch`, `epic`, `type`) or a section the helper or the scrum-master's `story-track` writes under (`## Status notes`, `## Discovery log`). Each offender is the key or the heading. A heading in fenced code does not count. A project with no such template is ok.
+- Why: `second-brain task new` fills that template in place of the plugin's, so each new story starts without the key or the section: a story with no `aliases` fails `task-frontmatter`, the board and `task head` show another key as empty, and `task note` and `story-track` add the section where the project did not plan it.
 - Fix: ask the user, then add each to the project's template, shaped as the plugin's `templates/task-readme.md.tmpl`. A story already made from it: add `aliases` with `second-brain task alias <ID> add <ID>`, another key with `second-brain task set <ID> <key>=<value>`, and a section's heading by hand.
 
 ### task-frontmatter
@@ -219,7 +219,7 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 - Means: two sprints are in progress, one is in progress past its end date, or a task's `sprint` names a sprint with no note.
 - Why: the `Current sprint` view filters on one sprint id, so the tasks of any other sprint show on no sprint list.
-- Fix: close the extra or overdue sprint with `/odsb:scrum-master close <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/odsb:scrum-master open <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
+- Fix: close the extra or overdue sprint with `/odsb:scrum-master sprint-planning <project>`. A stray task: `second-brain task set <ID> sprint=<id>`, or `sprint=`. Tasks carried at a close point at the next sprint: open it with `/odsb:scrum-master sprint-planning <project>`, never re-point them. With `uses_sprints: false` in the profile, the one finding is a sprint note still in progress: set the key to `true`, close the sprint the same way, then set it back to `false`.
 
 ### unresolved-links
 

@@ -896,7 +896,7 @@ sb_doc_check_placeholders() {
 }
 
 # Check that the project's own task README template keeps each frontmatter key the helper writes
-# and each section the helper or story-tracker writes under. A key is read from frontmatter that
+# and each section the helper or story-track writes under. A key is read from frontmatter that
 # opens on the first line; a heading is a line equal to it without letter case and trailing
 # blanks, outside fenced code, as sb_body_insert finds it for task note. Frontmatter is not read
 # for one. No template is ok.
@@ -2066,7 +2066,7 @@ EOF
       nxt="$(sb_fm_get "$f" next 2>/dev/null)"
       printf 'story: %s - %s, next: %s\n' "$(sb_rel "$f")" "${status:--}" "${nxt:--}"
     else
-      printf 'story: none - run story-tracker start\n'
+      printf 'story: none - run scrum-master story-track start\n'
     fi
   fi
   printf 'rule: find and read notes with `second-brain find`, `search`, `task head` and `outline`, then a ranged read; never grep, cat or sed on vault files.\n'

@@ -566,7 +566,7 @@ symlink "$fo/outer" "$fh/skills/outer"
 symlink "$fo/far.md" "$fh/agents/far.md"
 symlink "$fo/no-skill" "$fh/skills/no-skill"
 symlink "$fo/gone" "$fh/skills/gone"
-symlink "$here/skills/story-tracker" "$fh/skills/story-tracker"
+symlink "$here/skills/scrum-master" "$fh/skills/scrum-master"
 piece "$fv/ai-docs/skills/inner/SKILL.md" inner "A skill in the vault, outside a claude folder."
 symlink "$fv/ai-docs/skills/inner" "$fh/skills/inner"
 mkdir -p "$fv/notes"
@@ -581,7 +581,7 @@ far | agent | link | $ofo/far.md
 solo | agent | file | -"
 fl link --check
 row_is "link --foreign: link --check still lists a folder with no SKILL.md as foreign" "synced | skill | foreign | -"
-row_is "link --foreign: link --check still lists a link into the plugin as foreign" "story-tracker | skill | foreign | $(shown "$here")/skills/story-tracker"
+row_is "link --foreign: link --check still lists a link into the plugin as foreign" "scrum-master | skill | foreign | $(shown "$here")/skills/scrum-master"
 fl link --foreign --check
 rc_is "link --foreign: with another flag gives exit 5" 5
 
@@ -609,7 +609,7 @@ fl link move skill unlinked
 rc_is "link move: a vault skill not linked yet gives exit 1" 1
 fl link move agent kept
 rc_is "link move: the wrong kind gives exit 1" 1
-fl link move skill story-tracker
+fl link move skill scrum-master
 rc_is "link move: a link into the plugin gives exit 1" 1
 fl link move skill kept --project Nope
 rc_is "link move: an unknown project gives exit 1" 1

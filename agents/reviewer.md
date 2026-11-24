@@ -302,9 +302,9 @@ still stated, and each command it names exists.
   never-rule, but the `Owner:` line chose it: met, with that line as its evidence.
 - The two other removed rules are still stated, at lines 12 and 58.
 - Line 30 names `example-api sync`, which `example-api help` lists.
-- Step 6 finds that line 52 adds the heading `Other` over the rules for late fees: a name that
-  misleads. No requirement or rule names it, so it is a follow-up. It goes in with `task note`,
-  and fails nothing.
+- Step 6 finds that the code example at line 52 keeps the invoice total in a variable named
+  `tmp`: a name that misleads. No requirement or rule names it, so it is a follow-up. It goes in
+  with `task note`, and fails nothing.
 
 ```json
 {"verdict": "PASS", "issues": 0, "checks": [

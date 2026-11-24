@@ -605,8 +605,9 @@ When the build finishes or stops, show the owner each follow-up of this build so
 oldest first.
 
 - They are the `Follow-up: <task>:` status notes newer than the newest
-  `Build: started on <branch> at <short hash>.` note. A new session finds them as
-  `### The rulings of this build` says.
+  `Build: started on <branch> at <short hash>.` note.
+- Every session reads them from `## Status notes`, as `### The rulings of this build` says: the
+  reviews write them, and no reply holds them.
 - List the same text once, even when two reviews logged it.
 - None: say the build has no follow-ups.
 - The owner can have one fixed: it is a ruling to fix its task, as item 3 of

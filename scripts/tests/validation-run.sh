@@ -237,8 +237,9 @@ file_has "reviewer: a task review runs only its each-task checks" "$RV" \
   '4. Run the task'"'"'s `Check`, the checks with `--when each-task`, and each user step whose `when:` is'
 file_has "reviewer: requirements first" "$RV" '3. Requirements first.'
 file_has "reviewer: then code quality" "$RV" '6. Then code quality, in the diff alone.'
-is "reviewer: requirements before code quality" \
-  "$(($(lineno "$RV" '3. Requirements first.') < $(lineno "$RV" '6. Then code quality, in the diff alone.')))" "1"
+rq_line="$(lineno "$RV" '3. Requirements first.')"
+cq_line="$(lineno "$RV" '6. Then code quality, in the diff alone.')"
+is "reviewer: requirements before code quality" "$((${rq_line:-0} < ${cq_line:-0}))" "1"
 file_has "reviewer: a re-review reads only the fix" "$RV" \
   '- `fails` above 0: a re-review. The diff holds only the fix'"'"'s commits, and `## Issues` only the'
 line_is "reviewer: has a user mode" "$RV" "## User mode"

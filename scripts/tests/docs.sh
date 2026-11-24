@@ -1640,8 +1640,9 @@ file_has "spec build: each task with a new issue is set failed" "$BM" \
 file_has "spec build: a user or branch FAIL that adds no issue is no verdict" "$BM" \
   '   - Now no task'"'"'s issue count is above the one item 1 of `### Reading a verdict` noted: the FAIL'
 line_is "spec build: and goes to the fresh reviewer, then BLOCKED" "$BM" '     is no verdict. Go on as items 6 and 7 there say.'
-is "spec build: the reply's findings are logged before the counts are checked" \
-  "$(($(lineno "$BM" 'Log each defect its reply lists on the') < $(lineno "$BM" '   - Now no task'"'"'s issue count is above')))" "1"
+rf_log="$(lineno "$BM" 'Log each defect its reply lists on the')"
+rf_cnt="$(lineno "$BM" '   - Now no task'"'"'s issue count is above')"
+is "spec build: the reply's findings are logged before the counts are checked" "$((${rf_log:-0} < ${rf_cnt:-0}))" "1"
 file_has "spec build: each task's issue count is noted before the user and branch reviews" "$BM" \
   '1. Before a review'"'"'s first launch, but the baseline'"'"'s, note the issue count of each task it'
 line_is "spec build: the ask and the fresh reviewer are judged against those counts" "$BM" \
@@ -2012,7 +2013,9 @@ is "reviewer: the worked FAIL logs the repeat with task note" "$(example_of 'A F
 file_lacks "reviewer: the worked FAIL no longer finds nothing more" "$RV" 'It finds nothing more.'
 case "$(json_of 'A FAIL')" in *'"verdict": "FAIL", "issues": 1,'*) pass "reviewer: the worked FAIL counts no follow-up" ;;
   *) fail "reviewer: the worked FAIL counts no follow-up" "in: $(json_of 'A FAIL')" ;; esac
-is "reviewer: the worked PASS logs a follow-up with task note" "$(example_of 'A PASS' | grep -c 'so it is a follow-up. It goes in with `task note`,')" "1"
+is "reviewer: the worked PASS logs a follow-up with task note" "$(example_of 'A PASS' | grep -c '^  with `task note`, and fails nothing.$')" "1"
+is "reviewer: the worked PASS's follow-up is a name in code" "$(example_of 'A PASS' | grep -c '^  `tmp`: a name that misleads.')" "1"
+file_lacks "reviewer: the worked PASS's follow-up is no doc heading" "$RV" 'adds the heading `Other`'
 case "$(json_of 'A PASS')" in *'"verdict": "PASS", "issues": 0,'*) pass "reviewer: the worked PASS still passes with its follow-up" ;;
   *) fail "reviewer: the worked PASS still passes with its follow-up" "in: $(json_of 'A PASS')" ;; esac
 line_is "contract: the two kinds" "$CT" \
@@ -2063,6 +2066,11 @@ is "spec build: a stop lists the follow-ups after the rulings, in item 1" \
   "$((${fs_rul:-0} < ${fs_stop:-0} && ${fs_stop:-0} < ${fs_two:-0}))" "1"
 line_is "spec build: the follow-ups are the newer notes" "$BM" \
   '- They are the `Follow-up: <task>:` status notes newer than the newest'
+line_is "spec build: the follow-ups are read from the status notes in every session" "$BM" \
+  '- Every session reads them from `## Status notes`, as `### The rulings of this build` says: the'
+line_is "spec build: since the reviews write them and no reply holds them" "$BM" \
+  '  reviews write them, and no reply holds them.'
+file_lacks "spec build: the follow-ups are not left to a new session" "$BM" 'A new session finds them as'
 line_is "spec build: the same follow-up is listed once" "$BM" '- List the same text once, even when two reviews logged it.'
 line_is "spec build: says when there are none" "$BM" '- None: say the build has no follow-ups.'
 line_is "spec build: a follow-up fixed is a ruling to fix its task" "$BM" \

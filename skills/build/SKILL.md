@@ -1,0 +1,77 @@
+---
+name: build
+description: Build an approved story, or an approved epic's open stories in dependency order, each in a git worktree of its own, with one implementer and an independent reviewer until it passes.
+argument-hint: "<story or epic id>"
+allowed-tools: Read Bash(second-brain *) Bash(git *)
+---
+
+Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
+
+# Build
+
+The session id for notes is `${CLAUDE_SESSION_ID}`.
+
+You build each approved story with one `implementer` and an independent `reviewer`, in a git
+worktree of its own, until the reviewer passes it. The build runs in this session: you launch
+each agent with the Agent tool, and its report comes back to you as its result.
+
+## Files
+
+| File | What it holds | Read it |
+|---|---|---|
+| `${CLAUDE_SKILL_DIR}/story.md` | one story's build: its worktree, the agents, the reviews, the fix loop, the stops and the rulings | once, before the first story's build starts or resumes |
+| `${CLAUDE_SKILL_DIR}/lead.md` | the owner's orders note and the lead's check | once, before the first story's build starts or resumes |
+
+## Step 0 - Context
+
+1. Your first tool call is `second-brain context`.
+   - Command not found: the plugin is not enabled. Say so and stop.
+   - `vault: none`: offer `/odsb:vault-setup` and stop.
+2. The id is the argument. With none, ask.
+3. `second-brain project --key <ID>` names the project. `second-brain task head <ID>` must find
+   the ticket.
+   - No task found: the story is not tracked. Offer story-tracker to start it, and stop.
+
+## Step 1 - The stories
+
+The id names one story, or an epic.
+
+- An epic's stories are the tasks its README links whose `epic`, as
+  `second-brain task head <story>` prints it, is the epic's id. Read the README with
+  `second-brain outline <path>` and a ranged read of the part that lists them.
+  - No task names it as its `epic`: it is one story. Build it alone.
+- Take the open stories: `status` `planned` or `in-progress`. Leave the `in-review`, `done` and
+  `abandoned` ones out.
+- A story named alone that is `in-review` has passed: say so. Build it again only on the owner's
+  ruling to fix it, as item 3 of `## 7. When the story stops` in `story.md` says.
+- A story goes after each story of the run it waits on, as the `depends_on` cell of
+  `second-brain board "<project>" All` shows. Otherwise keep the order of the epic's list.
+- A story that waits on a story outside the run that is not `in-review` or `done`: leave it out,
+  with each story that waits on it, and say why.
+- Stories that wait on each other in a ring: stop, and show the ring.
+- Show the owner the stories in the order they will be built, before the first one starts.
+
+## Step 2 - Approved stories only
+
+- A story is approved when its status notes hold `Planned: the owner approved this text.` Read
+  them with `second-brain outline <path>` and a ranged read of `## Status notes`.
+- A story with no such note is not built. Say so, and offer `/odsb:scrum-master refinement` for
+  it. Each story that waits on it is left out too.
+- No story left: stop.
+
+## Step 3 - Each story in turn
+
+1. Read `story.md` and `lead.md`, as `## Files` says.
+2. Build each story as `story.md` says, one at a time, in the order of Step 1. The next one starts
+   only once the story before it passed, as `## 6. When the story passed` in `story.md` says.
+3. A story that stops stops the run, as `## 7. When the story stops` in `story.md` says.
+4. Every story passed: show the owner each story's branch and its last review. Then test the
+   orders of the run, as item 3 of `## The owner's open orders` in `lead.md` says.
+
+## Rules
+
+- Only the owner approves a story. Never write an approval note the owner did not give.
+- Never pass on an agent's word as the owner's.
+- The owner talks to this session alone: an agent has no AskUserQuestion.
+- This skill writes no code: `implementer` does. It commits nothing.
+- One story at a time, and one agent at a time.

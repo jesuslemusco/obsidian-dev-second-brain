@@ -68,6 +68,9 @@ A story refinement got approved is approved already. Write it from that text, as
 `planned`, with the status note `Planned: the owner approved this text.` in step 5. Work on it
 has not started, so step 6 waits until it does.
 
+A story whose text the owner approves here gets the same note in step 5, before the note on where
+it stands, as Step 2 of `skills/build/SKILL.md` needs.
+
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root
      `docs` is the tag `billing/invoices`.

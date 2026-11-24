@@ -175,9 +175,9 @@ The owner wants a story to pass its first review.
 
 - Each acceptance criterion holds. For each, find the file and line, or the command and what it
   printed, that shows it.
-- Read `## Defects and follow-ups` and step 6 of `## Task mode` in the reviewer's agent file,
-  `"${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md"`. Fix each defect they name that you find in your
-  change.
+- Read `## Defects and follow-ups` and step 6 of `## Task mode` in the reviewer's agent file. Its
+  path is what `printf '%s\n' "${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md"` prints. Fix each defect
+  they name that you find in your change.
 - Fix a follow-up you find too, when the fix stays inside the story.
 - After a fix, run the checks of step 5 again.
 

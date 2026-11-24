@@ -55,6 +55,19 @@
   a bare `exit:`. Its wait reads the file with `grep -qs`, and ends too on a notice that the check
   ended, as when the harness stops one that never writes the line. A call may move to the
   background after 3 minutes.
+- A new `build` skill builds approved stories: one story, or an epic's open stories in the order
+  their `depends_on` sets. Each one is built in a git worktree of its own, `<repo path>-<ID>`, by
+  one `implementer`, and graded by a fresh `reviewer` against its acceptance criteria and the
+  repo's `validation.md`, until one passes or the fix rounds run out. A passed story waits for the
+  owner's go to merge, and its worktree is removed.
+- It builds only a story whose status notes hold `Planned: the owner approved this text.`.
+  story-tracker now writes that note for a story approved in start mode too.
+- A story build keeps its progress in the story's status notes: a `Build: review <n>` note after
+  each verdict, and the reviewer's `Defect <n>:` and `Follow-up:` notes. It keeps the owner's
+  orders note and the lead's check in `skills/build/lead.md`.
+- `implementer` and `reviewer` have a story mode, beside the spec task mode. Before it commits,
+  the implementer checks its whole change against the story's criteria and the reviewer's
+  `## Defects and follow-ups`.
 - `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
   that stands in for the repo's, such as a git worktree of it. The checks run there, and a
   `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.

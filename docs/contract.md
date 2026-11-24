@@ -226,8 +226,9 @@ tags:
 - A missing or empty value passes to the next level. At the profile it means the default:
   `direct`, `vault` and `vault`.
 - The first value found decides. One that is not allowed means the default.
-- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on
-  its open orders, as `### The lead's check` in `skills/spec/build.md` says. It is 10, 12, 15,
+- `lead_check_minutes` is how many minutes the lead of a build waits between two checks on its
+  open orders, as `### The lead's check` in `skills/spec/build.md` and `## The lead's check` in
+  `skills/build/lead.md` say. It is 10, 12, 15,
   20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,
   or any other value, is 20.
 - `templates/profile.md.tmpl` leaves the key out. The doctor's `delivery` check warns on a value
@@ -1144,6 +1145,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - A story refinement got approved is approved already, and gets the status note
   `Planned: the owner approved this text.`
+- A story whose text the owner approves in start mode gets the same note, before the note on
+  where it stands. The `build` skill builds only a story with that note.
 - A story it sets to `done` goes to `docs-keeper`, as below. Then it logs the story's achievement
   through the profile's `achievements_skill`, when it names one.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
@@ -1166,6 +1169,38 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   that section and the `## Epics` lines.
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
+- **The `build` skill builds approved stories.** It takes one story, or an epic's open stories in
+  the order their `depends_on` sets, and builds each in turn in the owner's session. Its files
+  are `SKILL.md`, `story.md`, for one story's build, and `lead.md`, for the orders note and the
+  lead's check.
+- A story is approved when its status notes hold `Planned: the owner approved this text.` One
+  with no such note is not built: the skill offers `refinement`, and leaves out each story that
+  waits on it.
+- Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo's
+  folder, on the story's branch. Its `implementer` and its `reviewer` work there, in story mode,
+  and each `validation` and `validation run` they run takes `--path <worktree>`.
+- A branch that does not start on the base branch gets a baseline first: `reviewer` in baseline
+  mode, in the worktree.
+- One `implementer` builds the story. Then a fresh `reviewer` grades it. A FAIL sends the review's
+  defects back to the same `implementer`, and a fresh `reviewer` grades the fix, until one passes
+  or the cap stops the build for the owner.
+- In a story build, `reviewer` runs on `opus`. The `implementer`'s rounds are a spec build's: 1 to
+  3 on the same agent, `<ID>-implementer`, then a fresh one on `fable`, `<ID>-implementer-2`. A
+  sixth failed review stops the build.
+- The story's progress is in its status notes, never in `build.json`. The skill writes
+  `Build: started on <branch> at <short hash>.` or `Build: resumed on ...`, then after each verdict
+  `Build: review <n> passed at <short hash>.`, `Build: review <n> failed at <short hash>: <k> defects.`
+  or `Build: review <n> blocked at <short hash>.`, and `Build: finished; ...` once it passes.
+- Its `fails` is the number of `Build: review <n> failed` notes newer than its newest
+  `Build: started on` note, from every session. The round of the next review is one more than
+  the number of its `Build: review` notes.
+- A passed story waits for the owner's go to merge, as the project's git flow says: the skill
+  merges nothing. Then it removes the worktree with `git worktree remove`, never with `--force`,
+  and the branch stays.
+- It keeps the owner's orders note, the lead's check with each order's `Done when:`, the rule for
+  an agent with no report, a repeated notice taken as no event, the rulings, and the lists of
+  rulings and follow-ups at a finish or a stop, as a spec build does. Until the spec flow is
+  retired, `skills/spec/build.md` keeps its own copy of these rules for a spec build.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:

@@ -105,6 +105,28 @@ Open a new sprint for the Example project.
 /odsb:scrum-master sprint-planning Example
 ```
 
+### `/odsb:build`
+
+Builds approved stories, one at a time, each in a git worktree of its own.
+
+- Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
+  set.
+- It builds only a story whose text you approved, in refinement or when story-tracker started it.
+- One `implementer` builds each story test-first and checks its own change. Then a fresh
+  `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
+- A passed story waits for your go to merge, and its worktree is removed. The branch stays.
+- Progress is kept in the story's status notes, so a new session picks the build up where it
+  stopped.
+
+The flow is under `## Building a story` in `docs/guide.md`, and its steps are in
+`skills/build/story.md`.
+
+```
+/odsb:build EX-2
+Build the approved stories of EX-1.
+```
+
 ### `/odsb:spec`
 
 Writes a story's spec with you, then builds and reviews it in your session.
@@ -176,8 +198,8 @@ Most are started by a skill, and you can ask for any of them by name.
 | Agent | Does | Started by |
 |---|---|---|
 | `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
-| `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
-| `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
+| `implementer` | Builds one approved story in its git worktree, or one task or bundle of a spec, test-first, runs its checks and commits it. | `build`, and `spec` during a build. |
+| `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a story's change, a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `build`: for the baseline, and after each build and fix of a story. `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
 
 ## Examples

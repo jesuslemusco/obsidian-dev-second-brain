@@ -126,6 +126,7 @@ repo_paths: []
 delivery: direct
 spec_home: vault
 validation_home: vault
+lead_check_minutes: 20
 achievements_skill: ""
 tags:
   - type/profile
@@ -213,6 +214,12 @@ tags:
 - A missing or empty value passes to the next level. At the profile it means the default:
   `direct`, `vault` and `vault`.
 - The first value found decides. One that is not allowed means the default.
+- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on
+  its open orders, as `### The lead's check` in `skills/spec/build.md` says. It is 10, 12, 15,
+  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,
+  or any other value, is 20.
+- `templates/profile.md.tmpl` leaves the key out. The doctor's `delivery` check warns on a value
+  it does not take.
 
 ### Profile sections
 
@@ -775,7 +782,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
-| project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`) (warn) |
+| project | `delivery` | a `delivery`, `spec_home` or `validation_home` value that is not allowed, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task's `delivery` (`<ID>:delivery`), and a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn) |
 | project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
 | project | `spec-trace` | an open story whose `delivery` that holds is `spec` has a criterion that no `- Serves:` line of its `requirements.md` names (`<ID>:AC<n>`), or a requirement with no `- Serves:` line, one that names no criterion, or one with an item that is not an `AC<n>` the story has (`<ID>:R<n>`) (warn). A requirement is a `## ` heading whose first word is `R` and a number. Criteria and `- Serves:` lines are read as `## 4. A task` says; the README's frontmatter, a CR at a line's end and a BOM are not read. A requirement id is named as written, once. The story's spec folder is found as `spec <ID>` finds it. Not read: a done or abandoned story, one with no `requirements.md`, and one whose spec is in a repo with no recorded location or no folder |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
@@ -1087,9 +1094,10 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   or not. The check's own prompt is no order.
 - Once no order of its story is open, the skill stops its check. Once no order of any story is
   open, it removes the hub's line, then the note. Removing its own note is no destructive action.
-- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10
-  minutes on the agents, the branch and the running checks against the orders. Of each order it
-  asks whether it or an agent works toward it.
+- **The lead's check.** While an order of its story is open, the skill checks on the agents, the
+  branch and the running checks against the orders, as often as the profile's
+  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward
+  it.
 - In Claude Code a session-only `CronCreate` job runs the check, off the hour and the half hour,
   and `CronDelete` ends it. The skill keeps a job `CronList` shows with the same prompt. With no
   scheduling tool, the skill checks on each notice that comes to it.

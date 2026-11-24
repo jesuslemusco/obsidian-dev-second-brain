@@ -2439,7 +2439,30 @@ awk '{ print } /^status: / { print "delivery: someday" }' "$T/EX-1/README.md" >"
 doc Example
 chk "delivery: a profile value and a task value that are not allowed, never another letter case" delivery Example "warn | 2 | profile:delivery, EX-1:delivery"
 is "delivery: the fix names the values" "$(fix_of delivery)" \
-  "write delivery as direct or spec, and spec_home and validation_home as vault or repo, or remove the key"
+  "write delivery as direct or spec, spec_home and validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+reset
+# lcm <value>: add lead_check_minutes to the profile, under validation_home.
+lcm() {
+  awk -v v="$1" '{ print } /^validation_home: / { print "lead_check_minutes: " v }' "$PROFILE" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$PROFILE"
+}
+for v in 10 12 15 20 30 60 '""'; do
+  lcm "$v"
+  doc Example
+  chk "delivery: lead_check_minutes $v is taken" delivery Example "ok | 0 | -"
+  reset
+done
+for v in 25 abc '"45"'; do
+  lcm "$v"
+  doc Example
+  chk "delivery: lead_check_minutes $v warns" delivery Example "warn | 1 | lead_check_minutes:invalid"
+  reset
+done
+lcm 45
+edit "$PROFILE" 's/^delivery: direct$/delivery: always/'
+doc Example
+chk "delivery: lead_check_minutes is named after the profile's own keys" delivery Example \
+  "warn | 2 | profile:delivery, lead_check_minutes:invalid"
 reset
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/code\"|"

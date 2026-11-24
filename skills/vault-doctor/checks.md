@@ -199,8 +199,8 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 ### delivery
 
-- Means: a `delivery` that is not `direct` or `spec`, or a `spec_home` or `validation_home` that is not `vault` or `repo`, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task (`<ID>:delivery`).
-- Why: a value that is not allowed means the default, so a story meant to be built from a spec is built straight from its README, or its spec and checks are looked for in the wrong place.
+- Means: a `delivery` that is not `direct` or `spec`, or a `spec_home` or `validation_home` that is not `vault` or `repo`, compared without letter case: in the profile (`profile:<key>`), a subproject note (`<name>:<key>`) or a task (`<ID>:delivery`). Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).
+- Why: a value that is not allowed means the default, so a story meant to be built from a spec is built straight from its README, or its spec and checks are looked for in the wrong place. A `lead_check_minutes` that is not allowed means 20, so the lead of a spec build checks on its orders at a pace the owner did not set.
 - Fix: ask which value was meant and write it. A task's `delivery`: `second-brain task set <ID> delivery=<direct or spec>`, or `delivery=` to take the subproject's or the profile's. A key in the profile or a subproject note: edit it there.
 
 ### validation

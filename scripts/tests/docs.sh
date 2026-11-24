@@ -1864,7 +1864,7 @@ BM="$here/skills/spec/build.md"
 CT="$here/docs/contract.md"
 CG="$here/CHANGELOG.md"
 q="'"
-for h in '### An agent with no report' "### The owner${q}s open orders" '### The check every 10 minutes'; do
+for h in '### An agent with no report' "### The owner${q}s open orders" "### The lead${q}s check"; do
   line_is "spec build: has $h" "$BM" "$h"
   is "spec build: $h is in the launch section, before the verdict reading" \
     "$(($(linex "$BM" '## 3. Launching an agent') < $(linex "$BM" "$h") && $(linex "$BM" "$h") < $(linex "$BM" '### Reading a verdict')))" "1"
@@ -1912,7 +1912,7 @@ is "spec build: before it asks for the block alone" \
 line_is "spec build: a bundle's run goes there too" "$BM" \
   '      - It is idle with no report: first take it as `### An agent with no report` says.'
 line_is "spec build: the reviewer may get that message" "$BM" '  `### An agent with no report` gives, or the one that'
-line_is "spec build: the orders note's path" "$BM" '`<project path>/claude/lead-agent-task-memory.md`. It tells the check every 10 minutes, and a new'
+line_is "spec build: the orders note's path" "$BM" "\`<project path>/claude/lead-agent-task-memory.md\`. It tells the lead${q}s check, and a new session,"
 line_is "spec build: an order is the owner's ask, in their words" "$BM" \
   '- An order is what the owner asked you to do, in their words: the request that ran the skill, and'
 line_is "spec build: the note holds each open order with its date and the owner's words" "$BM" \
@@ -1930,7 +1930,7 @@ line_is "spec build: so no session overwrites another's orders" "$BM" \
 line_is "spec build: the hub links to the note" "$BM" \
   "     \`- Lead memory: [[<project path>/claude/lead-agent-task-memory|<project> Lead Memory]] - the owner${q}s open orders.\`"
 line_is "spec build: no order of the story open stops its check" "$BM" \
-  '4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.'
+  "4. No order of \`<ID>\` open: stop the lead${q}s check, as its item 6 says."
 line_is "spec build: another story's open order keeps the note" "$BM" \
   '   - An order of another story still open: leave the note and its hub line.'
 line_is "spec build: no order of any story open removes the hub's line, then the note" "$BM" \
@@ -1949,15 +1949,25 @@ line_is "spec build: the start writes the order and starts the check" "$BM" \
 is "spec build: right after the build's started or resumed note" \
   "$(($(lineno "$BM" 'Build: resumed on <branch> at <short hash>.') < $(lineno "$BM" '7. Write the order that ran the build in the orders note') && \
   $(lineno "$BM" '7. Write the order that ran the build in the orders note') < $(linex "$BM" '## 3. Launching an agent')))" "1"
-line_is "spec build: the check runs every 10 minutes while an order of the story is open" "$BM" \
-  'While an order of `<ID>` is open, check on it every 10 minutes. An agent can go idle with no'
-line_is "spec build: CronList first keeps a job with the same prompt" "$BM" \
-  '   - In Claude Code, run `CronList` first. A job that already has the prompt below is the check:'
-line_is "spec build: CronCreate schedules it off the hour and the half hour" "$BM" \
-  '   - Else create it with `CronCreate`: `cron: "7,17,27,37,47,57 * * * *"`, `recurring: true`, and'
+line_is "spec build: the check runs at the profile's pace while an order of the story is open" "$BM" \
+  'While an order of `<ID>` is open, check on it at the pace the profile sets. An agent can go idle'
+line_is "spec build: the pace is lead_check_minutes from the profile's keys" "$BM" \
+  '   - Its pace is the `lead_check_minutes` line of `second-brain profile "<project>" --keys`: 10,'
+line_is "spec build: the values the pace takes, and 20 otherwise" "$BM" \
+  '     12, 15, 20, 30 or 60 minutes. No line, `-` or any other value: 20.'
+line_is "spec build: the cron line starts at minute 7 and steps by the pace" "$BM" \
+  '   - Its cron line runs at minute 7, then once more each time that many minutes pass, up to'
+line_is "spec build: off the hour and the half hour, with the default's example" "$BM" \
+  '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+line_is "spec build: CronList first keeps a job with the same prompt and cron line" "$BM" \
+  '   - In Claude Code, run `CronList` first. A job that already has the prompt below and that cron'
+line_is "spec build: one with another cron line is deleted" "$BM" \
+  '     line is the check: keep it, and start none. One with the prompt and another line: delete it'
+line_is "spec build: CronCreate takes that cron line" "$BM" \
+  '   - Else create it with `CronCreate`: that cron line, `recurring: true`, and the prompt'
 file_lacks "spec build: no job on the hour or the half hour" "$BM" '*/10 * * * *'
 line_is "spec build: the prompt names build.md of the spec skill" "$BM" \
-  '     `Check on the open orders of <ID>, as the check every 10 minutes in build.md of the spec skill says.`'
+  "     \`Check on the open orders of <ID>, as the lead${q}s check in build.md of the spec skill says.\`"
 line_is "spec build: in this session alone" "$BM" \
   '   - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or'
 line_is "spec build: a missing note is written again, not a stop" "$BM" \
@@ -1995,8 +2005,22 @@ file_has "contract: a repeated reply is no new event" "$CT" \
   '- A notice that repeats a reply the skill took already, such as a named agent'"${q}"'s last reply sent'
 file_has "contract: the owner's open orders" "$CT" \
   "- **The owner${q}s open orders.** The skill keeps the owner${q}s open orders of a build in"
-file_has "contract: the check every 10 minutes" "$CT" \
-  '- **The check every 10 minutes.** While an order of its story is open, the skill checks every 10'
+file_has "contract: the lead's check" "$CT" \
+  "- **The lead${q}s check.** While an order of its story is open, the skill checks on the agents, the"
+file_has "contract: at the pace of the profile's lead_check_minutes" "$CT" '  `lead_check_minutes` says (section 3). Of each order it asks whether it or an agent works toward'
+line_is "contract: the profile example has lead_check_minutes" "$CT" 'lead_check_minutes: 20'
+file_has "contract: lead_check_minutes is described with the profile keys" "$CT" \
+  '- `lead_check_minutes` is how many minutes the lead of a spec build waits between two checks on'
+file_has "contract: it takes the values that space the checks through the hour" "$CT" \
+  '  20, 30 or 60, the values that space the checks evenly through the hour. A missing or empty key,'
+file_has "contract: the template leaves it out" "$CT" \
+  '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `delivery` check warns on a value'
+file_has "contract: the delivery row names lead_check_minutes:invalid" "$CT" \
+  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn) |'
+file_lacks "profile template: leaves lead_check_minutes out" "$here/templates/profile.md.tmpl" 'lead_check_minutes'
+file_has "vault-doctor checks: the delivery check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
+  'Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).'
+
 file_has "contract: builds of one project only edit the shared note" "$CT" \
   '  note, so once it is there the skill changes it only with edits, never a whole rewrite.'
 file_has "contract: the check stops with its story, the note with every story" "$CT" \
@@ -2015,7 +2039,7 @@ line_is "spec build: the owner stops the build or drops an order at any time" "$
 file_lacks "spec build: no longer closes an order only at a stop" "$BM" 'The owner stops the build at a stop'
 line_is "spec build: a wait for the owner is said once" "$BM" '   - Waiting for the owner: say it once, not at each check.'
 is "spec build: and that is in the check" \
-  "$(awk '/^### The check every 10 minutes$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
+  "$(awk '/^### The lead'"${q}"'s check$/ { on = 1 } /^### Reading a verdict$/ { on = 0 } on' "$BM" | grep -cxF -- '   - Waiting for the owner: say it once, not at each check.')" "1"
 file_has "contract: an order closes when the owner stops the build or drops it" "$CT" \
   '- An order closes when it is done, or when the owner stops the build or drops the order, at a stop'
 file_has "contract: the check's prompt is no order" "$CT" "  or not. The check${q}s own prompt is no order."
@@ -2025,22 +2049,36 @@ line_is "guide: a build writes the orders note" "$GD" \
   "- A build writes your open orders to \`claude/lead-agent-task-memory.md\` in the project${q}s folder of"
 line_is "guide: and a hub line, both removed once no order is open" "$GD" \
   "  your vault, with a line in the project${q}s \`claude/README.md\`, and removes both once no order is"
-line_is "guide: and runs a check every 10 minutes" "$GD" \
-  '  open. While one is open, it runs a check in your session every 10 minutes, as'
+line_is "guide: and runs a check at the profile's pace" "$GD" \
+  '  open. While one is open, it runs a check in your session, as often as `lead_check_minutes` in'
 line_is "guide: pointing to the two build.md headings" "$GD" \
-  "  \`### The owner${q}s open orders\` and \`### The check every 10 minutes\` in \`skills/spec/build.md\`"
-for h in "### The owner${q}s open orders" '### The check every 10 minutes'; do
+  "  the project${q}s profile says, as \`### The owner${q}s open orders\` and \`### The lead${q}s check\` in"
+for h in "### The owner${q}s open orders" "### The lead${q}s check"; do
   is "guide: the build.md heading $h is under Spec-driven delivery" \
     "$(awk '/^## Spec-driven delivery$/ { on = 1; next } /^## / { on = 0 } on' "$GD" | grep -cF -- "\`$h\`")" "1"
 done
 file_has "changelog: the owner can stop the build or drop an order" "$CG" \
   'You can stop the build or drop an order at any time: it is then closed.'
+lc_files="$(cd "$here" && find skills agents docs templates hooks README.md CHANGELOG.md -type f | sort)"
+lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null)"
+is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
+lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
+is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \
+  'skills/spec/build.md:'"$(linex "$BM" '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.')"':     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
+lc_min="$(awk '/^## 0\.11\.0 - unreleased$/ { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
+is "the lead's check: the changelog's 0.11.0 lines and the guide name no minutes" "$lc_min" ""
+line_is "the lead's check: the start links to the renamed heading" "$BM" \
+  "   Then start the lead${q}s check, as \`### The lead${q}s check\` says."
+file_lacks "the lead's check: no link to the old heading in build.md" "$BM" 'The check every'
+file_lacks "the lead's check: nor in the guide" "$GD" 'The check every'
+file_lacks "the lead's check: nor in the contract" "$CT" 'The check every'
 cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
 cg_end="$(lineno "$CG" '## 0.10.0 - ')"
 for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \
   '- An idle notice that repeats a reply the skill took already, as a named agent'"${q}"'s last reply comes' \
   '- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,' \
-  '- While an order is open, the skill checks every 10 minutes on the agents, the branch and the'; do
+  '- While an order is open, the skill checks on the agents, the branch and the running checks' \
+  '- A profile key, `lead_check_minutes`, sets the pace of that check in one place, as'; do
   n="$(linex "$CG" "$l")"
   is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
 done

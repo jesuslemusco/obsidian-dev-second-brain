@@ -1408,7 +1408,8 @@ sb_doc_choice_ok() {
 }
 
 # Check the delivery, spec_home and validation_home values of the profile, the subproject notes and
-# the tasks.
+# the tasks, and the profile's lead_check_minutes: empty, or a value that spaces the checks evenly
+# through the hour.
 sb_doc_check_delivery() {
   local bad="" nl=$'\n' f n k v
   while IFS= read -r f; do
@@ -1422,6 +1423,10 @@ sb_doc_check_delivery() {
 $SB_P_PROFILE
 $(sb_sub_files "$SB_P_PATH")
 EOF
+  case "$(sb_fm_get "$SB_P_PROFILE" lead_check_minutes 2>/dev/null)" in
+    "" | 10 | 12 | 15 | 20 | 30 | 60) ;;
+    *) bad="${bad}lead_check_minutes:invalid$nl" ;;
+  esac
   bad="$bad$(printf '%s\n' "$SB_DOC_FILES" | LC_ALL=C awk "$(sb_awk_lib)"'
     $0 == "" { next }
     {
@@ -1439,7 +1444,7 @@ EOF
       close(path)
     }')"
   sb_doc_report warn delivery "$SB_P_NAME" "$bad" \
-    "write delivery as direct or spec, and spec_home and validation_home as vault or repo, or remove the key"
+    "write delivery as direct or spec, spec_home and validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
 }
 
 # Check that each repo of the project has a validation.md with its section, and that the section is

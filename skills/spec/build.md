@@ -173,7 +173,8 @@ what is still owed.
      it is no destructive action of `## 8`.
    - `second-brain unresolved "<project>"` must then list no link to the note.
 
-The note, with each `<...>` filled:
+The note, with each `<...>` filled. A nested item is indented with a tab, as the vault's writing
+style says:
 
 ```markdown
 ---
@@ -191,7 +192,7 @@ tags:
 ## Open orders
 
 - <YYYY-MM-DD> <ID>: "<the owner's words, as written>"
-  - Now: <what works on it: you, an agent by its name, or a check that runs>.
+	- Now: <what works on it: you, an agent by its name, or a check that runs>.
 
 ## Done
 

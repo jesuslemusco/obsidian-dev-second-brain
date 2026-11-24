@@ -2204,5 +2204,14 @@ file_has "contract: the shell runs that find, and no path is text a shell reads"
 under_011 "changelog: the folder named for a task is under 0.11.0" \
   '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
 
+# ---------------------------------------------------------------- the orders note indents with a tab
+BM="$here/skills/spec/build.md"
+line_is "spec build: the orders note's nested item is indented with a tab" "$BM" \
+  "$(printf '\t')- Now: <what works on it: you, an agent by its name, or a check that runs>."
+line_is "spec build: the template says to indent with a tab" "$BM" \
+  'The note, with each `<...>` filled. A nested item is indented with a tab, as the vault'"'"'s writing'
+is "spec build: no nested item of the orders note is indented with spaces" \
+  "$(awk '/^# <project> lead memory$/ { on = 1 } on && /^\`\`\`$/ { on = 0 } on && /^ +- /' "$BM" | wc -l | tr -d ' ')" "0"
+
 # ---------------------------------------------------------------- result
 result

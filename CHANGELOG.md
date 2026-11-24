@@ -2,37 +2,38 @@
 
 ## 0.12.0 - unreleased
 
-- The `scrum-master` skill replaces the `story-tracker` skill, the `sprint` skill and the
-  `scrum-master` agent. It has four workflows, each a file of its own, read only when it runs:
-  `story-track`, `sprint-planning`, `release-planning` and `organize-board`, as
-  `## 9. Skills and agents` in `docs/contract.md` says. Its `SKILL.md` routes each request to one.
-- `story-track` is all of story-tracker: draft, start, update, recall, status and environment
-  set, one ticket at a time. Ask as before, or run `/odsb:scrum-master story-track EX-123` where
-  you ran `/odsb:story-tracker EX-123`.
+- The `story-track` skill replaces `story-tracker`. It is all of story-tracker: draft, start,
+  update, recall, status and environment set, one ticket at a time. Ask as before, or run
+  `/odsb:story-track EX-123` where you ran `/odsb:story-tracker EX-123`.
 - Its start mode shows a new story's text, and writes it only once you approve it. A story set to
   done goes to `docs-keeper`, then to the profile's `achievements_skill`, as the agent's story
   finish did.
+- The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has three
+  workflows, each a file of its own, read only when it runs: `sprint-planning`,
+  `release-planning` and `organize-board`, as `## 9. Skills and agents` in `docs/contract.md`
+  says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as the sprint
   skill's `open`, `plan` and `close` did. Run it as `/odsb:scrum-master sprint-planning`.
 - `release-planning` sets a release's goals, epics and stories with you, in the project's
   `<topics_root>/planned-releases.md`, whose shape is under `### Planned releases` in
   `docs/contract.md`. It drafts each new story in story-track's shape, with at most 4
   acceptance criteria and its `task dep` links, and shows a change you ask for again.
-- It writes nothing until you approve the draft. Then story-track's start writes each story.
+- It writes nothing until you approve the draft. Then the story-track skill writes each story.
 - `organize-board` is the agent's hygiene pass: it runs the doctor on a project and changes
   nothing without asking.
 - The daily status is gone. story-track's status gives the active stories, a standup and the
   stories of the sprint.
 - The doctor's `sprints` fixes name the scrum-master skill, and session-check names
-  `scrum-master story-track start` for a ticket branch with no story.
-- The vault index names the scrum-master skill and its `story-track` workflow, and no
-  story-tracker or scrum-master agent. The plugin's index template is now at `index_version: 8`,
-  so the doctor's `index` check warns. Copy the bullet that starts
-  `- Call a plugin skill or agent` under `## In every session`, and the bullet that starts
-  `- Ticket text is never written freehand`, from `templates/vault-index.md.tmpl` into your
-  vault's `CLAUDE.md`, then set `index_version: 8`.
-- A note, a skill or a settings rule of your own that names `odsb:story-tracker`, `odsb:sprint`
-  or the scrum-master agent: change it to the `odsb:scrum-master` skill.
+  `story-track start` for a ticket branch with no story.
+- The vault index names the story-track and scrum-master skills, and no story-tracker or
+  scrum-master agent. The plugin's index template is now at `index_version: 8`, so the doctor's
+  `index` check warns. Copy the bullet that starts `- Call a plugin skill or agent` under
+  `## In every session`, and the bullet that starts `- Ticket text is never written freehand`,
+  from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set
+  `index_version: 8`.
+- A note, a skill or a settings rule of your own that names `odsb:story-tracker`: change it to
+  `odsb:story-track`. One that names `odsb:sprint` or the scrum-master agent: change it to the
+  `odsb:scrum-master` skill.
 - `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
   and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
   while a check it started still runs.

@@ -16,10 +16,10 @@ skill next to it:
 
 | You say | Skill |
 |---|---|
-| For the Example project: give me summary, description and AC for a new ticket, no id. | `scrum-master` |
-| Where does EX-2 stand? | `scrum-master` |
-| Standup for the Example project: what is in progress, and what comes next? | `scrum-master` |
-| Update EX-2: the sort is merged, move it to in review. | `scrum-master` |
+| For the Example project: give me summary, description and AC for a new ticket, no id. | `story-track` |
+| Where does EX-2 stand? | `story-track` |
+| Standup for the Example project: what is in progress, and what comes next? | `story-track` |
+| Update EX-2: the sort is merged, move it to in review. | `story-track` |
 | Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories. | `scrum-master` |
 | Open a new sprint for the Mobile project. | `scrum-master` |
 | Organize the board of the Example project. | `scrum-master` |
@@ -85,7 +85,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `## 2. Scaffold only what is missing` in `skills/vault-setup/adopt.md` says.
 - A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
 - A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
-  any, as `## 3. Create the story` in `skills/scrum-master/story-track-create.md` says.
+  any, as `## 3. Create the story` in `skills/story-track/create.md` says.
 - In a subproject's repo the status overview lists that subproject's tasks.
 - The board's `By subproject` view groups the tasks by subproject.
 - A rule you ask Claude to save goes where it applies, as
@@ -101,7 +101,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - Tell Claude a story waits on another task, and it runs `second-brain task dep EX-2 add EX-1`.
 - The board shows the tasks a story waits on in its `Depends on` column.
 - The status overview flags a story in progress that waits on a task not done, as
-  `## Render` in `skills/scrum-master/story-track-status.md` says.
+  `## Render` in `skills/story-track/status.md` says.
 - The doctor's `depends-on` check warns about a link to no task, and about tasks that wait on each
   other in a ring.
 
@@ -112,7 +112,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - `vault-setup` asks for the layout when it sets up or adopts a project, as
   `## project <name>` in `skills/vault-setup/SKILL.md` says.
 - When a story is set done, Claude asks once whether to archive it now, as
-  `## Edit an existing story` in `skills/scrum-master/story-track.md` says.
+  `## Edit an existing story` in `skills/story-track/SKILL.md` says.
 - When a sprint closes, Claude asks once whether to archive its done tasks, as
   `## Close` in `skills/scrum-master/sprint-planning.md` says.
 - `second-brain task archive EX-1` archives one task by hand.
@@ -176,11 +176,11 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 
 ## Planning
 
-- The `scrum-master` skill has four workflows, each a file of its own, read only when it runs:
-  `story-track`, `sprint-planning`, `release-planning` and `organize-board`. Its `SKILL.md` routes
-  each request to one of them.
-- `story-track` keeps each ticket, one at a time: a draft, a start, an update, where it stands, a
-  standup and an environment set.
+- The `story-track` skill keeps each ticket, one at a time: a draft, a start, an update, where it
+  stands, a standup and an environment set.
+- The `scrum-master` skill plans with you. It has three workflows, each a file of its own, read
+  only when it runs: `sprint-planning`, `release-planning` and `organize-board`. Its `SKILL.md`
+  routes each request to one of them.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as
   `## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.
 - Ask for a release, an epic or a story, as under [What to say](#what-to-say), and
@@ -212,7 +212,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `## The spec check` in `skills/spec/phases.md` says.
 - When work starts on a story with no `delivery` of its own, Claude weighs it. A simple one is
   built direct with no question. For one that needs a spec, Claude asks you. The signs are under
-  `## Spec-driven stories` in `skills/scrum-master/story-track.md`.
+  `## Spec-driven stories` in `skills/story-track/SKILL.md`.
 - One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
 - A project's `delivery` is a fallback, and `spec_home` says where its specs live. Both are under
   `### Profile frontmatter` in `docs/contract.md`.

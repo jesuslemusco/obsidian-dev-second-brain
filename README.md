@@ -62,21 +62,29 @@ Claude loads most skills when your request matches one, so you seldom type them.
 type a skill's name, as in the headings below. Which requests load which skill is under
 `## What to say` in `docs/guide.md`.
 
+### `/odsb:story-track`
+
+Drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
+
+- Use it for any question or change on a ticket.
+- Starting a ticket writes its story: a summary, a description and up to four acceptance
+  criteria, checked against the code. It shows you the text first, and writes it once you approve.
+- An update adds a dated status note, ticks the criteria that are met and keeps the branch line
+  current.
+- When work starts, it builds a simple story direct, and asks you when a spec would help.
+- A story set to done goes to `docs-keeper`. Then its achievement is logged, when the project's
+  profile names a skill for it.
+
+```
+Where does EX-2 stand?
+Update EX-2: the sort is merged, move it to in review.
+```
+
 ### `/odsb:scrum-master`
 
-Keeps each ticket, plans the sprints and releases with you, and checks the board. It has four
-workflows, each a file of its own in `skills/scrum-master/`, read only when it runs.
+Plans the sprints and releases with you, and checks the board. It has three workflows, each a
+file of its own in `skills/scrum-master/`, read only when it runs.
 
-- `story-track`: drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
-  Use it for any question or change on a ticket.
-  - Starting a ticket writes its story: a summary, a description and up to four acceptance
-    criteria, checked against the code. It shows you the text first, and writes it once you
-    approve.
-  - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
-    current.
-  - When work starts, it builds a simple story direct, and asks you when a spec would help.
-  - A story set to done goes to `docs-keeper`. Then its achievement is logged, when the project's
-    profile names a skill for it.
 - `sprint-planning`: opens a sprint, picks its stories, and closes it with the open work carried
   over. A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md`
   says.
@@ -88,8 +96,6 @@ workflows, each a file of its own in `skills/scrum-master/`, read only when it r
   nothing without asking.
 
 ```
-Where does EX-2 stand?
-Update EX-2: the sort is merged, move it to in review.
 Plan the 0.2.0 release for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
 /odsb:scrum-master sprint-planning Example
@@ -165,7 +171,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `scrum-master`'s `story-track` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-track` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
 | `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |

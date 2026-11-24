@@ -2774,5 +2774,20 @@ under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill
 under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
 under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
 
+# ---------------------------------------------------------------- a description with a colon and a blank is quoted
+for f in "$here"/skills/*/SKILL.md "$here"/agents/*.md; do
+  d="$(awk 'NR == 1 && $0 == "---" { on = 1; next } on && $0 == "---" { exit } on && /^description: / { sub(/^description: /, ""); print; exit }' "$f")"
+  n="${f#"$here"/}"
+  case "$d" in
+    *': '*)
+      case "$d" in
+        \"*\" | \'*\') pass "frontmatter: $n quotes its description, which holds a colon and a blank" ;;
+        *) fail "frontmatter: $n quotes its description, which holds a colon and a blank" "got: $d" ;;
+      esac ;;
+    '') fail "frontmatter: $n has a description" ;;
+    *) pass "frontmatter: $n has a description with no colon and blank" ;;
+  esac
+done
+
 # ---------------------------------------------------------------- result
 result

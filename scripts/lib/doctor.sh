@@ -1653,13 +1653,13 @@ EOF
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.
 sb_doc_check_sprints() {
   local dir="$SB_P_DIR/$SB_SPRINTS_ROOT" notes="" upcoming raw bad nl=$'\n' tab=$'\t'
-  local fix="open the next sprint through the sprint skill; do not re-point carried tasks by hand"
+  local fix="open the next sprint through the scrum-master skill; do not re-point carried tasks by hand"
   if [ "$SB_DOC_SPRINTS" -eq 0 ]; then
     # Sprints are off: the one thing left to say is a sprint note nobody can close any more.
     bad=""
     [ ! -d "$dir" ] || bad="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '$3 == "in-progress" { print $2 ":in-progress" }')"
     if [ -n "$bad" ]; then
-      sb_doc_row warn sprints "$SB_P_NAME" "$bad" "set uses_sprints to true, close the sprint through the sprint skill, then set it to false again"
+      sb_doc_row warn sprints "$SB_P_NAME" "$bad" "set uses_sprints to true, close the sprint through the scrum-master skill, then set it to false again"
     else
       sb_doc_row ok sprints "$SB_P_NAME" "" "sprints are off"
     fi

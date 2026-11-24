@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 7
+index_version: 8
 ---
 ```
 
@@ -97,6 +97,7 @@ index_version: 7
   tasks/<sprint folder>/<parent>/<TICKET-ID>/README.md   a child task in a sprint
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
+  <topics_root>/planned-releases.md   optional; the releases ahead, which release-planning writes
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```
@@ -324,6 +325,61 @@ tags:
 - A bullet is its first line and the indented lines under it, up to a blank line, a nested item
   or the next bullet. A nested item is part of no check.
 - A section is written when something is under its heading. One with nothing is `empty`.
+
+### Planned releases
+
+`<project>/<topics_root>/planned-releases.md` says which release each epic and story goes to. The
+`release-planning` workflow of the scrum-master skill writes it (section 9).
+
+```markdown
+---
+aliases:
+  - "Example Planned Releases"
+type: note
+tags:
+  - type/note
+---
+
+> Up: [[clients/acme/projects/example/docs/README|Example Docs Hub]]
+
+# Example Planned Releases
+
+The releases ahead, and the epics and stories planned for each. A story's status and next step
+live in its task note; this note says only which release it goes to.
+
+## Epics
+
+- EPIC: [[clients/acme/projects/example/tasks/EX-1/README|EX-1]] - Export the invoices. 0.2.0.
+
+## 0.1.0 - released 2026-01-14
+
+Release goals:
+- The board shows each task's branch.
+
+- STORY: [[clients/acme/projects/example/tasks/EX-5/README|EX-5]] - Show each task's branch.
+
+## 0.2.0 - next
+
+Release goals:
+- Close epic EX-1: the invoices export as CSV.
+
+- EPIC: [[clients/acme/projects/example/tasks/EX-1/README|EX-1]] - Export the invoices.
+	- STORY: [[clients/acme/projects/example/tasks/EX-2/README|EX-2]] - Export as CSV.
+	- STORY: [[clients/acme/projects/example/tasks/EX-3/README|EX-3]] - Keep the tax column. After EX-2.
+- STORY: [[clients/acme/projects/example/tasks/EX-4/README|EX-4]] - Sort the board by status.
+```
+
+- `## Epics` lists each epic once: a path link, a one-line summary and the releases it spans.
+- Then one `## <version>` section per release, oldest first.
+- The release in work is `## <version> - next`. Only one release is `next`.
+- A release once out is `## <version> - released <YYYY-MM-DD>`. One still ahead has no suffix.
+- A release section holds `Release goals:` and its bullets, a blank line, then one `- STORY:` or
+  `- EPIC:` line per item, each a path link and a one-line summary.
+- An epic's stories are nested under its line, indented with one tab.
+- A line may end with what it waits on, such as `After EX-2.`
+- A last `## Not yet in a release` section may hold the items kept for later.
+- A link carries the path `second-brain find <ID>` prints, as `### Links between notes` says.
+- A story's status and next step stay in its task note. The note holds no status.
 
 ## 4. A task
 
@@ -1072,6 +1128,41 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Agents call skills through the Skill tool as `odsb:<name>`.
 - A skill names a project's parent stories by its `parent_label`: features or epics. The
   frontmatter key it writes stays `epic`.
+- **Two skills keep the work.** `story-tracker` owns each ticket. `scrum-master` refines the
+  stories, plans the sprints and releases, and checks the board. Each has its own `description`,
+  as ticket requests come often and must pick their skill alone.
+- Each `SKILL.md` is its skill's readme. It holds the context step, the rules each run needs and
+  a table that routes each mode or workflow to its file in the same folder. Each file is read only
+  when its mode or workflow runs.
+- Neither skill has a daily status.
+- **`story-tracker`** handles one ticket at a time: draft, start, update, recall, status and
+  environment set. Its files are `create.md`, `status.md` and `env-split.md`.
+- Its start mode shows a new story's text and writes it only on the owner's approval. A change the
+  owner asks for is shown again before it is written.
+- A story refinement got approved is approved already, and gets the status note
+  `Planned: the owner approved this text.`
+- A story it sets to `done` goes to `docs-keeper`, as below. Then it logs the story's achievement
+  through the profile's `achievements_skill`, when it names one.
+- **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
+  skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and
+  `organize-board.md`.
+- `refinement` drafts or refines an epic and its stories, or one story, with the owner.
+- Each story of its draft has the shape of section 1 of `skills/story-tracker/create.md`, with at
+  most 4 acceptance criteria, its parent and the tasks it waits on.
+- The skill shows the owner the whole draft and writes nothing until the owner approves it.
+- A change the owner asks for is made in the draft and shown again. It is written only once the
+  owner approves it.
+- On the approval it writes through story-tracker: its start mode for each new epic, then each
+  new story, and its update mode for each one that changed. Then it links each story to the tasks
+  it waits on with `task dep`, and links the stories in the epic's list.
+- `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
+- `release-planning` sets a release's goals, epics and stories with the owner, in the project's
+  planned-releases note (section 3). A story or epic that does not exist yet goes through
+  refinement first.
+- It shows the release's section and writes it only once the owner approves it. It writes only
+  that section and the `## Epics` lines.
+- `organize-board` runs the doctor on the project, says what each failing row means, and changes
+  nothing without asking.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:

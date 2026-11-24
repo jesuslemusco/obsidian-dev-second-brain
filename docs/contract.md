@@ -1116,10 +1116,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   characters, quoted if it contains `: `).
 - A skill's `allowed-tools` names each tool its steps use. One that edits notes names `Edit`, one
   that writes a whole note `Write`, and one that hands work to another skill
-  `Skill(odsb:<that skill>)`.
-- Each command a skill runs other than the helper gets a pattern for exactly that read-only
-  command, such as `Bash(git -C * branch --show-current)`. Never a blanket one, such as
-  `Bash(git *)`.
+  `Skill(odsb:<that skill> *)`. `Skill(<name>)` matches only a call with no arguments, and the
+  call names a ticket id.
+- A command other than the helper gets a pattern only where nothing its wildcard can take, an
+  option or a `-c` setting, can make it write a file or run a program, such as `Bash(ls -d *)`.
+- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path
+  can take `-c gpg.program=<command>`, which a signature check runs.
 - A skill that runs only by name sets `disable-model-invocation: true`.
   `vault-setup` is the one: it writes the pointer and the links into `~/.claude`.
 - Claude may call `vault-doctor` from a request: its check writes nothing, and its fix repairs only

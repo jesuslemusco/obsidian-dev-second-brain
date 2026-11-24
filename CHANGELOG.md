@@ -28,8 +28,8 @@
 - A sprint close asked for with no sprint in progress says so and stops. It opens a sprint only
   when you ask for one.
 - The scrum-master skill may edit and write notes and call story-tracker with no prompt, and
-  story-tracker may edit notes. Both may run, with no prompt, the read-only git and `ls -d`
-  commands their steps name, each by its own pattern.
+  story-tracker may edit notes. Both may run `ls -d` with no prompt. Their git commands still
+  prompt: a pattern for `git -C <path>` would let a `-c` setting run a program.
 - The doctor's `sprints` fixes name the scrum-master skill.
 - The vault index names the scrum-master skill, and no `sprint` skill or scrum-master agent. The
   plugin's index template is now at `index_version: 8`, so the doctor's `index` check warns. Copy

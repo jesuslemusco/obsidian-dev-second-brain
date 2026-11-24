@@ -2596,24 +2596,43 @@ file_lacks "scrum-master: no daily status" "$SMS" 'daily status'
 is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
 file_has "story-tracker: the start row takes refinement's stories" "$STS" \
   'or the scrum-master'"'"'s refinement hands over a story the owner approved |'
-line_is "story-tracker: it may edit notes and run its read-only git and ls commands" "$STS" \
-  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)'
-line_is "scrum-master: it may edit and write notes, call story-tracker and run the same commands" "$SMS" \
-  'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker) Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)'
-# Each command the two skills' text runs, other than the helper, has its own pattern, and none is a blanket git.
-for f in "$STD"/*.md "$SMD"/*.md; do
-  for c in $(grep -oE '`(git -C "<repo path>"|ls -d) [a-z-]+' "$f" | sed 's/^`//; s/"<repo path>"/*/' | tr ' ' '_' | sort -u); do
-    c="${c//_/ }"
-    case "$(sed -n 's/^allowed-tools: //p' "$STS") $(sed -n 's/^allowed-tools: //p' "$SMS")" in
-      *"Bash($c "*) pass "allowed-tools: $(basename "$f") runs $c, which has a pattern" ;;
-      *) fail "allowed-tools: $(basename "$f") runs $c, which has a pattern" ;;
-    esac
-  done
-done
+line_is "story-tracker: it may edit notes and run ls -d" "$STS" \
+  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
+line_is "scrum-master: it may edit and write notes, call story-tracker with an id and run ls -d" "$SMS" \
+  'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker *) Bash(second-brain *) Bash(ls -d *)'
+# The commands the two skills' text runs, other than the helper: ls -d has a pattern, git -C has
+# none and prompts, as a -c setting before its subcommand can run a program. Read line by line, so
+# no glob in a command expands.
+seen_ls=0
+seen_git=0
+while IFS= read -r c; do
+  case "$c" in
+    'ls -d '*) seen_ls=1 ;;
+    'git -C '*) seen_git=1 ;;
+  esac
+done <<CMDS
+$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git -C|ls -d) [^`]*`' | tr -d '`')
+CMDS
+is "allowed-tools: the skills' text runs ls -d" "$seen_ls" "1"
+is "allowed-tools: the skills' text runs git -C" "$seen_git" "1"
 for f in "$STS" "$SMS"; do
-  file_lacks "allowed-tools: no blanket git in $(basename "$(dirname "$f")")" "$f" 'Bash(git *)'
-  file_has "allowed-tools: $(basename "$(dirname "$f")") may run the topic folder check" "$f" ' Bash(ls -d *)'
+  sk="$(basename "$(dirname "$f")")"
+  tools="$(sed -n 's/^allowed-tools: //p' "$f")"
+  case " $tools " in
+    *' Bash(ls -d *) '*) pass "allowed-tools: $sk may run the topic folder check" ;;
+    *) fail "allowed-tools: $sk may run the topic folder check" "got: $tools" ;;
+  esac
+  case "$tools" in
+    *'Bash(git'*) fail "allowed-tools: $sk has no git pattern, so its git commands prompt" "got: $tools" ;;
+    *) pass "allowed-tools: $sk has no git pattern, so its git commands prompt" ;;
+  esac
+  extra="$(printf '%s\n' "$tools" | grep -oE 'Bash\([^)]*\)' | grep -vxF -e 'Bash(second-brain *)' -e 'Bash(ls -d *)')"
+  is "allowed-tools: $sk has no other command pattern" "$extra" ""
 done
+file_has "contract: a git -C pattern never qualifies" "$here/docs/contract.md" \
+  '- Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path'
+file_has "contract: a skill call with an id needs the prefix form" "$here/docs/contract.md" \
+  '`Skill(odsb:<that skill> *)`. `Skill(<name>)` matches only a call with no arguments, and the'
 file_has "story-tracker create: the topic folder check is ls -d" "$STD/create.md" '`ls -d "<vault>/<project path>/<topics_root>/<folder>"`'
 file_has "story-tracker: the sprint keys are the scrum-master's" "$STS" \
   '- Leave `sprint` and `carried_from` to the scrum-master'"'"'s sprint-planning unless the user asks.'

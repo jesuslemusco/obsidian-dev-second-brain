@@ -2,7 +2,7 @@
 name: story-tracker
 description: "Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria)."
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
-allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)
+allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)
 ---
 
 # Story tracker

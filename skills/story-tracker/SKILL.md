@@ -2,7 +2,7 @@
 name: story-tracker
 description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
-allowed-tools: Read Grep Glob Bash(second-brain *)
+allowed-tools: Read Grep Glob Edit Bash(second-brain *)
 ---
 
 # Story tracker

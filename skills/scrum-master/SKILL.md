@@ -2,7 +2,7 @@
 name: scrum-master
 description: Refine stories and epics, plan or run a sprint (open, pick, close, carry over), plan a release, or organize and check the board, from the Obsidian vault, with the owner's approval.
 argument-hint: "[refinement | sprint-planning | release-planning | organize-board] [project]"
-allowed-tools: Read Bash(second-brain *)
+allowed-tools: Read Edit Write Skill Bash(second-brain *)
 ---
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.

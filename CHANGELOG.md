@@ -44,6 +44,13 @@
 - Only a defect fails a task, counts in the verdict's `issues` and goes to the fix loop. A
   follow-up is a `Follow-up: <task>:` status note on the story. When the build finishes or stops,
   it lists each one so far for the owner, who can have one fixed then.
+- Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a
+  file or a branch state can test, such as `git merge-base --is-ancestor <branch> release/<version>`
+  exiting 0. The lead writes it from the owner's words when it takes the order, and asks the owner
+  only when the words give none.
+- The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
+  closes an order whose condition holds, never one whose condition does not, and never changes a
+  condition without the owner. The finish closes only the orders whose condition holds.
 
 ## 0.11.0 - 2026-11-23
 

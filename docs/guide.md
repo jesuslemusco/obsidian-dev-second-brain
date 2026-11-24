@@ -281,6 +281,9 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   open. While one is open, it runs a check in your session, as often as `lead_check_minutes` in
   the project's profile says, as `### The owner's open orders` and `### The lead's check` in
   `skills/spec/build.md` say.
+- Each order has a `Done when:` line, a condition a command, a file or a branch state can test.
+  Claude writes it from your words, and asks you only when they give none. The check closes an
+  order when its condition holds, and only you change a condition.
 - When the last task passes, the story moves to `in-review`.
 - Then Claude asks whether to merge the branch into the release branch, open a pull request into
   it, or keep it, as `skills/spec/finish.md` says.

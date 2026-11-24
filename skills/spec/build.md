@@ -147,12 +147,29 @@ what is still owed.
   each later one, such as a `release` check or an answer at a stop that sends the build on. The
   check's own prompt is no order.
 - Under `## Open orders`, the note holds each open order: its date, its story, the owner's words
-  as written, and a `Now:` line on what works on it, such as you, an agent by its name, or a
-  check that runs.
+  as written, a `Done when:` line, and a `Now:` line on what works on it, such as you, an agent by
+  its name, or a check that runs.
 - Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per
   story: the time of its newest check, and what it found.
 - Another build of the project may keep its orders in the same note. Your own are the orders of
   `<ID>`. An order of another story is another session's: leave it as it is.
+- `Done when:` is one condition that a command, a file or a branch state shows to hold or not.
+  Name what shows it: a command and its exit code or what it prints, a file and the line it holds,
+  or where a branch is.
+- A judgement, such as "the build looks good", is no condition.
+- Its command only reads: never one that pushes, merges, fetches or writes.
+- Conditions that a check can test:
+  - A story merged into the release:
+    `git -C "<path>" merge-base --is-ancestor <branch> release/<version>` exits 0.
+  - A release shipped: `git -C "<path>" ls-remote --tags origin v<version>` prints a line.
+  - A pull request's checks passed: in `<path>`, `gh pr checks <number>` exits 0.
+  - A line in a file of the repo: `grep -qxF "<line>" "<path>/<file>"` exits 0.
+  - The order that ran the build, in no other words: the story holds a `Finish:` status note newer
+    than this run's start. That is the newest of the `Build: started on <branch> at <short hash>.`
+    and `Build: resumed on <branch> at <short hash>.` notes. Read them from `## Status notes`, as
+    `### The rulings of this build` says.
+- Never change or drop a `Done when:` line without the owner, even when it looks out of reach. A
+  condition the owner gives replaces it, and their words join the order's.
 
 1. When the build starts or resumes, add the order that ran it, unless the note holds it already.
    - No note yet: write it with the Write tool, as below. Then add its line to the project's
@@ -162,8 +179,13 @@ what is still owed.
    - Once the note is there, change it only with the Edit tool, never a whole rewrite, so that you
      never overwrite another session's orders.
 2. A new order: add it under `## Open orders`. Keep each `Now:` line true as the work moves on.
+   - Write its `Done when:` line from the owner's words as you add it, for the order that ran the
+     build too.
+   - Their words give no condition, such as "keep an eye on it": ask the owner for one in your
+     reply. Until they answer, its line is `Done when: asked the owner.`, which never holds.
 3. An order done: take it to `## Done`, with what finished it.
-   - The build's orders are done when `finish.md` is done.
+   - It is done when its `Done when:` condition holds. Name what showed it, such as the command
+     and what it printed.
    - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the
      owner.
 4. No order of `<ID>` open: stop the lead's check, as its item 6 says.
@@ -192,6 +214,7 @@ tags:
 ## Open orders
 
 - <YYYY-MM-DD> <ID>: "<the owner's words, as written>"
+	- Done when: <one condition that a command, a file or a branch state shows>.
 	- Now: <what works on it: you, an agent by its name, or a check that runs>.
 
 ## Done
@@ -221,13 +244,21 @@ with no report and no notice that wakes you.
      `CronList`.
    - No scheduling tool: check on each notice that comes to you instead, from an agent or from a
      run in the background.
-2. Read the orders note. Of each open order of `<ID>`, ask: is it done, and are you or an agent
-   working toward it? Look at the agent at work, the branch and the running checks, as item 1 of
-   `### An agent with no report` says.
+2. Read the orders note. Of each open order of `<ID>`, test its `Done when:` condition, then ask:
+   are you or an agent working toward it? Look at the agent at work, the branch and the running
+   checks, as item 1 of `### An agent with no report` says.
+   - Run the condition's command as it is written, or read its file or branch. It holds only when
+     what it names shows, such as exit 0 or the line.
+   - A condition you cannot test, such as one whose command is not found: it does not hold. Say
+     so once, not at each check.
+   - An order with no `Done when:` line: write one from its words, as item 2 of
+     `### The owner's open orders` says.
    - The note is missing while an order of `<ID>` is open: write it again with your open orders,
      as item 1 of `### The owner's open orders` says, and go on. Never stop the check for it.
 3. Then, for each order:
-   - Done: take it to `## Done`, as `### The owner's open orders` says.
+   - Its condition holds: take it to `## Done`, as `### The owner's open orders` says.
+   - Never close an order whose condition does not hold, and never change a condition to close
+     one.
    - A report you have not taken yet: take it now, as the step that launched its agent says.
    - An agent idle with no report: take it as `### An agent with no report` says.
    - An agent at work, a check that still runs, or a question to the owner: wait.
@@ -485,8 +516,8 @@ A resumed build with every task passed comes straight here.
    - Then list the follow-ups of the build, as `### The list of follow-ups` says.
 7. Read `finish.md`, next to this file, and follow it. The story is `in-review`: story-tracker
    takes it from there.
-   - Once `finish.md` is done, so are the build's orders: take them to `## Done`, as
-     `### The owner's open orders` says.
+   - Once `finish.md` is done, test each order of the build: take each whose `Done when:` holds
+     to `## Done`, as `### The owner's open orders` says.
 
 ## 7. When the build stops
 
@@ -538,6 +569,8 @@ waits for the owner, as `## 7. When the build stops` says:
    review is a block too.
 6. A failed baseline.
 
+- An order whose words give no `Done when:` condition: ask the owner in your reply, as item 2 of
+  `### The owner's open orders` says. It stops nothing.
 - Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.
 - The steps before the `Build: started` or `Build: resumed` note ask as they say: the owner has
   just run the skill. So does `finish.md`: each of its questions is an outside effect or a

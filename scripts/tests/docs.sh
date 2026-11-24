@@ -1530,8 +1530,8 @@ case "$rb" in *'Build: resumed'*) fail "build: the rulings stay anchored on the 
   *'`Build: started on <branch> at <short hash>.` note'*) pass "build: the rulings stay anchored on the started note" ;;
   *) fail "build: the rulings stay anchored on the started note" "in: $rb" ;; esac
 tpl="$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$LD")"
-tp_done="$(printf '%s\n' "$tpl" | grep -nP '^\t- Done when: ' | cut -d: -f1)"
-tp_now="$(printf '%s\n' "$tpl" | grep -nP '^\t- Now: ' | cut -d: -f1)"
+tp_done="$(printf '%s\n' "$tpl" | awk '/^\t- Done when: / { print NR; exit }')"
+tp_now="$(printf '%s\n' "$tpl" | awk '/^\t- Now: / { print NR; exit }')"
 is "build: the note's done-when line is a tab-indented item before Now" "$((${tp_done:-0} > 0 && ${tp_done:-0} < ${tp_now:-0}))" "1"
 in_lk "build: the check runs the command as written" \
   '   - Run the condition'"${q}"'s command as it is written, or read its file or branch. It holds only when'
@@ -2201,12 +2201,12 @@ for m in refinement sprint-planning release-planning organize-board; do
   file_lacks "scrum-master: $m.md names no path variable" "$SMD/$m.md" '${CLAUDE_'
   file_lacks "scrum-master: $m.md has no daily status" "$SMD/$m.md" 'daily status'
 done
-is "scrum-master: SKILL.md and the four workflow files" "$(ls "$SMD" | tr '\n' ' ')" \
+is "scrum-master: SKILL.md and the four workflow files" "$(ls "$SMD" | LC_ALL=C sort | tr '\n' ' ')" \
   "SKILL.md organize-board.md refinement.md release-planning.md sprint-planning.md "
 file_has "scrum-master: SKILL.md gives the path of story-tracker's create.md" "$SMS" '`${CLAUDE_PLUGIN_ROOT}/skills/story-tracker/create.md`'
 file_has "scrum-master: a ticket goes to the story-tracker skill" "$SMS" 'skill, with the Skill tool as `odsb:story-tracker`.'
 file_lacks "scrum-master: no daily status" "$SMS" 'daily status'
-is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
+is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | LC_ALL=C sort | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
 file_has "story-tracker: the start row takes refinement's stories" "$STS" \
   'or the scrum-master'"'"'s refinement hands over a story the owner approved |'
 line_is "story-tracker: it may edit notes and run ls -d" "$STS" \

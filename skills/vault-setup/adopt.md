@@ -14,7 +14,8 @@ moves nothing, renames nothing and rewrites no note body.
 - The topics root is `.` when topic folders sit at the project root.
 - A kind of note the project does not have yet takes the default root: `tasks`, `docs`, `sprints`.
 - Ask for what the files do not say: the display name, the ticket key prefixes, the "use when"
-  line, and whether the project runs sprints.
+  line, whether the project runs sprints, and whether it calls its parent stories features or
+  epics.
 
 ## 2. Scaffold only what is missing
 
@@ -26,6 +27,8 @@ moves nothing, renames nothing and rewrites no note body.
    ```
 
    - No sprints: pass `--no-sprints` in place of `--sprints-root`.
+   - Features: add `--parent-label feature`. A profile that exists keeps its own `parent_label`:
+     write the key there with the profile's other keys, as section 3 says.
 2. It writes the roots into the new profile, creates the hubs and the board under them, adds the
    index row and prints what it created.
    - `--topics-root .` creates no topics hub.
@@ -59,6 +62,9 @@ moves nothing, renames nothing and rewrites no note body.
   outside the folder of its sprint, or `backlog/` with no sprint.
 - Offer that run the same way. It also removes each empty group folder, a status folder too,
   whether or not a move emptied it.
+- With `status` or `sprint`, that run also moves each child task, one whose `epic` names another
+  task, into a folder named for its parent. A task whose `epic` names no task stays where it is,
+  and the row names it `<ID>:unknown-<word>`, the word being the project's `parent_label`.
 - Ask how a deployment is confirmed. Write the answer in the opening paragraph of `## Docs`.
 - For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
   `repo.md` says.

@@ -69,6 +69,9 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
      either.
    - In a sprint project, `sprint_folder:invalid` is no task either. In a status project, neither
      is a `<folder>:status` offender, whose tasks the row counts as `<ID>:<status>` too.
+   - In a status or sprint project, an `<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`
+     offender is a child it moves into a folder named for its parent: name it with that folder.
+     `<ID>:unknown-<word>` and `parent_label:invalid` are no task it moves.
    - The count is above five: say that the doctor names only the first five, and name those. The
      count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.
    - Then run `second-brain snapshot` before it.

@@ -40,23 +40,67 @@ function str(k, keep,   r) {
   gsub("\036", "/", r)
   return keep ? r : tolower(r)
 }
+# 1 when g, a folder name in lower case, is a group folder: a status folder, backlog, or a folder
+# with no README.md of its own, f, such as the folder of a sprint, looked up on disk in the letter
+# case of the path. archive is no group folder.
+function group(g, f,   line) {
+  if (g == "archive") return 0
+  if (g ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  if ((getline line < f) >= 0) { close(f); return 0 }
+  return 1
+}
+# The value of a key in the frontmatter of a note, unquoted and in lower case; for aliases, each item
+# with a newline before it. Empty when the note or the key is not there.
+function front(f, k,   line, n, key, v, out, nv, it, j) {
+  n = 0; key = ""; out = ""
+  while ((getline line < f) > 0) {
+    n++; sub(/\r$/, "", line)
+    if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+    if (line == "---") break
+    if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
+      key = line; sub(/:.*$/, "", key); v = line; sub(/^[^:]*:[ \t]*/, "", v)
+      if (key != k) continue
+      if (k != "aliases") { out = bare(v); break }
+      gsub(/^\[|\][ \t]*$/, "", v); nv = split(v, it, ",")
+      for (j = 1; j <= nv; j++) if (bare(it[j]) != "") out = out "\n" bare(it[j])
+    } else if (k == "aliases" && key == k && line ~ /^[ \t]*-([ \t]|$)/) {
+      v = line; sub(/^[ \t]*-[ \t]*/, "", v); out = out "\n" bare(v)
+    }
+  }
+  close(f)
+  return out
+}
+# A YAML scalar in lower case, with its blanks and quotes taken off.
+function bare(v) {
+  sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
+  if (v ~ /^".*"$/ || v ~ /^\047.*\047$/) v = substr(v, 2, length(v) - 2)
+  return tolower(v)
+}
 # 1 when a README read as a task note, p in lower case and raw as written, is one: directly in a
-# folder under tasks/ or under a year of the archive, or in a folder under a group folder. A group
-# folder is a status folder, backlog, or a folder with no README.md of its own, such as the folder
-# of a sprint, looked up on disk in the letter case of the path. A folder with a README.md is a
-# task, so a README in a folder inside it is no task note. archive is no group folder.
-function tasknote(p, raw,   a, n, g, f, line) {
+# folder under tasks/ or under a year of the archive, or in a folder under a group folder. A folder
+# with a README.md is a task, so a README in a folder inside it is no task note, but for a child
+# task: one level deeper, in tasks/<group>/<parent>/<ID>/, a README whose epic names <parent>, by
+# its folder name or an alias of <parent>/README.md.
+function tasknote(p, raw,   a, n, f, e, al) {
   n = split(p, a, "/")
   if (a[n - 2] == "tasks") return 1
   if (a[n - 4] == "tasks" && a[n - 3] == "archive" && a[n - 2] ~ /^[0-9][0-9][0-9][0-9]$/) return 1
-  if (a[n - 3] != "tasks") return 0
-  g = a[n - 2]
-  if (g == "archive") return 0
-  if (g ~ /^(planned|in-progress|in-review|done|abandoned|backlog)$/) return 1
+  if (a[n - 3] == "tasks") {
+    f = raw
+    sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
+    return group(a[n - 2], f)
+  }
+  if (a[n - 4] != "tasks") return 0
+  f = raw
+  sub(/\/[^\/]*\/[^\/]*\/[^\/]*$/, "/README.md", f)
+  if (!group(a[n - 3], f)) return 0
+  e = front(raw, "epic")
+  if (e == "" || e == "-") return 0
+  if (e == a[n - 2]) return 1
   f = raw
   sub(/\/[^\/]*\/[^\/]*$/, "/README.md", f)
-  if ((getline line < f) >= 0) { close(f); return 0 }
-  return 1
+  al = front(f, "aliases") "\n"
+  return (index(al, "\n" e "\n") > 0)
 }
 # A regex that matches the text itself: each character but a letter or a digit stands in brackets,
 # or after a backslash where brackets would not hold it.

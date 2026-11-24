@@ -79,7 +79,10 @@ commits, the files already in the task folder.
    - `note: no folder for the topic tag ...` on stderr: run
      `second-brain task tag EX-123 remove <tag>` and ask the user.
 3. `second-brain task set EX-123 status=<planned or in-progress> next="<the next action>"
-   branch="<branch or none yet>"`, plus `epic=<ID>` when there is one.
+   branch="<branch or none yet>"`, plus `epic=<ID>` when the story has a parent, the project's
+   feature or epic, as Step 0 of `SKILL.md` names it.
+   - With `task_layout: status` or `sprint`, the call moves the story into a folder named for its
+     parent, and prints its new path after the keys.
 4. Fill the sections the template leaves empty:
    - Summary, Description, Findings and Acceptance criteria come from section 1.
    - Each acceptance criterion is a `- [ ]` line.

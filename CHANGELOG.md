@@ -53,6 +53,33 @@
   index template is now at `index_version: 7`, so the doctor's `index` check warns. Copy the task
   bullet under `## Rules for notes that most often go wrong` from `templates/vault-index.md.tmpl`
   into your vault's `CLAUDE.md`, then set `index_version: 7`.
+- In a status or sprint project, a child task, one whose `epic` names another task, sits inside a
+  folder named for its parent, in the folder of its own status or sprint:
+  `<tasks_root>/<status>/<parent>/<ID>/README.md`, `<tasks_root>/backlog/<parent>/<ID>/README.md`
+  or `<tasks_root>/<sprint folder>/<parent>/<ID>/README.md`. The parent's own note stays where
+  its own status, or its sprint or `backlog/`, puts it. A flat or archive project moves nothing.
+- `task set <ID> epic=<parent>` moves a child into that folder, and `epic=` moves it out. A status
+  or sprint change, `sprint open` and `sprint close` keep a child under its parent. A parent's move
+  takes its own files alone, so a parent done or abandoned leaves its open children where they are.
+  A move that leaves a folder named for a parent empty removes it, `removed: <path>`.
+- Commands find a task one level deeper in a group folder: a child inside its parent's folder, and
+  each task in a folder named for a parent with no README of its own.
+- `parent_label` in the profile names a project's parent stories `feature`, or `epic` with no key.
+  `task head` prints the `epic` line as `feature:` where it is `feature`, and a new board names its
+  column after it. `scaffold project --parent-label` writes the key, and `vault-setup` asks for it.
+  The frontmatter key stays `epic`.
+- A new board's filters take a task one level deeper. An existing board is not rewritten: in a
+  status or sprint project with a child, the doctor's `board` check warns on one without that
+  branch, `tasks.base:no-child-filter`.
+- The doctor's `task-layout` check names a child outside its parent's folder
+  (`<ID>:<status>/<parent>` or `<ID>:<folder>/<parent>`), which `doctor --fix` moves, a task whose
+  `epic` names no task (`<ID>:unknown-<label>`), which it leaves where it is, and a `parent_label`
+  that is neither word (`parent_label:invalid`). `no-readme` and `task-location` take a child in its
+  place.
+- The search rule warns on a whole Read of a child task note too. story-tracker, the sprint skill,
+  scrum-master and docs-keeper name a child's folder and call parent stories by the project's word.
+- The conventions note is at version 10: it names a child task's folder. The doctor's
+  `conventions` check warns about an older note.
 
 ## 0.10.0 - 2026-11-22
 

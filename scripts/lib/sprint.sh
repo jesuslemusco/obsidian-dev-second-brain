@@ -293,7 +293,7 @@ EOF
 # the new sprint's folder, every destination looked at before anything is written.
 sb_sprint_open() {
   local project="" end="" goal="" given=0 len anchor cur dir note hub alias uplink start line row
-  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir
+  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir parent
   local usage="usage: second-brain sprint open <project> [--end YYYY-MM-DD] [--goal G]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -332,7 +332,7 @@ sb_sprint_open() {
   # known before it is written. In a sprint project each moves to the folder of that sprint, so each
   # destination must be free before anything is written. A task already in it is not in its own way,
   # and stays. A sprint folder that is a task, with a README.md of its own, is in the way too, and a
-  # pattern that names no sprint folder exits 5.
+  # pattern that names no sprint folder exits 5. A child moves into its parent's folder there.
   known="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '{ print $2 }')"
   known="$known$nl$end"
   layout="$(sb_task_layout)"
@@ -342,8 +342,9 @@ sb_sprint_open() {
     dest=""
     if [ "$layout" = "sprint" ]; then
       tdir="${file%/*}"
-      dest="$(SB_T_ID="${tdir##*/}" sb_task_sprint_dir "$end")" || exit $?
-      if [ "$dest" = "$(sb_rel "$tdir")" ]; then dest=""; else sb_task_sprint_dest_free "$dest"; fi
+      parent="$(sb_task_parent "$file")" || parent=""
+      dest="$(SB_T_ID="${tdir##*/}" sb_task_sprint_dir "$end" "$parent")" || exit $?
+      if [ "$dest" = "$(sb_rel "$tdir")" ]; then dest=""; else sb_task_sprint_dest_free "$dest" "$file"; fi
     fi
     plan="$plan$file$tab$tid$tab$old$tab$dest$nl"
   done <<EOF
@@ -398,7 +399,7 @@ sb_sprint_close() {
   local row note id status start end goal len next plan problems action file tid title rest
   local done_ids="" carried_ids="" backlog_ids="" abandoned_ids="" text link nl=$'\n'
   local done_md="" carried_md="" backlog_md="" abandoned_md="" n_done=0 n_carried=0 n_backlog=0 n_abandoned=0
-  local moves="" dir dest layout
+  local moves="" dir dest layout parent
   local usage="usage: second-brain sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -477,19 +478,21 @@ EOF
   # while a done or abandoned task, and one named in --abandon, stays in the closed sprint's folder.
   # So each destination must be free before anything is written. A task already in it is not in its
   # own way, and stays. A next sprint's folder that is a task, with a README.md of its own, is in the
-  # way too, and a pattern that names no sprint folder exits 5.
+  # way too, and a pattern that names no sprint folder exits 5. A child moves into its parent's folder
+  # in the folder its list sends it to.
   layout="$(sb_task_layout)"
   if [ "$layout" = "status" ] || [ "$layout" = "sprint" ]; then
     while IFS=$'\t' read -r action file tid title rest; do
       dir="${file%/*}"
+      case "$layout:$action" in status:abandon | sprint:carry | sprint:backlog) ;; *) continue ;; esac
+      parent="$(sb_task_parent "$file")" || parent=""
       case "$layout:$action" in
-        status:abandon) dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned)" ;;
-        sprint:carry) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "$next")" || exit $? ;;
-        sprint:backlog) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "")" || exit $? ;;
-        *) continue ;;
+        status:abandon) dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned "$parent")" ;;
+        sprint:carry) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "$next" "$parent")" || exit $? ;;
+        *) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "" "$parent")" || exit $? ;;
       esac
       [ "$dest" != "$(sb_rel "$dir")" ] || continue
-      if [ "$action" = "carry" ]; then sb_task_sprint_dest_free "$dest"; else sb_task_dest_free "$dest"; fi
+      if [ "$action" = "carry" ]; then sb_task_sprint_dest_free "$dest" "$file"; else sb_task_dest_free "$dest" "$file"; fi
       moves="$moves$file"$'\t'"$dest$nl"
     done <<EOF
 $plan

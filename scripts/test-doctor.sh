@@ -1777,6 +1777,223 @@ is "task-layout --fix: once the folder is free, the next fix moves the task into
   "fixed: EX-1 -> $P/tasks/sprint-1/EX-1/README.md (Example)"
 reset
 
+# ---------------------------------------------------------------- task-layout, the child folders
+# A child task, one whose epic names another task, belongs inside a folder named for its parent, in
+# the folder of its own status or sprint. EX-2 and EX-3 are made children of EX-1 while the project
+# is flat, where the epic moves nothing.
+# fixed_moves: the fixed: lines of the last run that move a task or remove a folder.
+fixed_moves() { printf '%s\n' "$OUT" | grep '^fixed: ' | grep -v ' -> status/' || true; }
+# set_key <file> <key> <value>: write one frontmatter key by hand, as an edit in Obsidian does.
+set_key() { edit "$1" "s/^$2: .*/$2: $3/"; }
+sb task alias EX-1 add "First of all"
+sb task set EX-2 epic=EX-1
+sb task set EX-3 epic="first OF all"
+rc_is "children: an epic that names the parent by an alias is written in a flat project" 0
+exists "children: in a flat project the child stays at the tasks root" "$T/EX-3/README.md"
+doc Example
+chk "children: a flat project does not ask for the child folders" task-layout Example "ok | 0 | -"
+layout status
+doc Example
+chk "children: in a status project a child warns with its parent's folder in the folder of its status" task-layout Example \
+  "warn | 3 | EX-1:in-progress, EX-2:done/EX-1, EX-3:planned/EX-1"
+is "children: the status fix says --fix puts a child inside its parent's folder" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status, each child inside its epic's folder there"
+is "children: the drift names the folder named for the parent" "$(drift)" \
+  "EX-1 EX-1/README.md in-progress${NL}EX-2 EX-2/README.md done/EX-1${NL}EX-3 EX-3/README.md planned/EX-1"
+doc Example --fix
+rc_is "children --fix: exit 0 in a status project" 0
+is "children --fix: the parent, then each child into a folder named for it" "$(fixed_moves)" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-1/EX-2/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-1/EX-3/README.md (Example)"
+doc Example
+chk "children --fix: then task-layout is ok" task-layout Example "ok | 0 | -"
+chk "children --fix: no-readme takes the folders named for the parent, which hold tasks" no-readme Example "ok | 0 | -"
+chk "children --fix: task-location takes a child one level deeper" task-location Example "ok | 0 | -"
+chk "children --fix: the template's board takes a child" board Example "ok | 0 | -"
+sb find EX-3
+is "children --fix: find sees the child" "$OUT" "$P/tasks/planned/EX-1/EX-3/README.md"
+sb board Example All
+is "children --fix: the board lists each task" "$(printf '%s\n' "$OUT" | cut -d' ' -f1 | sort | tr '\n' ' ')" "EX-1 EX-2 EX-3 "
+sb unresolved Example
+is "children --fix: unresolved lists nothing" "$RC/$OUT" "0/"
+# A child in each status folder: a status edited by hand names the child, and --fix moves it into a
+# folder named for its parent there, removing the one it leaves when that holds nothing more.
+prev=planned
+for s in in-progress in-review done abandoned planned; do
+  f="$(ls "$T"/*/EX-1/EX-3/README.md)"
+  set_key "$f" status "$s"
+  doc Example
+  chk "children: a child set $s by hand warns as $s/EX-1" task-layout Example "warn | 1 | EX-3:$s/EX-1"
+  doc Example --fix
+  want="fixed: EX-3 -> $P/tasks/$s/EX-1/EX-3/README.md (Example)"
+  # planned/EX-1, in-review/EX-1 and abandoned/EX-1 held the child alone; in-progress/EX-1 is the
+  # parent's own folder, and done/EX-1 still holds EX-2.
+  case "$prev" in planned | in-review | abandoned) want="$want${NL}fixed: $P/tasks/$prev/EX-1 -> removed (Example)" ;; esac
+  is "children --fix: the child in $prev/ goes into $s/EX-1/" "$(fixed_moves)" "$want"
+  doc Example
+  chk "children --fix: then the child in $s/EX-1/ is in its place" task-layout Example "ok | 0 | -"
+  chk "children --fix: and no-readme names nothing in $s/" no-readme Example "ok | 0 | -"
+  prev="$s"
+done
+# A parent whose status changes by hand moves its own files alone, and leaves its children where
+# they are: done/EX-1 holds its done child already, and takes the parent's README beside it.
+set_key "$T/in-progress/EX-1/README.md" status done
+doc Example
+chk "children: a parent set done by hand warns as its id and status" task-layout Example "warn | 1 | EX-1:done"
+doc Example --fix
+is "children --fix: the parent moves into the folder that holds its done child" "$(fixed_moves)" \
+  "fixed: EX-1 -> $P/tasks/done/EX-1/README.md (Example)"
+is "children --fix: done/EX-1 holds the parent's README and its done child" "$(ls "$T/done/EX-1" | tr '\n' ' ')" "EX-2 README.md "
+is "children --fix: the folder the parent left is gone" "$([ -e "$T/in-progress/EX-1" ] && printf there || printf gone)" "gone"
+exists "children --fix: its planned child stays where it was" "$T/planned/EX-1/EX-3/README.md"
+doc Example
+chk "children --fix: then task-layout is ok with the parent done" task-layout Example "ok | 0 | -"
+# A parent abandoned with an open child: its own files move, and its children stay.
+set_key "$T/done/EX-1/README.md" status abandoned
+doc Example --fix
+is "children --fix: the abandoned parent moves its own files alone" "$(fixed_moves)" \
+  "fixed: EX-1 -> $P/tasks/abandoned/EX-1/README.md (Example)"
+is "children --fix: done/EX-1 keeps the done child, and no README" "$(ls "$T/done/EX-1" | tr '\n' ' ')" "EX-2 "
+doc Example
+chk "children --fix: the abandoned parent's open child is still in its place" task-layout Example "ok | 0 | -"
+chk "children --fix: and needs no README for the folder it is in" no-readme Example "ok | 0 | -"
+sb task head EX-3
+is "children --fix: task head still reads the open child" "$(printf '%s\n' "$OUT" | grep '^path: ')" "path: $P/tasks/planned/EX-1/EX-3/README.md"
+sb unresolved Example
+is "children --fix: unresolved lists nothing after the parent's moves" "$RC/$OUT" "0/"
+# A task that is no child, in a folder named for another task, belongs directly in its folder.
+set_key "$T/done/EX-1/EX-2/README.md" epic '"-"'
+doc Example
+chk "children: a task that is no child, one level deeper, warns as its status" task-layout Example "warn | 1 | EX-2:done"
+doc Example --fix
+is "children --fix: it moves out, and the folder it leaves empty goes" "$(fixed_moves)" \
+  "fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)
+fixed: $P/tasks/done/EX-1 -> removed (Example)"
+# no-readme reads a folder that holds tasks one level deeper; an empty one stays its finding.
+mkdir -p "$T/planned/EX-1/EX-9" "$T/in-review/EX-8"
+doc Example
+chk "no-readme: a folder with no README in a folder that holds tasks warns, and so does an empty one" no-readme Example \
+  "warn | 2 | EX-8, EX-9"
+rmdir "$T/planned/EX-1/EX-9" "$T/in-review/EX-8"
+# task-location: a task note inside a task whose epic does not name it is out of its place.
+mkdir -p "$T/abandoned/EX-1/notes"
+printf '%s\n' '---' 'aliases:' '  - notes' 'type: task' 'epic: EX-2' '---' '' '# notes' >"$T/abandoned/EX-1/notes/README.md"
+doc Example
+chk "task-location: a task note inside a task whose epic names another task warns" task-location Example \
+  "warn | 1 | tasks/abandoned/EX-1/notes/README.md"
+rm -r "$T/abandoned/EX-1/notes"
+reset
+# A child whose epic names no task stays where it is, and the doctor names it in the profile's word.
+sb task set EX-3 epic=EX-900
+layout status
+doc Example
+chk "children: an epic that names no task warns as unknown-epic" task-layout Example \
+  "warn | 3 | EX-1:in-progress, EX-2:done, EX-3:unknown-epic"
+is "children: the fix says how to mend it" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its status; set epic on each <ID>:unknown-epic to a task of the project, or clear it with second-brain task set <ID> epic="
+doc Example --fix
+is "children --fix: a task whose epic names no task is left where it is" "$(fixed_moves)/$(ls "$T/EX-3")" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-2/README.md (Example)/README.md"
+case "$ERR" in *"EX-3: its epic EX-900 names no task of Example: left where it is"*) pass "children --fix: stderr names it, with its epic" ;;
+  *) fail "children --fix: stderr names it, with its epic" "in stderr: $ERR" ;; esac
+edit "$vault/$P/claude/profile.md" 's/^persona: \(.*\)$/persona: \1\
+parent_label: Feature/'
+doc Example
+chk "children: with parent_label: Feature the offender takes that word" task-layout Example "warn | 1 | EX-3:unknown-feature"
+is "children: and so does the fix" "$(fix_of task-layout)" \
+  "set epic on each <ID>:unknown-feature to a task of the project, or clear it with second-brain task set <ID> epic="
+doc Example --fix
+case "$ERR" in *"EX-3: its feature EX-900 names no task of Example: left where it is"*) pass "children --fix: stderr takes the word too" ;;
+  *) fail "children --fix: stderr takes the word too" "in stderr: $ERR" ;; esac
+edit "$vault/$P/claude/profile.md" 's/^parent_label: .*/parent_label: story/'
+doc Example
+rc_is "children: an unknown parent_label leaves exit 0" 0
+chk "children: parent_label:invalid comes first, and the unknown epic is named as epic" task-layout Example \
+  "warn | 2 | parent_label:invalid, EX-3:unknown-epic"
+is "children: the label fix comes first" "$(fix_of task-layout)" \
+  "set parent_label in the profile to feature or epic, or remove it for epic; set epic on each <ID>:unknown-epic to a task of the project, or clear it with second-brain task set <ID> epic="
+layout flat
+doc Example
+chk "children: parent_label:invalid is named in a flat project too" task-layout Example \
+  "warn | 3 | parent_label:invalid, in-progress:flat, done:flat"
+reset
+# The sprint layout: a child in no sprint goes into its parent's folder in backlog/, and a child in
+# a sprint into a folder named for its parent in that sprint's folder.
+sb task set EX-2 epic=EX-1
+sb task set EX-3 epic=EX-1
+layout sprint
+doc Example
+chk "children: in a sprint project a child warns with its parent's folder in backlog/" task-layout Example \
+  "warn | 3 | EX-1:2026-01-14, EX-2:backlog/EX-1, EX-3:backlog/EX-1"
+is "children: the sprint fix says --fix puts a child inside its parent's folder" "$(fix_of task-layout)" \
+  "run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint, each child inside its epic's folder there"
+doc Example --fix
+rc_is "children --fix: exit 0 in a sprint project" 0
+is "children --fix: in a sprint project each child goes into a folder named for its parent in backlog/" "$(fixed_moves)" \
+  "fixed: EX-1 -> $P/tasks/2026-01-14/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/backlog/EX-1/EX-2/README.md (Example)
+fixed: EX-3 -> $P/tasks/backlog/EX-1/EX-3/README.md (Example)"
+doc Example
+chk "children --fix: then a sprint project's task-layout is ok" task-layout Example "ok | 0 | -"
+chk "children --fix: and no-readme takes backlog/EX-1" no-readme Example "ok | 0 | -"
+sb task set EX-3 sprint=2026-01-14
+is "children: a child that joins its parent's sprint goes inside the parent's folder" \
+  "$(printf '%s\n' "$OUT" | grep '/README.md$')" "$P/tasks/2026-01-14/EX-1/EX-3/README.md"
+edit "$T/backlog/EX-1/EX-2/README.md" 's/^epic: \(.*\)$/epic: \1\
+sprint: "2026-01-14"/'
+doc Example
+chk "children: a child whose sprint is set by hand warns as its sprint's folder and its parent" task-layout Example \
+  "warn | 1 | EX-2:2026-01-14/EX-1"
+doc Example --fix
+is "children --fix: it moves in, then backlog/EX-1 and backlog/, both left empty, go" "$(fixed_moves)" \
+  "fixed: EX-2 -> $P/tasks/2026-01-14/EX-1/EX-2/README.md (Example)
+fixed: $P/tasks/backlog/EX-1 -> removed (Example)
+fixed: $P/tasks/backlog -> removed (Example)"
+is "children --fix: the parent's folder holds its two children" "$(ls "$T/2026-01-14/EX-1" | tr '\n' ' ')" "EX-2 EX-3 README.md "
+# The parent leaves the sprint by hand: its own files move to backlog/, and its children stay.
+edit "$T/2026-01-14/EX-1/README.md" '/^sprint: /d'
+doc Example
+chk "children: a parent with no sprint left in a sprint's folder warns as backlog" task-layout Example "warn | 1 | EX-1:backlog"
+doc Example --fix
+is "children --fix: the parent's own files move to backlog/" "$(fixed_moves)" \
+  "fixed: EX-1 -> $P/tasks/backlog/EX-1/README.md (Example)"
+is "children --fix: its children stay in the sprint's folder, under its name" "$(ls "$T/2026-01-14/EX-1" | tr '\n' ' ')" "EX-2 EX-3 "
+doc Example
+chk "children --fix: then every task is in its place" task-layout Example "ok | 0 | -"
+sb unresolved Example
+is "children --fix: unresolved lists nothing after the sprint moves" "$RC/$OUT" "0/"
+reset
+
+# ---------------------------------------------------------------- board, the child folders
+# no_child_branch: the board's filters as 0.11.0 wrote them before the child folders, with no
+# branch for a task one level deeper, the fourth and: of the filters.
+no_child_branch() {
+  awk '/^        - and:$/ { n++ } /^formulas:/ { n = 0 } n < 4 { print }' "$T/tasks.base" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$T/tasks.base"
+}
+no_child_branch
+is "board: the filters before the child folders take one task by its alias" "$(grep -c '== aliases\[0\]' "$T/tasks.base")" "1"
+layout status
+doc Example
+chk "board: a status project with no child is not asked for the child branch" board Example "ok | 0 | -"
+sb task set EX-3 epic=EX-1
+doc Example
+rc_is "board: a missing child branch leaves exit 0" 0
+chk "board: a status project with a child and no child branch warns" board Example "warn | 1 | tasks.base:no-child-filter"
+is "board: the child fix names the filters block" "$(fix_of board)" "copy the filters block from templates/tasks.base.tmpl"
+layout sprint
+doc Example
+chk "board: a sprint project with a child and no child branch warns" board Example "warn | 1 | tasks.base:no-child-filter"
+no_sprint_branch
+doc Example
+chk "board: a sprint project's 0.10.0 board warns the sprint filter alone" board Example "warn | 1 | tasks.base:no-sprint-filter"
+layout flat
+doc Example
+chk "board: a flat project with a child is not asked for the child branch" board Example "ok | 0 | -"
+reset
+
 # ---------------------------------------------------------------- topic-tags
 # add_topic_line <line>: add one line under ## Topics in the profile.
 add_topic_line() {

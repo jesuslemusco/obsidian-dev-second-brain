@@ -748,21 +748,23 @@ sb_doc_has_status_filter() {
     END { for (i = 1; i <= n; i++) if (!(st[i] in has)) exit 1; exit 0 }' "$1"
 }
 
-# Return 0 when a board file's own filters take a task in a group folder by its folder's name, a
-# line file.folder.split("/")[<digits>] == aliases[0]. The board cannot see whether a folder has a
-# README, so that branch takes a README one group folder down whose folder's name is its first
-# alias, as a task's id is.
+# sb_doc_has_sprint_filter <board> [<count>]: return 0 when a board file's own filters take a task
+# in a group folder by its folder's name, a line file.folder.split("/")[<digits>] == aliases[0].
+# The board cannot see whether a folder has a README, so that branch takes a README one group
+# folder down whose folder's name is its first alias, as a task's id is. With a count, it needs that
+# many such lines: the branch that takes a task one level deeper adds the second.
 sb_doc_has_sprint_filter() {
-  LC_ALL=C awk '
+  SB_N="${2:-1}" LC_ALL=C awk '
     { sub(/\r$/, "") }
     /^[^ \t#-]/ { top = ($0 ~ /^filters:/) }
-    top && /file\.folder\.split\(["\047]\/["\047]\)\[[0-9]+\][ \t]*==[ \t]*aliases\[0\]/ { found = 1; exit }
-    END { exit(found ? 0 : 1) }' "$1"
+    top && /file\.folder\.split\(["\047]\/["\047]\)\[[0-9]+\][ \t]*==[ \t]*aliases\[0\]/ { n++ }
+    END { exit(n >= ENVIRON["SB_N"] + 0 ? 0 : 1) }' "$1"
 }
 
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
 # that a project with a subproject has the By subproject view, and that an archive, status or
-# sprint project's board takes the archived tasks, the status folders or the group folders.
+# sprint project's board takes the archived tasks, the status folders or the group folders, and a
+# status or sprint project's with a child task the tasks one level deeper.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -808,6 +810,12 @@ sb_doc_check_board() {
   if [ "$(sb_task_layout)" = "sprint" ] && ! sb_doc_has_sprint_filter "$base"; then
     bad="${bad:+$bad$nl}tasks.base:no-sprint-filter"
     fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl"
+  # A board written before the child folders shows no child task in Obsidian, in a project that
+  # puts a child there.
+  elif { [ "$(sb_task_layout)" = "sprint" ] || [ "$(sb_task_layout)" = "status" ]; } &&
+    ! sb_doc_has_sprint_filter "$base" 2 && sb_doc_has_child; then
+    bad="${bad:+$bad$nl}tasks.base:no-child-filter"
+    case "$fix" in *"copy the filters block"*) ;; *) fix="${fix:+$fix; }copy the filters block from templates/tasks.base.tmpl" ;; esac
   fi
   sb_doc_report warn board "$SB_P_NAME" "$bad" "$fix"
 }
@@ -997,15 +1005,19 @@ EOF
 
 # Check that every task folder holds a README with something in it: each folder directly under the
 # tasks root but the archive, the five status folders, backlog and the group folders of the layout,
-# each one directly under a status folder, backlog or such a group folder, and each one directly
-# under a year of the archive. In every layout. The group folders of the layout are each one
+# each one directly under a status folder, backlog or such a group folder but one that holds tasks
+# one level deeper, each one directly under that, and each one directly under a year of the
+# archive. In every layout. The group folders of the layout are each one
 # sb_task_groups lists in a sprint project, and in another layout each one that holds a task, which
 # task-layout names as <folder>:<layout>.
 sb_doc_check_no_readme() {
-  local d g s rel layout groups="" bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT"
+  local d g s rel layout groups="" bad="" nl=$'\n' root="$SB_P_DIR/$SB_TASKS_ROOT" deep=""
   layout="$(sb_task_layout)"
   set -- "$root"/*/
-  for s in $SB_TASK_STATUSES backlog; do set -- "$@" "$root/$s"/*/; done
+  for s in $SB_TASK_STATUSES backlog; do
+    set -- "$@" "$root/$s"/*/
+    deep="$deep$root/$s$nl"
+  done
   while IFS= read -r g; do
     [ -n "$g" ] || continue
     case " $SB_TASK_RESERVED " in *" ${g##*/} "*) continue ;; esac
@@ -1013,9 +1025,24 @@ sb_doc_check_no_readme() {
       case "$nl$SB_DOC_FILES" in *"$nl$g/"*) ;; *) continue ;; esac
     fi
     groups="$groups$g$nl"
+    deep="$deep$g$nl"
     set -- "$@" "$g"/*/
   done <<EOF
 $(sb_task_groups "$root")
+EOF
+  # A folder with no README in a status folder, backlog or a group folder that holds a task holds
+  # tasks one level deeper: each folder in it is read as one in a group folder is.
+  while IFS= read -r g; do
+    [ -n "$g" ] || continue
+    for d in "$g"/*/; do
+      d="${d%/}"
+      [ -d "$d" ] && [ ! -e "$d/README.md" ] || continue
+      case "$nl$SB_DOC_FILES" in *"$nl$d/"*) ;; *) continue ;; esac
+      groups="$groups$d$nl"
+      set -- "$@" "$d"/*/
+    done
+  done <<EOF
+$deep
 EOF
   set -- "$@" "$root"/archive/[0-9][0-9][0-9][0-9]/*/
   for d in "$@"; do
@@ -1072,6 +1099,39 @@ sb_doc_check_task_location() {
     "move it with second-brain move to $to and tie it to its topic with a tag" 120
 }
 
+# Print id, file and parent for each task of the project: the folder name of the task its epic
+# names, by its folder name or an alias, without letter case, as sb_task_parent finds it; "-" when
+# the epic is empty, "-" or names the task itself alone, and "?" when it names no other task of the
+# project, or several.
+sb_doc_parents() {
+  printf '%s\n\034\n%s\n' "$SB_DOC_FACTS" "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' '
+    function add(k, v) { if (!((k SUBSEP v) in had)) { had[k SUBSEP v] = 1; names[k] = names[k] "\t" v } }
+    $0 == "\034" { part = 1; next }
+    !part { if (NF == 3 && $1 == "alias") add(tolower($3), $2); next }
+    NF < 15 { next }
+    { n++; file[n] = $1; id[n] = $2; ep[n] = tolower($15); add(tolower($2), $2) }
+    END {
+      for (i = 1; i <= n; i++) {
+        e = ep[i]
+        if (e == "" || e == "-") { print id[i] "\t" file[i] "\t-"; continue }
+        split("", got); m = 0; self = 0
+        k = split(names[e], a, "\t")
+        for (j = 2; j <= k; j++) {
+          if (a[j] == id[i]) { self = 1; continue }
+          if (!(a[j] in got)) { got[a[j]] = 1; m++; last = a[j] }
+        }
+        if (m == 1) print id[i] "\t" file[i] "\t" last
+        else if (m == 0 && self) print id[i] "\t" file[i] "\t-"
+        else print id[i] "\t" file[i] "\t?"
+      }
+    }'
+}
+
+# Return 0 when the project has a child task, one whose epic names another task of the project.
+sb_doc_has_child() {
+  sb_doc_parents | awk -F'\t' '$3 != "-" && $3 != "?" { found = 1; exit } END { exit(found ? 0 : 1) }'
+}
+
 # Print each sprint the project's tasks name, once, and the folder sb_sprint_folder gives it, a tab
 # apart; the folder is empty when the pattern gives that sprint none.
 sb_doc_sprint_map() {
@@ -1085,17 +1145,22 @@ sb_doc_sprint_map() {
 
 # sb_doc_sprint_drift <map>: for the rows of sb_doc_sprint_map, print id, file and the folder it
 # belongs in for each task of a sprint project not at <root>/<folder>/<ID>/README.md: backlog with
-# no sprint, else its sprint's folder. A task whose sprint gives no folder is left out.
+# no sprint, else its sprint's folder, and <folder>/<parent> for a child. A task whose sprint gives
+# no folder is left out, and a task whose epic names no task gives unknown-<label>.
 sb_doc_sprint_drift() {
-  printf '%s\n\034\n%s\n' "$1" "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" LC_ALL=C awk -F'\t' '
+  printf '%s\n\034\n%s\n\034\n%s\n' "$1" "$(sb_doc_parents)" "$SB_DOC_SCAN" |
+    SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_L="$(sb_parent_label)" LC_ALL=C awk -F'\t' '
     BEGIN { root = ENVIRON["SB_R"]; part = 1 }
-    $0 == "\034" { part = 2; next }
+    $0 == "\034" { part++; next }
     part == 1 { if (NF >= 2) folder[$1] = $2; next }
+    part == 2 { if (NF >= 3) par[$2] = $3; next }
     NF < 12 { next }
     {
       if ($4 == "-") want = "backlog"
       else if (folder[$4] == "") next
       else want = folder[$4]
+      if (par[$1] == "?") { print $2 "\t" $1 "\tunknown-" ENVIRON["SB_L"]; next }
+      if (par[$1] != "" && par[$1] != "-") want = want "/" par[$1]
       if ($1 != root want "/" $2 "/README.md") print $2 "\t" $1 "\t" want
     }'
 }
@@ -1105,9 +1170,11 @@ sb_doc_sprint_drift() {
 # the newest date it holds, of its status notes and its sprint id; with none it is never due, as
 # --fix moves no folder it cannot date.
 # In a status project: id, file and status for each task not at <root>/<status>/<ID>/README.md,
-# and id, file and no-status for a task with no status of the five.
+# or <status>/<parent> for a child not at <root>/<status>/<parent>/<ID>/README.md; id, file and
+# no-status for a task with no status of the five; and id, file and unknown-<label> for a task
+# whose epic names no task.
 # In a sprint project: id, file and the folder it belongs in, backlog or its sprint's folder, for
-# each task not at <root>/<folder>/<ID>/README.md; none for a task whose sprint gives no folder.
+# each task not at <root>/<folder>/<ID>/README.md, as sb_doc_sprint_drift says.
 # Nothing in a flat project.
 sb_doc_layout_drift() {
   local days layout
@@ -1117,11 +1184,16 @@ sb_doc_layout_drift() {
     return 0
   fi
   if [ "$layout" = "status" ]; then
-    printf '%s\n' "$SB_DOC_SCAN" | SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_S="$SB_TASK_STATUSES" LC_ALL=C awk -F'\t' '
+    printf '%s\n\034\n%s\n' "$(sb_doc_parents)" "$SB_DOC_SCAN" |
+      SB_R="$SB_P_DIR/$SB_TASKS_ROOT/" SB_S="$SB_TASK_STATUSES" SB_L="$(sb_parent_label)" LC_ALL=C awk -F'\t' '
       BEGIN { root = ENVIRON["SB_R"]; n = split(ENVIRON["SB_S"], s, " "); for (i = 1; i <= n; i++) five[s[i]] = 1 }
+      $0 == "\034" { part = 1; next }
+      !part { if (NF >= 3) par[$2] = $3; next }
       NF < 12 { next }
       !($3 in five) { print $2 "\t" $1 "\tno-status"; next }
-      $1 != root $3 "/" $2 "/README.md" { print $2 "\t" $1 "\t" $3 }'
+      par[$1] == "?" { print $2 "\t" $1 "\tunknown-" ENVIRON["SB_L"]; next }
+      { want = $3; if (par[$1] != "" && par[$1] != "-") want = want "/" par[$1] }
+      $1 != root want "/" $2 "/README.md" { print $2 "\t" $1 "\t" want }'
     return 0
   fi
   [ "$layout" = "archive" ] || return 0
@@ -1164,8 +1236,17 @@ sb_doc_layout_drift() {
 # none, so a status folder, backlog/ or a sprint's folder is <folder>:<layout>.
 sb_doc_check_task_layout() {
   local days layout g s map bad="" fix="" folders="" nl=$'\n' to="$SB_P_PATH/$SB_TASKS_ROOT" root="$SB_P_DIR/$SB_TASKS_ROOT"
-  local back sback stat=0 other=0 nosprints=0
+  local back sback stat=0 other=0 nosprints=0 lbad="" lfix="" label s2
   layout="$(sb_task_layout)"
+  label="$(sb_parent_label)"
+  # parent_label is feature or epic, in any letter case, or no key; in every layout.
+  case "$(sb_fm_get "$SB_P_PROFILE" parent_label 2>/dev/null | tr '[:upper:]' '[:lower:]')" in
+    '' | epic | feature) ;;
+    *)
+      lbad="parent_label:invalid$nl"
+      lfix="set parent_label in the profile to feature or epic, or remove it for epic"
+      ;;
+  esac
   if [ "$layout" = "sprint" ]; then
     map="$(sb_doc_sprint_map)"
     if [ -n "$map" ]; then
@@ -1175,11 +1256,14 @@ sb_doc_check_task_layout() {
     fi
     [ -z "$bad" ] || fix="set sprint_folder in the profile to a pattern with <end>, <start> or <n> that gives a folder name"
     s="$(sb_doc_sprint_drift "$map" | awk -F'\t' '{ print $1 ":" $3 }')"
-    if [ -n "$s" ]; then
-      bad="$bad$s"
+    if printf '%s\n' "$s" | grep -v ":unknown-$label\$" | grep -q .; then
       fix="${fix:+$fix; }run second-brain doctor --fix to move each task to the folder of its sprint, or to backlog/ with no sprint"
+      fix="$fix$(sb_doc_child_move "$s" "$label")"
     fi
-    sb_doc_report warn task-layout "$SB_P_NAME" "$bad" "$fix"
+    s2="$(sb_doc_child_unknown "$s" "$label")"
+    fix="$fix${fix:+${s2:+; }}$s2"
+    bad="$bad$s"
+    sb_doc_report warn task-layout "$SB_P_NAME" "$lbad$bad" "$lfix${lfix:+${fix:+; }}$fix"
     return 0
   fi
   # Each group folder that holds a task and is not the layout's own, in the order of sb_task_groups.
@@ -1198,8 +1282,15 @@ EOF
   if [ "$layout" = "status" ]; then
     bad="$(sb_doc_layout_drift | awk -F'\t' '$3 != "no-status" { print $1 ":" $3 }')"
     case "$nl$SB_DOC_FILES" in *"$nl$root/archive/"*) bad="$bad${nl}archive:status" ;; esac
-    sb_doc_report warn task-layout "$SB_P_NAME" "${bad:+$bad$nl}$folders" \
-      "run second-brain doctor --fix to move each task to the folder of its status"
+    bad="${bad#"$nl"}"
+    # An epic that names no task moves nothing: the move is named for every other offender.
+    if printf '%s\n' "$bad$nl$folders" | grep -v ":unknown-$label\$" | grep -q .; then
+      fix="run second-brain doctor --fix to move each task to the folder of its status"
+      fix="$fix$(sb_doc_child_move "$bad" "$label")"
+    fi
+    s="$(sb_doc_child_unknown "$bad" "$label")"
+    fix="$fix${fix:+${s:+; }}$s"
+    sb_doc_report warn task-layout "$SB_P_NAME" "$lbad${bad:+$bad$nl}$folders" "$lfix${lfix:+${fix:+; }}$fix"
     return 0
   fi
   back="set task_layout: status in the profile, or move each task in <folder> back to ${to%/.}/<ID> with second-brain move"
@@ -1228,7 +1319,23 @@ EOF
   [ "$stat" -eq 0 ] || fix="${fix:+$fix; }$back"
   # With task_layout: sprint and sprints off, uses_sprints: true, in the fix above, is that way.
   [ "$other" -eq 0 ] || [ "$nosprints" -eq 1 ] || fix="${fix:+$fix; }$sback"
-  sb_doc_report warn task-layout "$SB_P_NAME" "$bad$folders" "$fix"
+  sb_doc_report warn task-layout "$SB_P_NAME" "$lbad$bad$folders" "$lfix${lfix:+${fix:+; }}$fix"
+}
+
+# sb_doc_child_move <offenders> <label>: print what the task-layout fix adds when an offender, one
+# per line, is a child that --fix moves into its parent's folder, one whose folder holds a slash.
+sb_doc_child_move() {
+  if printf '%s\n' "$1" | grep -v ":unknown-$2\$" | grep -q '^[^:]*:.*/'; then
+    printf ', each child inside its %s'"'"'s folder there' "$2"
+  fi
+}
+
+# sb_doc_child_unknown <offenders> <label>: print how to mend an epic that names no task, when an
+# offender, one per line, is <ID>:unknown-<label>.
+sb_doc_child_unknown() {
+  if printf '%s\n' "$1" | grep -q ":unknown-$2\$"; then
+    printf 'set epic on each <ID>:unknown-%s to a task of the project, or clear it with second-brain task set <ID> epic=' "$2"
+  fi
 }
 
 # Print the profile's topic exceptions, lines "- <tag> -> <folder>" under ## Topics, as tag, folder.
@@ -1740,8 +1847,10 @@ sb_doc_fix_pull_request() {
 # sb_task_groups, then each empty year folder of the archive, and the archive when it is empty. In a
 # sprint project each task goes to the folder of its sprint, or to backlog/ with none, then each
 # empty group folder is removed, a status folder too, then the archive's as in a status project.
+# In both a child goes into its parent's folder there, a task whose epic names no task stays where
+# it is, and a folder one level deeper that a move leaves empty is removed.
 sb_doc_fix() {
-  local name path keys id file status tag new reason layout d groups n=0 nl=$'\n'
+  local name path keys id file status tag new out reason layout d groups n=0 nl=$'\n'
   if sb_doc_fix_pull_request; then n=$((n + 1)); fi
   while IFS=$'\t' read -r name path keys <&3; do
     sb_doc_folder "$path" || continue
@@ -1764,24 +1873,40 @@ EOF
     layout="$(sb_task_layout)"
     while IFS=$'\t' read -r id file reason <&4; do
       [ -n "$file" ] || continue
+      # A task whose epic names no task stays where it is, in a status or a sprint project.
+      case "$reason" in
+        unknown-*)
+          printf '%s: its %s %s names no task of %s: left where it is\n' "$id" "${reason#unknown-}" \
+            "$(sb_fm_get "$file" epic 2>/dev/null)" "$name" >&2
+          continue
+          ;;
+      esac
       if [ "$layout" = "status" ]; then
         if [ "$reason" = "no-status" ]; then
           printf '%s has no status of the five: left where it is\n' "$id" >&2
           continue
         fi
-        new="$( (sb_task_to_status "$id" "$name") )"
+        out="$( (sb_task_to_status "$id" "$name") )"
       elif [ "$layout" = "sprint" ]; then
-        new="$( (sb_task_to_sprint "$id" "$name") )"
+        out="$( (sb_task_to_sprint "$id" "$name") )"
       else
         [ "$reason" = "to-archive" ] || continue
-        new="$( (sb_task_archive "$id" --project "$name") )"
+        out="$( (sb_task_archive "$id" --project "$name") )"
       fi
-      new="${new%%"$nl"*}"
+      new="${out%%"$nl"*}"
       # A refused lookup, such as an id held by two folders, prints the paths it found and moves
       # nothing: a task is fixed only when the file the row names has left its place.
       [ -n "$new" ] && [ ! -e "$file" ] || continue
       n=$((n + 1))
       printf 'fixed: %s -> %s (%s)\n' "$id" "$new" "$name"
+      # The folder one level deeper that the move left empty, and removed.
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        n=$((n + 1))
+        printf 'fixed: %s -> removed (%s)\n' "$d" "$name"
+      done <<EOF2
+$(printf '%s\n' "$out" | sed -n 's/^removed: //p')
+EOF2
     done 4<<EOF
 $(sb_doc_layout_drift)
 EOF

@@ -54,6 +54,11 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 
 - A sprint is one note, named by its end date: `<sprints_root>/2026-01-14.md`. That date is its id.
 - A task joins a sprint through one property: `sprint: "2026-01-14"`.
+- A task whose `epic` names another task is a child of that parent story. Call a parent story by
+  the project's word: `feature` when `second-brain profile <project> --keys` prints
+  `parent_label: feature`, else `epic`. The key stays `epic`.
+- With `task_layout: status` or `sprint`, every move keeps a child inside a folder named for its
+  parent, in the folder it moves to, and a parent's move takes its own files alone.
 - Nobody keeps a task list by hand. The sprint note holds none.
 - `committed`, `completed` and `carried_over` on the sprint note are counts, not lists.
 
@@ -82,6 +87,7 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
 7. Report the note it created and each `re-pointed:` line it prints.
    - With `task_layout: sprint`, each re-pointed task also moves to the new sprint's folder. After
      the `re-pointed:` lines it prints each moved task's new README path and its `links:` lines.
+     A child goes into a folder named for its parent there.
    - A move that fails is named on stderr, and the call exits with its code. The sprint is open
      all the same: never run the call again. Tell the user the task and the reason:
      `second-brain doctor --fix` moves it to the folder of its sprint once the reason is handled.
@@ -101,6 +107,8 @@ The session id for status notes is `${CLAUDE_SESSION_ID}`.
    - Leaving: `second-brain task set <ID> sprint= --project <project>`.
    - With `task_layout: sprint`, each call also moves the task's folder, to the sprint's folder or
      back to `backlog/`, and prints its new README path and its `links:` lines after the keys.
+     A child goes into a folder named for its parent there, and its parent's note stays where it
+     is. A `removed: <path>` line names the folder named for the parent that it left empty.
    - Exit 6 there, as in open: the destination is taken, or the sprint's folder is a task, and
      nothing was written. Show that path to the user, then set that task again. Exit 5 that names
      the `sprint_folder` pattern: as in open.

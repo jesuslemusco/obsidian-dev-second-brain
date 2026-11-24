@@ -122,7 +122,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 9"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 10"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -205,7 +205,8 @@ line_is "board: the archive folder is accepted too" "$vault/$P/tasks/tasks.base"
 line_is "board: an archived task sits two folders deeper" "$vault/$P/tasks/tasks.base" '            - file.folder.split("/").length == 8'
 # filters_of <board>: the board's own filters block, above its formulas and views.
 filters_of() { awk '/^[^ \t#-]/ { top = ($0 ~ /^filters:/) } top' "$1"; }
-# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root.
+# filters_want <tasks path> <flat depth>: the filters block the template writes for that tasks root,
+# with the branch that takes a task one level deeper, such as a child task, last.
 filters_want() {
   local s
   printf '%s\n' "filters:" "  and:" "    - file.inFolder(\"$1\")" '    - file.name == "README"' "    - or:" \
@@ -215,6 +216,8 @@ filters_want() {
   for s in planned in-progress in-review done abandoned; do printf '%s\n' "                - file.inFolder(\"$1/$s\")"; done
   printf '%s\n' "        - and:" "            - file.folder.split(\"/\").length == $(($2 + 1))" \
     "            - file.folder.split(\"/\")[$2] == aliases[0]"
+  printf '%s\n' "        - and:" "            - file.folder.split(\"/\").length == $(($2 + 2))" \
+    "            - file.folder.split(\"/\")[$(($2 + 1))] == aliases[0]"
 }
 is "board: the filters take a task in each status folder, one folder deeper than a flat task" \
   "$(filters_of "$vault/$P/tasks/tasks.base")" "$(filters_want "$P/tasks" 6)"

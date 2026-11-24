@@ -1202,6 +1202,36 @@ warns "search rule: the task itself is still a whole task note"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/backlog/EX-1/README.md"}'
 warns "search rule: backlog/ is a group folder even with a README of its own"
 rm -r "$vault/$P/tasks/EX-9" "$vault/$P/tasks/Ex-Notes" "$vault/$P/tasks/backlog"
+# A child task note one level deeper, tasks/<folder>/<parent>/<ID>/README.md, is a whole task note
+# when its epic names <parent>: its folder name, or an alias of the parent's README, without letter
+# case. A folder named for the parent with no README of its own holds tasks too.
+TD="$vault/$P/tasks"
+mkdir -p "$TD/done/EX-1/EX-5" "$TD/done/EX-1/EX-6" "$TD/done/EX-1/notes" "$TD/backlog/EX-1/EX-7" \
+  "$TD/2026-12-04/EX-1/EX-8" "$TD/archive/2026/EX-1/EX-5"
+printf -- '---\naliases:\n  - EX-1\n  - "Billing parent"\ntype: task\n---\n' >"$TD/done/EX-1/README.md"
+printf -- '---\naliases:\n  - EX-5\nepic: EX-1\ntype: task\n---\n' >"$TD/done/EX-1/EX-5/README.md"
+printf -- '---\naliases:\n  - EX-6\nepic: "billing PARENT"\ntype: task\n---\n' >"$TD/done/EX-1/EX-6/README.md"
+printf -- '---\naliases:\n  - notes\nepic: EX-2\n---\n' >"$TD/done/EX-1/notes/README.md"
+printf -- '---\naliases:\n  - EX-7\nepic: ex-1\ntype: task\n---\n' >"$TD/backlog/EX-1/EX-7/README.md"
+printf -- '---\naliases:\n  - EX-8\nepic: EX-1\ntype: task\n---\n' >"$TD/2026-12-04/EX-1/EX-8/README.md"
+printf -- '---\naliases:\n  - EX-5\nepic: EX-1\ntype: task\n---\n' >"$TD/archive/2026/EX-1/EX-5/README.md"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-5/README.md"}'
+warns "search rule: a Read of a whole child task note inside its parent's folder"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-5/README.md","offset":1,"limit":20}'
+silent "search rule: a ranged Read of a child task note"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-6/README.md"}'
+warns "search rule: a child whose epic names the parent by an alias, in any letter case"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/notes/README.md"}'
+silent "search rule: a README inside a task whose epic names another task is no task note"
+guard Read '{"file_path":"'"$TD"'/backlog/EX-1/EX-7/README.md"}'
+warns "search rule: a child in a folder named for its parent in backlog/, with no README there"
+guard Read '{"file_path":"'"$TD"'/2026-12-04/EX-1/EX-8/README.md"}'
+warns "search rule: a child in a folder named for its parent in a sprint's folder"
+guard Read '{"file_path":"'"$TD"'/archive/2026/EX-1/EX-5/README.md"}'
+silent "search rule: a README one level deeper in the archive is no task note"
+guard Read '{"file_path":"'"$TD"'/done/EX-1/EX-9/README.md"}'
+silent "search rule: a child note that is not there is read for no epic"
+rm -r "$TD/done" "$TD/backlog" "$TD/2026-12-04" "$TD/archive"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/archive/EX-1/README.md"}'
 silent "search rule: a Read of a README directly in the archive, which is no group folder"
 guard Read '{"file_path":"'"$vault/$P"'/tasks/Archive/EX-1/README.md"}'

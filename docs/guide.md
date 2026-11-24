@@ -219,9 +219,14 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   review.
 - `reviewer` runs those checks again in the task's review, with the `each task` user steps.
 - `reviewer` grades each check as met or not, with its evidence, and ends its reply with a JSON
-  verdict. The skill reads that verdict, and a PASS with an open finding never counts, as
+  verdict. The skill reads that verdict, and a PASS with an open defect never counts, as
   `### Reading a verdict` in `skills/spec/build.md` says.
-- A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
+- A review sorts each finding as a defect, which fails the task, or a follow-up, which does not.
+  A name that misleads, repeated code or code against the conventions around it is a follow-up,
+  unless it is a defect in another way, such as one a user would hit or a rule of the repo names.
+  `## Defects and follow-ups` in `agents/reviewer.md` draws the line.
+- The build's end lists the follow-ups, and you can have one fixed then.
+- A task that fails goes back to its `implementer` with its defects, in a fix loop of at most five
   rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
   session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.
 - When every task has passed, the helper runs the repo's checks once, with no agent. Then one

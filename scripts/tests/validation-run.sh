@@ -236,10 +236,9 @@ file_has "reviewer: never runs a release check" "$RV" '- Never run a `release` c
 file_has "reviewer: a task review runs only its each-task checks" "$RV" \
   '4. Run the task'"'"'s `Check`, the checks with `--when each-task`, and each user step whose `when:` is'
 file_has "reviewer: requirements first" "$RV" '3. Requirements first.'
-file_has "reviewer: then code quality" "$RV" '6. Then code quality, in the diff alone. Each of these is a finding:'
+file_has "reviewer: then code quality" "$RV" '6. Then code quality, in the diff alone,'
 is "reviewer: requirements before code quality" \
-  "$(($(lineno "$RV" '3. Requirements first.') < $(lineno "$RV" '6. Then code quality, in the diff alone.')))" "1"
-file_has "reviewer: a requirement not met skips the code quality pass" "$RV" 'is FAIL. Log the findings, and skip step 6.'
+  "$(($(lineno "$RV" '3. Requirements first.') < $(lineno "$RV" '6. Then code quality, in the diff alone,')))" "1"
 file_has "reviewer: a re-review reads only the fix" "$RV" \
   '- `fails` above 0: a re-review. The diff holds only the fix'"'"'s commits, and `## Issues` only the'
 line_is "reviewer: has a user mode" "$RV" "## User mode"

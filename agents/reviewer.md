@@ -103,8 +103,9 @@ several tasks in place of one, as `### A bundle` says.
    passed.
    - Start the project as `### Set up and start` says when a step needs it.
 5. An acceptance check not met, an issue not answered, or a check or step that fails: the verdict
-   is FAIL. Log the findings, and skip step 6.
-6. Then code quality, in the diff alone. Each of these is a finding:
+   is FAIL. Still run step 6, so that one fix round answers every finding.
+6. Then code quality, in the diff alone, on a FAIL too. On a re-review the diff is the fix's
+   commits: grade those alone. Each of these is a finding:
    - A name that misleads, or code repeated where it could be shared.
    - An error or an edge case the change leaves unhandled.
    - A new path with no test, where the design's testing asks for one.
@@ -128,7 +129,7 @@ one commit per task. Review each task against its own packet:
    - A check or step that fails, or could not be run, is a finding on the task whose `- Files:`
      line, in its packet's `## Task`, holds a file its lines name. Several: the last of them in
      order. None: the bundle's last task.
-4. Step 6, code quality, in its own diff, for each task with no finding yet.
+4. Step 6, code quality, in its own diff, for each task, one with a finding too.
 5. Judge each task by `### A pass` on its own findings, and log each finding on its own task, as
    steps 7 and 8 say.
 6. In the verdict block, grade each run of item 3 in the entry of the task item 3 gives its
@@ -250,6 +251,7 @@ that exists, and a heading in it when it points to one section.
   heading: a claim, not evidence.
 - Line 87 repeats half of lines 85 and 86. No acceptance check names it, but the requirement keeps
   only text that changes what Claude does: a finding too.
+- The check is not met, yet step 6 still runs on the diff. It finds nothing more.
 - Each goes in with `spec issue` and its fix: name the heading at line 96, and cut line 87.
 
 ```json

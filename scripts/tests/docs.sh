@@ -478,7 +478,7 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.11.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.11.0 - unreleased"
+is "changelog: the newest section is 0.12.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.12.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
@@ -499,7 +499,7 @@ case "$cv_text" in
   *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
 esac
 # under_011 <desc> <line>: the line is in the 0.11.0 section, above 0.10.0.
-sp_top="$(lineno "$CG" '## 0.11.0 - unreleased')"
+sp_top="$(lineno "$CG" '## 0.11.0 - ')"
 under_011() {
   local n
   n="$(lineno "$CG" "$2")"
@@ -2065,14 +2065,14 @@ is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
 lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
 is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \
   'skills/spec/build.md:'"$(linex "$BM" '     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.')"':     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
-lc_min="$(awk '/^## 0\.11\.0 - unreleased$/ { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
+lc_min="$(awk '/^## 0\.11\.0 - / { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
 is "the lead's check: the changelog's 0.11.0 lines and the guide name no minutes" "$lc_min" ""
 line_is "the lead's check: the start links to the renamed heading" "$BM" \
   "   Then start the lead${q}s check, as \`### The lead${q}s check\` says."
 file_lacks "the lead's check: no link to the old heading in build.md" "$BM" 'The check every'
 file_lacks "the lead's check: nor in the guide" "$GD" 'The check every'
 file_lacks "the lead's check: nor in the contract" "$CT" 'The check every'
-cg_top="$(linex "$CG" '## 0.11.0 - unreleased')"
+cg_top="$(lineno "$CG" '## 0.11.0 - ')"
 cg_end="$(lineno "$CG" '## 0.10.0 - ')"
 for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \
   '- An idle notice that repeats a reply the skill took already, as a named agent'"${q}"'s last reply comes' \

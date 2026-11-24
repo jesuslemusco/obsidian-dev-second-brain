@@ -60,6 +60,10 @@ commits, the files already in the task folder.
 
 ## 3. Create the story
 
+Show the owner the text from section 1 first, and write nothing until they approve it, as
+`## 3. The approval` in `skills/scrum-master/plan.md` says. A change they ask for is shown again
+before it is written. A story the scrum-master's plan writes is approved already.
+
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root
      `docs` is the tag `billing/invoices`.

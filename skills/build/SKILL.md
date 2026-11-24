@@ -46,8 +46,9 @@ The id names one story, or an epic.
   ruling to fix it, as item 3 of `## 7. When the story stops` in `story.md` says.
 - An `in-review` story with a `Build: finished` note whose worktree is still there, on its branch
   in `git -C "<path>" worktree list --porcelain`, with `<path>` and the worktree as the top of
-  `story.md` names them: its session ended before the worktree went. Go on with items 5 to 7 of
-  `## 6. When the story passed` in `story.md`.
+  `story.md` names them: its session ended before the worktree went. Read `story.md`, then
+  remove the worktree as item 5 of `## 6. When the story passed` says, and go on with Step 1.
+  The story stays out of the run: it has passed.
 - A story goes after each story of the run it waits on, as the `depends_on` cell of
   `second-brain board "<project>" All` shows. Otherwise keep the order of the epic's list.
 - A story that waits on a story outside the run that is not `in-review` or `done`: leave it out,

@@ -2684,7 +2684,7 @@ RF="$here/skills/scrum-master/refinement.md"
 q="'"
 # A resume after a blocked review, or one with no verdict, reviews again.
 file_has "story build: a resume after a blocked review goes to Review it" "$BY" \
-  '  3. Its newest review note is `Build: review <m> blocked`, or `Build: review <m> gave no'
+  '  3. Its newest review note is `Build: review <m> blocked`, for a stop the owner answered, as'
 r3="$(lineno "$BY" '  3. Its newest review note is `Build: review <m> blocked`')"
 r4="$(lineno "$BY" '  4. Commits on the branch since the hash of its newest review note')"
 r1="$(lineno "$BY" '  1. Its newest `Build:` note is `Build: stopped: <why>.`')"
@@ -2713,7 +2713,13 @@ file_has "guide: the worktree goes once the story passed" "$GD" '- Once a story 
 # A session cut off before the removal ends it next time.
 file_has "build skill: an in-review story with its worktree left ends the build" "$BS" \
   '- An `in-review` story with a `Build: finished` note whose worktree is still there, on its branch'
-file_has "build skill: and goes on with the removal" "$BS" '  `story.md` names them: its session ended before the worktree went. Go on with items 5 to 7 of'
+file_has "build skill: reads story.md, then removes the leftover worktree" "$BS" \
+  '  `story.md` names them: its session ended before the worktree went. Read `story.md`, then'
+line_is "build skill: by item 5 alone, and back to Step 1" "$BS" \
+  '  remove the worktree as item 5 of `## 6. When the story passed` says, and go on with Step 1.'
+file_lacks "build skill: never jumps out of Step 1 to the next story" "$BS" 'items 5 to 7 of'
+file_has "story build: a no-verdict resume follows no stop" "$BY" \
+  '     item 1 shows, or `Build: review <m> gave no verdict`: `### Review it`.'
 file_has "contract: a cut-off session ends the removal" "$CT" \
   '- A session can end after a story passed and before its worktree is removed. An `in-review` story'
 # A fresh implementer on a fix round takes the fix.

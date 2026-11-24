@@ -1215,6 +1215,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   - `Build: stopped: <why>.`
   - `Build: the owner ruled: <the ruling, as written>.`
   - `Build: finished; review <n> passed, the branch is at <short hash>.`
+  - `Build: merged <branch> into <target> at <short hash>.`
+  - `Build: pushed <target> at <short hash>.`
+  - `Build: the owner kept <branch> unmerged.`
   - `Ruling: <the question> - <the decision and why>`
   - `Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>`, which `reviewer`
     writes.
@@ -1225,9 +1228,32 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - The notes of a build are those newer than its newest `Build: started on` note. Its `fails` is
   the number of its `Build: review <n> failed at` notes, from every session. The round of its
   next review, `<n>`, is one more than the number of its `Build: review <n>` notes.
-- A passed story waits for the owner's go to merge, as the project's git flow says: the skill
-  merges nothing. Then it removes the worktree with `git worktree remove`, never with `--force`,
-  and the branch stays.
+- **The git flow.** Where a story's branch is cut, and where a passed story merges, is the
+  project's own git flow: its rules under `## Rules` in `<project>/claude/README.md`, and in the
+  story's subproject note. The skill reads them there. No profile key holds the flow.
+- A rule names a branch, such as `main`, or a pattern, such as `release/<version>`. A pattern
+  stands for its open branch: the highest that matches it, when no tag holds its version. When
+  that one has a tag, or the next one has none either, the skill asks the owner.
+- A story cut from another story's branch merges only once that story is in the target.
+- No rule says where a story merges: the skill asks the owner, and offers to write the answer
+  under `## Rules`. It writes it only on the owner's yes. No rule says where a branch is cut: it
+  is cut as story-tracker's branch check says.
+- **The merge.** A passed story merges into its target only on the owner's go. The merge is
+  local, in the worktree that holds the target or in one the skill adds for it, never in the
+  owner's own checkout.
+- A conflict that only adds lines keeps both sides. The merge runs with
+  `merge.conflictStyle=diff3`, so each conflict block shows the merge base's lines too. A block
+  whose base part is empty, where neither side removed or changed a line, takes the target's
+  lines, then the story's.
+- Any other conflict, such as a block with base lines or a file one side deleted, is shown to the
+  owner, and the merge is aborted. The skill never resolves one itself.
+- Then the repo's `each build` checks run on the merged tree, through `validation run --path`.
+  They are skipped only when the merged tree is the one the passing review read, as
+  `git rev-parse <hash>^{tree}` shows for both.
+- A failing check leaves the merge local, and goes to the owner. Undoing it is the owner's call.
+- A push runs only on the owner's word, asked for once the checks pass, and named before it runs.
+- Once the merge is done, or the owner says not to merge, the skill removes the story's worktree
+  with `git worktree remove`, never with `--force`, and the branch stays.
 - It keeps the owner's orders note, the lead's check with each order's `Done when:`, the rule for
   an agent with no report, a repeated notice taken as no event, the rulings, and the lists of
   rulings and follow-ups at a finish or a stop, as a spec build does. Until the spec flow is

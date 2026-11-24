@@ -1297,10 +1297,13 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - `reviewer` reads the task's diff from the file the packet's `diff:` line names.
 - A task's review reads only its diff, first against the task's requirements and acceptance
   checks, then for code quality.
+- It grades code quality on a FAIL too, and in a bundle on each task, so that one fix round
+  answers every finding.
 - It runs the task's `Check` and the `each task` checks again, through
   `validation run <project> <repo> --when each-task`, and the `each task` user steps. It runs no
   other check.
 - A re-review reads only the fix's commits and the findings they answer, as the packet holds them.
+  It grades the code quality of the fix's commits alone.
 - `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
   to what they are given.
 - `implementer` replies with a `Commit:` line, one line on what it built, a `Test:` line, and a

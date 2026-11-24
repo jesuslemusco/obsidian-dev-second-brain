@@ -1916,6 +1916,37 @@ file_has "changelog: only a missing block is asked again" "$here/CHANGELOG.md" \
 file_has "changelog: the worked examples" "$here/CHANGELOG.md" \
   '- `agents/reviewer.md` holds two worked examples, a FAIL with its findings and a PASS with its'
 
+# ---------------------------------------------------------------- the reviewer grades code quality on a failing task too
+CT="$here/docs/contract.md"
+RV="$here/agents/reviewer.md"
+q="'"
+file_lacks "reviewer: a FAIL no longer skips the code quality pass" "$RV" 'skip step 6'
+file_lacks "reviewer: a bundle task with a finding still gets the quality pass" "$RV" 'for each task with no finding yet'
+line_is "reviewer: a FAIL still runs step 6" "$RV" \
+  '   is FAIL. Still run step 6, so that one fix round answers every finding.'
+file_has "reviewer: code quality runs on a FAIL too" "$RV" \
+  '6. Then code quality, in the diff alone, on a FAIL too. On a re-review the diff is the fix'"${q}"'s'
+line_is "reviewer: a re-review grades the fix's commits alone" "$RV" '   commits: grade those alone. Each of these is a finding:'
+is "reviewer: step 5's FAIL comes before the quality pass" \
+  "$(($(lineno "$RV" 'Still run step 6') < $(lineno "$RV" '6. Then code quality, in the diff alone,') && $(lineno "$RV" '6. Then code quality, in the diff alone,') < $(lineno "$RV" '8. Log each finding in the story')))" "1"
+line_is "reviewer: a bundle grades each task's quality" "$RV" \
+  '4. Step 6, code quality, in its own diff, for each task, one with a finding too.'
+is "reviewer: the worked FAIL still runs step 6" "$(example_of 'A FAIL' | grep -c 'step 6 still runs')" "1"
+line_is "contract: code quality is graded on a FAIL too" "$CT" \
+  '- It grades code quality on a FAIL too, and in a bundle on each task, so that one fix round'
+line_is "contract: one fix round answers every finding" "$CT" '  answers every finding.'
+line_is "contract: a re-review grades the fix's quality alone" "$CT" \
+  "  It grades the code quality of the fix${q}s commits alone."
+file_has "changelog: quality on a failing task" "$here/CHANGELOG.md" \
+  '- `reviewer` grades code quality on a failing task too, so that one fix round answers every'
+file_has "changelog: a re-review grades the fix's quality" "$here/CHANGELOG.md" \
+  "  finding. A re-review still grades the quality of the fix${q}s commits alone."
+qf_line="$(lineno "$here/CHANGELOG.md" '- `reviewer` grades code quality on a failing task too')"
+qf_top="$(lineno "$here/CHANGELOG.md" '## 0.12.0 - ')"
+qf_end="$(lineno "$here/CHANGELOG.md" '## 0.11.0 - ')"
+is "changelog: quality on a failing task is under 0.12.0" \
+  "$((${qf_line:-0} > ${qf_top:-0} && ${qf_line:-0} < ${qf_end:-0}))" "1"
+
 # ---------------------------------------------------------------- the build catches an agent with no report, and checks on the owner's orders
 BM="$here/skills/spec/build.md"
 CT="$here/docs/contract.md"

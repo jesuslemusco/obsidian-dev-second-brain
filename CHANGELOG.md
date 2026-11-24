@@ -5,6 +5,8 @@
 - `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
   and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
   while a check it started still runs.
+- `reviewer` grades code quality on a failing task too, so that one fix round answers every
+  finding. A re-review still grades the quality of the fix's commits alone.
 
 ## 0.11.0 - 2026-11-23
 

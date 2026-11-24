@@ -146,26 +146,22 @@ Then, first match wins:
      `next:` line.
    - backlog: `Back to backlog at the close of 2026-01-14: <reason>`
    - abandon: `Abandoned at the close of 2026-01-14: <reason>`
-8. Run `second-brain profile <project> --keys` and read `achievements_skill`.
-   - `-`: skip this step.
-   - A skill name: invoke it with the Skill tool by that name. Hand it the sprint note,
-     `<project_path>/<sprints_root>/<id>.md`, and the README path of each task on the `done:` line.
-   - The session does not offer that skill: say so and go on.
-9. `task_layout: archive` in that answer, and a `done:` or `abandoned:` line that is not `-`: ask
-   once whether to archive those tasks now. Otherwise move nothing.
+8. `task_layout: archive` in Step 0's `second-brain profile <project> --keys`, and a `done:` or
+   `abandoned:` line that is not `-`: ask once whether to archive those tasks now. Otherwise move
+   nothing.
    - Yes: run `second-brain task archive <ID> --project <project>` for each. Exit 6 means it is
      archived already.
    - No: move nothing. `second-brain doctor --fix` archives each one when it is due by
      `archive_after_days`.
    - Never archive a task without that yes.
-10. Report the summary: done, carried, backlog, abandoned.
-    - Under done, list the tasks whose docs still wait. Run
-      `second-brain task docs <done ids> --project <project>` with the ids of the `done:` line.
-    - Skip that when `done:` is `-`.
-    - Recommend the `docs-keeper` agent for those tasks.
-    - Do not start it here: the close only reports.
-    - Offer to open the next sprint, as `## Open` says.
-11. Carried tasks point at the `next:` id before that sprint's note exists. That is expected.
+9. Report the summary: done, carried, backlog, abandoned.
+   - Under done, list the tasks whose docs still wait. Run
+     `second-brain task docs <done ids> --project <project>` with the ids of the `done:` line.
+   - Skip that when `done:` is `-`.
+   - Recommend the `docs-keeper` agent for those tasks.
+   - Do not start it here: the close only reports.
+   - Offer to open the next sprint, as `## Open` says.
+10. Carried tasks point at the `next:` id before that sprint's note exists. That is expected.
     Opening the next sprint fixes it: never re-point them by hand.
 
 ## Rules

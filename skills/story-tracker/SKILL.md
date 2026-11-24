@@ -175,15 +175,6 @@ move to `in-progress`.
     project with no environments.
   - Start it with or without a `## Docs to update` section.
   - When the session cannot start an agent, say so and name `docs-keeper` as the one to run now.
-- The story is set to `done`: after the docs-keeper hand-off, log its achievement when Step 0's
-  `achievements_skill` names a skill. `-` means none.
-  - Invoke that skill with the Skill tool, by that exact name. Hand it the story's README, the
-    `path:` line of `second-brain task head <ID> --project <project>`, and its sprint note when
-    it has one.
-  - The skill takes the outcome and its impact from that file, not from your summary.
-  - Any doubt over what counts as the delivered outcome: confirm the wording with the user first.
-  - Never log an achievement for work that is not done, or that no finished story backs.
-  - The session does not offer that skill: say so and go on.
 - The story is set to `done` or `abandoned` and the profile says `task_layout: archive`: after
   the docs-keeper hand-off, ask once whether to archive it now.
   - On a yes, run `second-brain task archive <ID>` and report the path it prints.

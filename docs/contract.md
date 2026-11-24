@@ -1115,7 +1115,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Frontmatter: `name` (equals the folder or file name), `description` (one sentence, under 200
   characters, quoted if it contains `: `).
 - A skill's `allowed-tools` names each tool its steps use. One that edits notes names `Edit`, one
-  that writes a whole note `Write`, and one that hands work to another skill `Skill`.
+  that writes a whole note `Write`, and one that hands work to another skill
+  `Skill(odsb:<that skill>)`.
+- Each command a skill runs other than the helper gets a pattern for exactly that read-only
+  command, such as `Bash(git -C * branch --show-current)`. Never a blanket one, such as
+  `Bash(git *)`.
 - A skill that runs only by name sets `disable-model-invocation: true`.
   `vault-setup` is the one: it writes the pointer and the links into `~/.claude`.
 - Claude may call `vault-doctor` from a request: its check writes nothing, and its fix repairs only

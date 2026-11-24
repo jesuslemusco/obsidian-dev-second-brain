@@ -2596,9 +2596,25 @@ file_lacks "scrum-master: no daily status" "$SMS" 'daily status'
 is "story-tracker: SKILL.md and its three files" "$(ls "$STD" | tr '\n' ' ')" "SKILL.md create.md env-split.md status.md "
 file_has "story-tracker: the start row takes refinement's stories" "$STS" \
   'or the scrum-master'"'"'s refinement hands over a story the owner approved |'
-line_is "story-tracker: it may edit notes" "$STS" 'allowed-tools: Read Grep Glob Edit Bash(second-brain *)'
-line_is "scrum-master: it may edit and write notes and call other skills" "$SMS" \
-  'allowed-tools: Read Edit Write Skill Bash(second-brain *)'
+line_is "story-tracker: it may edit notes and run its read-only git and ls commands" "$STS" \
+  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)'
+line_is "scrum-master: it may edit and write notes, call story-tracker and run the same commands" "$SMS" \
+  'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker) Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)'
+# Each command the two skills' text runs, other than the helper, has its own pattern, and none is a blanket git.
+for f in "$STD"/*.md "$SMD"/*.md; do
+  for c in $(grep -oE '`(git -C "<repo path>"|ls -d) [a-z-]+' "$f" | sed 's/^`//; s/"<repo path>"/*/' | tr ' ' '_' | sort -u); do
+    c="${c//_/ }"
+    case "$(sed -n 's/^allowed-tools: //p' "$STS") $(sed -n 's/^allowed-tools: //p' "$SMS")" in
+      *"Bash($c "*) pass "allowed-tools: $(basename "$f") runs $c, which has a pattern" ;;
+      *) fail "allowed-tools: $(basename "$f") runs $c, which has a pattern" ;;
+    esac
+  done
+done
+for f in "$STS" "$SMS"; do
+  file_lacks "allowed-tools: no blanket git in $(basename "$(dirname "$f")")" "$f" 'Bash(git *)'
+  file_has "allowed-tools: $(basename "$(dirname "$f")") may run the topic folder check" "$f" ' Bash(ls -d *)'
+done
+file_has "story-tracker create: the topic folder check is ls -d" "$STD/create.md" '`ls -d "<vault>/<project path>/<topics_root>/<folder>"`'
 file_has "story-tracker: the sprint keys are the scrum-master's" "$STS" \
   '- Leave `sprint` and `carried_from` to the scrum-master'"'"'s sprint-planning unless the user asks.'
 STC="$STD/create.md"
@@ -2747,7 +2763,7 @@ under_012 "changelog: no daily status, under 0.12.0" '- The daily status is gone
 under_012 "changelog: story-tracker's approval, under 0.12.0" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
 under_012 "changelog: no achievements logged, under 0.12.0" '- story-tracker and the sprint close no longer log achievements'
 under_012 "changelog: a close with no sprint stops, under 0.12.0" '- A sprint close asked for with no sprint in progress says so and stops.'
-under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call other skills with no prompt, and'
+under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
 under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
 under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
 

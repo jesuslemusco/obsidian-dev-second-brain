@@ -2,7 +2,7 @@
 name: story-tracker
 description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
-allowed-tools: Read Grep Glob Edit Bash(second-brain *)
+allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(git -C * branch --show-current) Bash(git -C * branch -a --list *) Bash(git -C * log -1 --format=%h) Bash(git -C * log --oneline *) Bash(git -C * diff *...*) Bash(git -C * show *:*) Bash(ls -d *)
 ---
 
 # Story tracker
@@ -96,7 +96,8 @@ ticket.
   folder missing) and ask the user where the repo is.
 - `second-brain profile <project> repos` says what each repo holds.
 - Run git as `git -C "<repo path>"`.
-- Get the current branch and its HEAD commit.
+- Get the current branch and its HEAD commit: `git -C "<repo path>" branch --show-current` and
+  `git -C "<repo path>" log -1 --format=%h`.
 - List every local or remote branch whose name carries the ticket id:
   `git -C "<repo path>" branch -a --list '*<ID>*'`.
 - `base_branch` and `branch_pattern` give the base branch and the branch naming.

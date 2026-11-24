@@ -1217,7 +1217,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - An `implementer` reply `BLOCKED:` on a question a ruling settles, such as a requirement it reads
   two ways, is no stop. The skill rules on it and goes on from the task's state. The same
   question again is a stop.
-- A failing build-wide check in files no task holds, and a user or branch finding no task covers,
+- A failing build-wide check in files no task holds, and a user or branch defect no task covers,
   go to the last task, with a ruling.
 - **The rulings of a build** are the status notes newer than its newest
   `Build: started on <branch> at <short hash>.` note: the skill's `Ruling:` notes and the owner's
@@ -1241,8 +1241,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   sets the task `failed`. At the finish, the owner says so in the free-text answer of its
   question.
 - Each story-level update is a status note in the README: each phase approval, the build
-  started, stopped and why, and finished, and each ruling, the owner's and the skill's. A task's
-  progress is in `build.json` alone.
+  started, stopped and why, and finished, each ruling, the owner's and the skill's, and each
+  follow-up a review logs. A task's progress is in `build.json` alone.
 - **Who runs which check.** `implementer` runs its task's checks before it commits. `reviewer`
   runs them again in the task's review. The skill runs the `each build` checks once, at the end.
 - `implementer` and `reviewer` run each check in the foreground, with the Bash tool's longest
@@ -1298,7 +1298,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A task's review reads only its diff, first against the task's requirements and acceptance
   checks, then for code quality.
 - It grades code quality on a FAIL too, and in a bundle on each task, so that one fix round
-  answers every finding.
+  answers every defect.
 - It runs the task's `Check` and the `each task` checks again, through
   `validation run <project> <repo> --when each-task`, and the `each task` user steps. It runs no
   other check.
@@ -1317,13 +1317,31 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - The implementer's words, in its report, a commit message or a comment, are a claim to check,
   never evidence.
 - A check is met only when the change does all it says, wherever it applies. A check not met is a
-  finding, and any finding fails the task: a PASS with an open finding is not allowed.
+  defect, and any defect fails the task: a PASS with an open defect is not allowed.
+- **Defects and follow-ups.** `reviewer` sorts each finding as a defect, which fails the task, or
+  a follow-up, which does not, as `## Defects and follow-ups` in `agents/reviewer.md` says.
+- A follow-up is a name that misleads, code repeated where it could be shared, or code against
+  the conventions the diff shows around it. Any other finding is a defect.
+- Each of these is a defect, whatever its kind: an acceptance check not met or an issue not
+  answered, a check or step that fails, what a user would hit, a doc the change makes wrong, and
+  what a requirement, a design decision or a rule written in the repo names.
+- A finding `reviewer` cannot place for sure is a defect.
+- `reviewer` logs a defect with `spec issue`. Only defects count in `issues` and go to the fix
+  loop.
+- It logs a follow-up as a status note, never with `spec issue`:
+  `task note <ID> "Follow-up: <task>: <what, at file:line> - <the change it proposes>"`. One that
+  no task covers names `build`.
+- A follow-up changes no issue count, fails no task and goes to no fix round.
+- When the build finishes or stops, the skill lists each follow-up of the build so far, oldest
+  first: the `Follow-up:` status notes newer than its newest
+  `Build: started on <branch> at <short hash>.` note. The owner can have one fixed then, as a
+  ruling to fix its task.
 - `agents/reviewer.md` holds two short worked examples: a FAIL with its findings, and a PASS with
   its evidence.
 - `reviewer` logs each issue with its proposed fix through `spec issue`. Its reply ends with one
   fenced `json` block, its verdict:
   `{"verdict": "FAIL", "issues": 1, "checks": [{"check": "...", "met": false, "evidence": "..."}]}`.
-- `verdict` is `PASS`, `FAIL` or `BLOCKED`, `issues` the number of findings, and `checks` one
+- `verdict` is `PASS`, `FAIL` or `BLOCKED`, `issues` the number of defects, and `checks` one
   entry per check it graded.
 - A task, the baseline, the user check and the branch review each end with that block. A bundle
   ends with one block, `{"tasks": [...]}`: one entry per task, in order, each that block with a
@@ -1343,7 +1361,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - The skill asks the same reviewer once more only when the block is missing or does not parse.
   Any other block with no verdict goes to one fresh `reviewer` at once.
 - In baseline mode there is no task to log on: `reviewer` puts its findings in the reply.
-- In user and branch mode, `reviewer` logs a finding on the task whose `- Files:` line holds its
+- In user and branch mode, `reviewer` logs a defect on the task whose `- Files:` line holds its
   file, and puts the rest in the reply.
 - Only a PASS ticks the task, through `spec tick`. With `spec_home: repo`, the skill commits that
   tick.
@@ -1363,7 +1381,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Then one `reviewer` runs the user steps on the finished branch, in user mode. Then one
   `reviewer` on the most capable model reviews the whole branch, in branch mode. A BLOCKED from
   either stops the build.
-- A FAIL from either sends each task it logged a finding on to the fix loop, as a failing check
+- A FAIL from either sends each task it logged a defect on to the fix loop, as a failing check
   does, and the run goes again once every task has passed.
 - The baseline runs the checks through `validation run --when each-build`, and every user step but
   the `release` ones.

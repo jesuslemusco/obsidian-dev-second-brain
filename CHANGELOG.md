@@ -13,11 +13,14 @@
   works on it now, the orders done, and the last check of each story. Builds of one project
   share the note and only edit it. It is removed with its hub line once no order of any story is
   open. You can stop the build or drop an order at any time: it is then closed.
-- While an order is open, the skill checks every 10 minutes on the agents, the branch and the
-  running checks against your orders. In Claude Code it is a session-only `CronCreate` job, off
-  the hour and the half hour. It stops once no order of its story is open. It never takes the
-  build back after you interrupt it or tell it to hold. The check never pushes, merges or takes
-  another outside action.
+- While an order is open, the skill checks on the agents, the branch and the running checks
+  against your orders, as often as the profile's `lead_check_minutes` says. In Claude Code it is
+  a session-only `CronCreate` job, off the hour and the half hour. It stops once no order of its
+  story is open. It never takes the build back after you interrupt it or tell it to hold. The
+  check never pushes, merges or takes another outside action.
+- A profile key, `lead_check_minutes`, sets the pace of that check in one place, as
+  `### Profile frontmatter` in `docs/contract.md` says. The doctor's `delivery` check warns on a
+  value it does not take, `lead_check_minutes:invalid`.
 
 ## 0.10.0 - 2026-11-22
 

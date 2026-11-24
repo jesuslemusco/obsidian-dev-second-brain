@@ -48,7 +48,7 @@ to you as its result.
 6. A new build: `second-brain task note <ID> "Build: started on <branch> at <short hash>."`.
    - A resumed one: `second-brain task note <ID> "Build: resumed on <branch> at <short hash>."`.
 7. Write the order that ran the build in the orders note, as `### The owner's open orders` says.
-   Then start the check every 10 minutes, as `### The check every 10 minutes` says.
+   Then start the lead's check, as `### The lead's check` says.
 
 ## 3. Launching an agent
 
@@ -140,8 +140,8 @@ Before you take the reply of an agent idle with no report as final:
 ### The owner's open orders
 
 Keep the owner's open orders in a note in the vault,
-`<project path>/claude/lead-agent-task-memory.md`. It tells the check every 10 minutes, and a new
-session, what is still owed.
+`<project path>/claude/lead-agent-task-memory.md`. It tells the lead's check, and a new session,
+what is still owed.
 
 - An order is what the owner asked you to do, in their words: the request that ran the skill, and
   each later one, such as a `release` check or an answer at a stop that sends the build on. The
@@ -166,7 +166,7 @@ session, what is still owed.
    - The build's orders are done when `finish.md` is done.
    - The owner stops the build or drops an order, at a stop or not: it is done, stopped by the
      owner.
-4. No order of `<ID>` open: stop the check every 10 minutes, as its item 6 says.
+4. No order of `<ID>` open: stop the lead's check, as its item 6 says.
    - An order of another story still open: leave the note and its hub line.
    - No order of any story open: remove the hub's line, then the note:
      `rm "<vault>/<project path>/claude/lead-agent-task-memory.md"`. It is your own note: removing
@@ -200,18 +200,22 @@ tags:
 Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.
 ```
 
-### The check every 10 minutes
+### The lead's check
 
-While an order of `<ID>` is open, check on it every 10 minutes. An agent can go idle with no
-report and no notice that wakes you.
+While an order of `<ID>` is open, check on it at the pace the profile sets. An agent can go idle
+with no report and no notice that wakes you.
 
 1. Start it when the build starts or resumes, as item 7 of `## 2. Ready to build` says. Keep one
    check at a time.
-   - In Claude Code, run `CronList` first. A job that already has the prompt below is the check:
-     keep it, and start none.
-   - Else create it with `CronCreate`: `cron: "7,17,27,37,47,57 * * * *"`, `recurring: true`, and
-     the prompt
-     `Check on the open orders of <ID>, as the check every 10 minutes in build.md of the spec skill says.`
+   - Its pace is the `lead_check_minutes` line of `second-brain profile "<project>" --keys`: 10,
+     12, 15, 20, 30 or 60 minutes. No line, `-` or any other value: 20.
+   - Its cron line runs at minute 7, then once more each time that many minutes pass, up to
+     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.
+   - In Claude Code, run `CronList` first. A job that already has the prompt below and that cron
+     line is the check: keep it, and start none. One with the prompt and another line: delete it
+     with `CronDelete`.
+   - Else create it with `CronCreate`: that cron line, `recurring: true`, and the prompt
+     `Check on the open orders of <ID>, as the lead's check in build.md of the spec skill says.`
    - It is session-only: never pass `durable: true`. Keep its job id, from `CronCreate` or
      `CronList`.
    - No scheduling tool: check on each notice that comes to you instead, from an agent or from a

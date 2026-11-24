@@ -33,9 +33,8 @@ In one round:
    place of the placeholder line. With none, leave the placeholder.
 4. For every repository, add its Code to doc map rows as `## 2. The docs that follow it` in
    `repo.md` says. Where its docs live in `<topics root>/<name>/`, the Docs cell names that folder.
-5. Ask whether this subproject's `delivery`, `spec_home` or `validation_home` differs from the
-   profile's, and write the answer as step 2 says.
-   - `delivery` is a fallback, as `### Profile frontmatter` in `docs/contract.md` says.
+5. Ask whether this subproject's `validation_home` differs from the profile's, and write the
+   answer as step 2 says.
 6. Write each repository's validation steps as `validation.md` says.
 
 ## 3. Its tasks

@@ -767,14 +767,14 @@ if block 40; then
 doc
 chk "old-namespace: ok on a fresh vault" old-namespace vault "ok | 0 | -"
 printf '%s\n' '---' "next: \"Run /${OLD}scrum-master sprint-planning\"" '---' '# Rename' '' \
-  "Run \`/${OLD}spec EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}specs name no skill." '' \
+  "Run \`/${OLD}build EX-1\` to build it." "A cut name ${OLD}s... and ${OLD}builds name no skill." '' \
   '```' '## Status notes' "${OLD}vault-doctor in fenced code" '```' '' \
-  '## Status notes' '' "- Ran /${OLD}spec." '### Older' "- ${OLD}scrum-master" '' \
-  '## Discovery log' "- ${OLD}spec" '## build' "- T1 - passed - commits - - ${OLD}reviewer" \
-  '# Changelog' '## 0.1.0' "- ${OLD}spec" '# After' "Ask ${OLD}reviewer." >"$N"
-printf '%s\n' '# Changes' '' "- ${OLD}spec stopped working." >"$vault/$P/docs/CHANGELOG.md"
+  '## Status notes' '' "- Ran /${OLD}build." '### Older' "- ${OLD}scrum-master" '' \
+  '## Discovery log' "- ${OLD}build" '## build' "- T1 - passed - commits - - ${OLD}reviewer" \
+  '# Changelog' '## 0.1.0' "- ${OLD}build" '# After' "Ask ${OLD}reviewer." >"$N"
+printf '%s\n' '# Changes' '' "- ${OLD}build stopped working." >"$vault/$P/docs/CHANGELOG.md"
 mkdir -p "$vault/.trash"
-printf '%s\n' "${OLD}spec" >"$vault/.trash/old.md"
+printf '%s\n' "${OLD}build" >"$vault/.trash/old.md"
 doc
 rc_is "old-namespace: a warn alone keeps exit 0" 0
 chk "old-namespace: live lines warn, frontmatter, fenced code and a Build outside a task too; history, a CHANGELOG.md, a dot folder and a cut name do not" \
@@ -783,7 +783,7 @@ is "old-namespace: the fix hands the vault lines to docs-keeper" "$(fix_of old-n
   "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:"
 edit "$N" "2s/$OLD/odsb:/;6s/$OLD/odsb:/;11s/$OLD/odsb:/;23s/$OLD/odsb:/;28s/$OLD/odsb:/"
 n_ex3="$(awk 'END { print NR }' "$T/EX-3/README.md")"
-printf '%s\n' '## Build' '' "- T1 - passed - commits - - ${OLD}reviewer" '## Next' "- Run ${OLD}spec." >>"$T/EX-3/README.md"
+printf '%s\n' '## Build' '' "- T1 - passed - commits - - ${OLD}reviewer" '## Next' "- Run ${OLD}build." >>"$T/EX-3/README.md"
 doc
 chk "old-namespace: a task README's Build is history, the section after it is not" old-namespace vault \
   "warn | 1 | $P/tasks/EX-3/README.md:$((n_ex3 + 5))"
@@ -794,7 +794,7 @@ reset
 mkdir -p "$vault/claude/skills/mine" "$home/skills"
 printf '%s\n' '---' 'name: mine' 'description: A skill of my own.' '---' "Call ${OLD}story-tracker first." >"$vault/claude/skills/mine/SKILL.md"
 symlink "$vault/claude/skills/mine" "$home/skills/mine"
-printf '## Status notes\r\n- %sspec\r\n## Next\r\n- Run %sspec.\r\n' "$OLD" "$OLD" >"$vault/$P/docs/crlf.md"
+printf '## Status notes\r\n- %sbuild\r\n## Next\r\n- Run %sbuild.\r\n' "$OLD" "$OLD" >"$vault/$P/docs/crlf.md"
 printf '%s\n' '# Mine' "- Run ${OLD}vault-doctor after an update." '- Then odsb:vault-doctor fix.' >"$home/CLAUDE.md"
 doc
 chk "old-namespace: a vault skill, a CRLF note, then the link directory's CLAUDE.md" old-namespace vault \
@@ -802,24 +802,24 @@ chk "old-namespace: a vault skill, a CRLF note, then the link directory's CLAUDE
 is "old-namespace: the fix adds the CLAUDE.md lines" "$(fix_of old-namespace vault)" \
   "hand the vault lines to docs-keeper, Workflow 6 - A renamed command, from ${OLD} to odsb:; write odsb: in the ~/.claude/CLAUDE.md lines"
 reset
-printf '%s\n' '{' '  "permissions": {' "    \"allow\": [\"Skill(${OLD}spec)\", \"Bash(ls)\"]," "    \"deny\": [\"Skill(${OLD}*)\"]" '  },' \
+printf '%s\n' '{' '  "permissions": {' "    \"allow\": [\"Skill(${OLD}build)\", \"Bash(ls)\"]," "    \"deny\": [\"Skill(${OLD}*)\"]" '  },' \
   '  "enabledPlugins": { "obsidian-dev-second-brain@second-brain": true }' '}' >"$home/settings.json"
-printf '%s\n' "{ \"permissions\": { \"ask\": [\"Bash(echo \\\"${OLD}spec\\\")\"] } }" >"$home/settings.local.json"
+printf '%s\n' "{ \"permissions\": { \"ask\": [\"Bash(echo \\\"${OLD}build\\\")\"] } }" >"$home/settings.local.json"
 cp "$home/settings.json" "$tmp/settings.before"
 cp "$home/settings.local.json" "$tmp/settings.local.before"
 doc
 chk "old-namespace: each settings string with the old name, a wildcard and an escape included; the install id is none" old-namespace vault \
-  "warn | 3 | ~/.claude/settings.json:Skill(${OLD}spec), ~/.claude/settings.json:Skill(${OLD}*), ~/.claude/settings.local.json:Bash(echo \"${OLD}spec\")"
+  "warn | 3 | ~/.claude/settings.json:Skill(${OLD}build), ~/.claude/settings.json:Skill(${OLD}*), ~/.claude/settings.local.json:Bash(echo \"${OLD}build\")"
 is "old-namespace: the fix leaves the settings rules to the owner" "$(fix_of old-namespace vault)" \
   "change the settings rules to odsb: yourself, as nothing edits a settings file"
 doc --json
 out_has "old-namespace: --json holds the same row" \
-  "\"check\": \"old-namespace\", \"scope\": \"vault\", \"count\": 3, \"offenders\": [\"~/.claude/settings.json:Skill(${OLD}spec)\", \"~/.claude/settings.json:Skill(${OLD}*)\", \"~/.claude/settings.local.json:Bash(echo \\\"${OLD}spec\\\")\"]"
+  "\"check\": \"old-namespace\", \"scope\": \"vault\", \"count\": 3, \"offenders\": [\"~/.claude/settings.json:Skill(${OLD}build)\", \"~/.claude/settings.json:Skill(${OLD}*)\", \"~/.claude/settings.local.json:Bash(echo \\\"${OLD}build\\\")\"]"
 doc --fix
 is "old-namespace: --fix writes no settings file" \
   "$(cmp -s "$tmp/settings.before" "$home/settings.json" && cmp -s "$tmp/settings.local.before" "$home/settings.local.json" && printf same)" "same"
 reset
-printf '%s\n' "- Run ${OLD}spec." >>"$vault/CLAUDE.md"
+printf '%s\n' "- Run ${OLD}build." >>"$vault/CLAUDE.md"
 n_index="$(awk 'END { print NR }' "$vault/CLAUDE.md")"
 symlink "$vault/CLAUDE.md" "$home/CLAUDE.md"
 doc
@@ -1111,7 +1111,7 @@ if block 30; then
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 25 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:41, claude/profile.md:42"
+  "warn | 24 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:39, claude/profile.md:40"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -1127,7 +1127,7 @@ doc Example
 chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:41"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:39"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
@@ -1138,7 +1138,7 @@ doc Example
 chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
 sb scaffold subproject Example infra --repos example-infra
 doc Example
-chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:33"
+chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:31"
 fi
 
 # ---------------------------------------------------------------- task-template
@@ -2298,16 +2298,16 @@ mkdir -p "$R/example-api/.claude" "$R/example-web/.claude" "$vault/.claude"
 set_repos '[example-api, example-web, gone-repo]' "$R" '[]'
 printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}story-tracker)\"] } }" >"$R/example-api/.claude/settings.local.json"
 printf '%s\n' "{ \"permissions\": { \"deny\": [\"Skill(${OLD}vault-setup)\"] } }" >"$R/example-web/.claude/settings.json"
-printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}spec)\"] } }" >"$vault/.claude/settings.local.json"
+printf '%s\n' "{ \"permissions\": { \"allow\": [\"Skill(${OLD}build)\"] } }" >"$vault/.claude/settings.local.json"
 doc
 chk "old-namespace: the settings of the vault root, then of each repo the profile lists with a folder" old-namespace vault \
-  "warn | 3 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker), example-web/.claude/settings.json:Skill(${OLD}vault-setup)"
+  "warn | 3 | .claude/settings.local.json:Skill(${OLD}build), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker), example-web/.claude/settings.json:Skill(${OLD}vault-setup)"
 is "old-namespace: the fix leaves a repo's settings rules to the owner" "$(fix_of old-namespace vault)" \
   "change the settings rules to odsb: yourself, as nothing edits a settings file"
 set_repos '[example-api, example-web]' "$R" "[\"example-web=$vault\"]"
 doc
 chk "old-namespace: a repo whose folder is the vault root has its settings read once" old-namespace vault \
-  "warn | 2 | .claude/settings.local.json:Skill(${OLD}spec), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker)"
+  "warn | 2 | .claude/settings.local.json:Skill(${OLD}build), example-api/.claude/settings.local.json:Skill(${OLD}story-tracker)"
 fi
 
 # ---------------------------------------------------------------- code-doc-map
@@ -2356,7 +2356,7 @@ subproject: ghost/'
 doc Example
 is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
 is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty-four rows" "$(scope_rows Example)" "24"
+is "subprojects: a project with no subproject keeps twenty-three rows" "$(scope_rows Example)" "23"
 edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
 doc Example
 chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
@@ -2366,7 +2366,7 @@ add_map_row '| example-api | a new endpoint | the API reference |'
 sb scaffold subproject Example infra --repos example-infra
 rc_is "subprojects: scaffold subproject exits 0" 0
 doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "26"
+is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "25"
 is "subprojects: its rows sit between repos and sprints" \
   "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
   "repos subprojects task-subproject sprints "
@@ -2577,7 +2577,7 @@ doc Example --fix
 rc_is "--fix: exit 0" 0
 is "--fix: prints what it changed, then the table" "$(printf '%s\n' "$OUT" | head -3 | cut -d' ' -f1-4 | tr '\n' '/')" \
   "fixed: EX-2 -> status/done/fixed: EX-3 -> status/active/ok | pointer |/"
-is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "38"
+is "--fix: the whole table follows" "$(printf '%s\n' "$OUT" | grep -c ' | ')" "37"
 chk "--fix: the status tags follow the status" status-tag Example "ok | 0 | -"
 chk "--fix: a missing status is still reported" needs-a-status Example "warn | 1 | EX-1"
 is "--fix: a missing status is never set" "$(cmp -s "$tmp/EX-1.before" "$T/EX-1/README.md" && printf same)" "same"
@@ -2614,10 +2614,10 @@ print(by["alias-unique"]["offenders"][0])
 print(by["no-readme"]["count"], by["no-readme"]["offenders"], by["pointer"]["offenders"])
 names = [r["check"] for r in rows]
 print(names.index("sprints") - names.index("repos"), by["repos"]["result"], by["repos"]["offenders"])
-print(names.index("spec-trace") - names.index("validation"), by["spec-trace"]["result"], by["spec-trace"]["offenders"])
+print(names.index("validation") - names.index("settings"), by["settings"]["result"], by["settings"]["offenders"])
 print(names.index("repos") - names.index("code-doc-map"), by["code-doc-map"]["result"], by["code-doc-map"]["offenders"])' <"$tmp/doctor.json" 2>&1 | tr -d '\r')"
-  is "--json: 38 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then delivery, validation and spec-trace, then sprints" "$got" \
-    "38 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}4 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
+  is "--json: 37 objects, six keys, strings escaped, offenders as arrays, code-doc-map then repos, then settings and validation, then sprints" "$got" \
+    "37 True${NL}Say \"hi\" \\ there${NL}2 ['EX-7', 'EX-8'] []${NL}3 warn ['gone-repo']${NL}1 ok []${NL}1 warn ['example-api', 'gone-repo']"
   run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" doctor --json
   rc_is "--json: exit 2 with no vault" 2
   got="$(printf '%s\n' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), d[0]["check"], d[0]["result"])' 2>&1 | tr -d '\r')"
@@ -2633,16 +2633,16 @@ sb scaffold project Two --path projects/two --keys TW
 sb task new TW-1 --project Two --title "Other task"
 edit "$vault/projects/two/tasks/TW-1/README.md" 's/^epic: "-"$/epic: -/'
 doc
-is "two projects: twenty-four rows for each" "$(scope_rows Example)/$(scope_rows Two)" "24/24"
+is "two projects: twenty-three rows for each" "$(scope_rows Example)/$(scope_rows Two)" "23/23"
 is "two projects: the vault rows come first, in the contract's order" "$(printf '%s\n' "$OUT" | head -14 | awk -F' [|] ' '{ printf "%s ", $2 }')" \
   "pointer index conventions pull-request writing-style import global-rules links foreign double-registration always-loaded-size descriptions skill-size old-namespace "
 is "two projects: the project rows in the contract's order" "$(printf '%s\n' "$OUT" | grep ' | Two | ' | awk -F' [|] ' '{ printf "%s ", $2 }')" \
-  "profile board hubs placeholders task-template task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos delivery validation spec-trace sprints unresolved-links bare-links line-endings depends-on "
+  "profile board hubs placeholders task-template task-frontmatter needs-a-status status-tag yaml-traps alias-unique no-readme task-location task-layout topic-tags code-doc-map repos settings validation sprints unresolved-links bare-links line-endings depends-on "
 chk "two projects: each row names its project" yaml-traps Two "fail | 1 | TW-1:epic"
 chk "two projects: the other project is clean" yaml-traps Example "ok | 0 | -"
 doc example
 rc_is "a named project: its name is matched without case, and another project's failure is left out" 0
-is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "14/24/0"
+is "a named project: only its rows, after the vault rows" "$(scope_rows vault)/$(scope_rows Example)/$(scope_rows Two)" "14/23/0"
 
 # ---------------------------------------------------------------- unresolved links, two projects
 mkdir -p "$vault/projects/example-more"
@@ -2815,23 +2815,24 @@ run env SECOND_BRAIN_VAULT="$tmp/userdir" "$SB" session-check --cwd "$R"
 out_is "session-check: only the one line with no vault, in a repo of a project" "second-brain: no vault is set up - run /odsb:vault-setup init"
 fi
 
-# ---------------------------------------------------------------- delivery and validation
+# ---------------------------------------------------------------- settings and validation
 PROFILE="$vault/$P/claude/profile.md"
 if block 145; then
 doc Example
-chk "delivery: ok with the template's values" delivery Example "ok | 0 | -"
+chk "settings: ok with the template's values" settings Example "ok | 0 | -"
 chk "validation: ok for a project with no repo that has its note" validation Example "ok | 0 | -"
 rm "$vault/$P/claude/validation.md"
 doc Example
 chk "validation: a project with no repo names a missing note" validation Example "warn | 1 | claude/validation.md:missing"
 reset
-edit "$PROFILE" 's/^delivery: direct$/delivery: always/; s/^spec_home: vault$/spec_home: Repo/'
-sb task set EX-3 delivery=spec
-awk '{ print } /^status: / { print "delivery: someday" }' "$T/EX-1/README.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$T/EX-1/README.md"
+edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
 doc Example
-chk "delivery: a profile value and a task value that are not allowed, never another letter case" delivery Example "warn | 2 | profile:delivery, EX-1:delivery"
-is "delivery: the fix names the values" "$(fix_of delivery)" \
-  "write delivery as direct or spec, spec_home and validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+chk "settings: a profile validation_home that is not allowed" settings Example "warn | 1 | profile:validation_home"
+is "settings: the fix names the values" "$(fix_of settings)" \
+  "write validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+edit "$PROFILE" 's/^validation_home: always$/validation_home: Repo/'
+doc Example
+chk "settings: a value in another letter case is taken" settings Example "ok | 0 | -"
 reset
 # lcm <value>: add lead_check_minutes to the profile, under validation_home.
 lcm() {
@@ -2841,20 +2842,20 @@ lcm() {
 for v in 10 12 15 20 30 60 '""'; do
   lcm "$v"
   doc Example
-  chk "delivery: lead_check_minutes $v is taken" delivery Example "ok | 0 | -"
+  chk "settings: lead_check_minutes $v is taken" settings Example "ok | 0 | -"
   reset
 done
 for v in 25 abc '"45"'; do
   lcm "$v"
   doc Example
-  chk "delivery: lead_check_minutes $v warns" delivery Example "warn | 1 | lead_check_minutes:invalid"
+  chk "settings: lead_check_minutes $v warns" settings Example "warn | 1 | lead_check_minutes:invalid"
   reset
 done
 lcm 45
-edit "$PROFILE" 's/^delivery: direct$/delivery: always/'
+edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
 doc Example
-chk "delivery: lead_check_minutes is named after the profile's own keys" delivery Example \
-  "warn | 2 | profile:delivery, lead_check_minutes:invalid"
+chk "settings: lead_check_minutes is named after the profile's own keys" settings Example \
+  "warn | 2 | profile:validation_home, lead_check_minutes:invalid"
 reset
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/code\"|"
@@ -2897,16 +2898,21 @@ for old in '- <Each command that must pass, such as the tests, linter and build,
   chk "validation: ok again without ${old:0:40}" validation Example "ok | 0 | -"
 done
 sb scaffold subproject Example infra --repos example-infra
-edit "$vault/$P/claude/subprojects/infra.md" 's/^validation_home: ""$/validation_home: repo/; s/^delivery: ""$/delivery: later/'
+SUBN="$vault/$P/claude/subprojects/infra.md"
+edit "$SUBN" 's/^validation_home: ""$/validation_home: repo/'
+awk '{ print } /^validation_home: / { print "delivery: later"; print "spec_home: Repo" }' "$SUBN" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$SUBN"
 doc Example
 chk "validation: a subproject's repo home with no file" validation Example "warn | 1 | example-infra:missing"
-chk "delivery: a subproject note's value is named by the subproject" delivery Example "warn | 1 | infra:delivery"
+chk "settings: a subproject note's delivery and spec_home, left from the spec flow, are not read" settings Example "ok | 0 | -"
 sb validation new Example example-infra
 doc Example
 chk "validation: a repo file that still holds the template's text" validation Example "warn | 1 | example-infra:placeholders"
 rm -rf "$tmp/code/example-infra"
 doc Example
 chk "validation: a repo home whose folder is missing is left to the repos check" validation Example "ok | 0 | -"
+edit "$SUBN" 's/^validation_home: repo$/validation_home: later/'
+doc Example
+chk "settings: a subproject note's validation_home is named by the subproject" settings Example "warn | 1 | infra:validation_home"
 fi
 # ---------------------------------------------------------------- validation edge cases
 if block 10; then
@@ -2920,205 +2926,44 @@ doc Example
 chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
 fi
 
-# ---------------------------------------------------------------- spec-trace
-TRACE_FIX="add the criterion's AC<n> to the - Serves: line of the requirement that meets it, or write a requirement for it, and give every requirement a - Serves: line that names only criteria the story has"
-# criteria <ID> <line>...: put the lines under the task's ## Acceptance criteria, in place of its own.
-criteria() {
-  printf '%s\n' "${@:2}" >"$tmp/lines"
-  SB_L="$tmp/lines" awk '
-    /^## / { on = 0 }
-    $0 == "## Acceptance criteria" { print; print ""; while ((getline l < ENVIRON["SB_L"]) > 0) print l; print ""; on = 1; next }
-    !on' "$T/$1/README.md" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$T/$1/README.md"
-}
-# reqs <file> <line>...: write a requirements.md that holds the lines under its title.
-reqs() {
-  mkdir -p "$(dirname "$1")"
-  printf '%s\n' '# Requirements' '' "${@:2}" >"$1"
-}
-# trace_files <dir>: list the task READMEs and spec files under a folder, for a cmp after --fix.
-trace_files() { find "$1" -type f \( -name README.md -o -name requirements.md -o -name design.md -o -name tasks.md \) | LC_ALL=C sort; }
-SPR="$T/EX-3/spec/requirements.md"
-if block 107; then
+# ---------------------------------------------------------------- what the spec flow left
+# A vault with specs moves on as it is: the old keys, a spec/ folder and build.json stay, and the
+# doctor names none of them.
+# spec_sums: a checksum line for each file of the task EX-1, wherever its folder is.
+spec_sums() { find "$T" -path '*/EX-1/*' -type f | LC_ALL=C sort | while IFS= read -r f; do cksum <"$f"; done; }
+if block 42; then
+# norows: the rows of the last run but placeholders, whose profile lines the two keys move down.
+norows() { printf '%s\n' "$OUT" | grep -v ' | placeholders | '; }
 doc Example
-chk "spec-trace: a project with no spec story is ok" spec-trace Example "ok | 0 | -"
-sb task set EX-3 delivery=spec
-sb spec new EX-3
-rc_is "spec-trace: spec new writes the spec of a story" 0
+before="$(norows)"
+holes="$(row placeholders | cut -d'|' -f1-2)"
+awk '{ print } /^validation_home: / { print "delivery: spec"; print "spec_home: repo" }' "$PROFILE" >"$tmp/edit.tmp" &&
+  cat "$tmp/edit.tmp" >"$PROFILE"
+awk '{ print } /^status: / { print "delivery: spec" }' "$T/EX-1/README.md" >"$tmp/edit.tmp" &&
+  cat "$tmp/edit.tmp" >"$T/EX-1/README.md"
+mkdir -p "$T/EX-1/spec"
+for part in Requirements Design Tasks; do
+  printf -- '---\naliases:\n  - "EX-1 %s"\ntype: spec\ntags:\n  - type/spec\n---\n\n> Up: [[%s|EX-1]]\n\n# EX-1 - %s\n\n- <What the task builds.>\n' \
+    "$part" "$P/tasks/EX-1/README" "$part" >"$T/EX-1/spec/$(printf '%s' "$part" | tr '[:upper:]' '[:lower:]').md"
+done
+printf '%s\n' '{"story": "EX-1", "tasks": []}' >"$T/EX-1/build.json"
 doc Example
-chk "spec-trace: the template's Serves line names R1, and leaves every criterion unserved" spec-trace Example \
-  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-is "spec-trace: the fix says how to add the criterion or a requirement" "$(fix_of spec-trace)" "$TRACE_FIX"
-is "spec-trace: the Fix of checks.md says the same, code marks aside" \
-  "$(awk '/^### / { on = ($0 == "### spec-trace") } on && /^- Fix: / { print }' "$CHECKS" | tr -d '`' | grep -c -F "$TRACE_FIX")" "1"
-rc_is "spec-trace: a warning leaves exit 0" 0
-
-# R3: a criterion no requirement serves.
-criteria EX-3 '- [ ] one' '- [x] two' '- [X] three'
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' 'The first.' '' '## R2 - three' '' '- Serves: AC3'
-doc Example
-chk "spec-trace: three criteria with AC1 and AC3 served name <ID>:AC2 alone" spec-trace Example "warn | 1 | EX-3:AC2"
-doc Example --json
-out_has "spec-trace: --json holds the same row" \
-  "{\"result\": \"warn\", \"check\": \"spec-trace\", \"scope\": \"Example\", \"count\": 1, \"offenders\": [\"EX-3:AC2\"], \"fix\": \"$TRACE_FIX\"}"
-criteria EX-3 '- [ ] one' '- [ ] two' '- [ ] three'
-doc Example
-chk "spec-trace: a ticked criterion, - [x] or - [X], is counted like an unticked one" spec-trace Example "warn | 1 | EX-3:AC2"
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## R2 - three' '' '- Serves: ac2,AC3'
-doc Example
-chk "spec-trace: ok once a Serves line names it, in any letter case and with no blank after a comma" spec-trace Example "ok | 0 | -"
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## Notes' '' '- Serves: AC2' '' '# Part two' '' '- Serves: AC2' '' '## R2 - three' '' '- Serves: AC3'
-doc Example
-chk "spec-trace: a Serves line under a heading that is no requirement is not read" spec-trace Example "warn | 1 | EX-3:AC2"
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1' '' '## R2 - three' '' '- SERVES: AC3' '- serves: AC2'
-doc Example
-chk "spec-trace: every Serves line of a requirement counts, the word in any letter case" spec-trace Example "ok | 0 | -"
-criteria EX-3 '- [ ] one' '' '### More' '' '- [ ] two' '' '```' '- [ ] not a criterion' '```' '- [ ]three is not one either'
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1, AC2'
-doc Example
-chk "spec-trace: a ### subsection keeps the criteria; fenced code and a marker with no blank after it do not count" \
-  spec-trace Example "ok | 0 | -"
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1, AC3'
-doc Example
-chk "spec-trace: so AC3 is a criterion the story does not have" spec-trace Example "warn | 2 | EX-3:AC2, EX-3:R1"
-
-# R4: a requirement with no criterion.
-criteria EX-3 '- [ ] one' '- [ ] two' '- [ ] three' '- [ ] four'
-reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - none' '' 'No Serves line.'
-doc Example
-chk "spec-trace: a requirement with no Serves line is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
-reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - five' '' '- Serves: AC5'
-doc Example
-chk "spec-trace: AC5 on a story with four criteria is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
-reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - empty' '' '- Serves:'
-doc Example
-chk "spec-trace: an empty Serves line is <ID>:R<n>" spec-trace Example "warn | 1 | EX-3:R2"
-reqs "$SPR" '## R1 - three' '' '- Serves: AC1, AC2, AC3' '' '## R2 - fenced' '' '```' '- Serves: AC4' '```' '' '  ~~~' '- Serves: AC4' '  ~~~'
-doc Example
-chk "spec-trace: a Serves line inside fenced code is not read" spec-trace Example "warn | 2 | EX-3:AC4, EX-3:R2"
-is "spec-trace: <ID>:AC<n> and <ID>:R<n> share the one row" "$(printf '%s\n' "$OUT" | grep -c ' | spec-trace | Example | ')" "1"
-reqs "$SPR" '## R1 - three' '' '- Serves: AC1, AC2, AC3, AC0' '' '## R2 - four' '' '- Serves: AC4, , ' '' '## r3 - five' '' '- Serves: AC1, AC5'
-doc Example
-chk "spec-trace: a bad item makes its requirement an offender, as written, and its good items still serve" spec-trace Example "warn | 2 | EX-3:R1, EX-3:r3"
-reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2, AC3, AC4' '' '## R2 - one' '' '## R2 - two' '' '## Rx - not one' ''
-doc Example
-chk "spec-trace: two sections with one id are each read, the id named once" spec-trace Example "warn | 1 | EX-3:R2"
-# The BOM sits on the first requirement's heading, so a BOM left in place would hide R1.
-printf '\357\273\277## R1 - one\r\n\r\n- Serves: AC1, AC3\r\n\r\n## R2 - none\r\n' >"$SPR"
-to_crlf "$T/EX-3/README.md"
-doc Example
-chk "spec-trace: CRLF files and a BOM read as the same lines" spec-trace Example "warn | 3 | EX-3:AC2, EX-3:AC4, EX-3:R2"
-edit "$T/EX-3/README.md" '/^## Acceptance criteria/d'
-reqs "$SPR" '## R1 - one' '' '- Serves: AC1'
-doc Example
-chk "spec-trace: a story with no criteria section has no criterion" spec-trace Example "warn | 1 | EX-3:R1"
-reqs "$SPR" 'No requirement yet.'
-doc Example
-chk "spec-trace: and with no requirement either, no offender" spec-trace Example "ok | 0 | -"
-fi
-
-# R5: the stories the check reads. Each requirements.md here serves nothing.
-if block 84; then
-reqs "$T/EX-1/spec/requirements.md" '## R1 - one'
-reqs "$SPR" '## R1 - one'
-doc Example
-chk "spec-trace: a direct story is not read, its spec files aside" spec-trace Example "ok | 0 | -"
-sb task set EX-3 delivery=spec
-doc Example
-chk "spec-trace: a spec story whose requirements serve nothing" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-sb task set EX-3 status=done
-doc Example
-chk "spec-trace: a done story is not read" spec-trace Example "ok | 0 | -"
-sb task set EX-3 status=abandoned
-doc Example
-chk "spec-trace: an abandoned story is not read" spec-trace Example "ok | 0 | -"
-sb task set EX-3 status=in-progress
-doc Example
-chk "spec-trace: set back to in-progress, its offenders come back" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-edit "$T/EX-3/README.md" '/^status: /d'
-doc Example
-chk "spec-trace: a story with no status is read" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-edit "$T/EX-3/README.md" 's/^title: /status: someday\
-title: /'
-doc Example
-chk "spec-trace: a story whose status is not one of the five is read" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-edit "$PROFILE" 's/^task_layout: flat$/task_layout: archive/'
-sb task set EX-3 status=done
-sb task archive EX-3
-rc_is "spec-trace: the story is archived" 0
-doc Example
-chk "spec-trace: an archived story is not read" spec-trace Example "ok | 0 | -"
-sb task set EX-3 status=in-progress
-doc Example
-chk "spec-trace: one set back to open in the archive is read, from the spec folder that moved with it" spec-trace Example \
-  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-chk "spec-trace: and task-layout names it too" task-layout Example "warn | 1 | EX-3:open"
-reset
-reqs "$T/EX-1/spec/requirements.md" '## R1 - one'
-reqs "$SPR" '## R1 - one'
-edit "$PROFILE" 's/^delivery: direct$/delivery: spec/'
-sb task set EX-3 delivery=direct
-doc Example
-chk "spec-trace: with delivery: spec in the profile, a story with no key is read and a task's own direct is not" spec-trace Example \
-  "warn | 3 | EX-1:AC1, EX-1:AC2, EX-1:R1"
-sb task set EX-3 delivery=
-doc Example
-chk "spec-trace: the offenders of two stories share the one row, the first five shown" spec-trace Example \
-  "warn | 6 | EX-1:AC1, EX-1:AC2, EX-1:R1, EX-3:AC1, EX-3:AC2"
-rm -rf "$T/EX-1/spec" "$T/EX-3/spec"
-doc Example
-chk "spec-trace: a spec story with no spec folder is not read" spec-trace Example "ok | 0 | -"
-mkdir -p "$T/EX-3/spec"
-doc Example
-chk "spec-trace: nor one with a spec folder and no requirements.md" spec-trace Example "ok | 0 | -"
-fi
-
-# R5: a spec in the repo.
-if block 44; then
-mkdir -p "$tmp/spec-code/example-api"
-edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/spec-code\"|; s/^spec_home: vault\$/spec_home: repo/; s/^validation_home: vault\$/validation_home: repo/"
-sb task set EX-3 delivery=spec
-sb spec new EX-3
-rc_is "spec-trace: spec new writes the spec in the repo" 0
-reqs "$SPR" '## R1 - all' '' '- Serves: AC1, AC2'
-doc Example
-chk "spec-trace: with spec_home: repo, the spec in the repo is read, not one in the task folder" spec-trace Example \
-  "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-{ trace_files "$vault/$P/tasks"; trace_files "$tmp/spec-code"; } >"$tmp/trace.files"
-while IFS= read -r f; do
-  mkdir -p "$tmp/before$(dirname "$f")"
-  cp "$f" "$tmp/before$f"
-done <"$tmp/trace.files"
+rc_is "spec flow: a vault with its keys and folders still passes" 0
+is "spec flow: its keys, a spec/ folder and build.json change no row of the doctor" "$(norows)" "$before"
+is "spec flow: and add no placeholder" "$(row placeholders | cut -d'|' -f1-2)" "$holes"
+spec_sums >"$tmp/spec.sums"
 doc Example --fix
-is "spec-trace: --fix fixes nothing for it" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
-chk "spec-trace: and the row is the same after --fix" spec-trace Example "warn | 3 | EX-3:AC1, EX-3:AC2, EX-3:R1"
-changed=""
-while IFS= read -r f; do
-  cmp -s "$tmp/before$f" "$f" || changed="$changed $f"
-done <"$tmp/trace.files"
-is "spec-trace: --fix leaves every spec file and task README byte-identical" \
-  "$(trace_files "$vault/$P/tasks" | grep -c .)/$(trace_files "$tmp/spec-code" | grep -c .)/$changed" "5/3/"
-edit "$PROFILE" 's|^repos_root: .*|repos_root: ""|'
+is "spec flow: --fix fixes nothing for them" "$(printf '%s\n' "$OUT" | head -1)" "fixed: nothing"
+is "spec flow: and leaves the spec files, build.json and the README as they were" "$(spec_sums)" "$(cat "$tmp/spec.sums")"
+edit "$PROFILE" 's/^task_layout: flat$/task_layout: status/'
+doc Example --fix
+exists "spec flow: in the status layout, --fix moves the spec folder with its task" "$T/in-progress/EX-1/spec/design.md"
+exists "spec flow: and build.json too" "$T/in-progress/EX-1/build.json"
 doc Example
-chk "spec-trace: a repo with no recorded location gives no offender" spec-trace Example "ok | 0 | -"
-chk "spec-trace: the validation check names the location" validation Example "warn | 1 | example-api:no-location"
-edit "$PROFILE" "s|^repos_root: .*|repos_root: \"$tmp/spec-code\"|"
-mv "$tmp/spec-code/example-api" "$tmp/spec-code/example-api.away"
-doc Example
-chk "spec-trace: a repo whose folder is missing gives no offender" spec-trace Example "ok | 0 | -"
-chk "spec-trace: the repos check names the folder" repos Example "warn | 1 | example-api"
-mv "$tmp/spec-code/example-api.away" "$tmp/spec-code/example-api"
-# A repo story that cannot be reached comes first; a vault story after it is still read.
-sb scaffold subproject Example infra --repos example-infra
-edit "$vault/$P/claude/subprojects/infra.md" 's/^spec_home: ""$/spec_home: vault/'
-edit "$PROFILE" 's|^repos_root: .*|repos_root: ""|; s/^delivery: direct$/delivery: spec/'
-sb task set EX-3 subproject=infra
-reqs "$T/EX-3/spec/requirements.md" '## R1 - one' '' '- Serves: AC1'
-doc Example
-chk "spec-trace: a story whose repo cannot be reached hides no later story" spec-trace Example "warn | 1 | EX-3:AC2"
-edit "$vault/$P/claude/subprojects/infra.md" 's/^delivery: ""$/delivery: direct/'
-sb task set EX-3 delivery=
-doc Example
-chk "spec-trace: a subproject's delivery holds for its story with no key of its own" spec-trace Example "ok | 0 | -"
+chk "spec flow: no-readme names no spec folder in a status folder" no-readme Example "ok | 0 | -"
+chk "spec flow: nor does task-location" task-location Example "ok | 0 | -"
+chk "spec flow: nor task-layout" task-layout Example "ok | 0 | -"
+chk "spec flow: and the spec notes' links follow the move" unresolved-links Example "ok | 0 | -"
 fi
 
 # ---------------------------------------------------------------- result

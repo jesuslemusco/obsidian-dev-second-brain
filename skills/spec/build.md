@@ -450,8 +450,8 @@ A resumed build with every task passed comes straight here.
 1. Run the build-wide checks once, with no agent:
    `second-brain validation run "<project>" <repo> --when each-build`.
    - Run it with the Bash tool's `run_in_background: true`, and wait for its notice. A run can
-     take longer than a Bash call's timeout, and a helper that a timeout kills leaves its check
-     running.
+     outlast a Bash call's timeout, which moves the call to the background anyway, and its notice
+     reaches you.
    - Every row passes or is skipped: go on to item 2.
    - A `fail` row: find the task whose files it covers, the one whose `- Files:` line in
      `tasks.md` holds the code its lines name or test. Several: the last of them in order.

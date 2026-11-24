@@ -2,7 +2,7 @@
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
-Step 0 of `SKILL.md` has run.
+Read this in close mode only, after Step 0 of `SKILL.md`.
 
 - No sprint in progress: say so and stop.
 - Days left above zero: confirm the early close first.

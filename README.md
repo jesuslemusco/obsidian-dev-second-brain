@@ -2,7 +2,7 @@
 
 A Claude Code plugin that keeps a developer's work in an [Obsidian](https://obsidian.md) vault:
 tickets, sprints and project docs, as plain markdown notes that Claude reads and updates for you.
-It can also build a story from a spec you approve, one task at a time, each tested and reviewed.
+It can also build a story you approve, in a git worktree of its own, tested and reviewed.
 
 ## Overview
 
@@ -16,12 +16,13 @@ It can also build a story from a spec you approve, one task at a time, each test
   ticket sits inside a folder named for that parent, such as
   `<project>/tasks/done/<parent>/<ID>/README.md`. Each project calls its parent stories features
   or epics.
-- **Sprints.** Claude opens a sprint, plans it, shows its status, and closes it with the open work
-  carried over.
+- **Planning.** Claude refines the epics and stories with you, and plans each release's goals,
+  epics and stories in the project's planned-releases note. It writes only what you approve.
+- **Sprints.** Claude opens a sprint, plans it, and closes it with the open work carried over.
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
-- **Spec-driven builds.** You approve a story's requirements, design and tasks. Claude then builds
-  the tasks one at a time, test-first, and has each reviewed before the next one starts.
+- **Builds.** Claude builds each story you approve, test-first, in a git worktree of its own, and
+  has a fresh reviewer grade it against its acceptance criteria before it waits for your merge.
 - **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
   in a `validation.md`, in the vault or in the repo.
 - **Several repos.** A project's repos can split into subprojects, each with its own branches and
@@ -63,56 +64,70 @@ type a skill's name, as in the headings below. Which requests load which skill i
 
 ### `/odsb:story-tracker`
 
-Drafts, starts, updates and recalls tickets, and gives a standup.
+Drafts, starts, updates and recalls tickets, one at a time, and gives a standup.
 
 - Use it for any question or change on a ticket.
 - Starting a ticket writes its story: a summary, a description and up to four acceptance
-  criteria, checked against the code.
+  criteria, checked against the code. It shows you the text first, and writes it once you approve.
 - An update adds a dated status note, ticks the criteria that are met and keeps the branch line
   current.
-- When work starts, it builds a simple story direct, and asks you when a spec would help.
+- When work starts on a story you approved, it offers `/odsb:build` to build it.
+- A story set to done goes to `docs-keeper`, which brings the project's docs in step.
 
 ```
 Where does EX-2 stand?
 Update EX-2: the sort is merged, move it to in review.
 ```
 
-### `/odsb:sprint`
+### `/odsb:scrum-master`
 
-Opens, plans, shows and closes a project's sprint, and carries open work over.
+Refines the stories and plans the sprints and releases with you, and checks the board. It has
+four workflows, each a file of its own in `skills/scrum-master/`, read only when it runs.
 
-- Use it to start a sprint, pick its stories, see its status or close it.
-- A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md` says.
+- `refinement`: drafts or refines an epic and its stories, or one story, with you. Each story has
+  a summary, a description, up to four acceptance criteria, its parent and the tasks it waits on.
+  It writes nothing until you approve the draft, and shows a change you ask for again first. Then
+  story-tracker writes each story.
+- `sprint-planning`: opens a sprint, picks its stories, and closes it with the open work carried
+  over. A project can run without sprints, as `### Profile frontmatter` in `docs/contract.md`
+  says.
+- `release-planning`: sets a release's goals, epics and stories with you, in the project's
+  planned-releases note, once you approve it. A story or epic that does not exist yet goes through
+  refinement first.
+- `organize-board`: runs the doctor on the project, says what each failing row means, and changes
+  nothing without asking.
 
 ```
+Refine EX-1 for the Example project: split it into stories.
+Plan the 0.2.0 release for the Example project: export the invoices as CSV.
 Open a new sprint for the Example project.
-/odsb:sprint close Example
+/odsb:scrum-master sprint-planning Example
 ```
 
-### `/odsb:spec`
+### `/odsb:build`
 
-Writes a story's spec with you, then builds and reviews it in your session.
+Builds approved stories, one at a time, each in a git worktree of its own.
 
-- Use it for a story that is big or unclear, or one you want built with few questions.
-- You approve its requirements, then its design, then its tasks.
-- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
-  lists what it could not build.
-- Then Claude builds the tasks in order. `implementer` builds each one test-first when it has
-  something to test.
-- A fresh `reviewer` reviews each task right away. It grades each check and ends with a JSON
-  verdict.
-- A failed task goes back for a fix, in a capped number of rounds.
-- Once the build has started, Claude asks you only for a short list, such as a push or a task
-  that is stuck. It settles any other question itself and records the ruling in the story.
-- Progress is kept in `build.json`, so a new session picks the build up where it stopped.
-- At the end, Claude offers to merge the branch, open a pull request or keep it.
+- Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
+  set.
+- It builds only a story whose text you approved: when story-tracker started it, or in
+  refinement, as it is or changed.
+- One `implementer` builds each story test-first and checks its own change. Then a fresh
+  `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
+- A passed story merges where your project's git flow says, written under `## Rules` in its
+  Claude hub, only on your go. The checks run on the merged branch, and nothing is pushed
+  without your word. Then its worktree is removed, once any ignored file in it is shown to you.
+  The branch stays.
+- Progress is kept in the story's status notes, so a new session picks the build up where it
+  stopped.
 
-The whole flow is under `## Spec-driven delivery` in `docs/guide.md`, and the build's steps are
-in `skills/spec/build.md`.
+The flow is under `## Building a story` in `docs/guide.md`, and its steps are in
+`skills/build/story.md`.
 
 ```
-/odsb:spec EX-2
-Implement EX-2 spec-driven, starting with its requirements.
+/odsb:build EX-2
+Build the approved stories of EX-1.
 ```
 
 ### `/odsb:vault-setup`
@@ -160,10 +175,8 @@ Most are started by a skill, and you can ask for any of them by name.
 | Agent | Does | Started by |
 |---|---|---|
 | `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
-| `scrum-master` | Runs a project's sprint cadence: plan, daily status, close and carry-over. | You. |
-| `implementer` | Builds one task, or each task of a bundle, test-first, runs its checks and commits it. | `spec`, during a build. |
-| `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a task's diff, the user steps or the whole branch. Edits no file and ends with a JSON verdict. | `spec`: for the baseline, after each task and at the end of a build. |
-| `spec-checker` | Reads a spec alone, as a fresh build agent would, and lists what it could not build from it. Writes no file. | `spec`, before you approve the design and the tasks. |
+| `implementer` | Builds one approved story in its git worktree, test-first, runs its checks and commits it. | `build`. |
+| `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a story's change. Edits no file and ends with a JSON verdict. | `build`: for the baseline, and after each build and fix of a story. |
 
 ## Examples
 
@@ -174,11 +187,12 @@ Start EX-123: the invoice export drops the tax column.
 ```
 
 Claude finds no story for EX-123 and checks the repo's branch. It asks you for anything it cannot
-tell. Then it writes `<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
+tell, and shows you the story's text. Once you approve it, Claude writes
+`<project>/tasks/EX-123/README.md`, or `<project>/tasks/planned/EX-123/README.md`
 in a project that keeps each task in the folder of its status, or
 `<project>/tasks/backlog/EX-123/README.md` in one that keeps it in the folder of its sprint, with a
-summary, a description and up to four acceptance criteria, checked against the code. A simple story
-is built direct. For one a spec would help, Claude asks you.
+summary, a description and up to four acceptance criteria, checked against the code. Then Claude
+offers `/odsb:build EX-123` to build it.
 
 ### Ask where things stand
 
@@ -196,23 +210,15 @@ Current step: Review the fix on the branch
 1 active, 0 done/abandoned.
 ```
 
-### Build a story from a spec
+### Build a story
 
 ```
-/odsb:spec EX-123
+/odsb:build EX-123
 ```
 
-Claude writes the requirements with you and waits for your approval, then the design, then the
-tasks. Then it builds the tasks one by one. After each review it shows where the build stands:
-
-```
-T1 - build: built - review: passed - fails 0 - commits 3f2a9c1 - fix - - Add the tax column
-T2 - build: built - review: failed - fails 1 - commits 8b41d07 - fix - - Total the tax column
-  - Issue 2026-10-08: The total skips credit notes. Fix: Add the credit notes to the total.
-T3 - build: todo - review: - - fails 0 - commits - - fix - - Document the column
-```
-
-T2 goes back to its `implementer` with the issue. T3 starts once T2 passes.
+Claude builds the story in `<repo path>-EX-123`, a git worktree next to the repo's folder. After
+each review it shows the round, its verdict and its defects. A failed review goes back to the same
+`implementer` with its defects, and a passed story waits for your go to merge.
 
 ### Check the vault
 
@@ -258,6 +264,15 @@ says what each one means and how to fix it. `/odsb:vault-doctor fix` repairs wha
 What changed in each version, and what to do after it, is in [CHANGELOG.md](CHANGELOG.md). An
 update that does not take, and auto-update, are under `## Updating` in `docs/guide.md`.
 
+### A vault with specs
+
+Version 0.12.0 retires the spec flow: every story is built with `/odsb:build`.
+
+- A story's `spec/` folder and `build.json` stay in its task folder as plain notes, which nothing
+  reads. A `delivery` or `spec_home` key left in a note is read by nothing too.
+- How to build a story you started from a spec is under `### A vault with specs` in
+  `docs/guide.md`.
+
 ## Your own skills and agents
 
 Keep skills and agents of your own in the vault: in `claude/` at its root for every project, or in
@@ -297,7 +312,7 @@ Claude writes notes in the style of the note `claude/writing-style.md` in your v
 ## More
 
 - [docs/guide.md](docs/guide.md): what to say to load each skill, updating, the vault layout,
-  spec-driven delivery, Windows, the tests and releases.
+  planning, building a story, Windows, the tests and releases.
 - [docs/contract.md](docs/contract.md): every helper command and note format.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 

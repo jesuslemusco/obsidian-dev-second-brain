@@ -20,9 +20,12 @@ skill next to it:
 | Where does EX-2 stand? | `story-tracker` |
 | Standup for the Example project: what is in progress, and what comes next? | `story-tracker` |
 | Update EX-2: the sort is merged, move it to in review. | `story-tracker` |
-| Open a new sprint for the Mobile project. | `sprint` |
+| Refine EX-2 for the Example project: split it into two stories. | `scrum-master` |
+| Plan the 0.2.0 release for the Example project: export the invoices as CSV, in three stories. | `scrum-master` |
+| Open a new sprint for the Mobile project. | `scrum-master` |
+| Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
-| Implement EX-2 spec-driven, starting with its requirements. | `spec` |
+| Build the approved stories of EX-1. | `build` |
 
 - Any skill runs by name: `/odsb:<skill>`.
 - `vault-setup` runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
@@ -112,7 +115,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - When a story is set done, Claude asks once whether to archive it now, as
   `## Edit an existing story` in `skills/story-tracker/SKILL.md` says.
 - When a sprint closes, Claude asks once whether to archive its done tasks, as
-  `skills/sprint/close.md` says.
+  `## Close` in `skills/scrum-master/sprint-planning.md` says.
 - `second-brain task archive EX-1` archives one task by hand.
 - `second-brain doctor --fix` archives each task that is due, as
   `## fix` in `skills/vault-doctor/SKILL.md` says.
@@ -172,94 +175,102 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `## project <name>` in `skills/vault-setup/SKILL.md` says. The word changes labels only: the key
   in a task's frontmatter stays `epic`.
 
-## Spec-driven delivery
+## Planning
 
-- Start one with `/odsb:spec EX-2`, or with the request under
-  [What to say](#what-to-say).
-- You approve each phase or say what to change, as
-  `## Step 2 - One phase at a time` in `skills/spec/SKILL.md` says.
-- The skill asks one question at a time and shows each draft in short chunks, as
-  `## The chat` in `skills/spec/phases.md` says.
-- Before you approve the design, and again the tasks, `spec-checker` reads the spec alone and
-  lists what it could not build from it. You close each gap first, as
-  `## The spec check` in `skills/spec/phases.md` says.
-- When work starts on a story with no `delivery` of its own, Claude weighs it. A simple one is
-  built direct with no question. For one that needs a spec, Claude asks you. The signs are under
-  `## Spec-driven stories` in `skills/story-tracker/SKILL.md`.
-- One story is built from a spec with `second-brain task set EX-2 delivery=spec`.
-- A project's `delivery` is a fallback, and `spec_home` says where its specs live. Both are under
-  `### Profile frontmatter` in `docs/contract.md`.
-- `second-brain spec EX-2` prints the story's `delivery`, `spec_home` and the paths of its three
-  spec files.
-- The spec files' shape is under `## 4. A task` in `docs/contract.md`, such as each task's
-  `- Check: <command or step> - expected: <what it prints or shows>` line.
-- The doctor's `spec-trace` check names an acceptance criterion that no requirement serves.
-- Once you approve the tasks, the story's Approach, Changes and Verification link to the spec.
-- The build runs in your session. The `spec` skill launches `implementer` and `reviewer` one at a
-  time, and each agent's report comes back to it, so you relay nothing.
-- The agents cannot ask you anything. Every question comes through your session.
-- Each agent fetches its own packet and replies in a few short lines, so your session stays small
-  through a long build. `reviewer` reads the task's diff from a file the helper writes.
-- Each task is reviewed right after it is built, before the next one starts, so no task builds on
-  an unreviewed one. The review reads the task's diff, against its requirements first, then for
-  code quality.
-- Before the first task, the baseline runs the repo's checks on the branch as it is, so a break
-  already there is not taken for a task's. It is skipped when the branch starts on the base
-  branch, which is tested already, and when a build resumes, as `## 4. The baseline` in
-  `skills/spec/build.md` says.
-- Small, alike tasks may form a bundle, which you approve with the task list. A bundle's tasks go
-  to one `implementer` run, one commit per task, then one review, before the next task starts, as
-  `### A bundle` in `skills/spec/build.md` says.
-- `second-brain spec tasks EX-2` prints each task's bundle in its last column.
-- `implementer` builds each task test-first. It writes a test that fails for the task's
-  requirement, then makes it pass. A task with nothing to test, such as a doc change, says why.
-- Who runs which check: `implementer` runs the task's `Check` and the repo's `each task` checks
-  before it commits, as its packet's `## Checks` names them. It commits only when they pass, and
-  its reply names each result. A step it has no tool for, such as a browser step, is left to the
-  review.
-- `reviewer` runs those checks again in the task's review, with the `each task` user steps.
+- The `scrum-master` skill plans with you. It has four workflows, each a file of its own, read only
+  when it runs: `refinement`, `sprint-planning`, `release-planning` and `organize-board`. Its
+  `SKILL.md` routes each request to one of them.
+- Ask for an epic and its stories, or one story, as under [What to say](#what-to-say), and
+  `refinement` drafts them with you, in story-tracker's shape, with at most four acceptance
+  criteria, its parent and the tasks it waits on, as `## 2. The draft` in
+  `skills/scrum-master/refinement.md` says.
+- It shows you the draft in short chunks and writes nothing until you approve it. A change you ask
+  for is shown again first, as `## 3. The approval` in `skills/scrum-master/refinement.md` says.
+- Then story-tracker writes each story, and the skill links each one to the tasks it waits on
+  with `second-brain task dep`.
+- A ticket you start with no story is shown to you the same way before story-tracker writes it.
+- `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as
+  `## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.
+- `release-planning` keeps each release's goals, epics and stories in `planned-releases.md`, in
+  the project's topics root, `docs/` by default. Its shape is under `### Planned releases` in
+  `docs/contract.md`. A story or epic that does not exist yet goes through `refinement` first.
+- `organize-board` runs the doctor on the project and says what each failing row means. It changes
+  nothing without asking. `/odsb:vault-doctor fix` makes the repairs.
+
+## Building a story
+
+- Build one with `/odsb:build EX-2`, or an epic's stories with `/odsb:build EX-1`, or with the
+  request under [What to say](#what-to-say).
+- Only a story whose text you approved is built. story-tracker writes the note that says so when
+  it starts a story, and refinement has it written on each story you approve, new or not, as
+  Step 2 of `skills/build/SKILL.md` says.
+- Each story is built in a git worktree of its own, next to the repo's folder. The
+  `implementer` and the `reviewer` work there, and the checks run there:
+  `second-brain validation run <project> <repo> --path <worktree>`.
+- `implementer` builds the story test-first, and checks its whole change against the story's
+  criteria and the reviewer's list of defects before it commits.
+- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks
+  and user steps, and grades the code. A defect fails the story. A follow-up does not: the build
+  lists it for you when it finishes or stops.
+- A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
+  on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
+- Once the build has started, Claude asks you only for the short list under
+  `## 8. When to ask the owner` in `skills/build/story.md`.
+- A passed story merges where your project's git flow says, as you write it under `## Rules` in
+  the project's `claude/README.md`, such as into the open `release/<version>`. With none written,
+  Claude asks you, and offers to write your answer there.
+- The merge is local, and only on your go. A conflict where both sides only add lines keeps both.
+  Any other is shown to you. The checks run on the merged branch, and Claude pushes only on your
+  word, as `### The merge` in `skills/build/story.md` says.
+- Once the merge is done, or you say not to merge, the story's worktree is removed, after Claude
+  shows you any ignored file in it, such as a `.env`. The branch stays.
+- Progress is kept in the story's status notes, so a new session goes on where the build stopped.
+- Once the build has started, Claude settles any other question itself, such as a criterion an
+  agent reads two ways, and records it as a status note,
+  `Ruling: <the question> - <the decision and why>`. Each ruling goes into the next prompts, so no
+  review flags what was decided.
 - `reviewer` grades each check as met or not, with its evidence, and ends its reply with a JSON
-  verdict. The skill reads that verdict, and a PASS with an open finding never counts, as
-  `### Reading a verdict` in `skills/spec/build.md` says.
-- A task that fails goes back to its `implementer` with the findings, in a fix loop of at most five
-  rounds, the last two on a stronger model. The rounds are counted in `build.json`, so a new
-  session counts on. `## 5. Each task in turn` in `skills/spec/build.md` holds the loop.
-- When every task has passed, the helper runs the repo's checks once, with no agent. Then one
-  review runs the user steps and one, on the most capable model, reads the whole branch, as
-  `## 6. When every task passed` in `skills/spec/build.md` says.
-- A task may name what it provides on `- Provides:` lines. A task that names it on `- Uses:` gets
-  those lines in its packet, as `## 4. A task` in `docs/contract.md` says.
-- Once the build has started, it stops and asks you only for a short list: a destructive action,
-  a security-sensitive one, an outside effect such as a push, a merge or a publish, a spec too
-  broken to follow, a task blocked or past its last fix round, and a failed baseline. The list is
-  under `## 8. When to ask the owner` in `skills/spec/build.md`.
-- Any other question, such as an ambiguous requirement or two agents that disagree, the skill
-  decides itself. It records each as a status note,
-  `Ruling: <task>: <the question> - <the decision and why>`.
-- Each ruling, and each answer you give on a task, goes as written into that task's next
-  `implementer` and `reviewer` prompts, so no review flags what was decided.
-- When the build stops, your session shows where it stands, lists the build's rulings and asks
-  you what to do. When it finishes, it lists them too. You can reopen the phase a ruling touched,
-  or reverse the ruling.
-- `second-brain spec status EX-2` prints where the build stands, one line per task, from
-  `build.json` in the story's folder. A new session goes on from there.
-- Each task's build and review state, commits, issues and times are in `build.json`, never in the
-  story's README. The README keeps the story-level notes, such as the build started or stopped.
+  verdict. The skill reads that verdict, and a PASS with an open defect never counts, as
+  `### Reading a verdict` in `skills/build/story.md` says.
+- A review sorts each finding as a defect, which fails the story, or a follow-up, which does not.
+  A name that misleads, repeated code or code against the conventions around it is a follow-up,
+  unless it is a defect in another way, such as one a user would hit or a rule of the repo names.
+  `## Defects and follow-ups` in `agents/reviewer.md` draws the line.
+- When the build finishes or stops, it lists the rulings and the follow-ups so far, and you can
+  have one fixed then.
 - A build writes your open orders to `claude/lead-agent-task-memory.md` in the project's folder of
   your vault, with a line in the project's `claude/README.md`, and removes both once no order is
-  open. While one is open, it runs a check in your session, as often as `lead_check_minutes` in
-  the project's profile says, as `### The owner's open orders` and `### The lead's check` in
-  `skills/spec/build.md` say.
-- When the last task passes, the story moves to `in-review`.
-- Then Claude asks whether to merge the branch into the release branch, open a pull request into
-  it, or keep it, as `skills/spec/finish.md` says.
+  open, as `## The owner's open orders` in `skills/build/lead.md` says.
+- While one is open, it runs a check in your session, as often as `lead_check_minutes` in the
+  project's profile says, as `## The lead's check` in `skills/build/lead.md` says.
+- Each order has a `Done when:` line, a condition a command, a file or a branch state can test.
+  Claude writes it from your words, and asks you only when they give none. The check closes an
+  order when its condition holds, and only you change a condition.
+
+### A vault with specs
+
+Version 0.12.0 retires the spec flow. A story is built one way: from its README, with
+`/odsb:build`. What the spec flow left in a vault stays where it is.
+
+- A story's `spec/` folder and `build.json` stay in its task folder, as plain notes and files of
+  the task. No command reads them, a move takes them with the task, and no doctor check is about
+  them, as `## 4. A task` in `docs/contract.md` says.
+- A spec kept in a repo, in `spec/<ID>/`, stays there too. Delete it in a commit of your own when
+  you no longer want it.
+- A `delivery` or `spec_home` key in a profile, a subproject note or a task is read by nothing,
+  and the doctor's `settings` check does not name it. Remove it when you like.
+- To build a story you started from a spec, read its spec for what the README lacks, and bring
+  its criteria into the README through `/odsb:scrum-master refinement`. Once you approve the text,
+  run `/odsb:build <ID>`.
+- The vault's conventions note is at version 11, with no `spec` note type and no `delivery` key.
+  The doctor's `conventions` check warns about an older one.
 
 ### Validation steps
 
 - The agents read a repo's validation steps before they build or review a change, as
   `### Validation` in `docs/contract.md` says.
-- A build does not start on a repo whose steps are missing, as
-  `## 2. Ready to build` in `skills/spec/build.md` says.
+- A build does not start on a repo whose steps are missing, as item 4 of
+  `## 2. The worktree` in `skills/build/story.md` says.
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
@@ -323,9 +334,14 @@ claude plugin validate . --strict
   are in `scripts/tests/lib.sh`.
 - The fixtures in `scripts/tests/lib.sh` and `scripts/tests/generated.sh` copy the commands of the
   sections that write the vault. A change to what such a section writes goes into those copies too.
+- `bash scripts/test-doctor.sh --shard 2/4` runs the second of four shards of the doctor tests.
+  The shards together run each case once.
+- A new block follows the comment above `block()` in `scripts/test-doctor.sh`.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
   to `main`.
+- It runs the doctor tests as four shards, each a job of its own, beside one job for the other
+  suites.
 - On Windows the suites build symlinks as fixtures, which takes Developer Mode or an elevated
   shell.
 - `scripts/e2e-claude.sh` runs Claude Code itself on a scratch vault. It fails when a request under

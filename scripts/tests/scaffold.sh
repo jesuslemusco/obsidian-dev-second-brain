@@ -94,7 +94,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 7"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 8"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -105,6 +105,8 @@ is "index: the every-session section says where the vault is" "$(printf '%s\n' "
 is "index: it names the command that registers a new skill" "$(printf '%s\n' "$every" | grep -c -F 'second-brain link --apply')" "1"
 file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore this file"
 file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
+file_has "index: the scrum-master refines the stories and plans the sprints and releases" "$vault/CLAUDE.md" "update), \`scrum-master\` refines the stories and plans the sprints and releases, \`build\`"
+file_has "index: the build skill builds an approved story or an epic's stories" "$vault/CLAUDE.md" "  builds an approved story or an epic's stories, \`vault-setup\` sets up the vault or a project,"
 is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \
@@ -125,7 +127,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 10"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 11"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -272,11 +274,10 @@ file_lacks "profile: sprint_folder adds no placeholder" "$PF" '`<end>`'
 file_lacks "profile: no longer says only archive moves a task" "$PF" 'Only `archive` moves'
 line_is "profile: with archive only, when a done task is due for the archive" "$PF" '- With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest'
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
-file_has "profile: delivery is what a story with none of its own falls back to" "$PF" \
-  '- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back'
-line_is "profile: delivery points to the contract" "$PF" \
-  "  as \`### Profile frontmatter\` in the plugin's \`docs/contract.md\` says."
-line_is "profile: where spec_home puts the spec" "$PF" '- `spec_home:` puts the spec in the task'"'"'s folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).'
+for k in delivery spec_home; do
+  file_lacks "profile: no $k key, as the spec flow is retired" "$PF" "$k"
+  file_lacks "subproject template: no $k key" "$here/templates/subproject.md.tmpl" "$k"
+done
 line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
 line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
 line_is "profile: what repos_root holds" "$PF" '- `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.'

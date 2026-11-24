@@ -50,6 +50,14 @@ for c in "--files" "probe" "ob <" "Obsidian"; do
   out_lacks "help: no longer lists $c" "$c"
 done
 out_has "help: exit code 3 is retired" "2 setup missing, 4 ambiguous"
+is "help: names no spec command, as the spec flow is retired" "$(printf '%s\n' "$OUT" | grep -ci 'spec' || true)" "0"
+out_has "help: the validation commands are under checks" "checks:   validation <project> [repo] [--path DIR]"
+for c in "spec EX-1" "spec new EX-1" "spec status EX-1" "spec packet EX-1 T1"; do
+  # shellcheck disable=SC2086
+  sb $c
+  rc_is "$c: the command is gone, exit 5" 5
+done
+err_has "spec: named as an unknown command" "unknown command: spec"
 sb ob version
 rc_is "ob: the command is gone, exit 5" 5
 sb probe
@@ -156,6 +164,11 @@ sprint: none"
 run env SECOND_BRAIN_VAULT="$tmp/nowhere" "$SB" context
 rc_is "context: exit 0 with no vault" 0
 out_has "context: vault none" "vault: none"
+
+# ---------------------------------------------------------------- libraries
+# On Windows awk, grep and sed are shell functions that read in binary mode; env or command skips them.
+is "libraries: awk, grep and sed are never run through env or command" \
+  "$(grep -nE '(^|[^a-zA-Z_])(env|command) +[^-]' "$here"/scripts/lib/*.sh | grep -v '/platform\.sh:' | grep -E '(awk|grep|sed)' || true)" ""
 
 # ---------------------------------------------------------------- result
 result

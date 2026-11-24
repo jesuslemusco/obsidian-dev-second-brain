@@ -1,5 +1,117 @@
 # Changelog
 
+## 0.12.0 - unreleased
+
+- The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four
+  workflows, each a file of its own, read only when it runs: `refinement`, `sprint-planning`,
+  `release-planning` and `organize-board`, as `## 9. Skills and agents` in `docs/contract.md`
+  says.
+- `/odsb:sprint` is now `/odsb:scrum-master sprint-planning`: it opens a sprint, picks its stories
+  and closes it with carry-over, as the sprint skill's `open`, `plan` and `close` did. Ask for the
+  agent's work as before: the skill takes it.
+- `refinement` drafts or refines an epic and its stories, or one story, with you, in
+  story-tracker's shape, with at most 4 acceptance criteria and the `task dep` links of each
+  story. It shows a change you ask for again, and writes nothing until you approve the draft. Then
+  story-tracker writes each story.
+- `release-planning` sets a release's goals, epics and stories with you, in the project's
+  `<topics_root>/planned-releases.md`, whose shape is under `### Planned releases` in
+  `docs/contract.md`. A story or epic that does not exist yet goes through `refinement` first.
+- `organize-board` is the agent's hygiene pass: it runs the doctor on a project and changes
+  nothing without asking.
+- The daily status is gone. story-tracker's status gives the active stories, a standup and the
+  stories of the sprint.
+- story-tracker's start mode shows a new story's text, and writes it only once you approve it. A
+  story set to done goes to `docs-keeper`.
+- story-tracker and the sprint close no longer log achievements: only an achievements skill tracks
+  them. `achievements_skill` stays in the profile, and no skill reads it until the plugin's
+  achievements skill, which is planned.
+- A sprint close asked for with no sprint in progress says so and stops. It opens a sprint only
+  when you ask for one.
+- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and
+  story-tracker may edit notes. Both may run `ls -d` with no prompt. Their git commands still
+  prompt: a pattern for `git -C <path>` would let a `-c` setting run a program.
+- The doctor's `sprints` fixes name the scrum-master skill.
+- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or
+  scrum-master agent. The plugin's index template is now at `index_version: 8`, so the doctor's
+  `index` check warns. Copy the bullet that starts `- Call a plugin skill or agent` under
+  `## In every session` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`,
+  then set `index_version: 8`.
+- A note, a skill or a settings rule of your own that names `odsb:sprint` or the scrum-master
+  agent: change it to the `odsb:scrum-master` skill.
+- `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
+  and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
+  while a check it started still runs.
+- `reviewer` grades code quality on a failing story too, so that one fix round answers every
+  defect. A re-review still grades the quality of the fix's commits alone.
+- The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
+- `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in
+  `agents/reviewer.md` says. A name that misleads, code repeated where it could be shared, or code
+  against the conventions around it is a follow-up. It stays a defect when a check fails on it, a
+  user would hit it, it makes a doc wrong, or the story's criteria or Approach, or a rule written
+  in the repo, names it. Every other finding is a defect.
+- Only a defect fails a story, counts in the verdict's `issues` and goes to the fix loop. A
+  follow-up is a `Follow-up:` status note on the story. When the build finishes or stops, it lists
+  each one so far for the owner, who can have one fixed then.
+- Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a
+  file or a branch state can test, such as `git merge-base --is-ancestor <branch> release/<version>`
+  exiting 0. The lead writes it from the owner's words when it takes the order, and asks the owner
+  only when the words give none.
+- The lead's check tests each open order's condition, at the pace `lead_check_minutes` sets. It
+  closes an order whose condition holds, never one whose condition does not, and never changes a
+  condition without the owner. The finish closes only the orders whose condition holds.
+- A build agent ends each check with `echo "check ended: exit $?"`, rarer in a check's output than
+  a bare `exit:`. Its wait reads the file with `grep -qs`, and ends too on a notice that the check
+  ended, as when the harness stops one that never writes the line. A call may move to the
+  background after 3 minutes.
+- A new `build` skill builds approved stories: one story, or an epic's open stories in the order
+  their `depends_on` sets. Each one is built in a git worktree of its own, `<repo path>-<ID>`, by
+  one `implementer`, and graded by a fresh `reviewer` against its acceptance criteria and the
+  repo's `validation.md`, until one passes or the fix rounds run out. A passed story waits for the
+  owner's go to merge, and its worktree is removed.
+- It builds only a story whose status notes hold `Planned: the owner approved this text.`.
+  story-tracker now writes that note for a story approved in start mode too.
+- A story build keeps its progress in the story's status notes: a `Build: review <n>` note after
+  each verdict, and the reviewer's `Defect <n>:` and `Follow-up:` notes. It keeps the owner's
+  orders note and the lead's check in `skills/build/lead.md`.
+- The build skill reads the project's git flow from `## Rules` in its Claude hub: where a story's
+  branch is cut, and where a passed story merges, such as the open `release/<version>`. With no
+  flow written, it asks the owner where the story merges, and offers to write the answer there.
+- A passed story merges on the owner's go, locally. A conflict where both sides only add lines,
+  with an empty merge base in `diff3` style, keeps both. Any other conflict is shown, and the
+  merge aborted. The repo's checks run on the merged tree unless it is the one the review read,
+  and a push runs only on the owner's word. The story's worktree is removed after the merge.
+- `implementer` and `reviewer` build and review a whole story in its git worktree, in story mode.
+  Before it commits, the implementer checks its whole change against the story's criteria and the
+  reviewer's `## Defects and follow-ups` and `## Code quality`.
+- `second-brain validation <project> <repo>` and `validation run` take `--path <dir>`: a folder
+  that stands in for the repo's, such as a git worktree of it. The checks run there, and a
+  `validation.md` kept in the repo is read from there, so a review checks the branch it reviews.
+- The spec flow is retired, so there is one flow to learn: the `build` skill builds every approved
+  story from its README. The spec skill and its checker agent are gone, and so are the helper's
+  spec commands, the three spec templates and `build.json`. `second-brain help` lists no spec
+  command.
+- `implementer` and `reviewer` keep their story mode and the baseline, and lose the task mode,
+  its bundles, and the user and branch reviews that only a spec build ran.
+- The `delivery` and `spec_home` keys are gone from the profile, the subproject note and the task.
+  story-tracker weighs no story: when work starts on one, it offers `/odsb:build`.
+  `second-brain subproject` prints no `delivery` or `spec_home` line, and `task set` no longer
+  checks a `delivery` value.
+- The doctor's `delivery` check is now `settings`: it names a `validation_home` or a
+  `lead_check_minutes` that is not allowed, and reads no `delivery` or `spec_home` key. The
+  `spec-trace` check is gone.
+- The validation commands live in `scripts/lib/validation.sh`, and `second-brain help` lists them
+  under `checks:`. They work as before.
+- The conventions note is at version 11: it names no `spec` note type and no `delivery` key. The
+  doctor's `conventions` check warns about an older note.
+- A vault with specs moves on as it is. A story's `spec/` folder and `build.json` stay in its task
+  folder as plain notes: nothing reads them, a move takes them with the task, and no doctor check
+  is about them. A spec kept in a repo stays there until you delete it.
+- To build a story you started from a spec, bring what its spec settled into the README's
+  criteria through `/odsb:scrum-master refinement`, approve the text, then run `/odsb:build <ID>`.
+  Remove a `delivery` or `spec_home` key when you like: nothing reads it.
+- A note, a skill or a settings rule of your own that names the spec skill: point it at the build
+  skill.
+
 ## 0.11.0 - 2026-11-23
 
 - A project can keep each task in the folder of its sprint: `task_layout: sprint` in the profile

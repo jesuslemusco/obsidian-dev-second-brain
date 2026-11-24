@@ -21,8 +21,6 @@ environments: []
 repos: []
 repos_root: ""
 repo_paths: []
-delivery: direct
-spec_home: vault
 validation_home: vault
 achievements_skill: ""
 tags:
@@ -58,9 +56,6 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
   `docs/contract.md` says.
 - With `archive`, `archive_after_days:` is how many days a done task waits, counted from its newest
   status note or its sprint's end, before the doctor names it and `doctor --fix` archives it.
-- `delivery:` above is `direct | spec`, what a story with no `delivery` of its own falls back to,
-  as `### Profile frontmatter` in the plugin's `docs/contract.md` says.
-- `spec_home:` puts the spec in the task's folder (`vault`) or in `spec/<ID>/` in the repo (`repo`).
 - `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo's root (`repo`).
 
 ## Topics
@@ -92,7 +87,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - Set `uses_sprints: false` above to turn sprints off; the cadence lines then do not apply.
 - Cadence: <the day a sprint ends, and anything that shifts it>. The numbers are in the frontmatter.
 - Extra fields a sprint note carries here: <or "none">.
-- When a story is done, hand it to: <the skill named in `achievements_skill:`, or "nothing">.
+- `achievements_skill:` waits for the plugin's achievements skill, which is planned. No skill
+  reads it yet.
 
 ## Docs
 

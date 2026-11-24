@@ -1,13 +1,13 @@
 ---
 name: story-tracker
-description: Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria).
+description: "Use for any question or change on a vault ticket, even one the helper could answer: where a ticket stands, an update, a standup, a draft, ticket text (summary, description, acceptance criteria)."
 argument-hint: "[TICKET-ID | status [all | <status> | <topic> | sprint]]"
-allowed-tools: Read Grep Glob Bash(second-brain *)
+allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)
 ---
 
 # Story tracker
 
-A story is a task's `README.md` in the vault.
+A story is a task's `README.md` in the vault. This skill handles one ticket at a time.
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
@@ -52,7 +52,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 | Mode | When | Do |
 |---|---|---|
 | draft | The user wants a ticket written, with or without an id | Read `${CLAUDE_SKILL_DIR}/create.md` section 1, fill `ticket-description.md.tmpl` as the ticket text rules below say, reply with the text. Write no file until the id arrives, then go to start |
-| start | Work begins on a ticket with no story, often signalled by a branch named for it | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
+| start | Work begins on a ticket with no story, often signalled by a branch named for it, or the scrum-master's refinement hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
 | status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
@@ -96,7 +96,8 @@ ticket.
   folder missing) and ask the user where the repo is.
 - `second-brain profile <project> repos` says what each repo holds.
 - Run git as `git -C "<repo path>"`.
-- Get the current branch and its HEAD commit.
+- Get the current branch and its HEAD commit: `git -C "<repo path>" branch --show-current` and
+  `git -C "<repo path>" log -1 --format=%h`.
 - List every local or remote branch whose name carries the ticket id:
   `git -C "<repo path>" branch -a --list '*<ID>*'`.
 - `base_branch` and `branch_pattern` give the base branch and the branch naming.
@@ -119,37 +120,16 @@ ticket.
   - No branch yet: record `none yet`, and name the branch the repo was on.
   - A changed canonical branch also gets a status note.
 
-## Spec-driven stories
+## Building a story
 
-Weigh how a story is built when work starts on it: in start mode once the story exists, or on a
-move to `in-progress`.
+This skill writes no code: the `build` skill builds a story, from its README.
 
-- A story has its own `delivery` when its README's frontmatter sets the key to `direct` or
-  `spec`. Read the frontmatter with a ranged read.
-  - `second-brain spec <ID>` cannot tell: its `delivery` line may come from the subproject or the
-    profile.
-- A story with its own `delivery` is never weighed again.
-  - `spec`: say the story is built from a spec and offer `/odsb:spec <ID>`.
-  - `direct`: go on here.
-- The owner says how to build it, such as "spec-driven": write it with
-  `second-brain task set <ID> delivery=<value>`, then go on as for a story with its own `delivery`.
-- A story with a `Spec: <phase> approved by the owner.` status note is `spec`: its spec was
-  approved before stories were weighed. Read `## Status notes` with a ranged read.
-  - Write `second-brain task set <ID> delivery=spec`, then go on as for a story with its own
-    `delivery`.
-- Any other story: weigh it from its criteria and the code they touch.
-  - Spec-driven: the story is big, unclear, or meant to run without the owner.
-  - Signs: many files or repos, open questions in the criteria, a long unattended build.
-  - Direct: any other story.
-- Weighed direct: run `second-brain task set <ID> delivery=direct` and ask nothing. Say so in one
-  line, with the reason.
-- Weighed spec-driven: describe the story in at most three lines: what it changes, what it
-  touches and how many criteria it has. Then say why a spec helps.
-  - Ask the owner with AskUserQuestion: `spec` or `direct`.
-  - Write the answer with `second-brain task set <ID> delivery=<answer>`.
-  - `spec`: offer `/odsb:spec <ID>`.
-  - `direct`: go on here.
-- A story built from a spec: do not plan or write its code here.
+- When work starts on a story, in start mode once the story exists, or on a move to
+  `in-progress`, offer `/odsb:build <ID>`.
+- The build takes only a story whose status notes hold `Planned: the owner approved this text.`.
+  Read `## Status notes` with a ranged read. With no such note, offer
+  `/odsb:scrum-master refinement` first.
+- Weigh nothing, and write no key on how the story is built: every story is built the same way.
 
 ## Edit an existing story
 
@@ -233,5 +213,5 @@ it only on a yes.
 - Stories are short and durable: decisions, root causes, outcomes, gotchas, not a chat log.
 - Write absolute dates in notes. Never "yesterday" or "last week".
 - Say "ticket" and "tracker". The tracker's name is the profile's `tracker`.
-- Leave `sprint` and `carried_from` to the sprint skill unless the user asks.
+- Leave `sprint` and `carried_from` to the scrum-master's sprint-planning unless the user asks.
 - Keep story state in the vault only: never in Claude's memory or the code repo.

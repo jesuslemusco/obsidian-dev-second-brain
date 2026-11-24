@@ -10,6 +10,8 @@ BM="$here/skills/spec/build.md"
 # ---------------------------------------------------------------- validation run
 sb help
 out_has "help: lists validation run" "validation run <project> <repo> [--when each-task|each-build|release] [--timeout S]"
+out_has "help: the validation run line itself names --path" "validation run <project> <repo> [--when each-task|each-build|release] [--timeout S] [--path DIR]"
+out_has "help: and what --path stands for" "(DIR stands in for the repo's folder, such as a git worktree)"
 RN="work/runs"
 mkdir -p "$tmp/rcode/run-app" "$tmp/tmpr"
 : >"$tmp/rcode/run-app/marker.txt"

@@ -2185,5 +2185,46 @@ for f in "$here"/skills/*/SKILL.md "$here"/agents/*.md; do
   esac
 done
 
+# ---------------------------------------------------------------- nothing names the retired spec flow
+# The spec skill, spec-checker and the helper's spec commands are gone. Only the changelog's released
+# sections, which are history, may name them.
+sp_re='odsb:spec([^a-z0-9_-]|$)|skills/spec([^a-z0-9_-]|$)|spec-checker|second-brain spec([^a-z0-9_-]|$)'
+sp_re="$sp_re"'|`spec (<|new|tasks|tick|packet|link|status|issue)|cmd_spec|sb_spec_|lib/spec\.sh'
+sp_re="$sp_re"'|spec-(requirements|design|tasks)\.md\.tmpl'
+is "spec flow: the guard catches each way of naming it" \
+  "$(printf '%s\n' 'Run `/odsb:spec EX-1`.' 'See skills/spec/build.md.' 'Launch `spec-checker`.' \
+    'Run `second-brain spec EX-1`.' 'Then `spec status <ID>`.' 'cmd_spec' 'sb_spec_value' 'scripts/lib/spec.sh' \
+    'templates/spec-tasks.md.tmpl' | grep -cE -- "$sp_re")" "9"
+is "spec flow: and lets the words that stay pass" \
+  "$(printf '%s\n' 'A `spec/` folder stays.' 'The `spec_home` key.' 'The retired spec flow.' 'odsb:spec-trace-x' \
+    'the `spec-trace` check is gone' 'skills/spec-like' | grep -cE -- "$sp_re" || true)" "0"
+sp_files="$(cd "$here" && find README.md docs skills agents hooks templates bin scripts/lib scripts/e2e-claude.sh \
+  scripts/leak-check.sh .claude-plugin .github -type f 2>/dev/null | LC_ALL=C sort)"
+sp_hits="$(cd "$here" && printf '%s\n' "$sp_files" | tr '\n' '\0' | xargs -0 grep -nE -- "$sp_re" 2>/dev/null)"
+is "spec flow: no file names the spec skill, spec-checker or a spec command" "$sp_hits" ""
+is "spec flow: the scan reads the skills, the agents and the docs" \
+  "$(printf '%s\n' "$sp_files" | grep -cE '^(skills/build/SKILL\.md|agents/reviewer\.md|docs/contract\.md|README\.md)$')" "4"
+sp_new="$(awk '/^## / { on = ($0 ~ / - unreleased$/); next } on' "$here/CHANGELOG.md" | grep -nE -- "$sp_re")"
+is "spec flow: nor does the changelog outside its released sections" "$sp_new" ""
+sp_old="$(awk '/^## / { on = ($0 !~ / - unreleased$/); next } on' "$here/CHANGELOG.md" | grep -cE -- "$sp_re")"
+is "spec flow: the released sections keep their history" "$((sp_old > 0))" "1"
+dl_hits="$(cd "$here" && grep -rnw -- 'delivery' skills agents hooks templates bin scripts/lib 2>/dev/null |
+  grep -v 'is not read' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#')"
+is "spec flow: no skill, agent, template or helper reads a delivery key, and the one that names it says so" "$dl_hits" ""
+CG="$here/CHANGELOG.md"
+sp_top="$(lineno "$CG" '## 0.12.0 - ')"
+sp_end="$(lineno "$CG" '## 0.11.0 - ')"
+for l in '- The spec flow is retired, so there is one flow to learn: the `build` skill builds every approved' \
+  '- A vault with specs moves on as it is. A story'"'"'s `spec/` folder and `build.json` stay in its task' \
+  '- To build a story you started from a spec, bring what its spec settled into the README'"'"'s' \
+  '- The doctor'"'"'s `delivery` check is now `settings`: it names a `validation_home` or a'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.12.0: ${l:2:48}" "$((${n:-0} > ${sp_top:-0} && ${n:-0} < ${sp_end:-0}))" "1"
+done
+file_has "contract: an old spec folder and build.json stay as plain files of the task" "$here/docs/contract.md" \
+  '  retired spec flow wrote, before 0.12.0, stay there as plain files of the task.'
+file_has "contract: the delivery and spec_home keys are no keys" "$here/docs/contract.md" \
+  '- `delivery` and `spec_home` are no keys of the profile, a subproject'"'"'s note or a task. Versions'
+
 # ---------------------------------------------------------------- result
 result

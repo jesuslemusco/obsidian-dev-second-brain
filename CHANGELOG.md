@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.0 - unreleased
+## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four
   workflows, each a file of its own, read only when it runs: `refinement`, `sprint-planning`,

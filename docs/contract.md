@@ -1411,6 +1411,25 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   other check.
 - A re-review reads only the fix's commits and the findings they answer, as the packet holds them.
   It grades the code quality of the fix's commits alone.
+- **Story mode.** In a story build, a prompt with `Mode: story.` gives each agent the story, its
+  project, the repo, its git worktree, its branch, the base and the session id, and no packet.
+- `implementer` reads the story's `## Description`, `## Acceptance criteria` and
+  `## Approach / Key decisions`, builds it test-first in the worktree, runs its test and the
+  `each task` checks with `--path <worktree>`, and commits there.
+- Before it commits, it checks its whole change against the story's criteria, and against
+  `## Defects and follow-ups` and step 6 of `## Task mode` in `agents/reviewer.md`. It fixes
+  what it finds, so that the story passes its first review.
+- `reviewer` reads the story the same way, and the change from the base, or on a re-review the
+  fix's commits alone. It grades each acceptance criterion, or on a re-review each defect the
+  fix answers. Then it runs the `each build` checks, and the `each task` and `each build` user
+  steps, in the worktree, and grades the code.
+- It logs each defect as the status note
+  `Defect <n>: <what is wrong, at file:line> - Fix: <the fix it proposes>`, `<n>` its round, and
+  each follow-up as `Follow-up: <what could be better, at file:line> - <the change it proposes>`.
+- A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
+  fixes each of its `Defect <m>:` notes.
+- A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`
+  and `validation run` with `--path <worktree>`.
 - `implementer`, `reviewer` and `spec-checker` set `omitClaudeMd: true`, so no `CLAUDE.md` adds
   to what they are given.
 - `implementer` replies with a `Commit:` line, one line on what it built, a `Test:` line, and a

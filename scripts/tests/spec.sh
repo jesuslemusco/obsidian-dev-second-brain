@@ -12,7 +12,7 @@ BM="$here/skills/spec/build.md"
 sb help
 out_has "help: lists spec" "spec <ID> | spec new <ID> | spec tasks <ID>   (each takes --project P)"
 out_has "help: lists spec tick and packet" "spec tick <ID> <task> | spec packet <ID> <task>"
-out_has "help: lists validation" "validation <project> [repo] | validation new <project> <repo>"
+out_has "help: lists validation" "validation <project> [repo] [--path DIR] | validation new <project> <repo>"
 S="work/specs"
 SPF="$vault/$S/claude/profile.md"
 mkdir -p "$tmp/scode/spec-app" "$tmp/scode/spec-infra"

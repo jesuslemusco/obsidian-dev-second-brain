@@ -1738,12 +1738,12 @@ file_has "spec finish: and the story goes back in progress first" "$FN" \
 is "spec finish: that answer comes before any other is a keep" \
   "$(($(lineno "$FN" '- Say too that the owner can reverse a ruling') < $(lineno "$FN" '- Do only what the owner picks.')))" "1"
 file_has "implementer: follows a ruling line" "$IM" \
-  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+  "- A \`Ruling:\` line is the launching skill's ruling on what the story or spec left open: follow it."
 file_has "implementer: and one on a task of its bundle" "$IM" \
   "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
 file_has "implementer: puts a BLOCKED as one question" "$IM" 'stop with `BLOCKED:` and say what, as one question the'
 file_has "reviewer: follows a ruling line" "$RV" \
-  "- A \`Ruling:\` line is the \`spec\` skill's ruling on a question the spec left open: follow it too."
+  "- A \`Ruling:\` line is the launching skill's ruling on what the story or spec left open: follow it."
 file_has "reviewer: and one on a task of its bundle" "$RV" \
   "- A \`Ruling on <task>:\` line is the skill's ruling on that task alone: follow it there."
 for f in "$IM" "$RV"; do
@@ -1815,7 +1815,7 @@ file_has "reviewer: grades each check it runs" "$RV" '   `each task`, and grade 
 file_has "reviewer: the branch review grades each acceptance check" "$RV" \
   '3. Requirements first: grade each acceptance check, and whether the tasks fit together, as'
 file_has "reviewer: ends with one JSON block" "$RV" \
-  'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The `spec` skill'
+  'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The skill that'
 file_has "reviewer: the skill reads the block alone" "$RV" \
   'reads your verdict from that block alone: a block it cannot read is no verdict.'
 for k in '- `verdict`: `PASS`, `FAIL` or `BLOCKED`, as item 4 says.' \
@@ -2012,7 +2012,7 @@ line_is "reviewer: a defect no task covers goes in the reply" "$RV" '- A defect 
 file_has "reviewer: a task review's findings are issues and notes" "$RV" 'Your findings are in the story, through `spec issue` and `task note`.'
 line_is "reviewer: a follow-up is not counted in issues" "$RV" '     one.'
 file_has "reviewer: a follow-up never stops a PASS" "$RV" 'A step that could not be run is never a PASS. A follow-up never stops one.'
-line_is "reviewer: may write a follow-up note" "$RV" '- `second-brain spec issue` and a follow-up'"${q}"'s `task note` are your only writes to the vault.'
+line_is "reviewer: may write a follow-up note" "$RV" '- `second-brain spec issue`, and the `task note` of a story'"${q}"'s defect or of a follow-up, are your'
 is "reviewer: the worked FAIL credits its repeat to step 6" \
   "$(example_of 'A FAIL' | grep -c '  lines 85 and 86: code repeated where it could be shared.')" "1"
 is "reviewer: the worked FAIL sorts the repeat as a follow-up" \

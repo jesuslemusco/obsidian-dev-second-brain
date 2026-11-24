@@ -7,6 +7,7 @@
   while a check it started still runs.
 - `reviewer` grades code quality on a failing task too, so that one fix round answers every
   defect. A re-review still grades the quality of the fix's commits alone.
+- The test workflow runs `scripts/test-doctor.sh` as four parallel jobs, one per `--shard <n>/4`.
 - `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in
   `agents/reviewer.md` says. A name that misleads, code repeated where it could be shared, or code
   against the conventions around it is a follow-up. It stays a defect when a check fails on it, a

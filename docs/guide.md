@@ -328,9 +328,14 @@ claude plugin validate . --strict
   are in `scripts/tests/lib.sh`.
 - The fixtures in `scripts/tests/lib.sh` and `scripts/tests/generated.sh` copy the commands of the
   sections that write the vault. A change to what such a section writes goes into those copies too.
+- `bash scripts/test-doctor.sh --shard 2/4` runs the second of four shards of the doctor tests.
+  The shards together run each case once.
+- A new block follows the comment above `block()` in `scripts/test-doctor.sh`.
 - Change `docs/contract.md` first, then the code.
 - `.github/workflows/test.yml` runs the suites on Linux, macOS and Windows for every pull request
   to `main`.
+- It runs the doctor tests as four shards, each a job of its own, beside one job for the other
+  suites.
 - On Windows the suites build symlinks as fixtures, which takes Developer Mode or an elevated
   shell.
 - `scripts/e2e-claude.sh` runs Claude Code itself on a scratch vault. It fails when a request under

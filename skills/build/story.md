@@ -86,11 +86,12 @@ merges, `<target>`. It is the project's own rules: read them, never guess them.
    - A rule for a story that needs another story's code, such as one cut from that story's
      branch, wins for such a story.
 3. A pattern stands for its open branch:
-   - List the branches that match it, highest first:
-     `git -C "<path>" for-each-ref --format='%(refname:lstrip=-2)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sort -rVu`,
-     with `<prefix>` the pattern's text before `<version>`.
-   - A version has shipped when a tag holds it: `git -C "<path>" tag --list "*<version>"` prints
-     a line.
+   - List the branches that match it, highest first, local and remote once each:
+     `git -C "<path>" for-each-ref --format='%(refname)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sed -E 's#^refs/(heads|remotes/[^/]+)/##' | sort -rVu`,
+     with `<prefix>` the pattern's text before `<version>`, slashes and all. The version of each
+     is its name after `<prefix>`.
+   - A version has shipped when a tag holds it, as written or with a `v`:
+     `git -C "<path>" tag --list "<version>" "v<version>"` prints a line.
    - The open branch is the highest that matches, when its version has not shipped. Look at the
      highest two alone: an old branch left untagged below them is no open one.
    - The highest has shipped: none is open. The next one has not shipped either: two are open.
@@ -290,7 +291,8 @@ round, across every session.
    - The owner answers with a ruling to fix the story, such as a follow-up to fix: take it as
      item 3 of `## 7. When the story stops` says.
 4. Merge it, as `### The merge` says.
-5. Once the merge is done, or the owner says not to merge, remove the worktree:
+5. Once the merge is done, or the owner says not to merge, remove the worktree, when it is still
+   there:
    - The branch stays, with every commit.
    - First run `git -C "<worktree>" status --porcelain --ignored`. Each `!!` path is an ignored
      file the removal deletes, such as a `.env`. Show the owner each one, and go on only on their
@@ -306,9 +308,11 @@ A passed story merges into `<target>`, as `### The git flow` finds it, on the ow
 merge is local. A push is another step, on the owner's word alone.
 
 1. A story cut from another story's branch merges after that story:
-   `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise say
-   the story waits on that one, keep its branch unmerged, and go on at item 5 of
-   `## 6. When the story passed`.
+   `git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:
+   - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.
+   - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner's go to merge"`.
+   - Say the story waits on that one, and go on at item 5 of `## 6. When the story passed`. A
+     later run takes it up again, as Step 1 of `SKILL.md` says.
 2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it
    unmerged. The owner may name another target in the free-text answer.
    - No `<target>` found: ask where it merges in the same question, as item 5 of
@@ -317,11 +321,14 @@ merge is local. A push is another step, on the owner's word alone.
      on at item 5 of `## 6. When the story passed`.
 3. `<where>` holds `<target>`: the `worktree` line above a `branch refs/heads/<target>` line in
    `git -C "<path>" worktree list --porcelain`.
-   - None: `git -C "<path>" worktree add "<path>-<ID>-merge" <target>`, and `<where>` is that
-     folder. Remove it once item 9 is done, or the merge stops, as item 5 of
+   - It may be the owner's own checkout, `<path>`: merge there only when item 4 finds it clean.
+   - None holds it: `git -C "<path>" worktree add "<path>-<ID>-merge" <target>`, and `<where>`
+     is that folder.
+   - The merge ends at item 9's answer, at a stop, on a kept branch, or once the owner answers a
+     failing check. Then remove a worktree this item added, as item 5 of
      `## 6. When the story passed` removes the story's: its ignored files first.
-   - Never merge in the owner's own checkout when it is on another branch.
-4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner.
+4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner: never merge
+   over a change, in their checkout or any other.
 5. Note `<before>`, what `git -C "<where>" rev-parse HEAD` prints. Then merge:
    `git -C "<where>" -c merge.conflictStyle=diff3 merge --no-ff <branch> -m "Merge <branch> into <target>"`.
 6. A conflict: `git -C "<where>" diff --name-only --diff-filter=U` names its files. Read each
@@ -329,8 +336,11 @@ merge is local. A push is another step, on the owner's word alone.
    `=======`, the story's lines, `>>>>>>>`.
    - A block whose base part is empty only adds lines: neither side removed or changed one there.
      Keep both: the target's lines, then the story's, with no marker left.
-   - Any other conflict, such as a block with base lines, or a file one side deleted or renamed:
-     show the owner each one, with its file and its block. Then
+   - Not when the two sides of that block share a line: keeping both would hold it twice.
+   - Not in a file with no base, one both sides added: `git -C "<where>" ls-files -u -- <file>`
+     lists no stage 1 line, and keeping both would join two files.
+   - Any other conflict, such as one of those, a block with base lines, or a file one side deleted
+     or renamed: show the owner each one, with its file and its block. Then
      `git -C "<where>" merge --abort`, and stop, as `## 7. When the story stops` says.
    - Every block kept: no line in the files starts with a marker. Then
      `git -C "<where>" add <file>...` and `git -C "<where>" commit --no-edit`.
@@ -346,6 +356,8 @@ merge is local. A push is another step, on the owner's word alone.
      a ruling to fix the story, as item 3 of `## 7. When the story stops` says, or undoing the
      merge. Undoing it, `git -C "<where>" reset --hard <before>`, is a destructive action: only
      on their word.
+   - Undone: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go on
+     at item 5 of `## 6. When the story passed`, as for a branch kept unmerged.
 9. Every check passed or was skipped: ask the owner with AskUserQuestion whether to push
    `<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their
    yes.
@@ -398,6 +410,8 @@ waits for the owner, as `## 7. When the story stops` says:
   owner's word, as item 5 of `## 6. When the story passed` says.
 - A merge and a push each wait for the owner's own answer, as `### The merge` asks for it: never
   take the passing review, or an earlier yes, for one.
+- The offer to write a merge rule under `## Rules`, as item 5 of `### The git flow` says, goes in
+  the merge question. It stops nothing.
 - The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the
   owner has just run the skill.
 

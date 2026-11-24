@@ -2536,6 +2536,7 @@ $BY|Build: finished; review <n> passed, the branch is at <short hash>.
 $BY|Build: merged <branch> into <target> at <short hash>.
 $BY|Build: pushed <target> at <short hash>.
 $BY|Build: the owner kept <branch> unmerged.
+$BY|Build: <branch> waits for <that branch> in <target>.
 $BY|Ruling: <the question> - <the decision and why>
 $RV|Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>
 $BY|Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>
@@ -2593,7 +2594,7 @@ line_is "story build: round 4 on the stronger model" "$BY" \
   '   - `fails` 4: launch a fresh `implementer` on the stronger model, named from round 4 on, with'
 line_is "story build: a passed story merges as the merge says" "$BY" '4. Merge it, as `### The merge` says.'
 bm6="$(lineno "$BY" '4. Merge it, as `### The merge` says.')"
-bm7="$(lineno "$BY" '5. Once the merge is done, or the owner says not to merge, remove the worktree:')"
+bm7="$(lineno "$BY" '5. Once the merge is done, or the owner says not to merge, remove the worktree')"
 is "story build: the worktree goes once the merge is done, or not wanted" "$(( ${bm6:-0} > 0 && ${bm6:-0} < ${bm7:-0} ))" "1"
 is "story build: the stop list has six items" \
   "$(awk '/^## 8\. When to ask the owner/ { on = 1; next } /^### / { on = 0 } on && /^[0-9]+\. /' "$BY" | grep -c '')" "6"
@@ -2695,8 +2696,11 @@ in_gf "git flow: reads the project's rules" '1. Read `## Rules` in `<project pat
 in_gf "git flow: and the subproject's rules" 'When `task head` names a subproject, read the `## Rules` of its note too, at the path'
 in_gf "git flow: never guesses" "It is the project's own rules: read them, never guess them."
 in_gf "git flow: a rule names a branch or a pattern" 'names a branch, such as `main`, or a pattern, such as `release/<version>`.'
-in_gf "git flow: lists the branches a pattern matches" "\`git -C \"<path>\" for-each-ref --format='%(refname:lstrip=-2)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sort -rVu\`"
-in_gf "git flow: a tag holds a shipped version" '`git -C "<path>" tag --list "*<version>"` prints'
+in_gf "git flow: lists the branches a pattern matches by full ref, prefix stripped" "\`git -C \"<path>\" for-each-ref --format='%(refname)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sed -E 's#^refs/(heads|remotes/[^/]+)/##' | sort -rVu\`"
+file_lacks "git flow: no lstrip that fits one slash alone" "$BY" 'refname:lstrip'
+in_gf "git flow: the prefix keeps its slashes" "     with \`<prefix>\` the pattern's text before \`<version>\`, slashes and all. The version of each"
+in_gf "git flow: a tag holds a shipped version, exactly" '`git -C "<path>" tag --list "<version>" "v<version>"` prints a line.'
+file_lacks "git flow: no tag glob that matches a longer version" "$BY" 'tag --list "*<version>"'
 in_gf "git flow: only the highest two count" 'highest two alone: an old branch left untagged below them is no open one.'
 in_gf "git flow: none or two open asks the owner" 'Either way, ask the owner which.'
 in_gf "git flow: no cut rule takes the branch check" '4. No rule says where a branch is cut: `<from>` is as `## Branch check (start, update, recall)` in'
@@ -2707,19 +2711,47 @@ file_has "worktree: a new branch is cut where the git flow says" "$BY" '     `se
 file_lacks "worktree: the cut is no longer the branch check's alone" "$BY" 'is cut from, as the branch check says.'
 line_is "merge: has its section" "$BY" '### The merge'
 in_mg "merge: local, and pushed only on the owner's word" 'merge is local. A push is another step, on the owner'"${q}"'s word alone.'
-in_mg "merge: a story cut from another merges after it" '`git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise say'
+in_mg "merge: a story cut from another merges after it" '`git -C "<path>" merge-base --is-ancestor <that branch> <target>` must exit 0. Otherwise:'
+in_mg "merge: the wait is noted" '   - `second-brain task note <ID> "Build: <branch> waits for <that branch> in <target>."`.'
+in_mg "merge: and named in next" '   - `second-brain task set <ID> next="Waits for <that branch> in <target>, then the owner'"${q}"'s go to merge"`.'
+in_mg "merge: a later run takes it up again" '     later run takes it up again, as Step 1 of `SKILL.md` says.'
 in_mg "merge: asks the owner for the go" '2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it'
 in_mg "merge: no target asks where in the same question" '   - No `<target>` found: ask where it merges in the same question, as item 5 of'
-in_mg "merge: never in the owner's checkout on another branch" "   - Never merge in the owner's own checkout when it is on another branch."
+in_mg "merge: the owner's checkout only when it holds the target and is clean" "   - It may be the owner's own checkout, \`<path>\`: merge there only when item 4 finds it clean."
+file_lacks "merge: no rule against the owner's checkout that the contract does not share" "$BY" 'Never merge in the owner'"${q}"'s own checkout'
 in_mg "merge: adds a worktree for the target when none holds it" '`git -C "<path>" worktree add "<path>-<ID>-merge" <target>`'
-in_mg "merge: its own worktree goes when the merge ends or stops" 'folder. Remove it once item 9 is done, or the merge stops, as item 5 of'
-in_mg "merge: a clean target first" '4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner.'
+in_mg "merge: its own worktree goes whenever the merge ends" '   - The merge ends at item 9'"${q}"'s answer, at a stop, on a kept branch, or once the owner answers a'
+in_mg "merge: and only a worktree it added" '     failing check. Then remove a worktree this item added, as item 5 of'
+in_mg "merge: a clean target first" '4. `git -C "<where>" status --porcelain` must print nothing. Otherwise ask the owner: never merge'
 in_mg "merge: runs with the merge base in each block" \
   '`git -C "<where>" -c merge.conflictStyle=diff3 merge --no-ff <branch> -m "Merge <branch> into <target>"`.'
 in_mg "merge: how a block is read" '   one'"${q}"'s conflict blocks: `<<<<<<<`, then the target'"${q}"'s lines, `|||||||`, the merge base'"${q}"'s lines,'
 in_mg "merge: an empty base part only adds lines" '   - A block whose base part is empty only adds lines: neither side removed or changed one there.'
 in_mg "merge: keeps both, the target's lines first" '     Keep both: the target'"${q}"'s lines, then the story'"${q}"'s, with no marker left.'
-in_mg "merge: any other conflict is shown" '   - Any other conflict, such as a block with base lines, or a file one side deleted or renamed:'
+in_mg "merge: any other conflict is shown" '   - Any other conflict, such as one of those, a block with base lines, or a file one side deleted'
+in_mg "merge: a shared line is no add-only block" '   - Not when the two sides of that block share a line: keeping both would hold it twice.'
+in_mg "merge: a file both sides added is no add-only block" '   - Not in a file with no base, one both sides added: `git -C "<where>" ls-files -u -- <file>`'
+in_mg "merge: an undo goes on as for a kept branch" '   - Undone: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go on'
+file_has "story build: the merge rule offer stops nothing" "$BY" \
+  '- The offer to write a merge rule under `## Rules`, as item 5 of `### The git flow` says, goes in'
+file_has "story build: the story's worktree may be gone after a wait" "$BY" \
+  '5. Once the merge is done, or the owner says not to merge, remove the worktree, when it is still'
+file_has "build skill: a waiting story is taken up again" "$here/skills/build/SKILL.md" \
+  '- An `in-review` story whose newest `Build:` note is `Build: <branch> waits for <that branch> in <target>.`'
+file_has "build skill: straight to the merge once the branch is in" "$here/skills/build/SKILL.md" \
+  '  take it to `### The merge` in `story.md`, from item 2. Else say it still waits, and leave it'
+file_has "contract: the wait is recorded" "$CT" '  then the skill writes `Build: <branch> waits for <that branch> in <target>.`, and sets `next`'
+file_has "contract: a later run takes the waiting story up again" "$CT" \
+  '- A later run takes up an `in-review` story whose newest `Build:` note is that wait, and goes'
+file_has "contract: the owner's checkout only when it holds the target and is clean" "$CT" \
+  '- That worktree may be the owner'"${q}"'s own checkout: the skill merges there only when it holds the'
+file_lacks "contract: no never-in-the-owner's-checkout rule left" "$CT" '  owner'"${q}"'s own checkout.'
+file_has "contract: the merge worktree goes whenever the merge ends" "$CT" \
+  '- A worktree the skill adds for a merge is removed whenever the merge ends: pushed or not, kept,'
+file_has "contract: a shared line or a file with no base is shown" "$CT" \
+  '- Not when both sides share a line in that block, which would keep it twice, and not in a file'
+file_has "contract: branches listed by full ref" "$CT" \
+  '- The branches that match are listed by their full ref, local and remote, with the ref'"${q}"'s prefix'
 in_mg "merge: and the merge aborted" '`git -C "<where>" merge --abort`, and stop, as `## 7. When the story stops` says.'
 in_mg "merge: no marker is left" '   - Every block kept: no line in the files starts with a marker. Then'
 in_mg "merge: compares the merged tree with the reviewed one" '`git -C "<where>" rev-parse HEAD^{tree}` with'
@@ -2739,7 +2771,7 @@ file_has "story build: a merge and a push wait for the owner's own answer" "$BY"
 file_has "contract: the git flow is the project's rules" "$CT" \
   '- **The git flow.** Where a story'"${q}"'s branch is cut, and where a passed story merges, is the'
 file_has "contract: no profile key holds the flow" "$CT" '  story'"${q}"'s subproject note. The skill reads them there. No profile key holds the flow.'
-file_has "contract: a pattern stands for its open branch" "$CT" '  stands for its open branch: the highest that matches it, when no tag holds its version. When'
+file_has "contract: a pattern stands for its open branch" "$CT" '  stands for its open branch: the highest that matches it, when no tag `<version>` or'
 file_has "contract: no merge rule asks, and offers to write one" "$CT" \
   '- No rule says where a story merges: the skill asks the owner, and offers to write the answer'
 file_has "contract: an add-only conflict keeps both" "$CT" '- A conflict that only adds lines keeps both sides. The merge runs with'

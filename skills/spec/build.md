@@ -165,8 +165,9 @@ what is still owed.
   - A pull request's checks passed: in `<path>`, `gh pr checks <number>` exits 0.
   - A line in a file of the repo: `grep -qxF "<line>" "<path>/<file>"` exits 0.
   - The order that ran the build, in no other words: the story holds a `Finish:` status note newer
-    than the newest `Build: started on <branch> at <short hash>.` note, read from `## Status notes`
-    as `### The rulings of this build` says.
+    than this run's start. That is the newest of the `Build: started on <branch> at <short hash>.`
+    and `Build: resumed on <branch> at <short hash>.` notes. Read them from `## Status notes`, as
+    `### The rulings of this build` says.
 - Never change or drop a `Done when:` line without the owner, even when it looks out of reach. A
   condition the owner gives replaces it, and their words join the order's.
 

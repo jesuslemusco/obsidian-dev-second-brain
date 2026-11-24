@@ -2373,9 +2373,20 @@ in_oo "spec build: an order is done when its condition holds" \
   '   - It is done when its `Done when:` condition holds. Name what showed it, such as the command'
 file_lacks "spec build: no order is done just because finish.md is" "$BM" 'orders are done when `finish.md` is done'
 file_lacks "spec build: the finish closes no order whose condition fails" "$BM" 'so are the build'"${q}"'s orders'
-line_is "spec build: the finish condition reads the status notes as the follow-up list does" "$BM" \
-  '    than the newest `Build: started on <branch> at <short hash>.` note, read from `## Status notes`'
-line_is "spec build: as the rulings are read, like the follow-up list" "$BM" '    as `### The rulings of this build` says.'
+line_is "spec build: the finish condition is anchored on this run's start" "$BM" \
+  '    than this run'"${q}"'s start. That is the newest of the `Build: started on <branch> at <short hash>.`'
+line_is "spec build: a resumed run's note is its start too" "$BM" \
+  '    and `Build: resumed on <branch> at <short hash>.` notes. Read them from `## Status notes`, as'
+line_is "spec build: read as the rulings are, like the follow-up list" "$BM" '    `### The rulings of this build` says.'
+in_oo "spec build: an old Finish note before a resume closes no order" 'resumed on <branch> at <short hash>.` notes.'
+fl="$(awk '/^### The list of follow-ups$/ { on = 1; next } /^### |^## / { on = 0 } on' "$BM")"
+case "$fl" in *'Build: resumed'*) fail "spec build: the follow-up list stays anchored on the started note" "in: $fl" ;;
+  *'`Build: started on <branch> at <short hash>.` note.'*) pass "spec build: the follow-up list stays anchored on the started note" ;;
+  *) fail "spec build: the follow-up list stays anchored on the started note" "in: $fl" ;; esac
+rb="$(awk '/^### The rulings of this build$/ { on = 1; next } /^### |^## / { on = 0 } on' "$BM")"
+case "$rb" in *'Build: resumed'*) fail "spec build: the rulings stay anchored on the started note" "in: $rb" ;;
+  *'`Build: started on <branch> at <short hash>.` note'*) pass "spec build: the rulings stay anchored on the started note" ;;
+  *) fail "spec build: the rulings stay anchored on the started note" "in: $rb" ;; esac
 tpl="$(awk '/^```markdown$/ { on = 1; next } /^```$/ { on = 0 } on' "$BM")"
 tp_done="$(printf '%s\n' "$tpl" | grep -nP '^\t- Done when: ' | cut -d: -f1)"
 tp_now="$(printf '%s\n' "$tpl" | grep -nP '^\t- Now: ' | cut -d: -f1)"

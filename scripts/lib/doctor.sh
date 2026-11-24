@@ -1565,7 +1565,7 @@ sb_doc_check_validation() {
   fi
   rows="$(sb_val_rows)"
   if [ -z "$rows" ]; then
-    if [ "$(sb_spec_value validation_home "$SB_P_PROFILE")" = "vault" ] && [ ! -f "$SB_P_DIR/claude/validation.md" ]; then
+    if [ "$(sb_val_home "$SB_P_PROFILE")" = "vault" ] && [ ! -f "$SB_P_DIR/claude/validation.md" ]; then
       bad="claude/validation.md:missing"
     fi
   else

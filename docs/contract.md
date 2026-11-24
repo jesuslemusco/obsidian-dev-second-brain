@@ -999,9 +999,11 @@ the function `cmd_<command>` (dashes become underscores) with the remaining argu
   `sb_plat_*`.
 - `scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and
   `sb_need_sub`. `sb_scaffold_subproject` is in `scaffold.sh`.
-- `scripts/lib/spec.sh` holds `cmd_spec`, `cmd_validation` and their helpers, `sb_spec_*` and
-  `sb_val_*`. The doctor and `scaffold project` call `sb_spec_value`, `sb_val_rows` and
-  `sb_val_placeholders`, and the doctor `sb_spec_resolve` and `sb_spec_trace` too.
+- `scripts/lib/spec.sh` holds `cmd_spec` and its helpers, `sb_spec_*`. The doctor calls
+  `sb_spec_value`, `sb_spec_resolve` and `sb_spec_trace`, and `subproject` `sb_spec_value`.
+- `scripts/lib/validation.sh` holds `cmd_validation` and its helpers, `sb_val_*`. The doctor and
+  `scaffold project` call `sb_val_home` and `sb_val_rows`, and the doctor `sb_val_placeholders`
+  too.
 - Inside the helper every absolute path is in the shell's own form: on Windows, Git Bash's
   `/c/...`. `sb_path_in` turns a path that was read into that form, and `sb_path_out` turns one
   into the printed form. On macOS and Linux both leave the path as it is.

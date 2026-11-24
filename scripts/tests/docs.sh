@@ -2254,7 +2254,7 @@ line_is "spec build: an answer at a stop that sends the build on is an order" "$
 file_has "spec build: the owner stopping closes the build's orders" "$BM" \
   "     from it. Take the build${q}s orders to \`## Done\`, as \`### The owner${q}s open orders\` says."
 line_is "contract: the orders note is an optional file of the project" "$CT" \
-  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a spec build writes (section 9)"
+  "  claude/lead-agent-task-memory.md  optional; the owner${q}s open orders, which the lead of a build writes (section 9)"
 file_has "contract: an agent with no report" "$CT" '- **An agent with no report.** An agent can go idle before its report, such as on a reply that'
 file_has "contract: one message, then the next reply is final" "$CT" \
   '- A check that still runs is waited for. With none, the skill sends the agent one message to'
@@ -2491,7 +2491,6 @@ for c in '`git -C "<path>" worktree list --porcelain`' \
   '`git -C "<path>" worktree remove "<worktree>"`'; do
   file_has "story build: runs $c" "$BY" "$c"
 done
-file_has "story build: never deletes a folder that is no worktree" "$BY" '  delete it.'
 line_is "story build: a worktree removed only without --force" "$BY" \
   '   - Never pass `--force`. It fails, as on a change left in the worktree: ask the owner.'
 file_has "story build: the branch stays" "$BY" 'The branch stays, with'
@@ -2503,6 +2502,44 @@ for n in 'Build: started on <branch> at <short hash>.' 'Build: resumed on <branc
 done
 line_is "story build: fails come from the status notes" "$BY" \
   '- `fails` is the number of `Build: review <m> failed at <hash>` notes of this build.'
+# The counts read the notes, so each shape is the same, word for word, in the contract and in the
+# file that writes it.
+while IFS='|' read -r nf shape; do
+  [ -n "$shape" ] || continue
+  file_has "contract: lists the note shape $shape" "$CT" "  - \`$shape\`"
+  file_has "${nf##*/}: writes the note shape $shape" "$nf" "$shape"
+done <<NOTES
+$BY|Build: started on <branch> at <short hash>.
+$BY|Build: resumed on <branch> at <short hash>.
+$BY|Build: baseline skipped: the branch starts at <base> on <base ref>.
+$BY|Build: the baseline passed at <short hash>.
+$BY|Build: review <n> passed at <short hash>.
+$BY|Build: review <n> failed at <short hash>: <k> defects.
+$BY|Build: review <n> failed at <short hash>: the owner ruled a fix.
+$BY|Build: review <n> blocked at <short hash>.
+$BY|Build: stopped: <why>.
+$BY|Build: the owner ruled: <the ruling, as written>.
+$BY|Build: finished; review <n> passed, the branch is at <short hash>.
+$BY|Ruling: <the question> - <the decision and why>
+$RV|Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>
+$BY|Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>
+$RV|Follow-up: <what could be better, at file:line> - <the change you propose>
+NOTES
+file_has "contract: the notes of a build and the counts they give" "$CT" \
+  '- The notes of a build are those newer than its newest `Build: started on` note. Its `fails` is'
+file_has "story build: the follow-up list reads the reviewer's shape" "$BY" '- They are the `Follow-up:` notes of this build.'
+file_has "story build: a fix reads the reviewer's defect shape" "$BY" 'Its defects are the story'"${q}"'s Defect <m>: status notes.'
+file_has "implementer: a story fix reads the same defect shape" "$IM" 'Read the story'"${q}"'s `Defect <m>:` status notes'
+file_has "contract: a new build never reuses the worktree path" "$CT" \
+  '- A new build never reuses that path: when anything is there already, the skill says what it is'
+file_has "story build: a new build stops on anything at the worktree path" "$BY" \
+  '   - A new build, and anything is at `<worktree>`, a worktree or a folder: say what is there, from'
+line_is "story build: never reuses or deletes it" "$BY" \
+  '     that list or `ls -A "<worktree>"`, and stop. Never reuse it, and never delete it.'
+file_has "story build: a resumed build says it goes on in its own worktree" "$BY" \
+  '     `branch refs/heads/<branch>`. Say that you go on in it, at its `<short hash>`, then go on.'
+file_has "story build: the steps before the start note ask as they say" "$BY" \
+  '- The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the'
 file_has "story build: the round is one more than the reviews so far" "$BY" \
   '- `<n>`, the round of the next review, is one more than the number of `Build: review <m>` notes'
 file_has "story build: never counts a round from memory" "$BY" 'They are newest first.'
@@ -2599,7 +2636,7 @@ file_has "contract: so does the contract" "$CT" '- A story whose text the owner 
 # The contract, the guide, the README and the changelog describe the flow
 file_has "contract: the build skill" "$CT" '- **The `build` skill builds approved stories.** It takes one story, or an epic'"${q}"'s open stories in'
 file_has "contract: a worktree of its own" "$CT" '- Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo'"${q}"'s'
-file_has "contract: the story's progress is in its status notes" "$CT" '- The story'"${q}"'s progress is in its status notes, never in `build.json`. The skill writes'
+file_has "contract: the story's progress is in its status notes" "$CT" '- The story'"${q}"'s progress is in its status notes, never in `build.json`. The counts read them, so'
 file_has "contract: a passed story waits for the owner's go" "$CT" '- A passed story waits for the owner'"${q}"'s go to merge, as the project'"${q}"'s git flow says: the skill'
 file_has "contract: the spec build keeps its own copy until it is retired" "$CT" \
   '  retired, `skills/spec/build.md` keeps its own copy of these rules for a spec build.'

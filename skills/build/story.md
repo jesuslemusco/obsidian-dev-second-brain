@@ -47,15 +47,18 @@ The notes of this build are the status notes newer than the newest
    - The branch is the story's `branch`, from `second-brain task head <ID>`.
    - No branch yet: name it by `branch_pattern`, then record it with
      `second-brain task set <ID> branch=<branch>`. Item 2 cuts it.
-2. Run `git -C "<path>" worktree list --porcelain`.
-   - An entry `worktree <worktree>` with `branch refs/heads/<branch>`: it is there. Go on.
-   - `<branch>` is checked out in another folder: ask the owner. A branch is checked out in one
-     worktree at a time.
-   - `<worktree>` is there and is no worktree of the repo on `<branch>`: ask the owner. Never
-     delete it.
-   - The branch exists: `git -C "<path>" worktree add "<worktree>" <branch>`.
-   - No branch yet: `git -C "<path>" worktree add -b <branch> "<worktree>" <from>`, with
-     `<from>` the branch it is cut from, as the branch check says.
+2. Run `git -C "<path>" worktree list --porcelain`, and look whether `<worktree>` is there.
+   - A new build, and anything is at `<worktree>`, a worktree or a folder: say what is there, from
+     that list or `ls -A "<worktree>"`, and stop. Never reuse it, and never delete it.
+   - A resumed build: its worktree is the entry `worktree <worktree>` with
+     `branch refs/heads/<branch>`. Say that you go on in it, at its `<short hash>`, then go on.
+     Anything else at `<worktree>`: say what is there, and stop.
+   - `<branch>` is checked out in another folder: say where, and stop. A branch is checked out in
+     one worktree at a time.
+   - Nothing there, and the branch exists: `git -C "<path>" worktree add "<worktree>" <branch>`.
+   - Nothing there, and no branch yet:
+     `git -C "<path>" worktree add -b <branch> "<worktree>" <from>`, with `<from>` the branch it
+     is cut from, as the branch check says.
 3. `git -C "<worktree>" status --porcelain` must print nothing. Otherwise ask the owner to commit
    or discard the changes. Never stash or discard them yourself.
 4. `second-brain validation "<project>" <repo> --path "<worktree>"` must print the repo's steps,
@@ -303,6 +306,8 @@ waits for the owner, as `## 7. When the story stops` says:
 - Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.
 - Removing the story's worktree with `git worktree remove` is no destructive action: it holds
   nothing that is not committed, or the command fails.
+- The steps before the `Build: started` or `Build: resumed` note stop and ask as they say: the
+  owner has just run the skill.
 
 ### A ruling
 

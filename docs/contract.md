@@ -81,7 +81,7 @@ index_version: 8
   claude/pull-request.md        optional; the project's own pull request format, which wins
   claude/templates/             optional; the project's own story templates, which win (section 8)
   claude/writing-style.md       optional; the project's own writing style, which wins
-  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a spec build writes (section 9)
+  claude/lead-agent-task-memory.md  optional; the owner's open orders, which the lead of a build writes (section 9)
   claude/subprojects/<name>.md  one per subproject; none by default
   claude/validation.md          how to run and check each repo, with validation_home: vault
   tasks/README.md
@@ -1179,6 +1179,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Each story is built in a git worktree of its own, `<repo path>-<ID>`, next to the repo's
   folder, on the story's branch. Its `implementer` and its `reviewer` work there, in story mode,
   and each `validation` and `validation run` they run takes `--path <worktree>`.
+- A new build never reuses that path: when anything is there already, the skill says what it is
+  and stops. A resumed build goes on in its own worktree, the repo's worktree on the story's
+  branch, and says so. It never deletes what it finds.
 - A branch that does not start on the base branch gets a baseline first: `reviewer` in baseline
   mode, in the worktree.
 - One `implementer` builds the story. Then a fresh `reviewer` grades it. A FAIL sends the review's
@@ -1187,13 +1190,29 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - In a story build, `reviewer` runs on `opus`. The `implementer`'s rounds are a spec build's: 1 to
   3 on the same agent, `<ID>-implementer`, then a fresh one on `fable`, `<ID>-implementer-2`. A
   sixth failed review stops the build.
-- The story's progress is in its status notes, never in `build.json`. The skill writes
-  `Build: started on <branch> at <short hash>.` or `Build: resumed on ...`, then after each verdict
-  `Build: review <n> passed at <short hash>.`, `Build: review <n> failed at <short hash>: <k> defects.`
-  or `Build: review <n> blocked at <short hash>.`, and `Build: finished; ...` once it passes.
-- Its `fails` is the number of `Build: review <n> failed` notes newer than its newest
-  `Build: started on` note, from every session. The round of the next review is one more than
-  the number of its `Build: review` notes.
+- The story's progress is in its status notes, never in `build.json`. The counts read them, so
+  each note has one of these shapes, word for word:
+  - `Build: started on <branch> at <short hash>.`
+  - `Build: resumed on <branch> at <short hash>.`
+  - `Build: baseline skipped: the branch starts at <base> on <base ref>.`
+  - `Build: the baseline passed at <short hash>.`
+  - `Build: review <n> passed at <short hash>.`
+  - `Build: review <n> failed at <short hash>: <k> defects.`
+  - `Build: review <n> failed at <short hash>: the owner ruled a fix.`
+  - `Build: review <n> blocked at <short hash>.`
+  - `Build: stopped: <why>.`
+  - `Build: the owner ruled: <the ruling, as written>.`
+  - `Build: finished; review <n> passed, the branch is at <short hash>.`
+  - `Ruling: <the question> - <the decision and why>`
+  - `Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>`, which `reviewer`
+    writes.
+  - `Defect <n>: The owner ruled: <the ruling, as written> - Fix: <the fix it asks>`, for the
+    owner's ruling to fix the story.
+  - `Follow-up: <what could be better, at file:line> - <the change you propose>`, which
+    `reviewer` writes.
+- The notes of a build are those newer than its newest `Build: started on` note. Its `fails` is
+  the number of its `Build: review <n> failed at` notes, from every session. The round of its
+  next review, `<n>`, is one more than the number of its `Build: review <n>` notes.
 - A passed story waits for the owner's go to merge, as the project's git flow says: the skill
   merges nothing. Then it removes the worktree with `git worktree remove`, never with `--force`,
   and the branch stays.
@@ -1458,9 +1477,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   fix's commits alone. It grades each acceptance criterion, or on a re-review each defect the
   fix answers. Then it runs the `each build` checks, and the `each task` and `each build` user
   steps, in the worktree, and grades the code.
-- It logs each defect as the status note
-  `Defect <n>: <what is wrong, at file:line> - Fix: <the fix it proposes>`, `<n>` its round, and
-  each follow-up as `Follow-up: <what could be better, at file:line> - <the change it proposes>`.
+- It logs each defect and each follow-up as a status note, `<n>` its round, in the shapes the
+  `build` skill's list above gives.
 - A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
   fixes each of its `Defect <m>:` notes.
 - A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`

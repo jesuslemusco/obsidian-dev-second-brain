@@ -22,11 +22,15 @@ second-brain sprint current "<project>"
     `second-brain scaffold project` again with the same name and path.
   - Relay the `note:` lines it prints: they name what is left to add by hand.
 
-Then:
+Then, first match wins:
 
-- No sprint in progress: `## Open`, then `## Pick`.
-- The user asks to close the sprint, or its days left are 0 or less: `## Close`.
-- Any other request while a sprint is in progress: `## Pick`.
+1. The user asks to close the sprint, with one in progress: `## Close`.
+2. The user asks to close the sprint, with none in progress: say no sprint is in progress, and
+   stop. Go to `## Open` only when the user asks for a new sprint.
+3. No sprint in progress: `## Open`, then `## Pick`.
+4. The sprint's days left are 0 or less, and the request asks for nothing else, such as a pick:
+   `## Close`.
+5. Any other request while a sprint is in progress: `## Pick`.
 
 ## The model
 

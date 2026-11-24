@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 7
+index_version: 8
 ---
 ```
 
@@ -1072,6 +1072,25 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Agents call skills through the Skill tool as `odsb:<name>`.
 - A skill names a project's parent stories by its `parent_label`: features or epics. The
   frontmatter key it writes stays `epic`.
+- **The scrum-master skill** plans the work with the owner and runs the sprint cadence. It is a
+  skill, not an agent: planning is a talk with the owner, and only the owner's session can ask.
+- Its `SKILL.md` holds the router, the context step, the sprint model and the rules. Each mode
+  has its own file, read only in that mode: `plan.md`, `open.md`, `pick.md`, `status.md`,
+  `close.md`, `done.md` and `hygiene.md`.
+- `plan` drafts an epic and its stories, new stories under an epic that exists, or one story.
+- Each story of the draft has the shape of section 1 of `skills/story-tracker/create.md`, with at
+  most 4 acceptance criteria, its parent and the tasks it waits on.
+- The skill shows the owner the whole draft and writes nothing until the owner approves it.
+- A change the owner asks for is made in the draft and shown again. It is written only once the
+  owner approves it.
+- On the approval it writes the parent first, then each story, through steps 1 to 5 of
+  `## 3. Create the story` in `skills/story-tracker/create.md`. Then it links each story to the
+  tasks it waits on with `task dep`.
+- Each story it writes gets the status note `Planned: the owner approved this text.`
+- story-tracker's start mode shows a new story's text in the same way, and writes it only on the
+  owner's approval.
+- `pick` sets which tasks join the sprint in progress and which leave it. Any other change to a
+  story goes through `story-tracker`.
 - **A spec-driven story is built in two halves.** The `spec` skill writes requirements, then
   design, then tasks in the owner's session.
 - The owner approves each phase. An approval is a status note in exactly these words:

@@ -1335,6 +1335,19 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   progress is in `build.json` alone.
 - **Who runs which check.** `implementer` runs its task's checks before it commits. `reviewer`
   runs them again in the task's review. The skill runs the `each build` checks once, at the end.
+- `implementer` and `reviewer` run each check in the foreground, with the Bash tool's longest
+  timeout, 10 minutes, and never with `run_in_background`. A check is a `validation run`, a
+  task's `Check`, an `implementer` test or a `reviewer` step run with Bash. A server a step needs
+  is no check.
+- In a background agent, such as each one the skill launches, a call moves to the background
+  after 3 minutes, whatever its timeout.
+- Each check's command is followed by `echo "exit: $?"` on a line of its own. A check that
+  outlasts its call moves to the background and still runs. A message that reaches the agent
+  may move it there too.
+- The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds
+  the `exit:` line. Until then it is no pass, and one stopped before that line failed.
+- No agent replies while a check it started still runs: once it replies, the notice may never
+  reach it, and its work waits unreported.
 - `implementer` writes a test that fails for its task's requirement first, then makes it pass.
 - A task with nothing to test, such as a doc change, gets no test, and the reply says why.
 - Its checks are the ones under its packet's `## Checks`: the task's `Check`, and the repo's
@@ -1429,9 +1442,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   build at once.
 - When every task has passed, the skill runs `validation run <project> <repo> --when each-build`
   once, with no agent.
-- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and
-  its task's `Check`, with the Bash tool's `run_in_background` and wait for its notice. A run can
-  outlast a Bash call's timeout, and a helper that a timeout kills leaves its check running.
+- The skill runs `validation run` with the Bash tool's `run_in_background` and waits for its
+  notice. A run can outlast a Bash call's timeout, which moves the call to the background anyway.
+  The notice reaches the owner's session.
 - A failing check is logged with `spec issue` on the task whose files it covers. That task is set
   `failed` and takes the fix loop, and the run goes again once every task has passed.
 - Then one `reviewer` runs the user steps on the finished branch, in user mode. Then one

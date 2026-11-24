@@ -33,6 +33,9 @@
   vault's `CLAUDE.md`, then set `index_version: 8`.
 - A note, a skill or a settings rule of your own that names `odsb:story-tracker`, `odsb:sprint`
   or the scrum-master agent: change it to the `odsb:scrum-master` skill.
+- `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,
+  and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies
+  while a check it started still runs.
 
 ## 0.11.0 - 2026-11-23
 

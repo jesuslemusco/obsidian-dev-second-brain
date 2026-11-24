@@ -1091,10 +1091,65 @@ file_has "spec build: keeps track of the build" "$BM" "You keep track of the bui
 file_has "spec build: a release check runs only when the owner asks" "$BM" '- Run a `release` check only when the owner asks:'
 file_has "spec build: the build-wide run runs in the background" "$BM" \
   '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice. A run can'
-file_has "reviewer: runs validation run in the background" "$here/agents/reviewer.md" \
-  '- Run it with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice before you go'
-file_has "contract: validation run runs in the background, and implementer's tests too" "$here/docs/contract.md" \
-  '- The skill, `reviewer` and `implementer` run `validation run`, and `implementer` its tests and'
+file_has "contract: the skill runs validation run in the background" "$here/docs/contract.md" \
+  '- The skill runs `validation run` with the Bash tool'"'"'s `run_in_background` and waits for its'
+file_has "spec build: a timed-out call moves to the background" "$BM" \
+  '     outlast a Bash call'"'"'s timeout, which moves the call to the background anyway, and its notice'
+file_has "contract: a timed-out call moves to the background" "$here/docs/contract.md" \
+  '  notice. A run can outlast a Bash call'"'"'s timeout, which moves the call to the background anyway.'
+for f in "$BM" "$here/docs/contract.md"; do
+  file_lacks "$(basename "$f"): no helper that a timeout kills" "$f" 'a helper that a timeout kills'
+done
+file_has "contract: implementer and reviewer run each check in the foreground" "$here/docs/contract.md" \
+  '- `implementer` and `reviewer` run each check in the foreground, with the Bash tool'"'"'s longest'
+file_has "contract: a background agent's call moves after 3 minutes" "$here/docs/contract.md" \
+  '- In a background agent, such as each one the skill launches, a call moves to the background'
+file_has "contract: the exit line goes on a line of its own" "$here/docs/contract.md" \
+  '- Each check'"'"'s command is followed by `echo "exit: $?"` on a line of its own. A check that'
+file_lacks "contract: the exit line is never added to the command's own line" "$here/docs/contract.md" \
+  '; echo "exit: $?"'
+file_has "contract: a message may move a check to the background" "$here/docs/contract.md" \
+  '  outlasts its call moves to the background and still runs. A message that reaches the agent'
+file_has "contract: the agent waits in calls under 3 minutes" "$here/docs/contract.md" \
+  '- The agent waits for it in the foreground, in calls under 3 minutes, until its output file holds'
+file_has "contract: no agent replies while a check it started runs" "$here/docs/contract.md" \
+  '- No agent replies while a check it started still runs: once it replies, the notice may never'
+file_has "contract: fix rounds 1 to 3 still resume the same implementer" "$here/docs/contract.md" \
+  '- Fix rounds 1 to 3 go back to the same `implementer`, with the findings in its packet. Rounds 4'
+file_has "changelog: build agents run each check in the foreground" "$here/CHANGELOG.md" \
+  '- `implementer` and `reviewer` run each check in the foreground, with a timeout of 10 minutes,'
+file_has "changelog: and a background agent's call moves after 3 minutes" "$here/CHANGELOG.md" \
+  '  and wait for one that outlasts its call, 3 minutes in a background agent: no agent replies'
+# Each build agent runs each check in the foreground, and never replies while one it started runs.
+for ag in implementer reviewer; do
+  AF="$here/agents/$ag.md"
+  file_lacks "$ag: runs no check in the background" "$AF" 'run_in_background: true'
+  file_has "$ag: runs each check in the foreground, with the longest timeout" "$AF" \
+    '`timeout: 600000`, 10 minutes. Never with `run_in_background`.'
+  line_is "$ag: a background agent's call moves after 3 minutes" "$AF" \
+    '- In a background agent, a call moves to the background after 3 minutes, whatever its timeout.'
+  file_has "$ag: puts the exit line on a line of its own" "$AF" \
+    '- Put `echo "exit: $?"` on a line of its own after each check'"'"'s command, so that its output'
+  file_lacks "$ag: never adds the exit line to the command's own line" "$AF" '; echo "exit: $?"'
+  file_has "$ag: a check moved to the background still runs" "$AF" \
+    '- A check that outlasts its call moves to the background and still runs. A message that reaches'
+  file_has "$ag: a message may move it there too" "$AF" '  you while it runs may move it there too.'
+  file_lacks "$ag: no claim that a message always moves it" "$AF" 'moves it there too'
+  file_has "$ag: waits for it in the foreground" "$AF" \
+    '`for i in $(seq 17); do grep -q '"'"'^exit: '"'"' "<file>" && break; sleep 10; done`. It returns'
+  # The wait must return before a background agent's call moves, at 180 seconds.
+  wl="$(grep -m1 -F 'grep -q '"'"'^exit: '"'"'' "$AF")"
+  wn="$(printf '%s\n' "$wl" | sed -n 's/.*\$(seq \([0-9][0-9]*\)).*/\1/p')"
+  ws="$(printf '%s\n' "$wl" | sed -n 's/.*sleep \([0-9][0-9]*\);.*/\1/p')"
+  is "$ag: the wait loop's count times its sleep stays under 180 seconds" \
+    "$(( ${wn:-999} * ${ws:-999} < 180 ))" "1"
+  file_has "$ag: a check with no exit line is no pass" "$AF" \
+    '- A check with no `exit:` line has not finished, whatever its output shows: it is no pass. One'
+  file_has "$ag: never replies while a check it started runs" "$AF" \
+    '- Never reply while a check you started still runs. Once you reply, its notice may never reach'
+done
+file_has "reviewer: a server a step needs is no check" "$here/agents/reviewer.md" \
+  '- A server a step needs is no check: start it as `### Set up and start` says.'
 IM="$here/agents/implementer.md"
 file_has "implementer: fetches its own packet" "$IM" '1. Run `second-brain spec packet <ID> <task> --project "<project>"`.'
 line_is "implementer: replies with its commit first" "$IM" '1. `Commit: <short hash>`.'
@@ -1122,8 +1177,10 @@ file_has "implementer: runs every check the packet names" "$IM" \
   "Before you commit, run every check under the packet's \`## Checks\`."
 file_has "implementer: the each-task checks through validation run" "$IM" \
   '`second-brain validation run "<project>" <repo> --when each-task`, with the packet'"'"'s `repo`.'
-file_has "implementer: runs its tests and checks in the background" "$IM" \
-  '- Run each test and check with the Bash tool'"'"'s `run_in_background: true`, and wait for its notice'
+file_has "implementer: runs each test and check in the foreground" "$IM" \
+  '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
+line_is "implementer: the exit line is not compared with expected" "$IM" \
+  '  - The `exit:` line you add after the command is not part of what it prints.'
 line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
   '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \
@@ -2042,7 +2099,9 @@ done
 file_has "changelog: the owner can stop the build or drop an order" "$CG" \
   'You can stop the build or drop an order at any time: it is then closed.'
 lc_files="$(cd "$here" && find skills agents docs templates hooks README.md CHANGELOG.md -type f | sort)"
-lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null)"
+# The Bash tool's timeout of 10 minutes for a check names no pace: its three phrases are left out.
+lc_ten="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nE '10 minutes|every 10\b|10-minute' 2>/dev/null \
+  | grep -vE 'timeout(: 600000`)?(,| of) 10 minutes')"
 is "the lead's check: no file names 10 minutes for it" "$lc_ten" ""
 lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 grep -nF '* * * *' 2>/dev/null)"
 is "the lead's check: the one cron line is build.md's example for the default" "$lc_cron" \

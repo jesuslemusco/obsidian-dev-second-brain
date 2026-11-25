@@ -202,8 +202,11 @@ and, once the user approves the draft, for the write.
    - Its code: the entry points, modules and config the layout shows.
    - A repository with no such ref: say so in the draft, and draft nothing for it.
 2. Read what the vault holds: the folders under the topics root, with
-   `ls -d "<vault>/<project path>/<topics_root>"/*/`, and the rows under `### Code to doc map`.
+   `ls -d "<vault>/<project path>/<topics_root>"/*/`, each subproject's docs folder, as
+   `second-brain subproject <project>` lists it, and the rows under `### Code to doc map`.
    - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.
+   - A subproject's docs folder is the one exception: draft new topic folders inside it, and
+     nothing in a topic folder inside it that exists.
    - Draft no row that a repository already has.
 3. Draft one topic per part of the code a reader asks about, such as a module, a service or a
    public interface.
@@ -213,12 +216,15 @@ and, once the user approves the draft, for the write.
      `<topics_root>/<name>/`.
 4. Draft each topic's files, as the conventions say:
    - Its hub, `<topic>/README.md`, as Workflow 4 says: a unique alias, `type: moc`, an up link to
-     the topics hub and a link down to its first note.
+     its parent hub and a link down to its first note.
    - Its first note, such as `<topic>/overview.md`: a unique alias, a `title`, a `type` from the
      conventions with its `type/<type>` tag, such as `architecture`, and its topic tag. Then
      `> Up:` to its hub, then what the code confirms, each claim with the file it comes from.
-   - The line that links its hub from the topics hub, under `## Topics`. With
-     `topics_root: "."` it goes in the project's `README.md`, under `## Map`.
+   - The line that links its hub from its parent hub.
+   - The parent hub is the topics hub, with the line under `## Topics`. With `topics_root: "."`
+     it is the project's `README.md`, with the line under `## Map`.
+   - For a repository of a subproject, the parent hub is the subproject's docs hub,
+     `<topics_root>/<name>/README.md`, with the line under its own `## Topics`.
    - Every link carries its full vault path: `[[<vault path>|<alias>]]`.
 5. Draft the Code to doc map rows: for each repository, one row per kind of change that alters a
    topic, as `| <repo> | <change> | <docs> |`.
@@ -236,7 +242,7 @@ and, once the user approves the draft, for the write.
 2. Write it as approved, and nothing more.
    - Each hub and note with the Write tool, once you have checked that its file does not exist.
      A file that exists is kept: report it, and never overwrite it.
-   - The topics hub's lines and the map rows with the Edit tool. The first real row replaces the
+   - The parent hubs' lines and the map rows with the Edit tool. The first real row replaces the
      template's `<repo>` row.
 3. Run `second-brain unresolved <project>`. It must list no link you wrote: fix the path of each
    one it lists.
@@ -281,8 +287,8 @@ Read cheapest first: a whole note is the last resort.
 - A ticket marked done: the status note written on it.
 - A renamed command: the notes changed, the status notes written, and the `CLAUDE.md` and
   settings offenders left for the owner.
-- A docs setup draft: each folder, each hub and note with its whole text, each line for the
-  topics hub, the map rows, and what the code could not confirm.
+- A docs setup draft: each folder, each hub and note with its whole text, each line for a parent
+  hub, the map rows, and what the code could not confirm.
 - A docs setup written: each file written, each file kept as it was, the rows added, and each
   doctor row that is not `ok`.
 - Any proposed map row or debt line.

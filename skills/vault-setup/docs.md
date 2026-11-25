@@ -10,6 +10,8 @@ before it.
 - Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds
   no topic folder yet, as `ls -d "<vault>/<path>/<topics_root>"/*/` lists them. With
   `topics_root: "."`, the tasks, sprints and `claude/` folders are no topics.
+- Each subproject's docs folder, as `second-brain subproject <project>` lists it, is no topic
+  folder here, but each folder inside it is.
 - Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.
 - Offer it only for a repository whose state `second-brain repo <project>` shows as `ok`, as
   `docs-keeper` reads its code.

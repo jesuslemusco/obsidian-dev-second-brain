@@ -2519,6 +2519,14 @@ line_is "docs-keeper: the draft reads the code the layout shows" "$DK" \
   '   - Its code: the entry points, modules and config the layout shows.'
 file_has "docs-keeper: the draft keeps a topic folder that exists" "$DK" \
   '   - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.'
+file_has "docs-keeper: the draft reads each subproject's docs folder" "$DK" \
+  '   `ls -d "<vault>/<project path>/<topics_root>"/*/`, each subproject'"${q}"'s docs folder, as'
+line_is "docs-keeper: as the subproject command lists it" "$DK" \
+  '   `second-brain subproject <project>` lists it, and the rows under `### Code to doc map`.'
+file_has "docs-keeper: a subproject's docs folder takes new topic folders" "$DK" \
+  '   - A subproject'"${q}"'s docs folder is the one exception: draft new topic folders inside it, and'
+line_is "docs-keeper: but nothing in a topic folder inside it that exists" "$DK" \
+  '     nothing in a topic folder inside it that exists.'
 file_has "docs-keeper: drafts the topic folders" "$DK" \
   '3. Draft one topic per part of the code a reader asks about, such as a module, a service or a'
 file_has "docs-keeper: a topic folder's tag is its path" "$DK" 'so that its topic tag is its path'
@@ -2526,8 +2534,19 @@ file_has "docs-keeper: a hub for each topic folder" "$DK" '   - Its hub, `<topic
 file_has "docs-keeper: a first note per topic" "$DK" '   - Its first note, such as `<topic>/overview.md`: a unique alias, a `title`, a `type` from the'
 file_has "docs-keeper: the first note's claims come from the code" "$DK" \
   'then what the code confirms, each claim with the file it comes from.'
-file_has "docs-keeper: the topics hub links each new hub" "$DK" \
-  '   - The line that links its hub from the topics hub, under `## Topics`. With'
+line_is "docs-keeper: a topic's hub links up to its parent hub" "$DK" \
+  '     its parent hub and a link down to its first note.'
+file_lacks "docs-keeper: not to the topics hub, whatever its parent" "$DK" \
+  'the topics hub and a link down to its first note.'
+line_is "docs-keeper: its parent hub links each new hub" "$DK" '   - The line that links its hub from its parent hub.'
+file_has "docs-keeper: the parent hub is the topics hub" "$DK" \
+  '   - The parent hub is the topics hub, with the line under `## Topics`. With `topics_root: "."`'
+file_has "docs-keeper: a subproject topic's parent hub is the subproject's docs hub" "$DK" \
+  '   - For a repository of a subproject, the parent hub is the subproject'"${q}"'s docs hub,'
+line_is "docs-keeper: the line goes under that hub's own Topics" "$DK" \
+  '     `<topics_root>/<name>/README.md`, with the line under its own `## Topics`.'
+file_has "docs-keeper: the write edits each parent hub" "$DK" \
+  '   - The parent hubs'"${q}"' lines and the map rows with the Edit tool.'
 line_is "docs-keeper: every link carries a path" "$DK" \
   '   - Every link carries its full vault path: `[[<vault path>|<alias>]]`.'
 file_has "docs-keeper: drafts the Code to doc map rows" "$DK" \
@@ -2543,7 +2562,7 @@ file_has "docs-keeper: the write overwrites no file" "$DK" '     A file that exi
 file_has "docs-keeper: the write checks its links" "$DK" \
   '3. Run `second-brain unresolved <project>`. It must list no link you wrote: fix the path of each'
 file_has "docs-keeper: the write runs the doctor" "$DK" '4. Run `second-brain doctor <project>`, and report each row that is not `ok`.'
-file_has "docs-keeper: the output of a draft" "$DK" '- A docs setup draft: each folder, each hub and note with its whole text, each line for the'
+file_has "docs-keeper: the output of a draft" "$DK" '- A docs setup draft: each folder, each hub and note with its whole text, each line for a parent'
 file_has "docs-keeper: the output of a write" "$DK" '- A docs setup written: each file written, each file kept as it was, the rows added, and each'
 exists "vault-setup: the docs setup has a file of its own" "$VSO"
 line_is "vault-setup docs: its title" "$VSO" "# Set up a project${q}s docs from its code"
@@ -2551,6 +2570,9 @@ file_has "vault-setup docs: the skill holds the approval, as docs-keeper cannot 
   'draft. It is an agent and cannot ask the user, so this skill holds the approval. Nothing is written'
 file_has "vault-setup docs: project mode offers it when no topic folder exists" "$VSO" \
   '- Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds'
+file_has "vault-setup docs: a subproject's docs folder is no topic folder for the offer" "$VSO" \
+  '- Each subproject'"${q}"'s docs folder, as `second-brain subproject <project>` lists it, is no topic'
+line_is "vault-setup docs: but each folder inside it is" "$VSO" '  folder here, but each folder inside it is.'
 file_has "vault-setup docs: repo mode offers it for the new repository" "$VSO" \
   '- Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.'
 file_has "vault-setup docs: starts docs-keeper by its plugin name" "$VSO" '1. Start the `docs-keeper` agent (`odsb:docs-keeper`) with the project and the repositories, and'

@@ -343,6 +343,23 @@ out_has "validation run --changed: a file moved away counts at the path it left"
 sb validation run Gits git-app --when each-story --changed HEAD --json
 json_is "validation run --changed --json: a skipped row names why" \
   'print([r["lines"] for r in d if r["command"] == "echo src"])' "[['no change to its paths since HEAD']]"
+# A glob git rejects, such as one outside the repo, runs its check: an error never drops one. The
+# check beside it, with a glob git takes, is skipped in the same run.
+cp "$vault/$GN/claude/validation.md" "$tmp/gits-validation.md"
+cat >"$vault/$GN/claude/validation.md" <<'EOF'
+## git-app
+
+### Checks
+
+- `echo outside` - a glob git rejects - paths: ../outside/** - when: each story
+- `echo inside` - a glob git takes - paths: src/** - when: each story
+EOF
+sb validation run Gits git-app --when each-story --changed HEAD
+is "validation run --changed: a check whose glob git rejects runs, and its neighbour is skipped" "$(rows "$OUT")" \
+  "echo outside|pass|0
+echo inside|skipped|-
+  no change to its paths since HEAD"
+cp "$tmp/gits-validation.md" "$vault/$GN/claude/validation.md"
 sb validation run Gits git-app --when each-story --changed no-such-commit
 rc_is "validation run --changed: a base that is no commit exits 1" 1
 err_has "validation run --changed: and names it" "no commit no-such-commit in $(shown "$GC")"

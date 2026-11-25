@@ -22,7 +22,8 @@
 - `each task` and `each build`, the old names, still run, as `each story` and `each merge`. A
   bullet with no `when:`, or an unknown one, is `each merge`.
 - The doctor's `validation` check names each check and user step that still holds an old name, as
-  `<repo>:<command>:each-task` or `<repo>:<command>:each-build`.
+  `<repo>:<name>:each-task` or `<repo>:<name>:each-build`: a check by its command, a user step by
+  its text.
 - A check may name the paths it covers, as `paths: <glob>, ...`, matched as git matches a
   `:(glob)` pathspec.
 - `second-brain validation run` takes `--changed <base>`: a check with `paths:` runs only when the

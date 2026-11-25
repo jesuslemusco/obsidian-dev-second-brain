@@ -2977,15 +2977,19 @@ printf '%s\n' '# example-api validation' '' '## example-api' '' '### Checks' '' 
   '  - `make nested` - a nested item is no check - when: each task' \
   '' '### Check as a user would' '' \
   '- Browser: open the home - when: each build' \
+  '- Browser: open the admin - paths: admin/** - when: each task' \
+  '- Bash: run `make up` - when: each task' \
   '- Browser: open the docs - when: each story' \
   '' '### A pass' '' '- Every check passes. when: each task' >"$tmp/code/example-api/validation.md"
 doc Example
 chk "validation: names each check and user step with an old when, and no other" validation Example \
-  "warn | 4 | example-ghost:no-location, example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build"
+  "warn | 6 | example-ghost:no-location, example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build, example-api:Browser: open the admin:each-task"
 is "validation: and the fix names the new name of each old one" "$(fix_of validation)" \
   "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line; write each old when: by its new name: each task is each story, each build is each merge"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api]|"
 doc Example
+chk "validation: a user step is named by its text before its paths: or when:, a code span in it too" validation Example \
+  "warn | 5 | example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build, example-api:Browser: open the admin:each-task, example-api:Bash: run make up:each-task"
 is "validation: with old whens alone, the fix names their new names alone" "$(fix_of validation)" \
   "write each old when: by its new name: each task is each story, each build is each merge"
 fi

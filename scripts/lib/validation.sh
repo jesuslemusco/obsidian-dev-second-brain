@@ -182,8 +182,9 @@ sb_val_write() {
 # "release" too. A bullet with an unknown "when:" counts as "each merge", with a row
 # "warn<TAB><text><TAB><value>" whatever the level. One with an old name, "each task" or "each
 # build", reads as "each story" or "each merge", with a row "old<TAB><name><TAB>each-task" or
-# "...<TAB>each-build" whatever the level: its name is its command, or with none its text before
-# its keys. Prints "none" when the section has none of the headings.
+# "...<TAB>each-build" whatever the level: a check's name is its command, and a user step's, or a
+# check's with none, its text before its keys. Prints "none" when the section has none of the
+# headings.
 # Usage: sb_val_checks <level> [<heading>|<heading>...]
 sb_val_checks() {
   LC_ALL=C SB_LEVEL="$1" SB_HEADS="${2:-checks}" awk "$(sb_awk_lib)"'
@@ -250,7 +251,7 @@ sb_val_checks() {
         else print "warn\t" t "\t" raw
         if (v == "each task" || v == "each build") {
           name = CODE1
-          if (!HASCODE || trim(CODE1) == "") {
+          if (step || !HASCODE || trim(CODE1) == "") {
             name = trim(unspan(substr(plain, 1, (pp && pp < wp ? pp : wp) - 1), 0)); sub(/[ \t]*-$/, "", name)
           }
           name = trim(name)
@@ -283,6 +284,7 @@ sb_val_checks() {
       if (RLENGTH <= 3) {
         h = $0; sub(/^#+[ \t]*/, "", h); sub(/[ \t#]+$/, "", h)
         inchk = (tolower(h) in want); if (inchk) seen = 1
+        step = (tolower(h) == "check as a user would")
       }
       next
     }

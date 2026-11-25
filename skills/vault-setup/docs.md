@@ -3,7 +3,8 @@
 Step 0 of `SKILL.md` has run, in project or repo mode. `SKILL.md` and `repo.md` sit beside this
 file. `docs-keeper` drafts the docs from the code, and writes them once the user approves the
 draft. It is an agent and cannot ask the user, so this skill holds the approval. Nothing is written
-before it.
+before it. The `define-validation-scope` skill follows this file too, after its own Step 0, and
+holds the approval the same way.
 
 ## 1. Offer it
 
@@ -13,6 +14,8 @@ before it.
 - Each subproject's docs folder, as `second-brain subproject <project>` lists it, is no topic
   folder here, but each folder inside it is.
 - Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.
+- The `define-validation-scope` skill, at step 3 of `## 2. The project's docs` in its `SKILL.md`:
+  offer it for the repo it drafts, in a project with no docs, as step 2 there tells.
 - Offer it only for a repository whose state `second-brain repo <project>` shows as `ok`, as
   `docs-keeper` reads its code.
 - On a no, go on as the step that offered it says.

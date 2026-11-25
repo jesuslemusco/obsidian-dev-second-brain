@@ -2626,5 +2626,169 @@ for l in '- `docs-keeper` sets up the docs of a project that has none, in its ne
   is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${ds_top:-0} && ${n:-0} < ${ds_end:-0}))" "1"
 done
 
+# ---------------------------------------------------------------- define-validation-scope drafts a repo's checks, for the owner to approve
+DV="$here/skills/define-validation-scope/SKILL.md"
+q="'"
+exists "define-validation-scope: a skill of its own" "$DV"
+absent "define-validation-scope: a skill, not an agent, as it talks with the owner" "$here/agents/define-validation-scope.md"
+line_is "define-validation-scope: the name is the folder's" "$DV" "name: define-validation-scope"
+dv_desc="$(sed -n 's/^description: //p' "$DV")"
+is "define-validation-scope: has a description under 200 characters" "$((${#dv_desc} > 0 && ${#dv_desc} < 200))" "1"
+file_lacks "define-validation-scope: a request may load it, and vault-setup calls it" "$DV" "disable-model-invocation"
+line_is "define-validation-scope: it may read the code, edit the section and run ls -d" "$DV" \
+  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
+file_has "define-validation-scope: carries the conventions pointer" "$DV" \
+  'Conventions: before writing notes, run `second-brain conventions` and follow it.'
+line_is "define-validation-scope: the context comes first" "$DV" '1. Run `second-brain context` yourself, as your first tool call.'
+for h in '## Step 0 - Context' '## 1. The stages the project uses' "## 2. The project${q}s docs" \
+  "## 3. The repo${q}s code" '## 4. The draft' '## 5. The approval' '## 6. The write' '## Rules'; do
+  line_is "define-validation-scope: has $h" "$DV" "$h"
+done
+dv_help="$(bash "$SB" help 2>&1)"
+for w in $(grep -oE '`second-brain [a-z]+' "$DV" | sed 's/^`second-brain //' | LC_ALL=C sort -u); do
+  if printf '%s\n' "$dv_help" | grep -qw -- "$w"; then pass "define-validation-scope: second-brain $w is in help"
+  else fail "define-validation-scope: second-brain $w is in help" "help lacks: $w"; fi
+done
+# It reads the project's docs, and offers docs-keeper's setup of skills/vault-setup/docs.md to a project with none.
+file_has "define-validation-scope: the project's docs are its topic notes and the repo's doc files" "$DV" \
+  '1. The project'"${q}"'s docs are its topic notes, under the topics root in the vault, and the repo'"${q}"'s own'
+file_has "define-validation-scope: none, as docs.md counts the topic folders" "$DV" \
+  '2. It has none when the topics root holds no topic folder, as `## 1. Offer it` in'
+file_has "define-validation-scope: names the docs setup by its path" "$DV" '`${CLAUDE_PLUGIN_ROOT}/skills/vault-setup/docs.md`'
+file_has "define-validation-scope: a project with none is offered docs-keeper's setup first" "$DV" \
+  '3. A project with none: offer `docs-keeper`'"${q}"'s setup first, for this repo, as that file says. This'
+file_has "define-validation-scope: offers it once a session" "$DV" \
+  '   - Declined already in this session, such as at step 7 of vault-setup'"${q}"'s project mode: take it'
+file_has "define-validation-scope: on a no it reads the code" "$DV" \
+  '   - On a no, or when it writes nothing, read the repo'"${q}"'s code as `## 3. The repo'"${q}"'s code` says, and'
+file_has "define-validation-scope: a project with docs drafts from them" "$DV" \
+  '4. A project with docs: read the ones on how the repo is set up, tested, built and laid out,'
+file_has "define-validation-scope: a command the code does not hold is not confirmed" "$DV" \
+  '   - A command the docs name that the code does not hold goes under `Not confirmed:` in the draft,'
+line_is "define-validation-scope: the code is its test scripts" "$DV" \
+  '- Its test scripts: the test, lint and build entries of `package.json` `scripts`, the targets of a'
+line_is "define-validation-scope: its CI workflows" "$DV" \
+  '- Its CI workflows, such as `.github/workflows/*.yml` or `.gitlab-ci.yml`: the commands each job'
+line_is "define-validation-scope: and its package manifests" "$DV" \
+  '- Its package manifests, such as `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml` or'
+file_has "define-validation-scope: runs none of the repo's commands" "$DV" 'Run none of'
+VSO="$here/skills/vault-setup/docs.md"
+for ph in '## 1. Offer it' '## 2. The draft' '## 3. The approval' '## 4. The write'; do
+  line_is "define-validation-scope: docs.md has the heading $ph it follows" "$VSO" "$ph"
+done
+# It drafts each check with its command, its stage and its paths, in the template's shape.
+file_has "define-validation-scope: drafts in the template's shape" "$DV" '`${CLAUDE_PLUGIN_ROOT}/templates/validation-repo.md.tmpl`'
+exists "define-validation-scope: the template it names exists" "$here/templates/validation-repo.md.tmpl"
+for h in '### Set up and start' '### Checks' '### Check as a user would' '### A pass'; do
+  file_has "define-validation-scope: drafts $h" "$DV" "- \`$h\`: "
+  line_is "define-validation-scope: the template has $h" "$here/templates/validation-repo.md.tmpl" "$h"
+done
+file_has "define-validation-scope: a check is its command, what it proves, its paths and its when" "$DV" \
+  '- `### Checks`: one bullet per check: its command the line'"${q}"'s first code span, then what it'
+file_has "define-validation-scope: an example check with paths and a when" "$DV" \
+  '`` - `npm run test:api` - the API suite - paths: api/**, `package.json` - when: each story ``.'
+file_has "define-validation-scope: each story" "$DV" '  - `when: each story` for one each story'"${q}"'s review runs, quick enough for every change, such'
+file_has "define-validation-scope: each merge" "$DV" '  - `when: each merge` for one that runs once a story merges, such as the full suite or the'
+file_has "define-validation-scope: release" "$DV" '  - `when: release`, in a project that plans releases, for one that costs money or takes long,'
+file_has "define-validation-scope: the paths of a check only some files can break" "$DV" \
+  '- The `paths:` of a check that only some files can break, such as the suite of one part: the'
+file_has "define-validation-scope: a check any file can break has no paths" "$DV" \
+  '  - A check that any file can break, such as the linter of the whole repo or the build, has no'
+file_has "define-validation-scope: a user step takes no paths" "$DV" 'A user step takes no `paths:`.'
+line_is "define-validation-scope: invents nothing" "$DV" '- Never invent a command, a glob, a stage or a step.'
+# It proposes only the stages the project uses.
+file_has "define-validation-scope: every project uses each story and each merge" "$DV" \
+  '- Every project uses `each story`, run in each story'"${q}"'s review, and `each merge`, run on the'
+file_has "define-validation-scope: release only in a project that plans releases" "$DV" \
+  '- `release` is only for a project that plans releases: one whose planned-releases note,'
+file_has "define-validation-scope: the planned-releases note's path" "$DV" \
+  '`<vault>/<project path>/<topics_root>/planned-releases.md`, is there, as `ls -d "<that path>"`'
+line_is "define-validation-scope: no release check in a project that plans none" "$DV" \
+  '- In a project that plans no releases, draft no `release` check and no `release` user step.'
+file_has "define-validation-scope: a release check left out is named" "$DV" \
+  '  A check the code keeps for a release, such as an end-to-end suite that costs money, goes under'
+# It shows the draft and each change, and writes only on the owner's approval.
+file_has "define-validation-scope: shows the draft and stops" "$DV" \
+  '1. Show the draft, and end it with the line `What'"${q}"'s wrong or missing?` as plain text. Then stop for'
+file_has "define-validation-scope: shows each asked change again" "$DV" \
+  '2. A change the owner asks for: make it in the draft, and show each part it changed again, in'
+line_is "define-validation-scope: nothing is written before the approval" "$DV" \
+  '3. Nothing is written until the owner approves the draft as shown.'
+line_is "define-validation-scope: only a plain yes approves it" "$DV" \
+  '   - With no change left, ask for that approval. Only a plain yes is one.'
+line_is "define-validation-scope: a no writes nothing" "$DV" '4. A no to the whole draft writes nothing. Say that the section stays as it was.'
+file_has "define-validation-scope: the write is on the approval" "$DV" \
+  '1. On the owner'"${q}"'s approval, take the repo'"${q}"'s state from `second-brain validation <project>`:'
+file_has "define-validation-scope: a missing section through validation new" "$DV" \
+  '   - `missing` or `no-section`: run `second-brain validation new <project> <repo>`. It writes the'
+file_has "define-validation-scope: a section that is there keeps its other lines" "$DV" \
+  'Change no other line, and no other repo'"${q}"'s section.'
+file_has "define-validation-scope: reads the section back" "$DV" \
+  '3. Read it back with `second-brain validation <project> <repo>`. It must print the section as'
+# The docs and vault-setup.
+RM="$here/README.md"
+file_has "README: define-validation-scope proposes the checks of each stage" "$RM" \
+  'Proposes which checks run at each stage of a repo'"${q}"'s validation, from your project'"${q}"'s docs or'
+file_has "README: each check with its command, stage and paths" "$RM" \
+  '- Each check it drafts has its command, its stage, `each story`, `each merge` or `release`, and'
+file_has "README: docs first, docs-keeper's setup, then the code" "$RM" \
+  '- It reads the project'"${q}"'s docs first. A project with none is offered `docs-keeper`'"${q}"'s setup'
+file_has "README: only the stages the project uses" "$RM" \
+  '- It proposes only the stages your project uses: no `release` check in a project that plans no'
+file_has "README: writes only on the approval" "$RM" \
+  '- It shows you the whole draft, and each change you ask for again, and writes the section only'
+file_has "README: vault-setup offers it" "$RM" '- `vault-setup` offers it when it adds a repo.'
+file_has "README: docs-keeper is started by define-validation-scope too" "$RM" \
+  '`define-validation-scope` in a project with no docs, `vault-setup` when it adds a project or a repo,'
+CT="$here/docs/contract.md"
+file_has "contract: define-validation-scope drafts a repo's section" "$CT" \
+  '- **`define-validation-scope` drafts a repo'"${q}"'s validation section.** It is a skill, as it talks'
+file_has "contract: it reads the docs, offers the setup, then the code" "$CT" \
+  '- It reads the project'"${q}"'s docs first: its topic notes and the repo'"${q}"'s doc surfaces. A project with'
+file_has "contract: its code is the test scripts, CI workflows and package manifests" "$CT" \
+  'On a no, it reads the repo'"${q}"'s code: its test scripts, CI workflows and package manifests.'
+file_has "contract: only the stages the project uses" "$CT" \
+  '- It proposes only the stages the project uses. `release` is for a project that plans releases,'
+file_has "contract: writes only on the approval, through validation new" "$CT" \
+  'owner'"${q}"'s approval does it write the repo'"${q}"'s section, through `second-brain validation new` for a'
+file_has "contract: vault-setup offers it" "$CT" \
+  '- `vault-setup` offers it when it adds a repo, in project or repo mode, and calls it with the'
+file_has "contract: the setup's offer has a second caller" "$CT" \
+  '- `define-validation-scope` offers the same setup, through the same steps, to a project with no'
+GD="$here/docs/guide.md"
+file_has "guide: the request is under What to say" "$GD" \
+  '| Define the validation scope of example-api for the Example project. | `define-validation-scope` |'
+file_has "guide: define-validation-scope drafts a repo's steps" "$GD" \
+  '- `define-validation-scope` drafts a repo'"${q}"'s steps for you: each check'"${q}"'s command, its stage and'
+for ph in '## 1. The stages the project uses' '## 6. The write'; do
+  file_has "guide: points to $ph in skills/define-validation-scope/SKILL.md" "$GD" "\`$ph\` in \`skills/define-validation-scope/SKILL.md\`"
+done
+file_has "guide: vault-setup offers it" "$GD" '- `vault-setup` offers it when it adds a repo.'
+CG="$here/CHANGELOG.md"
+dv_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+dv_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each' \
+  '- It proposes only the stages the project uses: a `release` check only in a project with a' \
+  '- `vault-setup` offers it when it adds a repo, in project or repo mode.'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${dv_top:-0} && ${n:-0} < ${dv_end:-0}))" "1"
+done
+VSD="$here/skills/vault-setup"
+line_is "vault-setup: it may call define-validation-scope with the project and the repo" "$VSD/SKILL.md" \
+  'allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)'
+file_has "vault-setup: project mode offers define-validation-scope for each repo" "$VSD/SKILL.md" \
+  '    - First offer `define-validation-scope` for each repo, as step 2 of `## 3. Finish` in'
+line_is "vault-setup repo: repo.md has the heading ## 3. Finish" "$VSD/repo.md" '## 3. Finish'
+file_has "vault-setup repo: repo mode offers define-validation-scope" "$VSD/repo.md" \
+  '2. Write the repository'"${q}"'s validation steps. First offer to have the `define-validation-scope`'
+line_is "vault-setup repo: calls it with the Skill tool" "$VSD/repo.md" \
+  '   - On a yes, call it with the Skill tool as `odsb:define-validation-scope <project> <repo>`,'
+file_has "vault-setup repo: on a no, its own validation steps" "$VSD/repo.md" \
+  '   - On a no, or when the session cannot call it, write them as `validation.md`, beside this'
+file_has "vault-setup docs: define-validation-scope offers the setup too" "$VSO" \
+  '- The `define-validation-scope` skill, at step 3 of `## 2. The project'"${q}"'s docs` in its `SKILL.md`:'
+file_has "docs-keeper: define-validation-scope is a caller of Workflow 7 too" "$here/agents/docs-keeper.md" \
+  'The `define-validation-scope` skill is a caller too, through the same steps, for the one'
+
 # ---------------------------------------------------------------- result
 result

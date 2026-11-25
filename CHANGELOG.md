@@ -51,6 +51,15 @@
   once you approve it, as `skills/vault-setup/docs.md` says.
 - Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
   that are folder paths. It overwrites no file.
+- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each
+  check's command, its stage and its `paths:`, in the shape of the validation template. It reads
+  the project's docs. A project with none is offered `docs-keeper`'s setup first, and on a no the
+  skill reads the repo's test scripts, CI workflows and package manifests.
+- It proposes only the stages the project uses: a `release` check only in a project with a
+  planned-releases note. It shows you the draft, and each change you ask for again, and writes the
+  repo's section only once you approve it, through `second-brain validation new` for a missing
+  one.
+- `vault-setup` offers it when it adds a repo, in project or repo mode.
 
 ## 0.12.0 - 2026-11-24
 

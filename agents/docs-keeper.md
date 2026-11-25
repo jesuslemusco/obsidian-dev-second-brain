@@ -192,6 +192,8 @@ The caller, the `vault-setup` skill, gives the project and the repositories to s
 when it adds a project, the new one when it adds a repository. You cannot ask the user, so the
 caller holds the approval. It starts you for the draft, again for each change the user asks for,
 and, once the user approves the draft, for the write.
+The `define-validation-scope` skill is a caller too, through the same steps, for the one
+repository whose checks it drafts.
 
 ### The draft
 

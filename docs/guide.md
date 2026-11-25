@@ -25,6 +25,7 @@ skill next to it:
 | Open a new sprint for the Mobile project. | `scrum-master` |
 | Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
+| Define the validation scope of example-api for the Example project. | `define-validation-scope` |
 | Build the approved stories of EX-1. | `build` |
 
 - Any skill runs by name: `/odsb:<skill>`.
@@ -300,6 +301,15 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
 - The plugin ships no browser. Name the browser skill or command your repo uses.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
+- `define-validation-scope` drafts a repo's steps for you: each check's command, its stage and
+  its `paths:`, from the project's docs, or from the repo's code when it has none. A project with
+  no docs is offered `docs-keeper`'s setup first.
+- It proposes only the stages your project uses: a `release` one only in a project with a
+  planned-releases note, as
+  `## 1. The stages the project uses` in `skills/define-validation-scope/SKILL.md` says.
+- You see the whole draft, and each change you ask for, and it writes the section only once you
+  approve it, as `## 6. The write` in `skills/define-validation-scope/SKILL.md` says.
+- `vault-setup` offers it when it adds a repo.
 
 ## On Windows
 

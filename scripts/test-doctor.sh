@@ -2992,6 +2992,11 @@ chk "validation: a user step is named by its text before its paths: or when:, a 
   "warn | 5 | example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build, example-api:Browser: open the admin:each-task, example-api:Bash: run make up:each-task"
 is "validation: with old whens alone, the fix names their new names alone" "$(fix_of validation)" \
   "write each old when: by its new name: each task is each story, each build is each merge"
+printf '%s\n' '# example-api validation' '' '## example-api' '' '### Checks' '' \
+  '- Run the linter by hand - when: each build' >"$tmp/code/example-api/validation.md"
+doc Example
+chk "validation: a check with no code span is named by its text before its when:" validation Example \
+  "warn | 1 | example-api:Run the linter by hand:each-build"
 fi
 
 # ---------------------------------------------------------------- what the spec flow left

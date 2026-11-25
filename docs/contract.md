@@ -977,11 +977,12 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - In each group folder, both take a task one level deeper too, as section 4 says, from
   `sb_task_nested`. `sb_task_parent` names a task's parent, and `sb_parent_label` the profile's
   word for it.
-- A command that moves several tasks lists their tasks folder once. `sb_task_list_keep` keeps the
-  listing, and `sb_task_list` prints it in place of `sb_task_files` for that folder, until
-  `sb_task_list_drop`. `sb_task_parents` reads the parent of every task that moves in one pass,
-  the one `sb_task_parent` names for each. `sprint open`, `sprint close` and the doctor's `--fix`
-  do so; the doctor lists each project's tasks folder once more for its rows, after the moves.
+- A command that moves several tasks lists their tasks folder once for its moves.
+  `sb_task_list_keep` keeps the listing, and `sb_task_list` prints it in place of `sb_task_files`
+  for that folder, until `sb_task_list_drop`. `sb_task_parents` reads the parent of every task
+  that moves in one pass, the one `sb_task_parent` names for each. `sprint open`, `sprint close`
+  and the doctor's `--fix` do so; the doctor lists each project's tasks folder once more for its
+  rows, after the moves.
 - `sb_need_project` and the doctor's project setup call `sb_fm_cache`, which reads the scalar
   keys of one note's frontmatter once, the project's profile, so that `sb_fm_get` and
   `sb_setting` answer for that note with no process. `sb_fm_list`, `sb_section`, `sb_repo_paths`

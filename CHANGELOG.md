@@ -8,9 +8,10 @@
   tasks folder once, and it answers each profile setting it looks up from one read of the
   profile's scalar keys. The checks that read only the tasks' rows run in one `awk` pass. The
   shell works out letter case and dates itself.
-- `sprint open`, `sprint close` and `doctor --fix` list the tasks folder once, however many tasks
-  they move. The parent of each task they move is read for all of them in one pass, where each
-  move read every task again, so the time grew with the square of the tasks moved.
+- `sprint open`, `sprint close` and `doctor --fix` list the tasks folder once for their moves,
+  however many tasks they move. The parent of each task they move is read for all of them in one
+  pass, where each move read every task again, so the time grew with the square of the tasks
+  moved. `doctor --fix` lists each tasks folder once more for its rows, after the moves.
 - On Linux, `bash scripts/test-doctor.sh` takes about 112 s, down from 174 s.
 
 ## 0.12.0 - 2026-11-24

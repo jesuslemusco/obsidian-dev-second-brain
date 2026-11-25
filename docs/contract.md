@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 8
+index_version: 9
 ---
 ```
 
@@ -1519,8 +1519,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - It shows the owner the whole draft, and each change the owner asks for again. Only on the
   owner's approval does it write the repo's section, through `second-brain validation new` for a
   missing one, then with the Edit tool. Its steps are in `skills/define-validation-scope/SKILL.md`.
-- `vault-setup` offers it when it adds a repo, in project or repo mode, and calls it with the
-  Skill tool as `odsb:define-validation-scope <project> <repo>`.
+- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and
+  calls it with the Skill tool as `odsb:define-validation-scope <project> <repo>`.
 - The sprint close only reports done tasks with unticked doc lines, from `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose.
 - A missing or non-standard status is reported as "Needs a status" and never set without asking.

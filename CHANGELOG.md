@@ -59,7 +59,11 @@
   planned-releases note. It shows you the draft, and each change you ask for again, and writes the
   repo's section only once you approve it, through `second-brain validation new` for a missing
   one.
-- `vault-setup` offers it when it adds a repo, in project or repo mode.
+- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.
+- The vault index names the define-validation-scope skill. The plugin's index template is now at
+  `index_version: 9`, so the doctor's `index` check warns. Copy the bullet that starts
+  `- Call a plugin skill or agent` under `## In every session` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 9`.
 
 ## 0.12.0 - 2026-11-24
 

@@ -467,7 +467,7 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the scrum-master skill raises index_version to 8" "$vi_version" "8"
+is "index template: the define-validation-scope skill raises index_version to 9" "$vi_version" "9"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -2389,7 +2389,7 @@ file_has "index template: names the build skill for building a story" "$here/tem
   '`build`'
 line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
   '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
-line_is "index template: still at version 8, unreleased" "$here/templates/vault-index.md.tmpl" 'index_version: 8'
+line_is "index template: at version 9 in 0.13.0" "$here/templates/vault-index.md.tmpl" 'index_version: 9'
 file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
 file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
   '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
@@ -2751,8 +2751,8 @@ file_has "contract: only the stages the project uses" "$CT" \
   '- It proposes only the stages the project uses. `release` is for a project that plans releases,'
 file_has "contract: writes only on the approval, through validation new" "$CT" \
   'owner'"${q}"'s approval does it write the repo'"${q}"'s section, through `second-brain validation new` for a'
-file_has "contract: vault-setup offers it" "$CT" \
-  '- `vault-setup` offers it when it adds a repo, in project or repo mode, and calls it with the'
+file_has "contract: vault-setup offers it in each mode that adds a repo" "$CT" \
+  '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and'
 file_has "contract: the setup's offer has a second caller" "$CT" \
   '- `define-validation-scope` offers the same setup, through the same steps, to a project with no'
 GD="$here/docs/guide.md"
@@ -2769,10 +2769,14 @@ dv_top="$(linex "$CG" '## 0.13.0 - unreleased')"
 dv_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each' \
   '- It proposes only the stages the project uses: a `release` check only in a project with a' \
-  '- `vault-setup` offers it when it adds a repo, in project or repo mode.'; do
+  '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.' \
+  '- The vault index names the define-validation-scope skill. The plugin'"${q}"'s index template is now at' \
+  '  `templates/vault-index.md.tmpl` into your vault'"${q}"'s `CLAUDE.md`, then set `index_version: 9`.'; do
   n="$(linex "$CG" "$l")"
   is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${dv_top:-0} && ${n:-0} < ${dv_end:-0}))" "1"
 done
+line_is "index template: names define-validation-scope among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
+  '  `vault-doctor` checks them, `define-validation-scope` drafts a repo'"${q}"'s validation steps. Agent:'
 VSD="$here/skills/vault-setup"
 line_is "vault-setup: it may call define-validation-scope with the project and the repo" "$VSD/SKILL.md" \
   'allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)'
@@ -2785,6 +2789,20 @@ line_is "vault-setup repo: calls it with the Skill tool" "$VSD/repo.md" \
   '   - On a yes, call it with the Skill tool as `odsb:define-validation-scope <project> <repo>`,'
 file_has "vault-setup repo: on a no, its own validation steps" "$VSD/repo.md" \
   '   - On a no, or when the session cannot call it, write them as `validation.md`, beside this'
+file_has "vault-setup subproject: offers define-validation-scope for each repository" "$VSD/subproject.md" \
+  '   - First offer `define-validation-scope` for each repository, as step 2 of `## 3. Finish` in'
+file_has "vault-setup adopt: offers define-validation-scope for each repository" "$VSD/adopt.md" \
+  '  - First offer `define-validation-scope` for each one, as step 2 of `## 3. Finish` in `repo.md`'
+# Each mode that writes a repo's validation steps by validation.md offers define-validation-scope first.
+dv_modes=0
+for f in "$VSD"/*.md; do
+  [ "${f##*/}" != validation.md ] || continue
+  grep -qE 'validation steps as `(\$\{CLAUDE_SKILL_DIR\}/)?validation\.md`' "$f" || continue
+  dv_modes=$((dv_modes + 1))
+  file_has "vault-setup ${f##*/}: offers define-validation-scope where it writes the validation steps" "$f" \
+    'First offer `define-validation-scope` for each'
+done
+is "vault-setup: project, subproject and adopt write the validation steps by validation.md" "$dv_modes" "3"
 file_has "vault-setup docs: define-validation-scope offers the setup too" "$VSO" \
   '- The `define-validation-scope` skill, at step 3 of `## 2. The project'"${q}"'s docs` in its `SKILL.md`:'
 file_has "docs-keeper: define-validation-scope is a caller of Workflow 7 too" "$here/agents/docs-keeper.md" \

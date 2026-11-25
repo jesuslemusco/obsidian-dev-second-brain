@@ -3,7 +3,7 @@ name: vault-setup
 description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
 argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | validation <project> | link]"
 disable-model-invocation: true
-allowed-tools: Read Glob Bash(second-brain *)
+allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)
 ---
 
 # Vault setup
@@ -126,6 +126,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - Ask for one paragraph on the project and for its rules. Write them in place of those lines.
    - Delete a line the user has nothing for.
 10. Write each repo's validation steps as `${CLAUDE_SKILL_DIR}/validation.md` says.
+    - First offer `define-validation-scope` for each repo, as step 2 of `## 3. Finish` in
+      `${CLAUDE_SKILL_DIR}/repo.md` says. A repo whose section it writes needs no more here.
     - With `validation_home: repo`, `claude/validation.md` is not used. Ask, then delete it and
       its line in `claude/README.md`.
 

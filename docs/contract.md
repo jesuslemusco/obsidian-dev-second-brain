@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 8
+index_version: 9
 ---
 ```
 
@@ -1504,6 +1504,23 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   approved. It overwrites no file.
 - Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
   that are folder paths. The steps are in `skills/vault-setup/docs.md`.
+- `define-validation-scope` offers the same setup, through the same steps, to a project with no
+  docs, and holds the approval the same way.
+- **`define-validation-scope` drafts a repo's validation section.** It is a skill, as it talks
+  with the owner. It drafts each check of the section with its command, its stage and its
+  `paths:`, in the shape of `validation-repo.md.tmpl`, and each step under
+  `### Check as a user would` with its stage.
+- It reads the project's docs first: its topic notes and the repo's doc surfaces. A project with
+  none is offered `docs-keeper`'s setup first, as above.
+  On a no, it reads the repo's code: its test scripts, CI workflows and package manifests.
+- It proposes only the stages the project uses. `release` is for a project that plans releases,
+  one with a planned-releases note (section 3). In any other it drafts no `release` check or
+  user step.
+- It shows the owner the whole draft, and each change the owner asks for again. Only on the
+  owner's approval does it write the repo's section, through `second-brain validation new` for a
+  missing one, then with the Edit tool. Its steps are in `skills/define-validation-scope/SKILL.md`.
+- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and
+  calls it with the Skill tool as `odsb:define-validation-scope <project> <repo>`.
 - The sprint close only reports done tasks with unticked doc lines, from `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose.
 - A missing or non-standard status is reported as "Needs a status" and never set without asking.

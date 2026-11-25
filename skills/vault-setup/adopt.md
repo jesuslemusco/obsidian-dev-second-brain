@@ -70,6 +70,8 @@ moves nothing, renames nothing and rewrites no note body.
   `repo.md` says.
 - Existing docs may answer: quote them and confirm with the user.
 - For every repository, write its validation steps as `validation.md` says.
+  - First offer `define-validation-scope` for each one, as step 2 of `## 3. Finish` in `repo.md`
+    says. A repository whose section it writes needs no more here.
 - Fill the seven sections from what the user says and from existing notes. Quote, do not invent.
 - Leave the template's placeholder line where nothing is known.
 - Record spelling exceptions in `## Topics`, one line each, as `- <tag> -> <folder>`.

@@ -151,6 +151,26 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
 /odsb:vault-setup validation Example
 ```
 
+### `/odsb:define-validation-scope`
+
+Proposes which checks run at each stage of a repo's validation, from your project's docs or its
+code, and writes the repo's section once you approve it.
+
+- Each check it drafts has its command, its stage, `each story`, `each merge` or `release`, and
+  the `paths:` it covers, in the shape of `templates/validation-repo.md.tmpl`.
+- It reads the project's docs first. A project with none is offered `docs-keeper`'s setup,
+  and on a no it reads the repo's test scripts, CI workflows and package manifests.
+- It proposes only the stages your project uses: no `release` check in a project that plans no
+  releases.
+- It shows you the whole draft, and each change you ask for again, and writes the section only
+  once you approve it, through `second-brain validation new` for a missing one.
+- `vault-setup` offers it when it adds a repo.
+
+```
+/odsb:define-validation-scope Example example-api
+Define the validation scope of example-api for the Example project.
+```
+
 ### `/odsb:vault-doctor`
 
 Checks the vault, its projects and their registration in Claude Code against the standard.
@@ -174,7 +194,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift, rewrites renamed commands and drafts the docs of a project that has none. | `story-tracker` when a ticket reaches production, `vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift, rewrites renamed commands and drafts the docs of a project that has none. | `story-tracker` when a ticket reaches production, `define-validation-scope` in a project with no docs, `vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one approved story in its git worktree, test-first, runs its checks and commits it. | `build`. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a story's change. Edits no file and ends with a JSON verdict. | `build`: for the baseline, and after each build and fix of a story. |
 

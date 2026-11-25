@@ -305,8 +305,8 @@ sb_task_parents() {
     # Each task by its folder name and by each alias, in lower case.
     function load(   i, f, p, np, al, a) {
       loaded = 1
-      for (i = 1; i <= nf; i++) {
-        f = file[i]
+      for (i = 1; i <= list_n; i++) {
+        f = list_file[i]
         np = split(f, p, "/")
         if (np > 1) named(tolower(p[np - 1]), f)
         split("", al)
@@ -327,8 +327,7 @@ sb_task_parents() {
       return a[k - 1]
     }
     BEGIN { at = ENVIRON["SB_F"] + 0 }
-    $0 == "\034" && !part { part = 1; next }
-    !part { if ($0 != "" && !($0 in listed)) { listed[$0] = 1; file[++nf] = $0 } next }
+    read_list() { next }
     { print $0 "\t" parent($at) }'
 }
 

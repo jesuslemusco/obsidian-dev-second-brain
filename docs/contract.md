@@ -982,10 +982,12 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
   `sb_task_list_drop`. `sb_task_parents` reads the parent of every task that moves in one pass,
   the one `sb_task_parent` names for each. `sprint open`, `sprint close` and the doctor's `--fix`
   do so; the doctor lists each project's tasks folder once more for its rows, after the moves.
-- A command reads its project's profile once: `sb_need_project` and the doctor's project setup
-  call `sb_fm_cache`, which holds one note's frontmatter, so that `sb_fm_get` and `sb_setting`
-  answer for it with no process. An edit through `sb_fm_edit`, `sb_body_insert` or
-  `sb_body_append` drops it. `sb_lc` lowers the letter case of a keyword with no process.
+- `sb_need_project` and the doctor's project setup call `sb_fm_cache`, which reads the scalar
+  keys of one note's frontmatter once, the project's profile, so that `sb_fm_get` and
+  `sb_setting` answer for that note with no process. `sb_fm_list`, `sb_section`, `sb_repo_paths`
+  and the doctor's profile checks still read the file. An edit through `sb_fm_edit`,
+  `sb_body_insert` or `sb_body_append` drops the cache. `sb_lc` lowers the letter case of a
+  keyword with no process.
 
 ## 8. Templates
 

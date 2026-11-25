@@ -5,30 +5,7 @@
 sb_alias_scan() {
   LC_ALL=C SB_W="$1" awk "$(sb_awk_lib)"'
     BEGIN { want = tolower(ENVIRON["SB_W"]) }
-    {
-      path = $0
-      if (path == "") next
-      key = ""; lineno = 0; hit = 0
-      while ((getline line < path) > 0) {
-        lineno++
-        sub(/\r$/, "", line)
-        if (lineno == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
-        if (line == "---") break
-        if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
-          i = index(line, ":"); key = substr(line, 1, i - 1); v = trim(substr(line, i + 1))
-          if (key != "aliases") continue
-          if (substr(v, 1, 1) == "[") { n = split_inline(v, it); for (k = 1; k <= n; k++) if (tolower(it[k]) == want) hit = 1 }
-          else if (v != "" && tolower(unq(v)) == want) hit = 1
-        } else if (key == "aliases" && line ~ /^[ \t]*-([ \t]|$)/) {
-          v = line; sub(/^[ \t]*-[ \t]*/, "", v)
-          if (tolower(unq(v)) == want) hit = 1
-        }
-        if (hit) break
-      }
-      close(path)
-      if (hit) print path
-    }
-  '
+    $0 != "" { split("", al); alias_set($0, al); if (want in al) print }'
 }
 
 # sb_alias_hits: read file paths, one per line, then a line that is \034 alone, then names, one
@@ -37,16 +14,15 @@ sb_alias_scan() {
 # theirs. Each file is read once, for every name.
 sb_alias_hits() {
   LC_ALL=C awk "$(sb_awk_lib)"'
-    $0 == "\034" && !part { part = 1; next }
-    !part { if ($0 != "" && !($0 in listed)) { listed[$0] = 1; file[++nf] = $0 } next }
+    read_list() { next }
     $0 != "" && !($0 in asked) { asked[$0] = 1; want[++nw] = $0 }
     END {
-      for (j = 1; j <= nf && nw; j++) {
+      for (j = 1; j <= list_n && nw; j++) {
         split("", al)
-        alias_set(file[j], al)
+        alias_set(list_file[j], al)
         for (i = 1; i <= nw; i++) if (tolower(want[i]) in al) hit[i, j] = 1
       }
-      for (i = 1; i <= nw; i++) for (j = 1; j <= nf; j++) if ((i, j) in hit) print want[i] "\t" file[j]
+      for (i = 1; i <= nw; i++) for (j = 1; j <= list_n; j++) if ((i, j) in hit) print want[i] "\t" list_file[j]
     }'
 }
 

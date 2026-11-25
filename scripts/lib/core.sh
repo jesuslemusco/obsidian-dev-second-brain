@@ -95,8 +95,10 @@ sb_today() {
 }
 
 # Print the awk functions shared by the awk programs in this plugin. fm_value(path, key) reads a
-# scalar key of a note as sb_fm_get does, and sets _fm_found; alias_set(path, out) puts each
-# alias of a note, in lower case, in out, as sb_alias_scan reads them.
+# scalar key of a note, for sb_fm_get, and sets _fm_found; alias_set(path, out) puts each alias of
+# a note, in lower case, in out, for sb_alias_scan. read_list() takes the lines of a file list
+# that comes before a line that is \034 alone into list_file[1..list_n], each path once, and
+# returns 1 for each line it takes, the \034 line too.
 # Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
 # pattern in a UTF-8 locale, which stops the whole program.
 # The text is one quoted string that the shell prints itself, since most commands ask for it
@@ -265,6 +267,12 @@ function alias_set(path, out,   line, n, key, v, i, m, k, it) {
     }
   }
   close(path)
+}
+function read_list() {
+  if (_list_read) return 0
+  if ($0 == "\034") { _list_read = 1; return 1 }
+  if ($0 != "" && !($0 in _list_seen)) { _list_seen[$0] = 1; list_file[++list_n] = $0 }
+  return 1
 }'
 }
 
@@ -423,14 +431,8 @@ sb_fm_get() {
         ;;
     esac
   fi
-  LC_ALL=C SB_KEY="$2" awk "$(sb_awk_lib)"'
-    BEGIN { key = ENVIRON["SB_KEY"] ":"; klen = length(key); found = 0 }
-    { sub(/\r$/, "") }
-    NR == 1 { sub(/^\357\273\277/, ""); if ($0 != "---") exit; next }
-    $0 == "---" { exit }
-    substr($0, 1, klen) == key { print unq(substr($0, klen + 1)); found = 1; exit }
-    END { exit(found ? 0 : 1) }
-  ' "$1"
+  LC_ALL=C SB_F="$1" SB_KEY="$2" awk "$(sb_awk_lib)"'
+    BEGIN { v = fm_value(ENVIRON["SB_F"], ENVIRON["SB_KEY"]); if (_fm_found) print v; exit(_fm_found ? 0 : 1) }'
 }
 
 # Print a frontmatter list, one item per line (block or inline form).

@@ -651,48 +651,30 @@ sb_doc_project() {
   sb_repo_memo "$SB_P_PATH"
 }
 
-# sb_doc_sort <name>: sort the lines of the variable of that name in the C locale, as
-# $(... | LC_ALL=C sort) gives them; a single line needs no sort and starts no process.
-sb_doc_sort() {
-  local v nl=$'\n'
-  eval "v=\"\$$1\""
-  case "$v" in
-    *"$nl"*) v="$(printf '%s\n' "$v" | LC_ALL=C sort)" ;;
-    *) return 0 ;;
-  esac
-  eval "$1=\"\$v\""
-}
-
-# sb_doc_chomp <name>: drop the newlines at the end of the variable of that name, as $(...) does.
-sb_doc_chomp() {
-  local v nl=$'\n'
-  eval "v=\"\$$1\""
-  while [ "${v%"$nl"}" != "$v" ]; do v="${v%"$nl"}"; done
-  eval "$1=\"\$v\""
-}
-
 # Run the checks that read the facts and the scan rows of the project alone, in one awk pass, and
 # set what each finds: SB_DOC_T_FM for task-frontmatter, SB_DOC_T_NEEDS for needs-a-status,
 # SB_DOC_T_DRIFT for sb_doc_status_drift and SB_DOC_T_DRIFT_IDS its ids, SB_DOC_T_TRAPS for
 # yaml-traps, SB_DOC_T_BARE for bare-links, SB_DOC_T_EOL for line-endings, and SB_DOC_T_TAGS and
 # SB_DOC_T_DEPTH, the topic tags of the tasks and the most parts one has, for topic-tags.
 sb_doc_tasks() {
-  local line k v n tab=$'\t' nl=$'\n'
+  local line k v tab=$'\t' nl=$'\n'
   SB_DOC_T_FM="" SB_DOC_T_NEEDS="" SB_DOC_T_DRIFT="" SB_DOC_T_DRIFT_IDS="" SB_DOC_T_TRAPS=""
   SB_DOC_T_BARE="" SB_DOC_T_EOL="" SB_DOC_T_TAGS="" SB_DOC_T_DEPTH=0
   while IFS= read -r line; do
     k="${line%%"$tab"*}"
     v="${line#*"$tab"}"
+    # Each line holds an id, so none is empty: the lines join with no newline at the end, as
+    # $(...) gives them. A tag may be empty.
     case "$k" in
-      fm) SB_DOC_T_FM="$SB_DOC_T_FM$v$nl" ;;
-      needs) SB_DOC_T_NEEDS="$SB_DOC_T_NEEDS$v$nl" ;;
+      fm) SB_DOC_T_FM="${SB_DOC_T_FM:+$SB_DOC_T_FM$nl}$v" ;;
+      needs) SB_DOC_T_NEEDS="${SB_DOC_T_NEEDS:+$SB_DOC_T_NEEDS$nl}$v" ;;
       drift)
-        SB_DOC_T_DRIFT="$SB_DOC_T_DRIFT$v$nl"
-        SB_DOC_T_DRIFT_IDS="$SB_DOC_T_DRIFT_IDS${v%%"$tab"*}$nl"
+        SB_DOC_T_DRIFT="${SB_DOC_T_DRIFT:+$SB_DOC_T_DRIFT$nl}$v"
+        SB_DOC_T_DRIFT_IDS="${SB_DOC_T_DRIFT_IDS:+$SB_DOC_T_DRIFT_IDS$nl}${v%%"$tab"*}"
         ;;
-      trap) SB_DOC_T_TRAPS="$SB_DOC_T_TRAPS$v$nl" ;;
-      bare) SB_DOC_T_BARE="$SB_DOC_T_BARE$v$nl" ;;
-      eol) SB_DOC_T_EOL="$SB_DOC_T_EOL$v$nl" ;;
+      trap) SB_DOC_T_TRAPS="${SB_DOC_T_TRAPS:+$SB_DOC_T_TRAPS$nl}$v" ;;
+      bare) SB_DOC_T_BARE="${SB_DOC_T_BARE:+$SB_DOC_T_BARE$nl}$v" ;;
+      eol) SB_DOC_T_EOL="${SB_DOC_T_EOL:+$SB_DOC_T_EOL$nl}$v" ;;
       tag) SB_DOC_T_TAGS="$SB_DOC_T_TAGS$v$nl" ;;
       depth) SB_DOC_T_DEPTH="$v" ;;
     esac
@@ -731,10 +713,8 @@ $(sb_doc_feed | awk -F'\t' '
     }
     END { print "depth\t" depth + 0 }')
 EOF
-  for n in SB_DOC_T_FM SB_DOC_T_NEEDS SB_DOC_T_DRIFT SB_DOC_T_DRIFT_IDS SB_DOC_T_TRAPS SB_DOC_T_BARE \
-    SB_DOC_T_EOL SB_DOC_T_TAGS; do
-    sb_doc_chomp "$n"
-  done
+  # The tags drop the newlines at their end, as $(...) drops them.
+  while [ "${SB_DOC_T_TAGS%"$nl"}" != "$SB_DOC_T_TAGS" ]; do SB_DOC_T_TAGS="${SB_DOC_T_TAGS%"$nl"}"; done
 }
 
 # Read task README paths on stdin; print kind, id, value for alias1, alias, tag, trap, bare and eol.
@@ -1200,7 +1180,8 @@ sb_doc_check_task_location() {
       close(file)
       if (closed && type == "task") print substr(path, length(dir) + 1)
     }')"
-  sb_doc_sort bad
+  # Two lines or more are sorted, as $(... | LC_ALL=C sort) gives them; one starts no sort.
+  case "$bad" in *$'\n'*) bad="$(printf '%s\n' "$bad" | LC_ALL=C sort)" ;; esac
   # In a status project a task's place is the folder of its status. In a sprint project it is
   # backlog/, where task new writes, and doctor --fix then moves a task with a sprint on.
   case "$SB_DOC_LAYOUT" in
@@ -1734,15 +1715,14 @@ sb_doc_check_sprints() {
   case "$nl$raw" in
     *"${nl}sprint$tab"*) fix="close the extra or ended sprint with second-brain sprint close; point each task at a sprint that has a note" ;;
   esac
-  # Each line without its first field, as cut -f2- gives it.
+  # Each line without its first field, as cut -f2- gives it. No line of raw is empty.
   bad=""
   while IFS= read -r line; do
     case "$line" in *"$tab"*) line="${line#*"$tab"}" ;; esac
-    bad="$bad$line$nl"
+    bad="${bad:+$bad$nl}$line"
   done <<EOF
 $raw
 EOF
-  sb_doc_chomp bad
   sb_doc_report fail sprints "$SB_P_NAME" "$bad" "$fix"
 }
 

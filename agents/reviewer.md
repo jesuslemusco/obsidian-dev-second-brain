@@ -8,7 +8,7 @@ omitClaudeMd: true
 
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
-The implementer runs its test and the `each task` checks before it commits. You run the checks
+The implementer runs its test and the `each story` checks before it commits. You run the checks
 again, and never take its word that they pass. The caller names the mode: story or baseline.
 
 - If `second-brain` is not found, call it as `"${CLAUDE_PLUGIN_ROOT}/bin/second-brain"`.
@@ -31,12 +31,16 @@ steps are checked against it.
 ## When a step runs
 
 Each bullet under `### Checks` and `### Check as a user would` ends with when it runs, as
-`### Validation` in `docs/contract.md` says: `when: each task`, `when: each build` or
-`when: release`. A bullet with none, or with another value, is `each build`.
+`### Validation` in `docs/contract.md` says: `when: each story`, `when: each merge` or
+`when: release`. A bullet with none, or with another value, is `each merge`. `each task` and
+`each build`, the old names, are `each story` and `each merge`.
 
 - Run the checks under `### Checks` only through
   `second-brain validation run "<project>" <repo> --when <when>`. It runs each matching command
   and prints a row per command. A `fail` row is a finding, with the lines under it.
+- A check may name the paths it covers, as `paths:`. With `--changed <base>`, a check whose paths
+  the change does not touch is `skipped`, with the line `no change to its paths since <base>`.
+  That is no finding: the change cannot break it.
 - A prompt with a `Worktree:` line: add `--path "<worktree>"` to each `validation` and
   `validation run`, so that they read and run the branch in the worktree.
 - Run each check in the foreground, with the Bash tool's longest timeout:
@@ -132,8 +136,8 @@ round and the session id. `<n>` is the round. A re-review gives too a line
    - A first review: each acceptance criterion of the story.
    - A re-review: each `Defect <m>:` note. It is met when the fix answers it.
 5. Run `second-brain validation "<project>" <repo> --path "<worktree>"` for the steps. Then run
-   the checks with `--when each-build`, and each user step whose `when:` is `each task` or
-   `each build`, and grade each.
+   the checks with `--when each-story --changed <base>`, with the base of your prompt, and each
+   user step whose `when:` is `each story`, and grade each.
    - Start the project as `### Set up and start` says when a step needs it.
 6. A criterion not met, a defect not answered, or a check or step that fails: the verdict is
    FAIL. Still run step 7, so that one fix round answers every defect.
@@ -150,7 +154,7 @@ round and the session id. `<n>` is the round. A re-review gives too a line
 - The caller gives the project, the repo, the worktree and the branch.
 - Run `second-brain validation "<project>" <repo> --path "<worktree>"` for the steps.
 - On the branch as it is, run the steps under `### Set up and start`, then the checks with
-  `--when each-build`, then each user step whose `when:` is `each task` or `each build`.
+  `--when each-merge`, then each user step whose `when:` is `each story` or `each merge`.
 - Judge the result by `### A pass`. Log nothing on the story: your findings go in the reply, as
   `## Verdict` says.
 

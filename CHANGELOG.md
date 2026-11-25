@@ -15,6 +15,32 @@
   pass, where each move read every task again, so the time grew with the square of the tasks
   moved. `doctor --fix` lists each tasks folder once more for its rows, after the moves.
 - On Linux, `bash scripts/test-doctor.sh` takes about 112 s, down from 174 s.
+- Validation runs in stages that fit any flow, with or without sprints and releases. A check's
+  `when:` is `each story`, in the story's review, `each merge`, on the branch a story merges into
+  before its push, or `release`, in a project that plans releases. `### Validation` in
+  `docs/contract.md` says how each is read.
+- `each task` and `each build`, the old names, still run, as `each story` and `each merge`. A
+  bullet with no `when:`, or an unknown one, is `each merge`.
+- The doctor's `validation` check names each check and user step that still holds an old name, as
+  `<repo>:<command>:each-task` or `<repo>:<command>:each-build`.
+- A check may name the paths it covers, as `paths: <glob>, ...`, matched as git matches a
+  `:(glob)` pathspec.
+- `second-brain validation run` takes `--changed <base>`: a check with `paths:` runs only when the
+  diff from `<base>` touches one of them, committed or not, and is `skipped` otherwise. A check
+  with no `paths:` runs every time.
+- `validation run --when` takes `each-story`, `each-merge` or `release`, `each-merge` by default.
+  `each-task` and `each-build` still work.
+- A story's review runs the `each story` checks with `--changed` set to the story's base, so it
+  runs only the checks its change can break, and the `each story` user steps. `implementer` runs
+  the same checks before it commits.
+- A merge runs every `each merge` check on the merged branch, even on the tree the review read. It
+  runs no user step, and names each `each merge` one for you to ask for.
+- The baseline runs the `each merge` checks, and the `each story` and `each merge` user steps.
+- The validation template asks for `paths:`, and its `when:` line names the new stages. The
+  doctor's `validation` check still names a section that holds the line the old template held.
+- In your `validation.md`, write `when: each story` for `each task` and `when: each merge` for
+  `each build`. A check you want in each review, such as a suite `each build` ran there: mark it
+  `each story`, with the `paths:` it covers.
 
 ## 0.12.0 - 2026-11-24
 

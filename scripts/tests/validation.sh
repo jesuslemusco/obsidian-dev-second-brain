@@ -46,7 +46,8 @@ is "validation new: the section holds the template's four parts, word for word" 
 - <The commands that install, build and start it from a fresh clone, in order.>
 ### Checks
 - <One line per command that must pass, such as the tests, linter and build: the command in backticks, then what it proves.>
-- <Each line ends with when it runs: when: each task, when: each build, or when: release for one run only before a release or on the owner's ask.>
+- <A check that only some files can break names them before its when, such as paths: src/**, docs/*.md. A story's review runs it only when its change touches one of them.>
+- <Each line ends with when it runs: when: each story, in each story's review, when: each merge, on the branch a story merges into, or when: release, in a project that plans releases, for one run only before a release or on the owner's ask.>
 ### Check as a user would
 - <One line per step that uses the change as a user does: its tool, then what to look for, then when it runs.>
 - <A tool is a skill by name, such as a browser-testing skill, a command, an API call or a query.>

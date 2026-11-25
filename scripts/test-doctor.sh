@@ -2920,9 +2920,11 @@ chk "validation: a section that still holds a retired placeholder of an earlier 
 edit "$vault/$P/claude/validation.md" '/^- <The steps that use the change as a user does, /d'
 doc Example
 chk "validation: ok again once the retired line is gone" validation Example "ok | 0 | -"
-# The lines the template held before each check said when it runs are still flagged.
+# The lines the template held before each check said when it runs, or before the stages were
+# each story and each merge, are still flagged.
 for old in '- <Each command that must pass, such as the tests, linter and build, and what it proves.>' \
-  '- <One line per step that uses the change as a user does: its tool, then what to look for.>'; do
+  '- <One line per step that uses the change as a user does: its tool, then what to look for.>' \
+  "- <Each line ends with when it runs: when: each task, when: each build, or when: release for one run only before a release or on the owner's ask.>"; do
   if grep -qF -- "$old" "$here/templates/validation-repo.md.tmpl"; then
     fail "validation: the template no longer holds the retired line: $old"
   else
@@ -2953,7 +2955,7 @@ doc Example
 chk "settings: a subproject note's validation_home is named by the subproject" settings Example "warn | 1 | infra:validation_home"
 fi
 # ---------------------------------------------------------------- validation edge cases
-if block 10; then
+if block 20; then
 mkdir -p "$tmp/code/example-api"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api, example-ghost]|; s|^repos_root: .*|repos_root: \"\"|; s|^repo_paths: .*|repo_paths: [\"example-api=$tmp/code/example-api\"]|; s|^validation_home: vault\$|validation_home: repo|"
 doc Example
@@ -2962,6 +2964,30 @@ chk "validation: while repos leaves it" repos Example "ok | 0 | -"
 printf '# example-api validation\n\n## example-api\n' >"$tmp/code/example-api/validation.md"
 doc Example
 chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
+is "validation: with no old when, the fix names validation new alone" "$(fix_of validation)" \
+  "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+# Each check and user step with an old when: is named, by its command or its text, with the old name.
+printf '%s\n' '# example-api validation' '' '## example-api' '' '### Checks' '' \
+  '- `make test` - the unit tests - when: each task' \
+  '- `make lint` - the linter - paths: src/** - when: Each-Build.' \
+  '- `make docs` - the docs - when: each story' \
+  '- `make all` - every suite - when: each merge' \
+  '- `make e2e` - costs money - when: release' \
+  '- `make odd` - when: nightly' \
+  '  - `make nested` - a nested item is no check - when: each task' \
+  '' '### Check as a user would' '' \
+  '- Browser: open the home - when: each build' \
+  '- Browser: open the docs - when: each story' \
+  '' '### A pass' '' '- Every check passes. when: each task' >"$tmp/code/example-api/validation.md"
+doc Example
+chk "validation: names each check and user step with an old when, and no other" validation Example \
+  "warn | 4 | example-ghost:no-location, example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build"
+is "validation: and the fix names the new name of each old one" "$(fix_of validation)" \
+  "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line; write each old when: by its new name: each task is each story, each build is each merge"
+edit "$PROFILE" "s|^repos: .*|repos: [example-api]|"
+doc Example
+is "validation: with old whens alone, the fix names their new names alone" "$(fix_of validation)" \
+  "write each old when: by its new name: each task is each story, each build is each merge"
 fi
 
 # ---------------------------------------------------------------- what the spec flow left

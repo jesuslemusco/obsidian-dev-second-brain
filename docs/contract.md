@@ -298,16 +298,40 @@ tags:
 - Each step under `### Check as a user would` is one line that starts with the tool that runs it:
   a skill by its name, a command, an API call or a query.
 - Under `### Checks` a bullet's first inline code span is its command:
-  `` - `npm test` - the unit tests - when: each task ``.
-- Each bullet under `### Checks` and `### Check as a user would` ends with when it runs:
-  `when: each task`, `when: each build` or `when: release`.
-- `each task` runs in each task's review. `each build` runs once every task of a build has passed.
-  `release` runs only before a release or when the owner asks, such as an end-to-end suite.
-- A bullet with no `when:` is `each build`.
+  `` - `npm test` - the unit tests - when: each story ``.
+- Each bullet under `### Checks` and `### Check as a user would` ends with when it runs, its
+  stage: `when: each story`, `when: each merge` or `when: release`.
+- `each story` runs in each story's review. `each merge` runs on the branch a story merges into,
+  once the merge is made and before it is pushed. `release` is for a project that plans releases:
+  it runs only before a release or when the owner asks, such as an end-to-end suite.
+- No stage needs sprints or a release branch: a story merges wherever the project's git flow says.
+- A run of a stage takes the stages before it too: `each merge` runs the `each story` checks as
+  well, and `release` all three.
+- `each task` and `each build`, the names before 0.13.0, read as `each story` and `each merge`.
+  The doctor's `validation` check names each bullet that still holds one.
+- A bullet with no `when:` is `each merge`.
 - The `when:` is the last one in the bullet outside code spans. Its value is read without letter
   case, with a hyphen as a blank and a final period dropped.
-- Any other value is unknown and counts as `each build`, so a typo never drops a check.
+- Any other value is unknown and counts as `each merge`, so a typo never drops a check.
   `validation run` names it as a warning in every run.
+- A check may name the paths it covers, as `paths: <glob>, ...`. A story's review runs it only
+  when the story's change touches one of them:
+  `` - `npm run e2e:api` - the API suite - paths: api/**, `package.json` - when: each story ``.
+- The `paths:` is the last one in the bullet outside code spans, as for `when:`. Its globs run to
+  a `when:` that follows it, or to the end of the bullet, and the `when:` runs to a `paths:` that
+  follows it: the two may come in either order.
+- The globs are split at commas, each one trimmed, a final ` -` and a final period dropped. A glob
+  may be a code span of its own, so that a `*` is not read as emphasis.
+- A glob is matched against each path from the folder the checks run from, the repo's root, as git
+  matches a `:(glob)` pathspec: `*` and `?` stay within a folder, and `**` crosses folders.
+- With `--changed <base>`, `validation run` runs a check that has globs only when the diff from
+  `<base>` to the folder touches a path one of them matches. A file changed, added, deleted or
+  moved since `<base>` counts, committed or not, and so does a new file that git does not ignore.
+  A moved file counts at both of its paths.
+- A check with no `paths:`, or with an empty one, runs every time, and so does every check in a run
+  with no `--changed`. A check that git cannot match runs too, so that an error never drops it.
+- A user step takes no `paths:`. Who runs each stage's checks and user steps is under
+  **Who runs which check.** in `## 9. Skills and agents`.
 - A bullet is its first line and the indented lines under it, up to a blank line, a nested item
   or the next bullet. A nested item is part of no check.
 - A section is written when something is under its heading. One with nothing is `empty`.
@@ -604,7 +628,7 @@ Rules that hold for every command:
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
 | `validation <project> <repo> [--path <dir>] [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--path` names a folder that stands in for the repo's recorded one, such as a git worktree of it: a `repo` home's file is `<dir>/validation.md`, and the recorded location is not needed. A `vault` home's file is the same with it or without it. Exit 1 when `<dir>` is not a folder. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
-| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--path <dir>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-task` takes `each task`, `each-build` takes `each task` and `each build`, and `release` takes all three. `--when` is `each-build` by default. The repo and its section are found as `validation <project> <repo>` finds them, with its `--path` too. Each command runs through bash, one at a time, from the repo's root, or from `<dir>` with `--path`, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each build`, and every run names it on stderr as `note: unknown when: <value>, read as each build: <the bullet's text>`. A skipped row's command is the bullet's text, on one line, and its exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing, or `<dir>` with `--path`. Exit 5 for another `--when`, a `--timeout` that is not a whole number above 0, or a `--path` with no value. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
+| `validation run <project> <repo> [--when each-story\|each-merge\|release] [--changed <base>] [--timeout <seconds>] [--path <dir>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-story` takes `each story`, `each-merge` takes `each story` and `each merge`, and `release` takes all three. `--when` is `each-merge` by default. `each-task` and `each-build`, the old names, read as `each-story` and `each-merge`. With `--changed <base>`, a check whose `paths:` the diff from `<base>` does not touch is `skipped`, with the line `no change to its paths since <base>`, as section 3 says. `<base>` is any commit git names in the folder the checks run from, such as a hash or a branch. The repo and its section are found as `validation <project> <repo>` finds them, with its `--path` too. Each command runs through bash, one at a time, from the repo's root, or from `<dir>` with `--path`, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each merge`, and every run names it on stderr as `note: unknown when: <value>, read as each merge: <the bullet's text>`. A row skipped for `no command` has the bullet's text, on one line, for its command, and one skipped for its paths has its command. A skipped row's exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing, or `<dir>` with `--path`. Exit 1 with no row too when `<base>` is no commit in that folder, or the folder is in no git repo: `--changed: no commit <base> in <folder>`. Exit 5 for another `--when`, a `--timeout` that is not a whole number above 0, a `--path` with no value, or a `--changed` with none or with one that starts with `-`. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
@@ -823,7 +847,7 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
 | project | `settings` | a `validation_home` value that is not allowed, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`), and a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn). A `delivery` or `spec_home` key, which versions before 0.12.0 read, is not read |
-| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
+| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`). Each bullet under `### Checks` and `### Check as a user would` whose `when:` is an old name, `each task` or `each build` (section 3), as `<repo>:<command>:each-task` or `<repo>:<command>:each-build`, its command being its first code span, or for a bullet with none its text before its `when:` or `paths:`. Those come after the other offenders, and the fix names each old name's new one |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
@@ -922,7 +946,7 @@ the function `cmd_<command>` (dashes become underscores) with the remaining argu
   `sb_need_sub`. `sb_scaffold_subproject` is in `scaffold.sh`.
 - `scripts/lib/validation.sh` holds `cmd_validation` and its helpers, `sb_val_*`. The doctor,
   `scaffold project` and `subproject` call `sb_val_home`, the doctor and `scaffold project`
-  `sb_val_rows`, and the doctor `sb_val_placeholders`.
+  `sb_val_rows`, and the doctor `sb_val_placeholders`, and `sb_val_checks` for each old `when:`.
 - Inside the helper every absolute path is in the shell's own form: on Windows, Git Bash's
   `/c/...`. `sb_path_in` turns a path that was read into that form, and `sb_path_out` turns one
   into the printed form. On macOS and Linux both leave the path as it is.
@@ -1207,9 +1231,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   stage 1 for such a file. Each of these is shown to the owner, as any other conflict.
 - Any other conflict, such as a block with base lines or a file one side deleted, is shown to the
   owner, and the merge is aborted. The skill never resolves one itself.
-- Then the repo's `each build` checks run on the merged tree, through `validation run --path`.
-  They are skipped only when the merged tree is the one the passing review read, as
-  `git rev-parse <hash>^{tree}` shows for both.
+- Then every `each merge` check of the repo runs on the merged tree, through
+  `validation run --when each-merge --path`, with no `--changed`: a review runs only the
+  `each story` checks its change touches, so the merge runs them even on the tree the review read.
+- The merge runs no user step, as it launches no agent. The skill names each `each merge` user
+  step to the owner, as one it leaves for them to ask for, so that none is skipped unsaid.
 - A failing check leaves the merge local, and goes to the owner. Undoing it is the owner's call.
 - A push runs only on the owner's word, asked for once the checks pass, and named before it runs.
 - Once the merge is done, or the owner says not to merge, the skill removes the story's worktree
@@ -1230,8 +1256,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Any other result runs the baseline, such as on a branch cut from `release/<version>` or with
   commits the base lacks.
 - A resumed build skips the baseline, whatever the start.
-- The baseline runs the checks through `validation run --when each-build`, and every user step but
-  the `release` ones.
+- The baseline runs the checks through `validation run --when each-merge`, and the `each story`
+  and `each merge` user steps: every one but the `release` ones.
 - **One story at a time.** One story and one agent at a time, never in parallel.
 - No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
   one at a time, and names each launch's model by role and round.
@@ -1322,9 +1348,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Each update of a build is a status note in the README: the build started, resumed, stopped and
   why, and finished, each review, each ruling, the owner's and the skill's, and each defect and
   follow-up a review logs.
-- **Who runs which check.** `implementer` runs its test and the repo's `each task` checks before
-  it commits. `reviewer` runs the `each build` checks and the `each task` and `each build` user
-  steps in each review.
+- **Who runs which check.** `implementer` runs its test and the repo's `each story` checks that
+  its change touches before it commits. `reviewer` runs the same checks and the `each story` user
+  steps in each review, and in baseline mode the `each merge` checks and the `each story` and
+  `each merge` user steps. The merge runs every `each merge` check and no user step, as
+  **The merge.** says.
 - `implementer` and `reviewer` run each check in the foreground, with the Bash tool's longest
   timeout, 10 minutes, and never with `run_in_background`. A check is a `validation run`, an
   `implementer` test or a `reviewer` step run with Bash. A server a step needs is no check.
@@ -1341,12 +1369,13 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   reach it, and its work waits unreported.
 - `implementer` writes a test that fails for the story's criterion first, then makes it pass.
 - A change with nothing to test, such as a doc change, gets no test, and the reply says why.
-- Its checks are its own test and the repo's `each task` checks, through
-  `validation run <project> <repo> --when each-task --path <worktree>`.
+- Its checks are its own test and the repo's `each story` checks that its change touches, through
+  `validation run <project> <repo> --when each-story --changed <base> --path <worktree>`, with
+  the story's base.
 - It commits only when they all pass, and names each result in its reply.
 - It runs its own test the narrowest way the repo allows, such as the one suite that holds it,
-  even an `each build` one.
-- It runs no other `each build` check, no `release` check and no user step.
+  even an `each merge` one.
+- It runs no other `each merge` check, no `release` check and no user step.
 - The skill runs a `release` check only when the owner asks, with the Bash tool's
   `run_in_background`, and waits for its notice.
 - `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
@@ -1370,14 +1399,14 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   the story and the code themselves.
 - `implementer` reads the story's `## Description`, `## Acceptance criteria` and
   `## Approach / Key decisions`, builds it test-first in the worktree, runs its test and the
-  `each task` checks with `--path <worktree>`, and commits there.
+  `each story` checks with `--changed <base>` and `--path <worktree>`, and commits there.
 - Before it commits, it checks its whole change against the story's criteria, and against
   `## Defects and follow-ups` and `## Code quality` in `agents/reviewer.md`. It fixes what it
   finds, so that the story passes its first review.
 - `reviewer` reads the story the same way, and the change from the base, or on a re-review the
   fix's commits alone. It grades each acceptance criterion, or on a re-review each defect the
-  fix answers. Then it runs the `each build` checks, and the `each task` and `each build` user
-  steps, in the worktree, and grades the code.
+  fix answers. Then it runs the `each story` checks with `--changed <base>`, the ones the story's
+  change touches, and the `each story` user steps, in the worktree, and grades the code.
 - It grades code quality on a FAIL too, so that one fix round answers every defect. A re-review
   grades the code quality of the fix's commits alone.
 - It logs each defect and each follow-up as a status note, `<n>` its round, in the shapes the

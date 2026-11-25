@@ -134,6 +134,11 @@ sb_link_slot() {
 sb_link_rows() {
   local home pre kind name src fm slot state target nl=$'\n' tab=$'\t'
   local seen="$nl"
+  # The doctor reads them once for its checks, and changes no link: SB_LINK_ROWS_KEPT says so.
+  if [ -n "${SB_LINK_ROWS_KEPT:-}" ]; then
+    [ -z "$SB_LINK_ROWS" ] || printf '%s\n' "$SB_LINK_ROWS"
+    return 0
+  fi
   home="$(sb_link_home)"
   while IFS=$'\t' read -r pre kind name src fm; do
     [ -n "$kind" ] || continue

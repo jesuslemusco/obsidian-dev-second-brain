@@ -10,7 +10,8 @@ sb_val_home() {
     [ -n "$f" ] && [ -f "$f" ] || continue
     v="$(sb_fm_get "$f" validation_home 2>/dev/null)"
     [ -n "$v" ] || continue
-    case "$(printf '%s' "$v" | tr '[:upper:]' '[:lower:]')" in
+    sb_lc "$v"
+    case "$SB_LC" in
       repo) printf 'repo\n' ;;
       *) printf 'vault\n' ;;
     esac
@@ -81,7 +82,8 @@ sb_val_rows() {
     [ -n "$f" ] || continue
     h="$(sb_fm_get "$f" validation_home 2>/dev/null)"
     [ -n "$h" ] || continue
-    h="$(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')"
+    sb_lc "$h"
+    h="$SB_LC"
     [ "$h" = "repo" ] || h=vault
     while IFS= read -r r; do
       [ -n "$r" ] && map="$map$r$tab$h$nl"

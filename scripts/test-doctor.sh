@@ -1675,6 +1675,44 @@ chk "task-layout --fix: a fix from a sprint folder in a status project leaves no
 chk "task-layout --fix: and task-layout ok" task-layout Example "ok | 0 | -"
 fi
 
+# ---------------------------------------------------------------- task-layout --fix, one scan
+# doctor --fix lists a project's tasks folder once for its moves, however many tasks it moves: the
+# parent of each child comes from that one listing. Its rows, read once the moves are done, list it
+# once more. counted_doc [args]: run doctor in a subshell of this shell, with each listing of a
+# tasks folder written to $tmp/scans, and keep its rows in OUT.
+counted_doc() {
+  rm -f "$tmp/scans"
+  run counted_doctor "$@"
+}
+counted_doctor() {
+  (
+    for f in "$here"/scripts/lib/*.sh; do . "$f"; done
+    SB_PLUGIN_ROOT="$here"
+    SB_ROOT=""
+    eval "listed_$(declare -f sb_task_files)"
+    sb_task_files() {
+      printf '%s\n' "$1" >>"$tmp/scans"
+      listed_sb_task_files "$@"
+    }
+    cmd_doctor "$@"
+  ) </dev/null
+}
+if block 5; then
+layout status
+edit "$T/EX-2/README.md" 's/^epic: .*$/epic: EX-1/'
+edit "$T/EX-3/README.md" 's/^epic: .*$/epic: ex-1/'
+counted_doc Example --fix
+rc_is "task-layout --fix, one scan: exit 0" 0
+is "task-layout --fix, one scan: each task goes to its status folder, a child inside its parent's folder" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-1/EX-2/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-1/EX-3/README.md (Example)"
+chk "task-layout --fix, one scan: and task-layout ok" task-layout Example "ok | 0 | -"
+is "task-layout --fix, one scan: the tasks folder is listed once for the three moves and once for the rows" \
+  "$(grep -cxF -- "$T" "$tmp/scans" 2>/dev/null || true)" "2"
+fi
+
 # ---------------------------------------------------------------- task-layout, the sprint folders
 # set_pattern <raw value>: write the profile's sprint_folder key, under task_layout, as it is given.
 set_pattern() {

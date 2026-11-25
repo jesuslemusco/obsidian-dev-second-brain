@@ -5,30 +5,25 @@
 sb_alias_scan() {
   LC_ALL=C SB_W="$1" awk "$(sb_awk_lib)"'
     BEGIN { want = tolower(ENVIRON["SB_W"]) }
-    {
-      path = $0
-      if (path == "") next
-      key = ""; lineno = 0; hit = 0
-      while ((getline line < path) > 0) {
-        lineno++
-        sub(/\r$/, "", line)
-        if (lineno == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
-        if (line == "---") break
-        if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
-          i = index(line, ":"); key = substr(line, 1, i - 1); v = trim(substr(line, i + 1))
-          if (key != "aliases") continue
-          if (substr(v, 1, 1) == "[") { n = split_inline(v, it); for (k = 1; k <= n; k++) if (tolower(it[k]) == want) hit = 1 }
-          else if (v != "" && tolower(unq(v)) == want) hit = 1
-        } else if (key == "aliases" && line ~ /^[ \t]*-([ \t]|$)/) {
-          v = line; sub(/^[ \t]*-[ \t]*/, "", v)
-          if (tolower(unq(v)) == want) hit = 1
-        }
-        if (hit) break
+    $0 != "" { split("", al); alias_set($0, al); if (want in al) print }'
+}
+
+# sb_alias_hits: read file paths, one per line, then a line that is \034 alone, then names, one
+# per line; print "<name><TAB><path>" for each path whose frontmatter aliases hold a name, without
+# letter case, as sb_alias_scan finds them: each name once, in their order, and the paths in
+# theirs. Each file is read once, for every name.
+sb_alias_hits() {
+  LC_ALL=C awk "$(sb_awk_lib)"'
+    read_list() { next }
+    $0 != "" && !($0 in asked) { asked[$0] = 1; want[++nw] = $0 }
+    END {
+      for (j = 1; j <= list_n && nw; j++) {
+        split("", al)
+        alias_set(list_file[j], al)
+        for (i = 1; i <= nw; i++) if (tolower(want[i]) in al) hit[i, j] = 1
       }
-      close(path)
-      if (hit) print path
-    }
-  '
+      for (i = 1; i <= nw; i++) for (j = 1; j <= list_n; j++) if ((i, j) in hit) print want[i] "\t" list_file[j]
+    }'
 }
 
 # Print "project<TAB>file" for each index row whose tasks folder holds the id, live or archived.
@@ -51,7 +46,7 @@ sb_task_by_alias() {
   local id="$1" rows="$2" name path keys f
   while IFS=$'\t' read -r name path keys; do
     [ -n "$name" ] || continue
-    sb_task_files "$SB_ROOT/$path/$(sb_setting "$path" tasks_root tasks)" | sb_alias_scan "$id" |
+    sb_task_list "$SB_ROOT/$path/$(sb_setting "$path" tasks_root tasks)" | sb_alias_scan "$id" |
       while IFS= read -r f; do printf '%s\t%s\n' "$name" "$f"; done
   done <<EOF
 $rows
@@ -484,7 +479,8 @@ sb_task_tag() {
 # file system that ignores letter case would take it for that folder.
 sb_task_reserved() {
   local name s
-  name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  sb_lc "$1"
+  name="$SB_LC"
   for s in $SB_TASK_RESERVED; do
     if [ "$name" = "$s" ]; then
       printf '%s\n' "$s"
@@ -951,34 +947,36 @@ EOF
   return "$rc"
 }
 
-# sb_task_to_status <ID> <project>: for the doctor's fix, move a task of a status project to the
-# folder of its status, a child into its parent's folder there, through sb_task_relocate, and print
-# what it prints. Nothing when the task is there already. Exit 5 when its status is none of the
-# five.
+# sb_task_to_status <ID> <project> [<parent>]: for the doctor's fix, move a task of a status
+# project to the folder of its status, a child into its parent's folder there, through
+# sb_task_relocate, and print what it prints. The parent is the folder name sb_task_parent
+# prints, given by a fix that read it for every task at once; with none it is read here. Nothing
+# when the task is there already. Exit 5 when its status is none of the five.
 sb_task_to_status() {
-  local status dest parent
+  local status dest parent="${3-}"
   sb_need_task "$1" "$2"
   status="$(sb_fm_get "$SB_T_FILE" status)" || status=""
   case "$status" in
     planned | in-progress | in-review | done | abandoned) ;;
     *) sb_die 5 "$SB_T_ID has no status of the five: ${status:-none}" ;;
   esac
-  parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
+  [ $# -ge 3 ] || parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
   dest="$(sb_task_status_dir "$status" "$parent")"
   [ "$dest" != "${SB_T_REL%/*}" ] || return 0
   sb_task_relocate "$dest"
 }
 
-# sb_task_to_sprint <ID> <project>: for the doctor's fix, move a task of a sprint project to the
-# folder of its sprint, or to backlog/ with none, a child into its parent's folder there, through
-# sb_task_relocate, and print what it prints. Nothing when the task is there already. Exit 5 when
-# its sprint gives no folder name, and 6 when the destination is taken, or the sprint's folder is a
-# task, with a README.md of its own.
+# sb_task_to_sprint <ID> <project> [<parent>]: for the doctor's fix, move a task of a sprint
+# project to the folder of its sprint, or to backlog/ with none, a child into its parent's folder
+# there, through sb_task_relocate, and print what it prints. The parent is given or read as for
+# sb_task_to_status. Nothing when the task is there already. Exit 5 when its sprint gives no
+# folder name, and 6 when the destination is taken, or the sprint's folder is a task, with a
+# README.md of its own.
 sb_task_to_sprint() {
-  local sprint dest parent
+  local sprint dest parent="${3-}"
   sb_need_task "$1" "$2"
   sprint="$(sb_fm_get "$SB_T_FILE" sprint)" || sprint=""
-  parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
+  [ $# -ge 3 ] || parent="$(sb_task_parent "$SB_T_FILE")" || parent=""
   dest="$(sb_task_sprint_dir "$sprint" "$parent")" || exit $?
   [ "$dest" != "${SB_T_REL%/*}" ] || return 0
   [ -z "$sprint" ] || sb_task_sprint_dest_free "$dest" "$SB_T_FILE"

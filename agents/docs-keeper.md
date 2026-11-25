@@ -186,6 +186,62 @@ of `## 0. Before you start` applies.
 7. Add a status note to each story you changed:
    `second-brain task note <ID> "Renamed <old> to <new> in <n> lines." --project <project>`.
 
+## Workflow 7 - Set up a project's docs
+
+The caller, the `vault-setup` skill, gives the project and the repositories to set up: each one
+when it adds a project, the new one when it adds a repository. You cannot ask the user, so the
+caller holds the approval. It starts you for the draft, again for each change the user asks for,
+and, once the user approves the draft, for the write.
+
+### The draft
+
+1. Read each repository at the code ref, as `## The code ref` says. The draft describes that code
+   alone, so principle 2 needs no deployment confirmed.
+   - Its README: `git -C "<path>" show <ref>:README.md`.
+   - Its layout: `git -C "<path>" ls-tree -r --name-only <ref>`.
+   - Its code: the entry points, modules and config the layout shows.
+   - A repository with no such ref: say so in the draft, and draft nothing for it.
+2. Read what the vault holds: the folders under the topics root, with
+   `ls -d "<vault>/<project path>/<topics_root>"/*/`, and the rows under `### Code to doc map`.
+   - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.
+   - Draft no row that a repository already has.
+3. Draft one topic per part of the code a reader asks about, such as a module, a service or a
+   public interface.
+   - Name its folder in lowercase, with hyphens between words, so that its topic tag is its path
+     below the topics root.
+   - A repository of a subproject: its topics go in the subproject's docs folder,
+     `<topics_root>/<name>/`.
+4. Draft each topic's files, as the conventions say:
+   - Its hub, `<topic>/README.md`, as Workflow 4 says: a unique alias, `type: moc`, an up link to
+     the topics hub and a link down to its first note.
+   - Its first note, such as `<topic>/overview.md`: a unique alias, a `title`, a `type` from the
+     conventions with its `type/<type>` tag, such as `architecture`, and its topic tag. Then
+     `> Up:` to its hub, then what the code confirms, each claim with the file it comes from.
+   - The line that links its hub from the topics hub, under `## Topics`. With
+     `topics_root: "."` it goes in the project's `README.md`, under `## Map`.
+   - Every link carries its full vault path: `[[<vault path>|<alias>]]`.
+5. Draft the Code to doc map rows: for each repository, one row per kind of change that alters a
+   topic, as `| <repo> | <change> | <docs> |`.
+   - The first cell is the name as `repos:` spells it. The third names the topic's folder.
+6. Return the draft, as `## Output` says, and write nothing: no folder, no note and no line of
+   the profile.
+7. A caller that gives a draft and a change the user asked for: check the change against the
+   code ref, make it in the draft, and return the whole draft again. Name each part that changed.
+   - A change that adds a claim the code does not confirm: leave the claim out, and say why, as
+     principle 5 says.
+
+### The write
+
+1. The caller gives the draft the user approved, with each change the user asked for in it.
+2. Write it as approved, and nothing more.
+   - Each hub and note with the Write tool, once you have checked that its file does not exist.
+     A file that exists is kept: report it, and never overwrite it.
+   - The topics hub's lines and the map rows with the Edit tool. The first real row replaces the
+     template's `<repo>` row.
+3. Run `second-brain unresolved <project>`. It must list no link you wrote: fix the path of each
+   one it lists.
+4. Run `second-brain doctor <project>`, and report each row that is not `ok`.
+
 ## Working in the vault
 
 Read cheapest first: a whole note is the last resort.
@@ -225,4 +281,8 @@ Read cheapest first: a whole note is the last resort.
 - A ticket marked done: the status note written on it.
 - A renamed command: the notes changed, the status notes written, and the `CLAUDE.md` and
   settings offenders left for the owner.
+- A docs setup draft: each folder, each hub and note with its whole text, each line for the
+  topics hub, the map rows, and what the code could not confirm.
+- A docs setup written: each file written, each file kept as it was, the rows added, and each
+  doctor row that is not `ok`.
 - Any proposed map row or debt line.

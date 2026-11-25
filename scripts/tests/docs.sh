@@ -2493,5 +2493,116 @@ file_has "contract: an old spec folder and build.json stay as plain files of the
 file_has "contract: the delivery and spec_home keys are no keys" "$here/docs/contract.md" \
   '- `delivery` and `spec_home` are no keys of the profile, a subproject'"'"'s note or a task. Versions'
 
+# ---------------------------------------------------------------- docs-keeper sets up a project's docs, for the user to approve
+DK="$here/agents/docs-keeper.md"
+VSD="$here/skills/vault-setup"
+VSO="$VSD/docs.md"
+q="'"
+w7="## Workflow 7 - Set up a project${q}s docs"
+line_is "docs-keeper: Workflow 7 sets up a project's docs" "$DK" "$w7"
+w6_line="$(lineno "$DK" '## Workflow 6 - ')"
+w7_line="$(linex "$DK" "$w7")"
+wv_line="$(linex "$DK" '## Working in the vault')"
+is "docs-keeper: Workflow 7 comes after Workflow 6 and before the vault rules" \
+  "$((${w6_line:-0} > 0 && ${w6_line:-0} < ${w7_line:-0} && ${w7_line:-0} < ${wv_line:-0}))" "1"
+file_has "docs-keeper: vault-setup starts it with the project and the repositories" "$DK" \
+  'The caller, the `vault-setup` skill, gives the project and the repositories to set up: each one'
+file_has "docs-keeper: the caller holds the approval, as the agent cannot ask" "$DK" \
+  'when it adds a project, the new one when it adds a repository. You cannot ask the user, so the'
+line_is "docs-keeper: Workflow 7 has a draft round" "$DK" "### The draft"
+line_is "docs-keeper: and a write round" "$DK" "### The write"
+file_has "docs-keeper: the draft reads the code at the code ref" "$DK" \
+  '1. Read each repository at the code ref, as `## The code ref` says. The draft describes that code'
+line_is "docs-keeper: the draft reads the README" "$DK" '   - Its README: `git -C "<path>" show <ref>:README.md`.'
+line_is "docs-keeper: the draft reads the layout" "$DK" '   - Its layout: `git -C "<path>" ls-tree -r --name-only <ref>`.'
+line_is "docs-keeper: the draft reads the code the layout shows" "$DK" \
+  '   - Its code: the entry points, modules and config the layout shows.'
+file_has "docs-keeper: the draft keeps a topic folder that exists" "$DK" \
+  '   - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.'
+file_has "docs-keeper: drafts the topic folders" "$DK" \
+  '3. Draft one topic per part of the code a reader asks about, such as a module, a service or a'
+file_has "docs-keeper: a topic folder's tag is its path" "$DK" 'so that its topic tag is its path'
+file_has "docs-keeper: a hub for each topic folder" "$DK" '   - Its hub, `<topic>/README.md`, as Workflow 4 says: a unique alias, `type: moc`, an up link to'
+file_has "docs-keeper: a first note per topic" "$DK" '   - Its first note, such as `<topic>/overview.md`: a unique alias, a `title`, a `type` from the'
+file_has "docs-keeper: the first note's claims come from the code" "$DK" \
+  'then what the code confirms, each claim with the file it comes from.'
+file_has "docs-keeper: the topics hub links each new hub" "$DK" \
+  '   - The line that links its hub from the topics hub, under `## Topics`. With'
+line_is "docs-keeper: every link carries a path" "$DK" \
+  '   - Every link carries its full vault path: `[[<vault path>|<alias>]]`.'
+file_has "docs-keeper: drafts the Code to doc map rows" "$DK" \
+  '5. Draft the Code to doc map rows: for each repository, one row per kind of change that alters a'
+line_is "docs-keeper: the draft writes nothing" "$DK" \
+  '6. Return the draft, as `## Output` says, and write nothing: no folder, no note and no line of'
+file_has "docs-keeper: an asked change is checked against the code and drafted again" "$DK" \
+  '7. A caller that gives a draft and a change the user asked for: check the change against the'
+line_is "docs-keeper: the write takes the draft the user approved" "$DK" \
+  '1. The caller gives the draft the user approved, with each change the user asked for in it.'
+line_is "docs-keeper: the write adds nothing to the draft" "$DK" '2. Write it as approved, and nothing more.'
+file_has "docs-keeper: the write overwrites no file" "$DK" '     A file that exists is kept: report it, and never overwrite it.'
+file_has "docs-keeper: the write checks its links" "$DK" \
+  '3. Run `second-brain unresolved <project>`. It must list no link you wrote: fix the path of each'
+file_has "docs-keeper: the write runs the doctor" "$DK" '4. Run `second-brain doctor <project>`, and report each row that is not `ok`.'
+file_has "docs-keeper: the output of a draft" "$DK" '- A docs setup draft: each folder, each hub and note with its whole text, each line for the'
+file_has "docs-keeper: the output of a write" "$DK" '- A docs setup written: each file written, each file kept as it was, the rows added, and each'
+exists "vault-setup: the docs setup has a file of its own" "$VSO"
+line_is "vault-setup docs: its title" "$VSO" "# Set up a project${q}s docs from its code"
+file_has "vault-setup docs: the skill holds the approval, as docs-keeper cannot ask" "$VSO" \
+  'draft. It is an agent and cannot ask the user, so this skill holds the approval. Nothing is written'
+file_has "vault-setup docs: project mode offers it when no topic folder exists" "$VSO" \
+  '- Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds'
+file_has "vault-setup docs: repo mode offers it for the new repository" "$VSO" \
+  '- Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.'
+file_has "vault-setup docs: starts docs-keeper by its plugin name" "$VSO" '1. Start the `docs-keeper` agent (`odsb:docs-keeper`) with the project and the repositories, and'
+line_is "vault-setup docs: asks for Workflow 7's draft, by the heading's name" "$VSO" \
+  "   ask it for the draft of \`${w7#\#\# }\`."
+line_is "vault-setup docs: the draft writes nothing" "$VSO" '2. It returns the draft and writes nothing.'
+file_has "vault-setup docs: shows the user the whole draft" "$VSO" '3. Show the user the whole draft, as it came:'
+file_has "vault-setup docs: an asked change goes back to docs-keeper" "$VSO" \
+  '1. A change the user asks for goes to `docs-keeper` with the draft, for a new draft. It checks the'
+line_is "vault-setup docs: each change is shown" "$VSO" '2. Show the user each part that changed, then ask again.'
+line_is "vault-setup docs: nothing is written before the approval" "$VSO" '3. Nothing is written until the user approves the draft as shown.'
+file_has "vault-setup docs: docs-keeper writes on the approval" "$VSO" \
+  '1. On the user'"${q}"'s approval, start `docs-keeper` again for the write of Workflow 7, with the draft as'
+for ptr in 'SKILL.md|## project <name>' 'repo.md|## 2. The docs that follow it'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  line_is "vault-setup docs: $pf has the heading $ph" "$VSD/$pf" "$ph"
+done
+file_has "vault-setup: project mode offers the docs setup" "$VSD/SKILL.md" \
+  '   - Offer to have `docs-keeper` draft the project'"${q}"'s docs from its code, as'
+file_has "vault-setup: the router names the docs file" "$VSD/SKILL.md" '`${CLAUDE_SKILL_DIR}/docs.md`, the docs setup, is no mode'
+file_has "vault-setup repo: repo mode offers the docs setup" "$VSD/repo.md" \
+  'In repo mode, first offer to have `docs-keeper` draft the repository'"${q}"'s docs from its code, as'
+file_has "vault-setup repo: the draft's rows are kept" "$VSD/repo.md" 'A repository with rows from such a draft keeps them'
+CT="$here/docs/contract.md"
+file_has "contract: a project with no docs gets a draft from docs-keeper" "$CT" \
+  '- **A project with no docs gets a draft of them from `docs-keeper`.** When `vault-setup` adds a'
+file_has "contract: the draft reads the README, the layout and the code" "$CT" \
+  '- `docs-keeper` reads each repository'"${q}"'s README, its layout and its code at the code ref. It'
+file_has "contract: the draft writes nothing, and vault-setup holds the approval" "$CT" \
+  '- It returns the draft and writes nothing. An agent cannot ask the owner, so `vault-setup` holds'
+file_has "contract: docs-keeper writes only on the approval" "$CT" \
+  '- Only on the owner'"${q}"'s approval does `vault-setup` start `docs-keeper` again to write the draft as'
+file_has "contract: the notes follow the conventions" "$CT" \
+  '- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags'
+GD="$here/docs/guide.md"
+for ph in '## 2. The draft' '## 4. The write'; do
+  file_has "guide: points to $ph in skills/vault-setup/docs.md" "$GD" "\`$ph\` in \`skills/vault-setup/docs.md\`"
+  line_is "guide: skills/vault-setup/docs.md has the heading $ph" "$VSO" "$ph"
+done
+file_has "guide: a project with no docs can have them drafted" "$GD" '- A project with no docs can have them drafted from its code. When `vault-setup` adds a project'
+file_has "guide: nothing is written before the approval" "$GD" '- You see the whole draft, and each change you ask for, before anything is written.'
+file_has "README: docs-keeper is started by vault-setup too" "$here/README.md" \
+  '`vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |'
+CG="$here/CHANGELOG.md"
+ds_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+ds_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- `docs-keeper` sets up the docs of a project that has none, in its new' \
+  '- `vault-setup` offers it when it adds a project or a repository. The draft writes nothing:' \
+  '- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${ds_top:-0} && ${n:-0} < ${ds_end:-0}))" "1"
+done
+
 # ---------------------------------------------------------------- result
 result

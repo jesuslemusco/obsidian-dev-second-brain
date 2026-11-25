@@ -21,6 +21,10 @@ Code to doc map in the same change. Never invent a name, a location, a kind of c
 
 ## 2. The docs that follow it
 
+In repo mode, first offer to have `docs-keeper` draft the repository's docs from its code, as
+`docs.md`, beside this file, says. A repository with rows from such a draft keeps them: ask step 1
+only for a kind of change they leave out.
+
 1. Ask, for each kind of change that matters, which docs must be updated.
 2. Add one row per kind of change to the table under `### Code to doc map`, in `## Docs` of the
    profile: `| <repo> | <change> | <docs> |`.
@@ -40,4 +44,5 @@ Code to doc map in the same change. Never invent a name, a location, a kind of c
 2. Write the repository's validation steps as `validation.md`, beside this file, says.
 3. Run `second-brain doctor <project>`. `code-doc-map` and `repos` must be `ok`. Report every row
    that is not `ok`, with its fix.
-4. Say what was added: the name, its location, its map rows and, if any, the debt line.
+4. Say what was added: the name, its location, its map rows, the docs written and, if any, the
+   debt line.

@@ -42,6 +42,15 @@
 - In your `validation.md`, write `when: each story` for `each task` and `when: each merge` for
   `each build`. A check you want in each review, such as a suite `each build` ran there: mark it
   `each story`, with the `paths:` it covers.
+- `docs-keeper` sets up the docs of a project that has none, in its new
+  `Workflow 7 - Set up a project's docs`. It reads each repository's README, its layout and its
+  code, and drafts the topic folders, a hub for each, a first note per topic and the profile's
+  Code to doc map rows.
+- `vault-setup` offers it when it adds a project or a repository. The draft writes nothing:
+  `vault-setup` shows it to you, with each change you ask for, and has `docs-keeper` write it only
+  once you approve it, as `skills/vault-setup/docs.md` says.
+- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
+  that are folder paths. It overwrites no file.
 
 ## 0.12.0 - 2026-11-24
 

@@ -84,6 +84,13 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - An existing project keeps its folders. `/odsb:vault-setup adopt <path>`
   records them in its profile, as
   `## 2. Scaffold only what is missing` in `skills/vault-setup/adopt.md` says.
+- A project with no docs can have them drafted from its code. When `vault-setup` adds a project
+  or a repo, it offers to have `docs-keeper` draft the topic folders, a hub for each, a first note
+  per topic and the Code to doc map rows, as `## 2. The draft` in `skills/vault-setup/docs.md`
+  says.
+- You see the whole draft, and each change you ask for, before anything is written.
+- `docs-keeper` writes it only once you approve it, as
+  `## 4. The write` in `skills/vault-setup/docs.md` says.
 - A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
 - A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
   any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.

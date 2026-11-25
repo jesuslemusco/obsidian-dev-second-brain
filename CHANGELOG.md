@@ -5,9 +5,11 @@
 - Each helper command starts fewer processes, so it answers sooner, most of all on Windows, where
   Git Bash starts each one slowly. `second-brain doctor` starts about 40% of the processes it
   started in 0.12.0. For all of its checks it reads the index's project rows once and lists each
-  tasks folder once, and it answers each profile setting it looks up from one read of the
-  profile's scalar keys. The checks that read only the tasks' rows run in one `awk` pass. The
-  shell works out letter case and dates itself.
+  tasks folder once, and it answers each scalar setting it looks up through `sb_setting` from one
+  read of the profile's scalar keys. The repo settings, `repos`, `repos_root` and `repo_paths`,
+  are still read from the profile apart. The `task-frontmatter`, `needs-a-status`, `status-tag`,
+  `yaml-traps`, `bare-links` and `line-endings` checks and the tags of `topic-tags` read the
+  tasks' rows in one `awk` pass. The shell works out letter case and dates itself.
 - `sprint open`, `sprint close` and `doctor --fix` list the tasks folder once for their moves,
   however many tasks they move. The parent of each task they move is read for all of them in one
   pass, where each move read every task again, so the time grew with the square of the tasks

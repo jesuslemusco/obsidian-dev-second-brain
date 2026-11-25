@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 # projects.sh - the index table, project resolution, the profile and the context block.
 
+# The index rows of one vault, read once by a command that writes no index, such as the doctor:
+# SB_PROJECTS_MEMO_ROOT is the vault root they are for, SB_PROJECTS_MEMO the rows and
+# SB_PROJECTS_MEMO_RC the exit code. sb_projects_memo sets them.
+SB_PROJECTS_MEMO_ROOT=""
+SB_PROJECTS_MEMO=""
+SB_PROJECTS_MEMO_RC=0
+
+# sb_projects_memo: read the index rows once, so each sb_projects_tsv after it starts no process.
+sb_projects_memo() {
+  SB_PROJECTS_MEMO_ROOT=""
+  sb_need_root
+  SB_PROJECTS_MEMO_RC=0
+  SB_PROJECTS_MEMO="$(sb_projects_tsv 2>/dev/null)" || SB_PROJECTS_MEMO_RC=$?
+  SB_PROJECTS_MEMO_ROOT="$SB_ROOT"
+}
+
 # Print one TSV row per project in the index: name, path, keys.
 sb_projects_tsv() {
   sb_need_root
+  if [ -n "${SB_PROJECTS_MEMO_ROOT:-}" ] && [ "$SB_PROJECTS_MEMO_ROOT" = "$SB_ROOT" ]; then
+    [ -z "$SB_PROJECTS_MEMO" ] || printf '%s\n' "$SB_PROJECTS_MEMO"
+    return "$SB_PROJECTS_MEMO_RC"
+  fi
   [ -f "$SB_ROOT/CLAUDE.md" ] || return 1
   LC_ALL=C awk '
     function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
@@ -129,15 +149,16 @@ EOF
 
 # Resolve a project by name; sets SB_P_NAME, SB_P_PATH, SB_P_KEYS. Returns 1 for none, 4 for several.
 sb_project_resolve() {
-  local rows count
+  local rows
   sb_need_root
   rows="$(sb_project_rows_by_name "$1")"
   [ -n "$rows" ] || return 1
-  count="$(printf '%s\n' "$rows" | wc -l | tr -d ' ')"
-  if [ "$count" -gt 1 ]; then
-    SB_P_ROWS="$rows"
-    return 4
-  fi
+  case "$rows" in
+    *$'\n'*)
+      SB_P_ROWS="$rows"
+      return 4
+      ;;
+  esac
   IFS=$'\t' read -r SB_P_NAME SB_P_PATH SB_P_KEYS <<EOF
 $rows
 EOF
@@ -169,7 +190,8 @@ sb_setting() {
 
 # Return 0 when the project at a vault path uses sprints; only uses_sprints: false turns them off.
 sb_uses_sprints() {
-  [ "$(sb_setting "$1" uses_sprints true | tr '[:upper:]' '[:lower:]')" != "false" ]
+  sb_lc "$(sb_setting "$1" uses_sprints true)"
+  [ "$SB_LC" != "false" ]
 }
 
 # Exit 5 when the current project does not use sprints.
@@ -192,6 +214,8 @@ sb_need_project() {
   esac
   SB_P_DIR="$SB_ROOT/$SB_P_PATH"
   SB_P_PROFILE="$SB_P_DIR/claude/profile.md"
+  # The profile is read once here; each setting after it starts no process.
+  sb_fm_cache "$SB_P_PROFILE"
   SB_TASKS_ROOT="$(sb_setting "$SB_P_PATH" tasks_root tasks)"
   SB_TOPICS_ROOT="$(sb_setting "$SB_P_PATH" topics_root docs)"
   SB_SPRINTS_ROOT="$(sb_setting "$SB_P_PATH" sprints_root sprints)"
@@ -256,10 +280,26 @@ sb_repo_paths() {
   done
 }
 
+# The repo rows of one project, read once by the doctor, whose checks read them several times:
+# SB_REPO_MEMO_FOR is the project path and SB_REPO_MEMO the rows. sb_repo_memo sets them.
+SB_REPO_MEMO_FOR=""
+SB_REPO_MEMO=""
+
+# sb_repo_memo <project path>: read the repo rows of a project once, for sb_repo_rows_at.
+sb_repo_memo() {
+  SB_REPO_MEMO_FOR=""
+  SB_REPO_MEMO="$(sb_repo_rows_at "$1")"
+  SB_REPO_MEMO_FOR="$1"
+}
+
 # Print the repo rows of a project path, the repos of its subprojects included: name, path, state
 # (ok, missing or unknown).
 sb_repo_rows_at() {
   local name path f profile="$SB_ROOT/$1/claude/profile.md" subs
+  if [ -n "${SB_REPO_MEMO_FOR:-}" ] && [ "$1" = "$SB_REPO_MEMO_FOR" ]; then
+    [ -z "$SB_REPO_MEMO" ] || printf '%s\n' "$SB_REPO_MEMO"
+    return 0
+  fi
   subs=()
   for f in "$SB_ROOT/$1/claude/subprojects"/*.md; do
     [ -f "$f" ] && subs[${#subs[@]}]="$f"

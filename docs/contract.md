@@ -962,10 +962,12 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - Every helper function is named `sb_*` and every command `cmd_*`.
 - A library must not redefine a function another library owns.
 - Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`, `sb_fm_edit`, `sb_fm_keys`,
-  `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_groups`, `sb_task_nested`,
-  `sb_task_scan`, `sb_task_parent`, `sb_parent_label`,
+  `sb_fm_cache`, `sb_lc`, `sb_section`, `sb_task_files`, `sb_task_list`, `sb_task_list_keep`,
+  `sb_task_list_drop`, `sb_task_readme`, `sb_task_groups`, `sb_task_nested`, `sb_task_scan`,
+  `sb_task_parent`, `sb_task_parents`, `sb_task_parent_in`, `sb_alias_hits`, `sb_parent_label`,
   `sb_sprint_current_id`, `sb_sprint_folder`, `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`,
-  `sb_body_insert`, `sb_note`, `sb_md_files`, `sb_board_sprint_literal`.
+  `sb_body_insert`, `sb_note`, `sb_md_files`, `sb_board_sprint_literal`, `sb_projects_memo`,
+  `sb_repo_memo`, `sb_date_days`, `sb_date_civil`.
 - Every command that looks for a task goes through `sb_task_files`, which lists a tasks folder's
   task READMEs directly under it, in each of the five status folders and in the archive, and
   `sb_task_readme`, which finds one task folder's README in any of them.
@@ -975,6 +977,15 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - In each group folder, both take a task one level deeper too, as section 4 says, from
   `sb_task_nested`. `sb_task_parent` names a task's parent, and `sb_parent_label` the profile's
   word for it.
+- A command that moves several tasks lists their tasks folder once. `sb_task_list_keep` keeps the
+  listing, and `sb_task_list` prints it in place of `sb_task_files` for that folder, until
+  `sb_task_list_drop`. `sb_task_parents` reads the parent of every task that moves in one pass,
+  the one `sb_task_parent` names for each. `sprint open`, `sprint close` and the doctor's `--fix`
+  do so; the doctor lists each project's tasks folder once more for its rows, after the moves.
+- A command reads its project's profile once: `sb_need_project` and the doctor's project setup
+  call `sb_fm_cache`, which holds one note's frontmatter, so that `sb_fm_get` and `sb_setting`
+  answer for it with no process. An edit through `sb_fm_edit`, `sb_body_insert` or
+  `sb_body_append` drops it. `sb_lc` lowers the letter case of a keyword with no process.
 
 ## 8. Templates
 

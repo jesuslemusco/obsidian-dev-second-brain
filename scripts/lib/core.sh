@@ -94,7 +94,9 @@ sb_today() {
   fi
 }
 
-# Print the awk functions shared by the awk programs in this plugin.
+# Print the awk functions shared by the awk programs in this plugin. fm_value(path, key) reads a
+# scalar key of a note as sb_fm_get does, and sets _fm_found; alias_set(path, out) puts each
+# alias of a note, in lower case, in out, as sb_alias_scan reads them.
 # Every awk that loads them runs with LC_ALL=C: cut() matches bytes, and gawk refuses that
 # pattern in a UTF-8 locale, which stops the whole program.
 # The text is one quoted string that the shell prints itself, since most commands ask for it
@@ -235,17 +237,100 @@ function date_days(s) {
 function date_ok(s) {
   if (s !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) return 0
   return civil_from_days(date_days(s)) == s
+}
+function fm_value(path, key,   line, n, k) {
+  _fm_found = 0; k = key ":"; n = 0; line = ""
+  while ((getline line < path) > 0) {
+    n++; sub(/\r$/, "", line)
+    if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+    if (line == "---") break
+    if (substr(line, 1, length(k)) == k) { _fm_found = 1; break }
+  }
+  close(path)
+  return (_fm_found ? unq(substr(line, length(k) + 1)) : "")
+}
+function alias_set(path, out,   line, n, key, v, i, m, k, it) {
+  n = 0; key = ""
+  while ((getline line < path) > 0) {
+    n++; sub(/\r$/, "", line)
+    if (n == 1) { sub(/^\357\273\277/, "", line); if (line != "---") break; continue }
+    if (line == "---") break
+    if (line ~ /^[A-Za-z0-9_][A-Za-z0-9_-]*:/) {
+      i = index(line, ":"); key = substr(line, 1, i - 1); v = trim(substr(line, i + 1))
+      if (key != "aliases") continue
+      if (substr(v, 1, 1) == "[") { m = split_inline(v, it); for (k = 1; k <= m; k++) out[tolower(it[k])] = 1 }
+      else if (v != "") out[tolower(unq(v))] = 1
+    } else if (key == "aliases" && line ~ /^[ \t]*-([ \t]|$)/) {
+      v = line; sub(/^[ \t]*-[ \t]*/, "", v); out[tolower(unq(v))] = 1
+    }
+  }
+  close(path)
 }'
 }
 
-# Return 0 when the argument is a real YYYY-MM-DD date.
+# Return 0 when the argument is a real YYYY-MM-DD date. The shell checks it, with no process.
 sb_date_ok() {
-  LC_ALL=C SB_D="$1" awk "$(sb_awk_lib)"'BEGIN { exit(date_ok(ENVIRON["SB_D"]) ? 0 : 1) }'
+  local y m d last=31
+  case "$1" in
+    [0123456789][0123456789][0123456789][0123456789]-[0123456789][0123456789]-[0123456789][0123456789]) ;;
+    *) return 1 ;;
+  esac
+  y=$((10#${1:0:4}))
+  m=$((10#${1:5:2}))
+  d=$((10#${1:8:2}))
+  case "$m" in
+    4 | 6 | 9 | 11) last=30 ;;
+    2) if [ $((y % 4)) -eq 0 ] && { [ $((y % 100)) -ne 0 ] || [ $((y % 400)) -eq 0 ]; }; then last=29; else last=28; fi ;;
+  esac
+  [ "$m" -ge 1 ] && [ "$m" -le 12 ] && [ "$d" -ge 1 ] && [ "$d" -le "$last" ]
 }
 
-# Print a date shifted by a number of days.
+# sb_date_days <date>: set SB_DAYS to the day number of a real date, as the awk library's
+# date_days counts it, with no process.
+sb_date_days() {
+  local y m d era yoe doy doe
+  y=$((10#${1:0:4}))
+  m=$((10#${1:5:2}))
+  d=$((10#${1:8:2}))
+  [ "$m" -gt 2 ] || y=$((y - 1))
+  era=$(((y >= 0 ? y : y - 399) / 400))
+  yoe=$((y - era * 400))
+  doy=$(((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1))
+  doe=$((yoe * 365 + yoe / 4 - yoe / 100 + doy))
+  SB_DAYS=$((era * 146097 + doe - 719468))
+}
+
+# sb_date_civil <day number>: set SB_DATE to the date of a day number, as the awk library's
+# civil_from_days gives it, with no process.
+sb_date_civil() {
+  local z era doe yoe y doy mp d m
+  z=$(($1 + 719468))
+  era=$(((z >= 0 ? z : z - 146096) / 146097))
+  doe=$((z - era * 146097))
+  yoe=$(((doe - doe / 1460 + doe / 36524 - doe / 146096) / 365))
+  y=$((yoe + era * 400))
+  doy=$((doe - (365 * yoe + yoe / 4 - yoe / 100)))
+  mp=$(((5 * doy + 2) / 153))
+  d=$((doy - (153 * mp + 2) / 5 + 1))
+  m=$((mp + (mp < 10 ? 3 : -9)))
+  [ "$m" -gt 2 ] || y=$((y + 1))
+  printf -v SB_DATE '%04d-%02d-%02d' "$y" "$m" "$d"
+}
+
+# Print a date shifted by a number of days. A real date and a whole number are counted by the
+# shell, with no process, as the awk library counts them; anything else goes to awk, which reads
+# the digits it can.
 sb_date_add() {
-  LC_ALL=C SB_D="$1" SB_N="$2" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }'
+  local n
+  case "$2" in '' | - | *[!0123456789-]* | ?*-*) n="" ;; *) n="$2" ;; esac
+  if [ -z "$n" ] || ! sb_date_ok "$1"; then
+    LC_ALL=C SB_D="$1" SB_N="$2" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }'
+    return
+  fi
+  case "$n" in -*) n="-$((10#${n#-}))" ;; *) n=$((10#$n)) ;; esac
+  sb_date_days "$1"
+  sb_date_civil $((SB_DAYS + n))
+  printf '%s\n' "$SB_DATE"
 }
 
 # Print the number of days from the second date to the first.
@@ -267,9 +352,77 @@ sb_same_file() {
   fi
 }
 
-# Print a scalar frontmatter value, unquoted; return 1 when the key is absent.
+# sb_lc <text>: set SB_LC to the text with A to Z in lower case, as tr '[:upper:]' '[:lower:]'
+# gives a keyword, with no process.
+sb_lc() {
+  local s="$1" c b out="" up="ABCDEFGHIJKLMNOPQRSTUVWXYZ" low="abcdefghijklmnopqrstuvwxyz"
+  while [ -n "$s" ]; do
+    c="${s%"${s#?}"}"
+    s="${s#?}"
+    case "$c" in
+      [ABCDEFGHIJKLMNOPQRSTUVWXYZ])
+        b="${up%%"$c"*}"
+        c="${low:${#b}:1}"
+        ;;
+    esac
+    out="$out$c"
+  done
+  SB_LC="$out"
+}
+
+# The frontmatter of one note, read once: SB_FM_CACHE_FILE is its path and SB_FM_CACHE holds a
+# line "<key><TAB><value>" for the first line of each key, after a newline, so that sb_fm_get
+# answers for that note with no process. Set where a command sets up its project, for the
+# profile; an edit through the helper drops it.
+SB_FM_CACHE_FILE=""
+SB_FM_CACHE=""
+
+# sb_fm_cache <file>: read the scalar keys of a note's frontmatter into the cache, in one pass.
+# A file that is not there, or cannot be read, is not held.
+sb_fm_cache() {
+  local rows
+  SB_FM_CACHE_FILE=""
+  SB_FM_CACHE=""
+  [ -f "$1" ] && [ -r "$1" ] || return 0
+  rows="$(LC_ALL=C awk "$(sb_awk_lib)"'
+    { sub(/\r$/, "") }
+    NR == 1 { sub(/^\357\273\277/, ""); if ($0 != "---") exit; next }
+    $0 == "---" { exit }
+    /^[A-Za-z0-9_][A-Za-z0-9_-]*:/ {
+      i = index($0, ":"); k = substr($0, 1, i - 1)
+      if (!(k in seen)) { seen[k] = 1; print k "\t" unq(substr($0, i + 1)) }
+    }' "$1" 2>/dev/null && printf x)" || return 0
+  SB_FM_CACHE=$'\n'"${rows%x}"
+  SB_FM_CACHE_FILE="$1"
+}
+
+# sb_fm_drop <file>: forget the cached frontmatter when it is that file's.
+sb_fm_drop() {
+  [ "$1" != "${SB_FM_CACHE_FILE:-}" ] || SB_FM_CACHE_FILE=""
+}
+
+# Print a scalar frontmatter value, unquoted; return 1 when the key is absent. The note in the
+# cache answers from it for a key of letters, digits, "_" and "-".
 sb_fm_get() {
+  local v nl=$'\n' tab=$'\t'
   [ -f "$1" ] || return 1
+  if [ -n "${SB_FM_CACHE_FILE:-}" ] && [ "$1" = "$SB_FM_CACHE_FILE" ]; then
+    # The letters are spelled out, as a range in brackets may take other letters in some locales.
+    case "$2" in
+      '' | [!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]* | \
+        *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-]*) ;;
+      *)
+        case "$SB_FM_CACHE" in
+          *"$nl$2$tab"*)
+            v="${SB_FM_CACHE#*"$nl$2$tab"}"
+            printf '%s\n' "${v%%"$nl"*}"
+            return 0
+            ;;
+        esac
+        return 1
+        ;;
+    esac
+  fi
   LC_ALL=C SB_KEY="$2" awk "$(sb_awk_lib)"'
     BEGIN { key = ENVIRON["SB_KEY"] ":"; klen = length(key); found = 0 }
     { sub(/\r$/, "") }
@@ -340,6 +493,7 @@ sb_fm_edit() {
   local file="$1" op="$2" key="$3" a1="${4-}" a2="${5-}" tmp eofnl=1
   SB_FM_CHANGED=0
   [ -f "$file" ] || return 1
+  sb_fm_drop "$file"
   if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then eofnl=0; fi
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-fm.XXXXXX")" || return 1
   LC_ALL=C SB_OP="$op" SB_KEY="$key" SB_A1="$a1" SB_A2="$a2" SB_EOFNL="$eofnl" awk "$(sb_awk_lib)"'
@@ -655,6 +809,7 @@ sb_fill() {
 sb_body_insert() {
   local file="$1" heading="$2" mode="$3" text="$4" tmp eofnl=1 rc=0
   [ -f "$file" ] || return 1
+  sb_fm_drop "$file"
   if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then eofnl=0; fi
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-body.XXXXXX")" || return 1
   LC_ALL=C SB_H="$heading" SB_MODE="$mode" SB_TEXT="$text" SB_EOFNL="$eofnl" awk '
@@ -692,6 +847,7 @@ sb_body_insert() {
 sb_body_append() {
   local file="$1" text="$2" tmp
   [ -f "$file" ] || return 1
+  sb_fm_drop "$file"
   tmp="$(mktemp "${TMPDIR:-/tmp}/sb-body.XXXXXX")" || return 1
   LC_ALL=C SB_TEXT="$text" awk '
     BEGIN { nt = split(ENVIRON["SB_TEXT"], tl, "\n"); eol = ""; blank = 1 }

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
+- Each helper command starts fewer processes, so it answers sooner, most of all on Windows, where
+  Git Bash starts each one slowly. `second-brain doctor` starts about 40% of the processes it
+  started in 0.12.0. It reads the index, each project's profile and its tasks once for all of its
+  checks, and the checks that read only the tasks' rows run in one `awk` pass. The shell works
+  out letter case and dates itself.
+- `sprint open`, `sprint close` and `doctor --fix` list the tasks folder once, however many tasks
+  they move. The parent of each task they move is read for all of them in one pass, where each
+  move read every task again, so the time grew with the square of the tasks moved.
+- On Linux, `bash scripts/test-doctor.sh` takes about 112 s, down from 174 s.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

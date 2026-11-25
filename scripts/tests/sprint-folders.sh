@@ -604,4 +604,76 @@ re-pointed: OP-4 from 2026-12-25 to 2026-12-18"
 exists "open in place: it stays in the folder" "$OT/sprint-2/OP-4/README.md"
 line_is "open in place: and its sprint is the new one" "$OT/sprint-2/OP-4/README.md" 'sprint: "2026-12-18"'
 
+# ---------------------------------------------------------------- one scan of the tasks
+# sprint open and sprint close list the tasks folder once, however many tasks they move: the
+# parent of each moved child comes from that one listing, not from a listing of its own.
+# counted <command> <args...>: run one helper command in a subshell of this shell, with each
+# listing of a tasks folder written to $tmp/scans. scans_of <tasks folder>: how many it made there.
+counted() {
+  (
+    eval "listed_$(declare -f sb_task_files)"
+    sb_task_files() {
+      printf '%s\n' "$1" >>"$tmp/scans"
+      listed_sb_task_files "$@"
+    }
+    c="cmd_$1"
+    shift
+    "$c" "$@"
+  ) </dev/null
+}
+scans_of() { grep -cxF -- "$1" "$tmp/scans" 2>/dev/null || true; }
+N="work/scan"
+NT="$vault/$N/tasks"
+sb scaffold project Scan --path "$N" --keys SC
+edit "$vault/$N/claude/profile.md" 's/^task_layout: flat$/task_layout: sprint/'
+for t in SC-1 SC-2 SC-3 SC-4; do
+  sb task new "$t" --project Scan --title "Scan $t"
+  sb task set "$t" sprint=2026-11-20
+done
+sb task alias SC-1 add "Scan parent"
+sb task alias SC-4 add "Scan four"
+sb task set SC-2 epic=SC-1
+sb task set SC-3 epic=SC-1
+sb task set SC-4 "epic=Scan parent"
+exists "one scan: the children are in their parent's folder" "$NT/2026-11-20/SC-1/SC-4/README.md"
+rm -f "$tmp/scans"
+run counted sprint open Scan --end 2026-12-04
+rc_is "one scan: sprint open moves the four tasks, exit 0" 0
+exists "one scan: the parent is in the new sprint's folder" "$NT/2026-12-04/SC-1/README.md"
+exists "one scan: a child by the parent's id is inside it there" "$NT/2026-12-04/SC-1/SC-3/README.md"
+exists "one scan: a child by the parent's alias too" "$NT/2026-12-04/SC-1/SC-4/README.md"
+is "one scan: sprint open lists the tasks folder once for the four moves" "$(scans_of "$NT")" "1"
+rm -f "$tmp/scans"
+run counted sprint close Scan --carry SC-1,SC-2 --backlog "SC-3, scan four"
+rc_is "one scan: sprint close carries two tasks and sends two to the backlog, one by its alias, exit 0" 0
+out_has "one scan: the task named by its alias is listed by its id" "backlog: SC-3, SC-4"
+exists "one scan: a carried child is inside its parent in the next sprint's folder" \
+  "$NT/2026-10-09/SC-1/SC-2/README.md"
+exists "one scan: a child sent to the backlog is inside its parent's folder there" \
+  "$NT/backlog/SC-1/SC-4/README.md"
+is "one scan: sprint close lists the tasks folder once for the four moves" "$(scans_of "$NT")" "1"
+# The one pass that reads every parent gives each task the parent sb_task_parent gives it: by
+# folder name in any letter case or by alias, none for an epic that names the task itself alone,
+# no task or several, and none for "-" or no epic.
+for t in SC-5 SC-6 SC-7 SC-8 SC-9 SC-10 SC-11; do sb task new "$t" --project Scan --title "Scan $t"; done
+sb task alias SC-7 add Shared
+# task alias refuses an alias another task holds; two tasks share one only by hand.
+edit "$NT/backlog/SC-8/README.md" 's/^  - SC-8$/  - SC-8\
+  - shared/'
+edit "$NT/backlog/SC-5/README.md" 's/^epic: .*$/epic: sc-1/'
+edit "$NT/backlog/SC-6/README.md" 's/^epic: .*$/epic: SC-6/'
+edit "$NT/backlog/SC-9/README.md" 's/^epic: .*$/epic: shared/'
+edit "$NT/backlog/SC-10/README.md" 's/^epic: .*$/epic: Nobody/'
+edit "$NT/backlog/SC-11/README.md" '/^epic: /d'
+files="$(sb_task_files "$NT")"
+one_by_one="$(printf '%s\n' "$files" | while IFS= read -r f; do
+  printf '%s\t%s\n' "$f" "$(SB_ROOT="$vault" SB_P_DIR="$vault/$N" SB_TASKS_ROOT=tasks sb_task_parent "$f")"
+done)"
+is "parents: one pass gives each task the parent sb_task_parent gives it" \
+  "$(printf '%s\n\034\n%s\n' "$files" "$files" | sb_task_parents)" "$one_by_one"
+is "parents: a child by its parent's id in another case, by alias, and none for the rest" \
+  "$(printf '%s\n\034\n%s\n' "$files" "$files" | sb_task_parents | awk -F'\t' '{ n = split($1, p, "/"); print p[n - 1] "=" $2 }' |
+    LC_ALL=C sort | tr '\n' ' ')" \
+  "SC-10= SC-11= SC-1= SC-2=SC-1 SC-3=SC-1 SC-4=SC-1 SC-5=SC-1 SC-6= SC-7= SC-8= SC-9= "
+
 result

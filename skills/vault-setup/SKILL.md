@@ -114,6 +114,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    `unknown`.
 7. Fill `## Docs` of the profile:
    - Ask how a deployment is confirmed in this project. Write the answer in its opening paragraph.
+   - Offer to have `docs-keeper` draft the project's docs from its code, as
+     `${CLAUDE_SKILL_DIR}/docs.md` says.
    - For every repository named, add its Code to doc map rows as
      `## 2. The docs that follow it` in `${CLAUDE_SKILL_DIR}/repo.md` says.
    - Fill any other section only from what the user says.
@@ -136,6 +138,9 @@ to it, and follow it.
 - repo: `${CLAUDE_SKILL_DIR}/repo.md`
 - subproject: `${CLAUDE_SKILL_DIR}/subproject.md`
 - validation: `${CLAUDE_SKILL_DIR}/validation.md`
+
+`${CLAUDE_SKILL_DIR}/docs.md`, the docs setup, is no mode: read it when step 7 of project mode or
+`repo.md` points to it.
 
 In project and adopt, offer subproject when the user names repositories that differ in branches
 or docs.

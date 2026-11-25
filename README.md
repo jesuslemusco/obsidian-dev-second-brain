@@ -174,7 +174,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift, rewrites renamed commands and drafts the docs of a project that has none. | `story-tracker` when a ticket reaches production, `vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one approved story in its git worktree, test-first, runs its checks and commits it. | `build`. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a story's change. Edits no file and ends with a JSON verdict. | `build`: for the baseline, and after each build and fix of a story. |
 

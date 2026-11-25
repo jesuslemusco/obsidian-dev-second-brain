@@ -1490,6 +1490,20 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - **A renamed command goes to `docs-keeper`.** It rewrites every live reference in the vault,
   leaves the history the doctor's `old-namespace` check does not read, and adds a status note to
   each story it changed.
+- **A project with no docs gets a draft of them from `docs-keeper`.** When `vault-setup` adds a
+  project or a repository, it offers to start `docs-keeper` on its
+  `Workflow 7 - Set up a project's docs`.
+- `docs-keeper` reads each repository's README, its layout and its code at the code ref. It
+  drafts the topic folders, a hub for each, a first note per topic and the profile's Code to doc
+  map rows.
+- It returns the draft and writes nothing. An agent cannot ask the owner, so `vault-setup` holds
+  the approval.
+- `vault-setup` shows the owner the draft, and each change the owner asks for, which
+  `docs-keeper` drafts again against the code.
+- Only on the owner's approval does `vault-setup` start `docs-keeper` again to write the draft as
+  approved. It overwrites no file.
+- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
+  that are folder paths. The steps are in `skills/vault-setup/docs.md`.
 - The sprint close only reports done tasks with unticked doc lines, from `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose.
 - A missing or non-standard status is reported as "Needs a status" and never set without asking.

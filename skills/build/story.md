@@ -349,11 +349,15 @@ merge is local. A push is another step, on the owner's word alone.
 7. `second-brain task note <ID> "Build: merged <branch> into <target> at <short hash>."`, with the
    hash of the merge in `<where>`. Then
    `second-brain task set <ID> next="Merged into <target>; waits for the owner's go to push"`.
-8. The checks on the merged tree. Compare `git -C "<where>" rev-parse HEAD^{tree}` with
-   `git -C "<path>" rev-parse <hash>^{tree}`, with `<hash>` that of the passing review's note.
-   - The same tree: the review ran the checks on it. Skip them, and say so.
-   - Another tree: `second-brain validation run "<project>" <repo> --when each-build --path "<where>"`,
-     with the Bash tool's `run_in_background: true`, and wait for its notice.
+8. The checks on the merged tree: every `each merge` one, even on the tree the review read. A
+   review runs only the `each story` checks that its change touches.
+   - `second-brain validation run "<project>" <repo> --when each-merge --path "<where>"`, with the
+     Bash tool's `run_in_background: true`, and wait for its notice.
+   - The merge runs no user step. Read the steps with
+     `second-brain validation "<project>" <repo> --path "<where>"`. Name to the owner each line
+     under `### Check as a user would` that is `each merge`, as one for them to ask for: its
+     `when:` is `each merge` or `each build`, another value than `each story`, `each task` or
+     `release`, or none.
    - A `fail` row: push nothing, and skip item 9. Show the owner its lines, and ask what to do:
      a ruling to fix the story, as item 3 of `## 7. When the story stops` says, or undoing the
      merge. Undoing it, `git -C "<where>" reset --hard <before>`, is a destructive action: only

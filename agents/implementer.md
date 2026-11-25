@@ -33,7 +33,7 @@ id and the rulings. The story and the code in the worktree are what you build fr
    - A prompt with a `Fix: review <m> failed` line, as a fresh `implementer` gets on a fix round:
      take `### A story fix` in place of this step.
 5. Run its checks, as `## 2. Check` says: your test, then
-   `second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`.
+   `second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`.
    - Run no other check: the review runs the rest, in the same worktree.
 6. Check your change yourself, as `### Check it yourself` says.
 7. Commit in the worktree, as `## 3. Commit` says. Give each commit a subject in the style
@@ -83,12 +83,12 @@ review of your story that failed.
 
 ## 2. Check
 
-Before you commit, run your test and the repo's `each task` checks, which are quick and run on
-every change.
+Before you commit, run your test and the repo's `each story` checks that your change touches,
+as the review runs them.
 
-- Run the `each task` checks all at once with
-  `second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`. Each row
-  it prints is one result.
+- Run the `each story` checks all at once with
+  `second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`,
+  with the base of your prompt. Each row it prints is one result.
 - Run each test and check in the foreground, with the Bash tool's longest timeout:
   `timeout: 600000`, 10 minutes. Never with `run_in_background`.
 - In a background agent, a call may move to the background after 3 minutes, whatever its timeout.
@@ -111,13 +111,14 @@ every change.
   only so that it passes.
 - A command you cannot make pass, or cannot run, such as one that is not found: commit nothing,
   and stop with `BLOCKED:`.
-- Run no other check: no `release` check, no user step, and no `each build` check but the one
+- Run no other check: no `release` check, no user step, and no `each merge` check but the one
   suite that holds your own test. `reviewer` runs the rest in its review.
 
 ## 3. Commit
 
 - Commit only when the checks of step 5 of `## Story mode` passed: your test, and every row
-  `validation run` printed passed or was skipped. A row it skips has no command to run.
+  `validation run` printed passed or was skipped. A row it skips has no command to run, or no
+  change to its paths.
 - Stage the story's files by name: `git -C "<worktree>" add <file>...`.
 - Never amend or push.
 - A commit hook fails: fix the cause and commit again. Never `--no-verify`.

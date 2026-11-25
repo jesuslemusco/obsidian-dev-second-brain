@@ -32,9 +32,12 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
    - A step on a page needs a browser, and the plugin ships none. Offer a browser skill this
      session lists, else ask which skill or command the repo uses.
    - End each check and each user step with when it runs, as `### Validation` in
-     `docs/contract.md` says. Draft `when: each task` for a quick one, such as a linter or a
-     single test file, `when: each build` for a full suite, and `when: release` for one that costs
-     money or takes long, such as an end-to-end suite.
+     `docs/contract.md` says. Draft `when: each story` for one each story's review runs, such as
+     a linter or a suite, `when: each merge` for one that runs once a story merges, such as a slow
+     full suite, and `when: release`, in a project that plans releases, for one that costs money
+     or takes long, such as an end-to-end suite.
+   - A check that only some files can break, such as the suite of one part of the code: draft its
+     `paths:` from the folders it tests, as the same section says.
    - `### A pass`: what must be true for a change to pass.
 4. Show the draft and ask the user to confirm or correct each part.
 5. Write only what they confirm, in place of the `<...>` lines, with the Edit tool.

@@ -209,9 +209,9 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `second-brain validation run <project> <repo> --path <worktree>`.
 - `implementer` builds the story test-first, and checks its whole change against the story's
   criteria and the reviewer's list of defects before it commits.
-- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks
-  and user steps, and grades the code. A defect fails the story. A follow-up does not: the build
-  lists it for you when it finishes or stops.
+- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each story` checks
+  that the story's change touches and its `each story` user steps, and grades the code. A defect
+  fails the story. A follow-up does not: the build lists it for you when it finishes or stops.
 - A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under
@@ -220,8 +220,9 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   the project's `claude/README.md`, such as into the open `release/<version>`. With none written,
   Claude asks you, and offers to write your answer there.
 - The merge is local, and only on your go. A conflict where both sides only add lines keeps both.
-  Any other is shown to you. The checks run on the merged branch, and Claude pushes only on your
-  word, as `### The merge` in `skills/build/story.md` says.
+  Any other is shown to you. Every `each merge` check runs on the merged branch, and Claude names
+  each `each merge` user step for you to ask for. Claude pushes only on your word, as
+  `### The merge` in `skills/build/story.md` says.
 - Once the merge is done, or you say not to merge, the story's worktree is removed, after Claude
   shows you any ignored file in it, such as a `.env`. The branch stays.
 - Progress is kept in the story's status notes, so a new session goes on where the build stopped.
@@ -274,12 +275,19 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
-- Each check and user step ends with when it runs: `when: each task`, `when: each build` or
-  `when: release`, as `### Validation` in `docs/contract.md` says. A `release` one runs only when
-  you ask.
-- `second-brain validation run <project> <repo> --when each-task` runs the matching checks one at a
-  time, each stopped after `--timeout` seconds, and prints a row per check. Its form is under
-  `## 7. The helper` in `docs/contract.md`.
+- Each check and user step ends with when it runs: `when: each story`, `when: each merge` or
+  `when: release`, as `### Validation` in `docs/contract.md` says.
+- `each story` runs in each story's review. `each merge` runs on the branch a story merges into,
+  before its push. Neither needs sprints or a release branch.
+- A `release` one is for a project that plans releases, and runs only when you ask.
+- `each task` and `each build`, the names before 0.13.0, still run, as `each story` and
+  `each merge`. The doctor's `validation` check names each one, for you to rename.
+- A check that only some files can break names them, as `paths: <glob>, ...`. A story's review
+  runs it only when the story's change touches one of them.
+- `second-brain validation run <project> <repo> --when each-story` runs the matching checks one at
+  a time, each stopped after `--timeout` seconds, and prints a row per check. With
+  `--changed <base>`, it skips a check whose paths the diff from `<base>` does not touch. Its form
+  is under `## 7. The helper` in `docs/contract.md`.
 - Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
   in `docs/contract.md` says.
 - The plugin ships no browser. Name the browser skill or command your repo uses.

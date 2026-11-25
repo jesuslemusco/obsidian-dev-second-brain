@@ -1646,9 +1646,10 @@ EOF
 
 # Check that each repo of the project has a validation.md with its section, and that the section is
 # written: not empty and free of the template's placeholders. A repo home with no recorded location
-# is named here; one whose folder is missing is the repos check's.
+# is named here; one whose folder is missing is the repos check's. So is each check and user step
+# whose when: is an old name, each task or each build.
 sb_doc_check_validation() {
-  local bad="" nl=$'\n' rows name home file show state rstate
+  local bad="" old="" nl=$'\n' rows name home file show state rstate fix="" kind a b
   if [ ! -f "$SB_P_PROFILE" ]; then
     sb_doc_row ok validation "$SB_P_NAME" "" "-"
     return 0
@@ -1668,14 +1669,22 @@ sb_doc_check_validation() {
       if [ "$home" = "repo" ] && [ "$rstate" != "ok" ]; then continue; fi
       case "$state" in
         missing | no-section | empty) bad="$bad$name:$state$nl" ;;
-        ok) if sb_val_placeholders "$file" "$name"; then bad="$bad$name:placeholders$nl"; fi ;;
+        ok)
+          if sb_val_placeholders "$file" "$name"; then bad="$bad$name:placeholders$nl"; fi
+          while IFS=$'\t' read -r kind a b; do
+            [ "$kind" != "old" ] || old="$old$name:$a:$b$nl"
+          done <<EOF2
+$(sb_section "$file" "$name" 2>/dev/null | sb_val_checks 3 "checks|check as a user would")
+EOF2
+          ;;
       esac
     done <<EOF
 $rows
 EOF
   fi
-  sb_doc_report warn validation "$SB_P_NAME" "$bad" \
-    "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+  [ -z "$bad" ] || fix="run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+  [ -z "$old" ] || fix="${fix:+$fix; }write each old when: by its new name: each task is each story, each build is each merge"
+  sb_doc_report warn validation "$SB_P_NAME" "$bad$old" "$fix"
 }
 
 # Check the sprints: one in progress at most, none past its end, a note for every sprint id on a task.

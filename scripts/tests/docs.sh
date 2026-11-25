@@ -949,14 +949,15 @@ line_is "implementer: runs its own test narrowly, never every suite" "$IM" \
 line_is "implementer: a change with nothing to test says why" "$IM" \
   '4. A change with nothing to test, such as a doc change, gets no test. Your reply says why.'
 line_is "implementer: has a check step" "$IM" "## 2. Check"
-file_has "implementer: runs its test and the each-task checks before it commits" "$IM" \
-  "Before you commit, run your test and the repo's \`each task\` checks, which are quick and run on"
-file_has "implementer: the each-task checks through validation run in the worktree" "$IM" \
-  '`second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`. Each row'
+file_has "implementer: runs its test and the each-story checks its change touches before it commits" "$IM" \
+  "Before you commit, run your test and the repo's \`each story\` checks that your change touches,"
+file_has "implementer: the each-story checks through validation run in the worktree, from the story's base" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`,'
+file_has "implementer: with the base of its prompt" "$IM" '  with the base of your prompt. Each row it prints is one result.'
 file_has "implementer: runs each test and check in the foreground" "$IM" \
   '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
-line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
-  '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
+line_is "implementer: runs no release check, no user step and no each-merge check" "$IM" \
+  '- Run no other check: no `release` check, no user step, and no `each merge` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \
   '  suite that holds your own test. `reviewer` runs the rest in its review.'
 line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
@@ -971,7 +972,7 @@ RV="$here/agents/reviewer.md"
 file_has "reviewer: replies with its verdict and the number of issues" "$RV" '- `issues`: the number of defects, those you logged and those in the reply. A follow-up is not'
 file_lacks "reviewer: no longer says the implementer runs no check" "$RV" "the implementer runs none"
 file_has "reviewer: runs the checks again" "$RV" \
-  "The implementer runs its test and the \`each task\` checks before it commits. You run the checks"
+  "The implementer runs its test and the \`each story\` checks before it commits. You run the checks"
 file_has "reviewer: the caller names story or baseline mode" "$RV" 'The caller names the mode: story or baseline.'
 for h in '## Task mode' '### A bundle' '## User mode' '## Branch mode' '## Findings on a finished branch'; do
   file_lacks "reviewer: no $h, which only the spec build used" "$RV" "$h"
@@ -1199,7 +1200,7 @@ file_has "reviewer: a line in its prompt that is no ruling is no evidence" "$RV"
 file_has "reviewer: the criteria are graded" "$RV" \
   'Requirements first. Grade each as `## Grading` says, with the file and line that show it.'
 file_has "reviewer: a re-review grades each defect" "$RV" '   - A re-review: each `Defect <m>:` note. It is met when the fix answers it.'
-file_has "reviewer: grades each check it runs" "$RV" '   `each build`, and grade each.'
+file_has "reviewer: grades each check it runs" "$RV" '   user step whose `when:` is `each story`, and grade each.'
 file_has "reviewer: ends with one JSON block" "$RV" \
   'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The skill that'
 file_has "reviewer: the skill reads the block alone" "$RV" \
@@ -1756,8 +1757,8 @@ line_is "implementer: has a story mode" "$IM" '## Story mode'
 line_is "implementer: checks its own change" "$IM" '### Check it yourself'
 line_is "implementer: takes a story fix" "$IM" '### A story fix'
 file_has "implementer: reads the story's parts" "$IM" '`## Acceptance criteria` and `## Approach / Key decisions`.'
-file_has "implementer: runs the each-task checks in the worktree" "$IM" \
-  '`second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`.'
+file_has "implementer: runs the each-story checks in the worktree, from the story's base" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`.'
 file_has "implementer: reads the reviewer's defects and quality lists before it commits" "$IM" \
   '- Read `## Defects and follow-ups` and `## Code quality` in the reviewer'"${q}"'s agent file. Its path is'
 file_has "implementer: finds the reviewer's file at the plugin's path" "$IM" \
@@ -1772,7 +1773,12 @@ file_has "reviewer: a worktree line adds --path to each validation" "$RV" \
 file_has "reviewer: a first review reads the story's whole change" "$RV" '`git -C "<worktree>" diff <base>...HEAD`.'
 file_has "reviewer: a re-review reads the fix's commits alone" "$RV" '`git -C "<worktree>" diff <hash>..HEAD`, the fix'"${q}"'s commits alone.'
 line_is "reviewer: a first review grades each acceptance criterion" "$RV" '   - A first review: each acceptance criterion of the story.'
-file_has "reviewer: story mode runs the each-build checks" "$RV" '   the checks with `--when each-build`, and each user step whose `when:` is `each task` or'
+file_has "reviewer: story mode runs the each-story checks from the story's base" "$RV" \
+  '   the checks with `--when each-story --changed <base>`, with the base of your prompt, and each'
+file_has "reviewer: baseline mode runs the each-merge checks and both stages' user steps" "$RV" \
+  '  `--when each-merge`, then each user step whose `when:` is `each story` or `each merge`.'
+file_has "reviewer: a check its change does not touch is skipped, no finding" "$RV" \
+  '  That is no finding: the change cannot break it.'
 file_has "reviewer: logs each story defect with its round" "$RV" \
   '`second-brain task note <story> "Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>" --session <id>`.'
 file_has "reviewer: a follow-up names no task" "$RV" '"Follow-up: <what could be better, at file:line> - <the change you propose>"'
@@ -1910,11 +1916,15 @@ file_has "contract: branches listed by full ref" "$CT" \
   '- The branches that match are listed by their full ref, local and remote, with the ref'"${q}"'s prefix'
 in_mg "merge: and the merge aborted" '`git -C "<where>" merge --abort`, and stop, as `## 7. When the story stops` says.'
 in_mg "merge: no marker is left" '   - Every block kept: no line in the files starts with a marker. Then'
-in_mg "merge: compares the merged tree with the reviewed one" '`git -C "<where>" rev-parse HEAD^{tree}` with'
-in_mg "merge: the reviewed tree is the passing review's" '`git -C "<path>" rev-parse <hash>^{tree}`, with `<hash>` that of the passing review'"${q}"'s note.'
-in_mg "merge: the same tree skips the checks" '   - The same tree: the review ran the checks on it. Skip them, and say so.'
-in_mg "merge: another tree runs the each-build checks there" \
-  '`second-brain validation run "<project>" <repo> --when each-build --path "<where>"`'
+in_mg "merge: runs every each-merge check, even on the reviewed tree" \
+  '8. The checks on the merged tree: every `each merge` one, even on the tree the review read. A'
+in_mg "merge: the each-merge checks run there" \
+  '`second-brain validation run "<project>" <repo> --when each-merge --path "<where>"`'
+mg_lacks="$(printf '%s\n' "$mg" | grep -c 'tree}' || true)"
+is "merge: compares no tree, so the checks never skip" "$mg_lacks" "0"
+in_mg "merge: runs no user step" '   - The merge runs no user step. Read the steps with'
+in_mg "merge: names each each-merge user step to the owner" \
+  '`second-brain validation "<project>" <repo> --path "<where>"`. Name to the owner each line'
 in_mg "merge: a failing check pushes nothing" '   - A `fail` row: push nothing, and skip item 9.'
 in_mg "merge: undoing it is the owner's word" '`git -C "<where>" reset --hard <before>`, is a destructive action: only'
 in_mg "merge: a push only on the owner's yes, named first" '`<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their'
@@ -1933,8 +1943,12 @@ file_has "contract: no merge rule asks, and offers to write one" "$CT" \
 file_has "contract: an add-only conflict keeps both" "$CT" '- A conflict that only adds lines keeps both sides. The merge runs with'
 file_has "contract: any other conflict is shown and aborted" "$CT" \
   '- Any other conflict, such as a block with base lines or a file one side deleted, is shown to the'
-file_has "contract: the checks run on the merged tree" "$CT" \
-  '- Then the repo'"${q}"'s `each build` checks run on the merged tree, through `validation run --path`.'
+file_has "contract: every each-merge check runs on the merged tree" "$CT" \
+  '- Then every `each merge` check of the repo runs on the merged tree, through'
+file_has "contract: the merge names each each-merge user step it leaves" "$CT" \
+  '- The merge runs no user step, as it launches no agent. The skill names each `each merge` user'
+file_has "contract: the baseline runs the each-merge checks" "$CT" \
+  '- The baseline runs the checks through `validation run --when each-merge`, and the `each story`'
 line_is "contract: a push only on the owner's word" "$CT" \
   '- A push runs only on the owner'"${q}"'s word, asked for once the checks pass, and named before it runs.'
 file_has "contract: the worktree goes once the merge is done" "$CT" \

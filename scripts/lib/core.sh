@@ -35,8 +35,10 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 checks:   validation <project> [repo] [--path DIR] | validation new <project> <repo>
-          validation run <project> <repo> [--when each-task|each-build|release] [--timeout S] [--path DIR]
+          validation run <project> <repo> [--when each-story|each-merge|release] [--path DIR]
+              [--changed BASE] [--timeout S]
               (DIR stands in for the repo's folder, such as a git worktree)
+              (--changed skips a check whose paths: the diff from BASE does not touch)
 sprints:  sprint current <project> | sprint next <project>
           sprint open <project> [--end YYYY-MM-DD] [--goal G]
           sprint set <project> goal=<text> committed=<n>

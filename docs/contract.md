@@ -1177,11 +1177,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   branch, and says so. It never deletes what it finds.
 - A branch that does not start on the base branch gets a baseline first: `reviewer` in baseline
   mode, in the worktree.
-- One `implementer` builds the story. Then a fresh `reviewer` grades it. A FAIL sends the review's
-  defects back to the same `implementer`, and a fresh `reviewer` grades the fix, until one passes
-  or the cap stops the build for the owner.
+- The batch's `implementer` builds the story, then the batch's `reviewer` grades it. A FAIL sends
+  the review's defects back to the same `implementer`, and the same `reviewer` grades the fix,
+  until one passes or the cap stops the build for the owner.
 - `reviewer` runs on `opus`. `implementer` builds the story and takes fix rounds 1 to 3 on `opus`,
-  as `<ID>-implementer`. Rounds 4 and 5 go to a fresh one on `fable`, the stronger model,
+  as `<batch>-implementer`. Rounds 4 and 5 go to a fresh one on `fable`, the stronger model,
   `<ID>-implementer-2`. A sixth failed review stops the build.
 - The story's progress is in its status notes. The counts read them, so each note has one of
   these shapes, word for word:
@@ -1279,13 +1279,26 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A resumed build skips the baseline, whatever the start.
 - The baseline runs the checks through `validation run --when each-merge`, and the `each story`
   and `each merge` user steps: every one but the `release` ones.
+- **Batches.** Before the first story starts, the skill cuts the run into batches of 1 to 3
+  related stories, in the run's order, as Step 3 of `skills/build/SKILL.md` says. Two stories are
+  related when they share an `epic` other than `-`, or their texts name a file in common. A story
+  with no related one next to it in that order builds alone.
+- A batch keeps the run's order, so no story goes before one it waits on.
+- One `implementer` and one `reviewer` build a batch's stories in turn, as `<batch>-implementer`
+  and `<batch>-reviewer`, `<batch>` being the id of its first story. The batch's first story and
+  its first review launch them. Each later story and each later review is a message to the same
+  agent with SendMessage, with the lines its prompt would hold.
+- Each story keeps its own branch and worktree, its own commits, its own status notes and its own
+  verdict: it passes or fails alone. The next story starts only once the one before it passed,
+  so a failed story goes back to the same `implementer` first.
+- Each story counts its own `fails` and rounds, so the cap counts per story, never per batch.
 - **One story at a time.** One story and one agent at a time, never in parallel.
 - No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
   one at a time, and names each launch's model by role and round.
-- Each `implementer` launch is named, so that a fix message reaches the agent of that name again
-  with SendMessage.
-- In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
-  place, with the same name and model.
+- Each `implementer` launch, and each `reviewer` launch in story mode, is named, so that a later
+  message reaches the agent of that name again with SendMessage.
+- In a new session, or when SendMessage cannot reach it, a fresh agent is launched in its place,
+  with the same name and model.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
 - A notice that repeats a reply the skill took already, such as a named agent's last reply sent
   again in its idle notice, is no new event. It changes no state and gets no reply.
@@ -1418,6 +1431,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - **Story mode.** In a story build, a prompt with `Mode: story.` gives each agent the story, its
   project, the repo, its git worktree, its branch, the base and the session id. The agents read
   the story and the code themselves.
+- In a batch, an agent takes the message of its next story or review as a new prompt: each
+  story's rulings hold for that story alone, and an earlier review is no evidence for the next.
 - `implementer` reads the story's `## Description`, `## Acceptance criteria` and
   `## Approach / Key decisions`, builds it test-first in the worktree, runs its test and the
   `each story` checks with `--changed <base>` and `--path <worktree>`, and commits there.
@@ -1435,6 +1450,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
   fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and
   takes the fix the same way.
+- The fix message names its story too, with the story, repo, worktree, branch and base lines of
+  the story's prompt.
 - A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`
   and `validation run` with `--path <worktree>`.
 - `reviewer` is given its mode's lines and the rulings, and nothing else. The skill never gives it
@@ -1480,7 +1497,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   `issues` 1 or more, and in story mode one `Defect <n>:` note or more.
 - No block, or one that breaks these rules, is no verdict: never a PASS.
 - The skill asks the same reviewer once more only when the block is missing or does not parse.
-  Any other block with no verdict goes to one fresh `reviewer` at once.
+  Any other block with no verdict goes to one fresh `reviewer` at once, which takes the batch's
+  `reviewer` name.
 - In baseline mode `reviewer` logs nothing: it puts its findings in the reply.
 - Only a PASS passes a story, never the implementer's word.
 - A FAIL starts the fix loop. The story's `fails` picks each round, so the cap holds across

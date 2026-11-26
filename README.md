@@ -22,7 +22,7 @@ It can also build a story you approve, in a git worktree of its own, tested and 
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
 - **Builds.** Claude builds each story you approve, test-first, in a git worktree of its own, and
-  has a fresh reviewer grade it against its acceptance criteria before it waits for your merge.
+  has a separate reviewer grade it against its acceptance criteria before it waits for your merge.
 - **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
   in a `validation.md`, in the vault or in the repo.
 - **Several repos.** A project's repos can split into subprojects, each with its own branches and
@@ -112,8 +112,10 @@ Builds approved stories, one at a time, each in a git worktree of its own.
   set.
 - It builds only a story whose text you approved: when story-tracker started it, or in
   refinement, as it is or changed.
-- One `implementer` builds each story test-first and checks its own change. Then a fresh
-  `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- One `implementer` builds each story test-first and checks its own change. Then a `reviewer`
+  grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,
+  built in turn. Each keeps its own branch and passes or fails on its own review.
 - A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
 - A passed story merges where your project's git flow says, written under `## Rules` in its
   Claude hub, only on your go. The checks run on the merged branch, and nothing is pushed

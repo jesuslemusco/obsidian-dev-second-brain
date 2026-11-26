@@ -19,7 +19,7 @@ each agent with the Agent tool, and its report comes back to you as its result.
 
 | File | What it holds | Read it |
 |---|---|---|
-| `${CLAUDE_SKILL_DIR}/story.md` | one story's build: its worktree, the agents, the reviews, the fix loop, the stops and the rulings | once, before the first story's build starts or resumes |
+| `${CLAUDE_SKILL_DIR}/story.md` | one story's build: its worktree, the batch's agents, the reviews, the fix loop, the stops and the rulings | once, before the first story's build starts or resumes |
 | `${CLAUDE_SKILL_DIR}/lead.md` | the owner's orders note and the lead's check | once, before the first story's build starts or resumes |
 
 ## Step 0 - Context
@@ -69,7 +69,6 @@ The id names one story, or an epic.
 - A story that waits on a story outside the run that is not `in-review` or `done`: leave it out,
   with each story that waits on it, and say why.
 - Stories that wait on each other in a ring: stop, and show the ring.
-- Show the owner the stories in the order they will be built, before the first one starts.
 
 ## Step 2 - Approved stories only
 
@@ -79,13 +78,32 @@ The id names one story, or an epic.
   it. Each story that waits on it is left out too.
 - No story left: stop.
 
-## Step 3 - Each story in turn
+## Step 3 - Batches
+
+A batch is 1 to 3 related stories of the run, which one `implementer` and one `reviewer` build in
+turn, as `### A batch` in `story.md` says. Cut the run into batches before the first story starts.
+
+- Two stories are related when they share an `epic` other than `-`, as `task head` prints it, or
+  touch the same files: their `## Acceptance criteria`, `## Approach / Key decisions` or
+  `## Code verification (read-only)` name a file in common, such as `docs/billing/invoices.md`. Read
+  them with `second-brain outline <path>` and a ranged read.
+- Take the stories in the order of Step 1. The first starts a batch. Each next one joins the batch
+  of the story before it, when that batch holds fewer than 3 stories and one of them is related to
+  it. Otherwise it starts a new batch.
+- So a batch keeps the order of Step 1: no story goes before one it waits on.
+- A story with no related story next to it in that order builds alone, as a batch of one.
+- Show the owner the batches, each with its stories in the order they will be built, before the
+  first one starts.
+
+## Step 4 - Each batch in turn
 
 1. Read `story.md` and `lead.md`, as `## Files` says.
-2. Build each story as `story.md` says, one at a time, in the order of Step 1. The next one starts
-   only once the story before it passed, as `## 6. When the story passed` in `story.md` says.
-3. A story that stops stops the run, as `## 7. When the story stops` in `story.md` says.
-4. Every story passed: show the owner each story's branch and its last review. Then test the
+2. Build each batch in the order of Step 3, and each of its stories in turn, as `story.md` says. The
+   batch's stories share its `implementer` and its `reviewer`, as `### A batch` there says.
+3. The next story starts only once the story before it passed, as `## 6. When the story passed` in
+   `story.md` says.
+4. A story that stops stops the run, as `## 7. When the story stops` in `story.md` says.
+5. Every story passed: show the owner each story's branch and its last review. Then test the
    orders of the run, as item 3 of `## The owner's open orders` in `lead.md` says.
 
 ## Rules

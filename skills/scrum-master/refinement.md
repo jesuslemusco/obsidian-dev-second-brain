@@ -34,6 +34,7 @@ epic and each story in the shape its section 1 gives:
   may be one that exists already.
 - A story that exists: show what changes beside what it says now.
 - Check each claim about the code read-only, as section 2 of `create.md` says, and name the ref.
+  Read git there through `second-brain branch` alone, so the check asks nothing.
 - Keep the draft in this chat.
 
 ## 3. The approval

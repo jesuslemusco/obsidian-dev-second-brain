@@ -25,6 +25,8 @@ lookups:  help | version | root | context [--cwd DIR] | projects
           subproject <project> [name | --cwd DIR]
           board <project> [view] [--subproject S] | topic <project> <tag>
           find <ID-or-alias> [--project P] | search <project> "<text>" [--in SUBPATH]
+          branch <project> <ID> [--path DIR] [--show <ref> <file> | --started]
+              (a ticket's branches, a file on another branch, the work started; read-only git)
 notes:    outline <path> | backlinks <path> | unresolved [project]
           move <from> <to> [--dry-run] | rename <path> <name> [--dry-run]
           (<path> is a vault path: from the vault root, with forward slashes)
@@ -51,7 +53,7 @@ setup:    scaffold vault [DIR]
           link [--check | --apply | --foreign] | doctor [project] [--json] [--fix]
           link move <skill|agent> <name> [--project P]   (a foreign one into the vault)
           link drop-original <skill|agent> <name> <path>   (the original of a copy)
-          snapshot [name] | compare [name] | session-check
+          snapshot [name] | compare [name] | session-check [--cwd DIR]
 json:     task head, validation <project> [repo] and validation run take --json
 exit codes: 0 ok, 1 not found, 2 setup missing, 4 ambiguous, 5 bad usage,
             6 already exists

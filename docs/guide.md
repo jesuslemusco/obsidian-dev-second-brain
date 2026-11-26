@@ -97,6 +97,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - In a subproject's repo the status overview lists that subproject's tasks.
 - The board's `By subproject` view groups the tasks by subproject.
+- Claude reads a ticket's branches, a file on another branch and the work started with
+  `second-brain branch <project> <ID>`, which runs read-only git itself. So a recall, a start or
+  an update asks for no permission, as `## Branch check (start, update, recall)` in
+  `skills/story-tracker/SKILL.md` says.
 - A rule you ask Claude to save goes where it applies, as
   `## 2. The index` in `docs/contract.md` says.
 - The doctor's `global-rules` check warns about a line of `~/.claude/CLAUDE.md` that names a

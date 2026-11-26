@@ -45,13 +45,14 @@ commits, the files already in the task folder.
 
 - Edit no code, and write no file but the task README.
 - Stay in the repository and on the ref the branch check settled.
-- Say so when you read a file at another ref.
+- Say so when you read a file at another ref, with
+  `second-brain branch <project> <ID> --show <ref> <file>`.
 - Another repository the ticket touches: get its path as
-  `## Branch check (start, update, recall)` in `SKILL.md` says.
-- Work has started: run `git -C "<repo path>" log --oneline <base>..<branch>` and
-  `git -C "<repo path>" diff <base>...<branch>`, with `<base>` the `base_branch` the branch
-  check reads.
-- Never diff a bare `HEAD`: it may be another ticket's branch.
+  `## Branch check (start, update, recall)` in `SKILL.md` says, and add `--path "<repo path>"`
+  to each `second-brain branch` command.
+- Work has started: `second-brain branch <project> <ID> --started` prints the log and the diff
+  stat of the ticket's branch against the base branch the branch check reads.
+- Run no `git` yourself, and never diff a bare `HEAD`: it may be another ticket's branch.
 - Read the files the ticket touches, and search for the functions and components it names.
 - Confirm they exist and behave as the ticket assumes.
 - Check the ticket against the docs `second-brain profile <project> docs` lists, not against

@@ -7,6 +7,8 @@
   with its status. It lists the open epics the story could join and proposes one, or none, with
   the reason. You pick: change the story that exists, file the new one under an epic, or write it
   on its own. Nothing is written before you pick.
+- In refinement, a story you pick in place of a new one takes its links and its line in the
+  epic's list. A story you file under another parent, or none, is listed under that one alone.
 
 ## 0.12.0 - 2026-11-24
 

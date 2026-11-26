@@ -2496,7 +2496,10 @@ line_is "same story: it searches the open and done stories" "$STC" "- Search the
 file_has "same story: with the helper, in the tasks root" "$STC" \
   '`second-brain search <project> "<terms>" --in <tasks_root>`, with `tasks_root` from Step 0.'
 line_is "same story: by title, summary and each criterion" "$STC" \
-  '  - Search once by the title, once by the Summary and once by each acceptance criterion, chained'
+  '  - Search once by the title, once by the Summary and once by each acceptance criterion, in one'
+line_is "same story: the searches are chained with ;, so a search with no match stops none" "$STC" \
+  '    Bash call, chained with `;` so that a search with no match stops none of the others.'
+is "same story: no command of the check is chained with &&" "$(section_of "$STC" '3. Create the story' | grep -c '&&')" "0"
 file_has "same story: a search names few terms, as a note must hold each" "$STC" \
   'A note matches only when it holds every term: give each search the 2 or 3 words that name'
 file_has "same story: the head of each story found gives its status" "$STC" \
@@ -2509,6 +2512,13 @@ line_is "same story: it lists the open epics the story could join" "$STC" \
 file_has "same story: the parents of the stories found" "$STC" 'The parent each story the searches found names, on the `epic:` line'
 file_has "same story: the epics the planned-releases note lists" "$STC" \
   'Each epic under `## Epics` in `<project path>/<topics_root>/planned-releases.md`'
+line_is "same story: a task the searches found is an epic when another task names it" "$STC" \
+  '  - Each task the searches found that another task names as its parent:'
+file_has "same story: its children's epic lines, with the helper" "$STC" \
+  '`second-brain search <project> "\"epic: <ID>\"" --in <tasks_root>`'
+file_has "same story: a longer id names another task" "$STC" 'A line with a longer id, such as `epic: <ID>0`, names another task.'
+line_is "same story: a refinement story's draft parent is listed" "$STC" \
+  '  - For a story from refinement, the parent its approved draft names.'
 file_has "same story: it says the project's word" "$STC" '  - Say epic or feature, as Step 0 of `SKILL.md` names it.'
 line_is "same story: it proposes one epic, or none, with the reason" "$STC" \
   '- Propose one of them, or none, with the reason: the epic whose outcome the new story serves, or'
@@ -2527,10 +2537,39 @@ file_has "same story: step 3 sets the parent the owner picked" "$STC" \
   'plus `epic=<ID>` when the owner filed it under a parent'
 sb help
 out_has "same story: the helper's search takes --in, as create.md runs it" 'search <project> "<text>" [--in SUBPATH]'
-file_has "same story: the contract describes the check" "$here/docs/contract.md" \
-  '- Then, before it writes a new story, one from refinement too, its start mode looks for one that'
-file_has "same story: the contract says the owner picks" "$here/docs/contract.md" \
-  'owner picks: change the story that exists, file the new one under an epic, or write it on its'
+DSC="$here/docs/contract.md"
+line_is "same story: the contract describes the check" "$DSC" \
+  '- Then, before it writes a new story, one from refinement too, its start mode shows each open or'
+line_is "same story: the contract says the owner picks" "$DSC" \
+  '- The owner picks: change the story that exists, file the new one under an epic, or write it on'
+ds_ptr="$(linex "$DSC" '  its own. Nothing is written before the owner picks. The check works as')"
+is "same story: the contract points to the check's home" "$(sed -n "$((${ds_ptr:-0} + 1))p" "$DSC")" \
+  '  `## 3. Create the story` in `skills/story-tracker/create.md` says.'
+file_lacks "same story: the contract leaves the search to create.md" "$DSC" 'stories with `second-brain search`, by'
+# Defect 2: refinement follows the owner's pick
+RFW="$here/skills/scrum-master/refinement.md"
+line_is "same story: refinement writes each story with the parent the owner picks" "$RFW" \
+  '   as `planned`, with the parent the owner picks.'
+line_is "same story: refinement names story-tracker's check" "$RFW" \
+  '   - Before it writes, story-tracker shows the owner the stories that do the same and the epics'
+file_has "same story: refinement takes the pick as approved" "$RFW" 'That pick is approved: step 5 does not stop for it.'
+line_is "same story: refinement, a story that exists in place of a new one" "$RFW" \
+  '   - The owner picks a story that exists in its place: story-tracker writes no new one, and names'
+file_has "same story: refinement, that story stands for the draft's id" "$RFW" \
+  'From then on it stands for the draft'"'"'s id: as the parent of the draft'"'"'s stories,'
+file_has "same story: refinement, in step 3 for both ends of each link" "$RFW" \
+  'in step 3 for the tasks it waits on and for each story that waits on it, and in step 4, in'
+file_has "same story: refinement, in the epic's list" "$RFW" 'the epic'"'"'s list in place of that id.'
+line_is "same story: refinement, a story filed under another parent" "$RFW" \
+  '   - The owner files it under another parent, or none: in step 4, list it under that parent'
+file_has "same story: refinement, out of the list of the draft's parent" "$RFW" \
+  'alone, and drop it from the list of the parent the draft named.'
+line_is "same story: the contract says how refinement follows the pick" "$DSC" \
+  '- A story that exists, picked in story-tracker'"'"'s check in place of a new one, stands for the'
+ds_rf="$(linex "$DSC" '  under another parent, or none, is listed under that parent alone, as `## 4. Write` in')"
+is "same story: the contract points to refinement's write" "$(sed -n "$((${ds_rf:-0} + 1))p" "$DSC")" \
+  '  `skills/scrum-master/refinement.md` says.'
+line_is "same story: refinement.md has the heading the contract names" "$RFW" '## 4. Write'
 file_has "same story: the guide describes the check" "$here/docs/guide.md" \
   '- Before story-tracker writes a new story, yours or one from refinement, it shows each story that'
 file_has "same story: the guide points to create.md" "$here/docs/guide.md" \
@@ -2539,6 +2578,9 @@ CG="$here/CHANGELOG.md"
 ds_cg="$(lineno "$CG" '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s')"
 is "same story: the changelog line is under 0.13.0" \
   "$((${ds_cg:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
+ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its links and its line in the')"
+is "same story: the changelog says refinement follows the pick, under 0.13.0" \
+  "$((${ds_cg2:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg2:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
 
 # ---------------------------------------------------------------- result
 result

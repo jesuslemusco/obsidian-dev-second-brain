@@ -76,10 +76,10 @@ join. Every new story gets this check, one from refinement too:
 
 - Search the project's stories, open and done:
   `second-brain search <project> "<terms>" --in <tasks_root>`, with `tasks_root` from Step 0.
-  - Search once by the title, once by the Summary and once by each acceptance criterion, chained
-    in one Bash call.
+  - Search once by the title, once by the Summary and once by each acceptance criterion, in one
+    Bash call, chained with `;` so that a search with no match stops none of the others.
   - A note matches only when it holds every term: give each search the 2 or 3 words that name
-    its outcome. Exit 1: no note holds them.
+    its outcome. Exit 1, `no match in <folder>`: no note holds them.
 - Each story README a search finds: `second-brain task head <ID>`, with the folder that holds it
   as the id, prints its title, status, parent and Summary. When the head leaves its outcome open,
   read its acceptance criteria with `second-brain outline` and a ranged read.
@@ -89,6 +89,12 @@ join. Every new story gets this check, one from refinement too:
   `task head`:
   - The parent each story the searches found names, on the `epic:` line of its head, `feature:`
     with `parent_label: feature`.
+  - Each task the searches found that another task names as its parent:
+    `second-brain search <project> "\"epic: <ID>\"" --in <tasks_root>` prints the `epic: <ID>`
+    line of each child, chained with `;` as above. Exit 1: none does.
+    - The key is `epic` in every project, `parent_label: feature` too.
+    - A line with a longer id, such as `epic: <ID>0`, names another task.
+  - For a story from refinement, the parent its approved draft names.
   - Each epic under `## Epics` in `<project path>/<topics_root>/planned-releases.md`, when the
     project has that note: `second-brain outline` and a ranged read.
   - Say epic or feature, as Step 0 of `SKILL.md` names it.

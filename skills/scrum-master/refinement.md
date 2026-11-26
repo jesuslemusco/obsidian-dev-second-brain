@@ -54,9 +54,18 @@ then each story in order.
 
 1. Each new epic or story: invoke the story-tracker skill with the Skill tool, as
    `odsb:story-tracker` with its id, to start it. It writes the task note from the approved text,
-   as `planned`, with its parent.
+   as `planned`, with the parent the owner picks.
    - Invoke it, never Read its files: the Skill tool fills in the paths and the session id its
      `SKILL.md` names, and a Read leaves them as written.
+   - Before it writes, story-tracker shows the owner the stories that do the same and the epics
+     the story could join, and the owner picks, as `## 3. Create the story` in its `create.md`
+     says. That pick is approved: step 5 does not stop for it.
+   - The owner picks a story that exists in its place: story-tracker writes no new one, and names
+     that story. From then on it stands for the draft's id: as the parent of the draft's stories,
+     in step 3 for the tasks it waits on and for each story that waits on it, and in step 4, in
+     the epic's list in place of that id.
+   - The owner files it under another parent, or none: in step 4, list it under that parent
+     alone, and drop it from the list of the parent the draft named.
 2. Each story or epic that exists and changed: invoke the story-tracker skill with its id, to
    update it with the approved change.
    - Each story of the draft that exists, changed or approved as it is, and has no status note

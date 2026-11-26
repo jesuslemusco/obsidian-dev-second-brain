@@ -3,10 +3,12 @@
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
 Read this file once, as `## Files` in `SKILL.md` says. It builds one story, `<ID>`, in a git
-worktree of its own, with one `implementer` and a fresh `reviewer` for each review.
+worktree of its own, with its batch's `implementer` and `reviewer`, as `### A batch` says.
 
 - `<repo>` is the repo the story touches, and `<path>` its folder, as `## 2. The worktree` finds
   them. `<branch>` is the story's branch.
+- `<batch>` is the id of the first story of the story's batch, as Step 3 of `SKILL.md` cuts it.
+  A story that builds alone is its own batch: `<batch>` is `<ID>`.
 - `<worktree>` is `<path>-<ID>`: a folder next to the repo's, named for the repo and the story.
 - `<short hash>` is what `git -C "<worktree>" rev-parse --short HEAD` prints.
 - `<base>` is where this build started: the hash of the newest
@@ -138,8 +140,10 @@ Then `### Build it`, whether the baseline ran or not.
   - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.
   - `odsb:reviewer`, in story or baseline mode: `model: "opus"`.
 - Name each `implementer` launch, so that a fix can reach it again with SendMessage:
-  - The build and fix rounds 1 to 3: `name: "<ID>-implementer"`.
+  - The build and fix rounds 1 to 3: `name: "<batch>-implementer"`.
   - From fix round 4 on: `name: "<ID>-implementer-2"`.
+- Name each `reviewer` launch in story mode `name: "<batch>-reviewer"`, so that the batch's next
+  review can reach it again, as `### A batch` says. A `reviewer` in baseline mode has no name.
 - An agent reads the story and the code itself. Never put the story, a diff or this conversation
   in a prompt.
 - `implementer`'s prompt, one line each:
@@ -154,6 +158,8 @@ Then `### Build it`, whether the baseline ran or not.
 - The fix message, sent with SendMessage to an `implementer` by its name, one line each:
   - `Fix: review <m> failed. Its defects are the story's Defect <m>: status notes.`, with `<m>`
     from the newest `Build: review <m> failed at <hash>` note.
+  - The story, repo, worktree, branch and base lines of `implementer`'s prompt, for the story that
+    failed.
   - `Session: <session id>.`
   - The ruling lines.
 - `reviewer`'s prompt in story mode, one line each:
@@ -166,10 +172,30 @@ Then `### Build it`, whether the baseline ran or not.
   - The ruling lines.
 - `reviewer`'s prompt in baseline mode: `Mode: baseline.`, `Project: <project>.`,
   `Repo: <repo>.`, `Worktree: <worktree>.` and `Branch: <branch>.`
-- A `reviewer` prompt holds only these lines, and a message to it only the one that
-  `### An agent with no report` gives, or the one that `### Reading a verdict` gives. Never add a
-  view of your own on the result, such as the implementer's report, its `Test:` or `Check:`
-  lines, or the verdict you expect.
+- A `reviewer` prompt holds only these lines, and so does each next review that `### A batch`
+  sends it. Any other message to it is only the one that `### An agent with no report` gives, or
+  the one that `### Reading a verdict` gives. Never add a view of your own on the result, such as
+  the implementer's report, its `Test:` or `Check:` lines, or the verdict you expect.
+
+### A batch
+
+A batch is 1 to 3 related stories, cut as Step 3 of `SKILL.md` says. One `implementer` and one
+`reviewer` build its stories in turn, so that a pair that holds the code they touch does not read
+it again for each one.
+
+1. Each story keeps its own branch and worktree, with a commit series of its own, its own status
+   notes, its own rounds and its own verdict. It passes or fails alone.
+2. The batch's first story launches `implementer`, and its first review launches `reviewer`,
+   each named as `## 4. Launching an agent` says.
+3. Each later story of the batch, and each later review, of the same story or the next, goes to
+   that agent by its name with SendMessage. The message holds the lines its prompt would: for
+   that story, its round and the rulings of its build.
+   - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh one
+     in its place, with those lines as its prompt, its name and its model.
+4. A failed story goes back to the batch's `implementer` before the batch's next story starts,
+   as `### The fix loop` says.
+5. From fix round 4 on, a story's fixes go to `<ID>-implementer-2`, as `### The fix loop` says.
+   The batch's next story still goes to `<batch>-implementer`.
 
 ### An agent with no report
 
@@ -191,7 +217,8 @@ Before you take the reply of an agent idle with no report as final:
 3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id
    when it has none:
    `Nothing you started is still running. Finish your step, then reply with your report.`
-   - Send it once per launch or fix message, never twice.
+   - Send it once per launch, or per message that starts a step, such as a fix message, never
+     twice.
    - SendMessage is not there: take its reply as final now.
 4. Its next reply is final, with a report or not, unless its check still runs, as item 2 says.
    - Take an `implementer`'s as items 2 to 4 of `### Build it` say.
@@ -201,7 +228,7 @@ Before you take the reply of an agent idle with no report as final:
 
 ### Build it
 
-1. Launch `implementer` on the story, named for the build.
+1. Start `implementer` on the story, as `### A batch` says.
 2. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commits,
    `git -C "<worktree>" log --oneline <since>..HEAD`, with `<since>` the hash of the newest review
    note of this build, or `<base>` with none. Some: `### Review it`. None: item 3.
@@ -221,7 +248,7 @@ Before you take the reply of an agent idle with no report as final:
 
 1. Take `<n>` and, after a failed review, its `Last failed:` line, as `## 1. Where the story
    stands` and `## 4. Launching an agent` say.
-2. Launch a fresh `reviewer` in story mode.
+2. Start `reviewer` in story mode, as `### A batch` says.
 3. Read its verdict as `### Reading a verdict` says. Show the owner the round, its verdict and its
    defects, one line each. Then take it as items 4 to 6 say.
 4. PASS: `second-brain task note <ID> "Build: review <n> passed at <short hash>."`. Then
@@ -258,6 +285,7 @@ loop. A follow-up is a `Follow-up:` status note: it changes no count.
    `second-brain task note <ID> "Build: review <n> gave no verdict at <short hash>."`. The
    `Defect <n>:` notes that reviewer logged stay its own. Then launch one fresh `reviewer` in
    its place, with the same prompt but the next round, `<n>` plus one, as `## 1` counts it.
+   - Name it `<batch>-reviewer`: the batch's later reviews go to it.
 6. No good block from the fresh `reviewer` either: take it as BLOCKED, in its own round.
 
 ### The fix loop
@@ -265,11 +293,14 @@ loop. A follow-up is a `Follow-up:` status note: it changes no count.
 The story's `fails`, as `## 1. Where the story stands` counts it from the status notes, picks the
 round, across every session.
 
+Each story of a batch has its own `fails`, so the cap counts per story. Its fix rounds all come
+before the batch's next story starts.
+
 1. `fails` 6 or more, right after a FAIL: the cap is reached. Stop, as
    `## 7. When the story stops` says.
    - A ruling the owner gives at that stop sends one more round, as for `fails` 4.
 2. Otherwise, the round:
-   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<ID>-implementer`, and wait
+   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<batch>-implementer`, and wait
      for its reply.
    - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh
      `implementer` in its place, with the build's prompt and the fix message's first line, its
@@ -300,7 +331,8 @@ round, across every session.
    - Then `git -C "<path>" worktree remove "<worktree>"`. Never pass `--force`. It fails, as on a
      change left in the worktree: ask the owner.
 6. Test each order of the build, as item 3 of `## The owner's open orders` in `lead.md` says.
-7. Go on with the next story of the run, as Step 3 of `SKILL.md` says.
+7. Go on with the next story of the run, as Step 4 of `SKILL.md` says: the batch's next story,
+   or the next batch's first.
 
 ### The merge
 

@@ -475,7 +475,7 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.12.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.12.0 - unreleased"
+is "changelog: the newest section is 0.13.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.13.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
@@ -1032,7 +1032,7 @@ done
 for h in "### Start a ticket" "### Ask where things stand" "### Build a story" "### Check the vault"; do
   line_is "README: the example $h" "$RM" "$h"
 done
-file_has "README: the build is test-first" "$RM" '- One `implementer` builds each story test-first and checks its own change. Then a fresh'
+file_has "README: the build is test-first" "$RM" '- One `implementer` builds each story test-first and checks its own change. Then a `reviewer`'
 file_has "README: the fix rounds are capped" "$RM" \
   '- A failed review sends its defects back to the same `implementer`, in a capped number of rounds.'
 file_has "README: story-tracker offers the build" "$RM" '- When work starts on a story you approved, it offers `/odsb:build` to build it.'
@@ -1694,7 +1694,7 @@ file_has "story build: never counts a round from memory" "$BY" 'They are newest 
 line_is "story build: the implementer on opus" "$BY" '  - `odsb:implementer`: `model: "opus"`. It builds the story, and takes fix rounds 1 to 3.'
 line_is "story build: from fix round 4 on fable" "$BY" '  - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.'
 line_is "story build: the reviewer on opus" "$BY" '  - `odsb:reviewer`, in story or baseline mode: `model: "opus"`.'
-line_is "story build: the implementer's name" "$BY" '  - The build and fix rounds 1 to 3: `name: "<ID>-implementer"`.'
+line_is "story build: the implementer is named for the batch" "$BY" '  - The build and fix rounds 1 to 3: `name: "<batch>-implementer"`.'
 line_is "story build: and from round 4" "$BY" '  - From fix round 4 on: `name: "<ID>-implementer-2"`.'
 for l in '  - `Mode: story.`' '  - `Story: <ID>, project <project>.`' '  - `Repo: <repo>.`' \
   '  - `Worktree: <worktree>.`' '  - `Branch: <branch>.`' '  - `Base: <base>.`' '  - `Round: <n>.`'; do
@@ -1717,8 +1717,8 @@ file_has "build skill: an in-review story is built again only on a ruling to fix
 file_has "story build: a FAIL logs one defect or more" "$BY" \
   '   - A `FAIL` has `issues` 1 or more. In story mode the story holds one `Defect <n>:` note or'
 line_is "story build: the cap" "$BY" '1. `fails` 6 or more, right after a FAIL: the cap is reached. Stop, as'
-line_is "story build: rounds 1 to 3 go to the same implementer" "$BY" \
-  '   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<ID>-implementer`, and wait'
+line_is "story build: rounds 1 to 3 go to the batch's implementer" "$BY" \
+  '   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<batch>-implementer`, and wait'
 line_is "story build: a fresh one gets the fix line too" "$BY" \
   '     `implementer` in its place, with the build'"${q}"'s prompt and the fix message'"${q}"'s first line, its'
 line_is "story build: round 4 on the stronger model" "$BY" \
@@ -2037,6 +2037,154 @@ file_has "README: the worktree goes once its ignored files are shown" "$here/REA
   'without your word. Then its worktree is removed, once any ignored file in it is shown to you.'
 file_has "story build: the merge's own worktree goes the same way" "$BY" \
   '`## 6. When the story passed` removes the story'"'"'s: its ignored files first.'
+
+# ---------------------------------------------------------------- one implementer and reviewer pair builds a batch of related stories
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RM="$here/README.md"
+RV="$here/agents/reviewer.md"
+q="'"
+# The build skill cuts the run into batches of 1 to 3 related stories, in the run's order.
+line_is "build skill: has a batches step" "$BS" '## Step 3 - Batches'
+line_is "build skill: then builds each batch in turn" "$BS" '## Step 4 - Each batch in turn'
+file_lacks "build skill: no step builds each story apart from its batch" "$BS" '## Step 3 - Each story in turn'
+bt2="$(linex "$BS" '## Step 2 - Approved stories only')"
+bt3="$(linex "$BS" '## Step 3 - Batches')"
+bt4="$(linex "$BS" '## Step 4 - Each batch in turn')"
+is "build skill: batches are cut after the approved stories are known, before the build" \
+  "$(( ${bt2:-0} > 0 && ${bt3:-0} > ${bt2:-0} && ${bt4:-0} > ${bt3:-0} ))" "1"
+line_is "build skill: a batch is 1 to 3 related stories that one pair builds" "$BS" \
+  'A batch is 1 to 3 related stories of the run, which one `implementer` and one `reviewer` build in'
+line_is "build skill: related means a shared epic" "$BS" \
+  '- Two stories are related when they share an `epic` other than `-`, as `task head` prints it, or'
+line_is "build skill: or the same files" "$BS" \
+  '  touch the same files: their `## Acceptance criteria`, `## Approach / Key decisions` or'
+file_has "build skill: the same files are a file their texts name in common" "$BS" \
+  '`## Code verification (read-only)` name a file in common, such as `docs/billing/invoices.md`.'
+line_is "build skill: the stories go in the order of Step 1" "$BS" \
+  '- Take the stories in the order of Step 1. The first starts a batch. Each next one joins the batch'
+line_is "build skill: a story joins the batch before it, up to 3 stories" "$BS" \
+  '  of the story before it, when that batch holds fewer than 3 stories and one of them is related to'
+line_is "build skill: a batch keeps the dependency order" "$BS" \
+  '- So a batch keeps the order of Step 1: no story goes before one it waits on.'
+line_is "build skill: a story with no related one builds alone" "$BS" \
+  '- A story with no related story next to it in that order builds alone, as a batch of one.'
+file_has "build skill: shows the owner the batches before the first story" "$BS" \
+  '- Show the owner the batches, each with its stories in the order they will be built, before the'
+file_has "build skill: a batch's stories share its two agents" "$BS" \
+  'batch'"${q}"'s stories share its `implementer` and its `reviewer`, as `### A batch` there says.'
+file_has "story build: a passed story goes on to the batch's next story" "$BY" \
+  '7. Go on with the next story of the run, as Step 4 of `SKILL.md` says: the batch'"${q}"'s next story,'
+# One implementer and one reviewer build the batch's stories in turn, each on its own branch.
+line_is "story build: has a batch section" "$BY" '### A batch'
+file_has "story build: builds the story with its batch's agents" "$BY" \
+  'worktree of its own, with its batch'"${q}"'s `implementer` and `reviewer`, as `### A batch` says.'
+file_lacks "story build: no fresh reviewer for each review" "$BY" 'a fresh `reviewer` for each review'
+line_is "story build: <batch> is the id of the batch's first story" "$BY" \
+  '- `<batch>` is the id of the first story of the story'"${q}"'s batch, as Step 3 of `SKILL.md` cuts it.'
+line_is "story build: a story alone is its own batch" "$BY" \
+  '  A story that builds alone is its own batch: `<batch>` is `<ID>`.'
+line_is "story build: each story keeps its own branch, worktree and commits" "$BY" \
+  '1. Each story keeps its own branch and worktree, with a commit series of its own, its own status'
+line_is "story build: and passes or fails alone" "$BY" \
+  '   notes, its own rounds and its own verdict. It passes or fails alone.'
+line_is "story build: the batch's first story and review launch the pair" "$BY" \
+  '2. The batch'"${q}"'s first story launches `implementer`, and its first review launches `reviewer`,'
+line_is "story build: each named as the launch names say" "$BY" '   each named as `## 4. Launching an agent` says.'
+line_is "story build: each later story and review goes to the same agent" "$BY" \
+  '3. Each later story of the batch, and each later review, of the same story or the next, goes to'
+line_is "story build: by its name with SendMessage" "$BY" \
+  '   that agent by its name with SendMessage. The message holds the lines its prompt would: for'
+file_has "story build: an agent out of reach is launched fresh with its name" "$BY" \
+  '   - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh one'
+line_is "story build: a failed story goes back to the same implementer before the next starts" "$BY" \
+  '4. A failed story goes back to the batch'"${q}"'s `implementer` before the batch'"${q}"'s next story starts,'
+line_is "story build: from round 4 the fixes go to the stronger one, the next story does not" "$BY" \
+  '   The batch'"${q}"'s next story still goes to `<batch>-implementer`.'
+line_is "story build: a story-mode reviewer is named for the batch" "$BY" \
+  '- Name each `reviewer` launch in story mode `name: "<batch>-reviewer"`, so that the batch'"${q}"'s next'
+file_has "story build: a baseline reviewer has no name" "$BY" 'A `reviewer` in baseline mode has no name.'
+line_is "story build: the fix message names its story" "$BY" \
+  '  - The story, repo, worktree, branch and base lines of `implementer`'"${q}"'s prompt, for the story that'
+file_has "story build: a batch's review message holds the prompt's lines alone" "$BY" \
+  '- A `reviewer` prompt holds only these lines, and so does each next review that `### A batch`'
+line_is "story build: the build starts the batch's implementer" "$BY" \
+  '1. Start `implementer` on the story, as `### A batch` says.'
+line_is "story build: the review starts the batch's reviewer" "$BY" \
+  '2. Start `reviewer` in story mode, as `### A batch` says.'
+line_is "story build: a fresh reviewer for no verdict takes the batch's name" "$BY" \
+  '   - Name it `<batch>-reviewer`: the batch'"${q}"'s later reviews go to it.'
+file_has "story build: the fix loop's cap is per story" "$BY" \
+  'Each story of a batch has its own `fails`, so the cap counts per story. Its fix rounds all come'
+file_has "story build: an agent with no report is asked once per launch or message" "$BY" \
+  '   - Send it once per launch, or per message that starts a step, such as a fix message, never'
+# The agents take the batch's next story or review as a new prompt.
+line_is "implementer: has the next story of a batch" "$IM" '### The next story of a batch'
+file_has "implementer: its intro names the batch" "$IM" \
+  'In a batch, its next stories come one at a time, as `### The next story of a batch` says.'
+line_is "implementer: takes the next story as a new prompt" "$IM" \
+  '- Take it as a new prompt: `## Story mode` from step 1, with that message'"${q}"'s lines alone. Its'
+line_is "implementer: an earlier story's ruling holds for it alone" "$IM" \
+  '- An `Owner:` or `Ruling:` line of an earlier story holds for that story alone.'
+file_has "implementer: an earlier story's change is here only when its base holds it" "$IM" \
+  'An earlier story'"${q}"'s change is here only when this story'"${q}"'s base holds it: read each file'
+line_is "implementer: commits each story in its own worktree" "$IM" \
+  '- Commit this story'"${q}"'s change in its own worktree alone, as its own commits.'
+file_has "implementer: a fix message names the story to fix" "$IM" \
+  '- Its `Story:`, `Worktree:`, `Branch:` and `Base:` lines name the story to fix, and where.'
+line_is "implementer: writes only in the worktree of the story it builds" "$IM" \
+  '- Write only in the worktree of the story you build, on its branch.'
+im_fix="$(linex "$IM" '### A story fix')"
+im_next="$(linex "$IM" '### The next story of a batch')"
+im_tf="$(linex "$IM" '## 1. Build test-first')"
+is "implementer: the next story of a batch is part of story mode" \
+  "$(( ${im_fix:-0} > 0 && ${im_next:-0} > ${im_fix:-0} && ${im_tf:-0} > ${im_next:-0} ))" "1"
+line_is "reviewer: has the next review of a batch" "$RV" '### The next review of a batch'
+line_is "reviewer: takes the next review as a new prompt" "$RV" \
+  '- Take it as a new prompt: `## Story mode` from step 1, with that message'"${q}"'s lines alone, its'
+line_is "reviewer: grades each story on its own" "$RV" \
+  '- Grade each story on its own: by its criteria, its change and the checks you run again in this'
+file_has "reviewer: an earlier review is no evidence" "$RV" \
+  '- An earlier review'"${q}"'s verdict, findings and runs are no evidence here. An `Owner:` or `Ruling:`'
+line_is "reviewer: logs on the story of this review alone" "$RV" \
+  '- Log each defect and follow-up on the story of this review alone.'
+rv_sm="$(linex "$RV" '## Story mode')"
+rv_next="$(linex "$RV" '### The next review of a batch')"
+rv_bm="$(linex "$RV" '## Baseline mode')"
+is "reviewer: the next review of a batch is part of story mode" \
+  "$(( ${rv_sm:-0} > 0 && ${rv_next:-0} > ${rv_sm:-0} && ${rv_bm:-0} > ${rv_next:-0} ))" "1"
+# The contract, the changelog, the README and the guide describe batches.
+file_has "contract: batches" "$CT" \
+  '- **Batches.** Before the first story starts, the skill cuts the run into batches of 1 to 3'
+file_has "contract: related stories share an epic or a file" "$CT" \
+  'related when they share an `epic` other than `-`, or their texts name a file in common. A story'
+line_is "contract: a batch keeps the run's order" "$CT" \
+  '- A batch keeps the run'"${q}"'s order, so no story goes before one it waits on.'
+line_is "contract: one pair builds a batch's stories in turn" "$CT" \
+  '- One `implementer` and one `reviewer` build a batch'"${q}"'s stories in turn, as `<batch>-implementer`'
+file_has "contract: a story passes or fails alone" "$CT" 'verdict: it passes or fails alone. The next story starts only once the one before it'
+line_is "contract: the cap counts per story" "$CT" \
+  '- Each story counts its own `fails` and rounds, so the cap counts per story, never per batch.'
+file_lacks "contract: no fresh reviewer grades each fix" "$CT" 'and a fresh `reviewer` grades the fix'
+file_has "contract: the batch's reviewer grades the fix" "$CT" \
+  '  the review'"${q}"'s defects back to the same `implementer`, and the same `reviewer` grades the fix,'
+file_has "contract: an agent takes a batch's next story or review as a new prompt" "$CT" \
+  '- In a batch, an agent takes the message of its next story or review as a new prompt: each'
+cg_line="$(linex "$CG" '- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run'"${q}"'s order:')"
+cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.12.0 - ')"
+is "changelog: batches are under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_line:-0} > ${cg_top:-0} && ${cg_line:-0} < ${cg_end:-0} ))" "1"
+file_has "changelog: a story passes or fails on its own review" "$CG" \
+  'passes or fails on its own review. A failed story goes back to the same `implementer` before'
+file_has "changelog: the cap counts per story" "$CG" 'the cap of six failed reviews counts per story.'
+file_has "README: related stories share one pair" "$RM" \
+  '- Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,'
+file_has "guide: related stories share one pair" "$GD" \
+  '- Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and'
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"
@@ -2401,7 +2549,7 @@ done
 file_has "guide: points to the sprint-planning sections" "$here/docs/guide.md" \
   '`## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.'
 file_has "guide: points to the contract's planned-releases shape" "$here/docs/guide.md" '`### Planned releases` in'
-cg12_top="$(lineno "$CG" '## 0.12.0 - unreleased')"
+cg12_top="$(lineno "$CG" '## 0.12.0 - ')"
 cg12_end="$(lineno "$CG" '## 0.11.0 - ')"
 # under_012 <desc> <line>: the line is in the 0.12.0 section, above 0.11.0.
 under_012() {

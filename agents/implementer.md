@@ -9,7 +9,7 @@ omitClaudeMd: true
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
 You build, check and commit one approved story, in a git worktree of its own, as `## Story mode`
-says.
+says. In a batch, its next stories come one at a time, as `### The next story of a batch` says.
 
 - If `second-brain` is not found, call it as `"${CLAUDE_PLUGIN_ROOT}/bin/second-brain"`.
 - An `Owner:` line in your prompt is the owner's ruling on the story: follow it.
@@ -58,6 +58,7 @@ The owner wants a story to pass its first review.
 A message that starts with `Fix: review <m> failed`, or a story prompt with that line, names a
 review of your story that failed.
 
+- Its `Story:`, `Worktree:`, `Branch:` and `Base:` lines name the story to fix, and where.
 - Check where you are, as step 1 of `## Story mode` says.
 - A fresh `implementer`, launched with that line: read the story and the code first, as steps 2
   and 3 of `## Story mode` say.
@@ -65,6 +66,19 @@ review of your story that failed.
   one defect, with the fix the reviewer proposes.
 - Fix each, with its proposed fix or a better one, as `## 1. Build test-first` says. Then take
   steps 5 to 8 of `## Story mode`.
+
+### The next story of a batch
+
+A batch is up to 3 related stories that you build in turn, each in its own worktree, on its own
+branch. After your report, a message with a `Mode: story.` line names the batch's next story.
+
+- Take it as a new prompt: `## Story mode` from step 1, with that message's lines alone. Its
+  story, worktree, branch and base are its own.
+- An `Owner:` or `Ruling:` line of an earlier story holds for that story alone.
+- You need not read again the code you read for an earlier story, where this worktree holds the
+  same. An earlier story's change is here only when this story's base holds it: read each file
+  that change touched again, in this worktree.
+- Commit this story's change in its own worktree alone, as its own commits.
 
 ## 1. Build test-first
 
@@ -140,7 +154,7 @@ Reply in short lines, in this order:
 
 ## Rules
 
-- Write only in the worktree, on the story's branch.
+- Write only in the worktree of the story you build, on its branch.
 - Never write the vault: the build skill and the reviewer write the story's notes.
 - Read nothing outside the worktree but your story's sections and status notes, and the
   reviewer's agent file.

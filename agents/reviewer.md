@@ -145,6 +145,20 @@ round and the session id. `<n>` is the round. A re-review gives too a line
    - A step that could not be run is a defect too. Its fix names what it needs, such as the tool.
    - Log each follow-up too, before you reply, as `## Defects and follow-ups` says.
 
+### The next review of a batch
+
+A batch is up to 3 related stories, built in turn, that you review. After your verdict, a message
+with a `Mode: story.` line is your next review: of the same story after a fix, or of the batch's
+next story.
+
+- Take it as a new prompt: `## Story mode` from step 1, with that message's lines alone, its
+  `Round:` and its rulings.
+- Grade each story on its own: by its criteria, its change and the checks you run again in this
+  review. Its verdict is its own.
+- An earlier review's verdict, findings and runs are no evidence here. An `Owner:` or `Ruling:`
+  line of another story holds for that story alone.
+- Log each defect and follow-up on the story of this review alone.
+
 ## Baseline mode
 
 - The caller gives the project, the repo, the worktree and the branch.

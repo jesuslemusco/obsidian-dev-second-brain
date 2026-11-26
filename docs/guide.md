@@ -209,9 +209,12 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `second-brain validation run <project> <repo> --path <worktree>`.
 - `implementer` builds the story test-first, and checks its whole change against the story's
   criteria and the reviewer's list of defects before it commits.
-- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks
-  and user steps, and grades the code. A defect fails the story. A follow-up does not: the build
-  lists it for you when it finishes or stops.
+- A `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks and
+  user steps, and grades the code. A defect fails the story. A follow-up does not: the build lists
+  it for you when it finishes or stops.
+- Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and
+  one `reviewer`, so the pair reads their code once. Each story keeps its own branch and worktree,
+  and passes or fails on its own review, as `### A batch` in `skills/build/story.md` says.
 - A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under

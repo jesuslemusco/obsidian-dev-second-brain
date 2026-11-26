@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
+- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run's order:
+  stories that share an epic, or whose text names a file in common. One `implementer` and one
+  `reviewer` build a batch's stories in turn, so the pair reads the code those stories touch once,
+  not again for each story. A story with no related one next to it builds alone.
+- Each story of a batch keeps its own branch, worktree and commits, its own status notes, and
+  passes or fails on its own review. A failed story goes back to the same `implementer` before
+  the batch's next story starts, and the cap of six failed reviews counts per story.
+- The batch's agents are `<batch>-implementer` and `<batch>-reviewer`, `<batch>` being the id of
+  its first story. Its next story and its next review reach them with SendMessage, and each
+  agent takes it as a new prompt: a story's rulings hold for that story alone, and an earlier
+  review is no evidence for the next. A story's review is no longer a fresh `reviewer` each time.
+- A fix message names its story, with the story, repo, worktree, branch and base lines of the
+  story's prompt.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

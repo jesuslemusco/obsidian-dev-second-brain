@@ -65,6 +65,15 @@
   `- Call a plugin skill or agent` under `## In every session` from
   `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 9`.
 
+- Before story-tracker writes a new story, yours or one from refinement, it searches the project's
+  open and done stories by title, summary and criteria, and shows each one with the same outcome,
+  with its status. It lists the open epics the story could join and proposes one, or none, with
+  the reason. You pick: change the story that exists, file the new one under an epic, or write it
+  on its own. Nothing is written before you pick.
+- In refinement, a story you pick in place of a new one takes its parent, its links and its line
+  in the epic's list, unless you keep it under its own parent. A story you file under another
+  parent, or none, is listed under that one alone.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

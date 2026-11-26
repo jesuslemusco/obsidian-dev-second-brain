@@ -197,6 +197,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - Then story-tracker writes each story, and the skill links each one to the tasks it waits on
   with `second-brain task dep`.
 - A ticket you start with no story is shown to you the same way before story-tracker writes it.
+- Before story-tracker writes a new story, yours or one from refinement, it shows each story that
+  already does the same, with its status, and the open epics the story could join, with the one
+  it proposes. You pick: change the story that exists, file the new one under an epic, or write
+  it on its own, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as
   `## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.
 - `release-planning` keeps each release's goals, epics and stories in `planned-releases.md`, in

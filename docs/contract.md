@@ -1110,6 +1110,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
   The scrum-master's refinement and release planning read them there.
+- Then, before it writes a new story, one from refinement too, its start mode shows each open or
+  done story that does the same, with its status, and the open epics the story could join, with
+  the one it proposes.
+- The owner picks: change the story that exists, file the new one under an epic, or write it on
+  its own. Nothing is written before the owner picks. The check works as
+  `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - Every story whose text the owner approved, in start mode or in refinement, gets the status note
   `Planned: the owner approved this text.` first. The `build` skill builds only a story with that
   note.
@@ -1129,6 +1135,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - On the approval it writes through story-tracker: its start mode for each new epic, then each
   new story, and its update mode for each one that changed. Then it links each story to the tasks
   it waits on with `task dep`, and links the stories in the epic's list.
+- A story that exists, picked in story-tracker's check in place of a new one, takes the draft's
+  parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the
+  draft's id: as a parent, in each `task dep` and, under the draft's parent, in the epic's list.
+- A story that leaves its own parent for the draft's is dropped from that parent's list.
+- A story filed under another parent, or none, or kept under its own, is listed under that parent
+  alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
 - A request to close the sprint goes to its close. With no sprint in progress, it says so and
   stops: it opens one only when the user asks.

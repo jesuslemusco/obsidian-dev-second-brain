@@ -87,6 +87,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
 - A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
   any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
+- Claude reads a ticket's branches, a file on another branch and the work started with
+  `second-brain branch <project> <ID>`, which runs read-only git itself. So a recall, a start or
+  an update asks for no permission, as `## Branch check (start, update, recall)` in
+  `skills/story-tracker/SKILL.md` says.
 - In a subproject's repo the status overview lists that subproject's tasks.
 - The board's `By subproject` view groups the tasks by subproject.
 - A rule you ask Claude to save goes where it applies, as

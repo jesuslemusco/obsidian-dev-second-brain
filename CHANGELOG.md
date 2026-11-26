@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
+- `second-brain branch <project> <ID>` reads a ticket's branches with read-only git: the repo, its
+  current branch and head, the base branch and the branch pattern, each local or remote branch
+  that carries the id, the task's recorded branch, and whether the current branch is on the
+  ticket. `--show <ref> <file>` prints a file as it is on another branch, and `--started` the log
+  and the diff stat of the ticket's branch against the base. `--path <dir>` reads another folder,
+  such as a git worktree. It takes no git setting from outside, as its rows in `docs/contract.md`
+  say.
+- story-tracker's branch check and the scrum-master's refinement read git through
+  `second-brain branch`, and run no `git -C` of their own. So a recall, a start, an update or a
+  refinement asks for no permission, whatever your permission mode.
+- A branch carries a ticket's id only with no letter or digit right before or after it:
+  `feature/EX-10-sort` is no longer taken for a branch of `EX-1`.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

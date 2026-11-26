@@ -475,7 +475,7 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.12.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.12.0 - unreleased"
+is "changelog: the newest section is 0.13.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.13.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
@@ -2213,21 +2213,32 @@ line_is "story-tracker: it may edit notes and run ls -d" "$STS" \
   'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
 line_is "scrum-master: it may edit and write notes, call story-tracker with an id and run ls -d" "$SMS" \
   'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker *) Bash(second-brain *) Bash(ls -d *)'
-# The commands the two skills' text runs, other than the helper: ls -d has a pattern, git -C has
-# none and prompts, as a -c setting before its subcommand can run a program. Read line by line, so
-# no glob in a command expands.
+# The commands the two skills' text runs, other than the helper: ls -d has a pattern, and git runs
+# only inside the helper's branch command, as no git pattern is safe: a -c setting before its
+# subcommand can run a program. Read line by line, so no glob in a command expands.
 seen_ls=0
 seen_git=0
 while IFS= read -r c; do
   case "$c" in
     'ls -d '*) seen_ls=1 ;;
-    'git -C '*) seen_git=1 ;;
+    'git '*) seen_git=1 ;;
   esac
 done <<CMDS
-$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git -C|ls -d) [^`]*`' | tr -d '`')
+$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git|ls -d) [^`]*`' | tr -d '`')
 CMDS
 is "allowed-tools: the skills' text runs ls -d" "$seen_ls" "1"
-is "allowed-tools: the skills' text runs git -C" "$seen_git" "1"
+is "allowed-tools: the skills' text runs no git command, which would prompt" "$seen_git" "0"
+for c in '`second-brain branch <project> <ID>` reads the ticket'"'"'s default repo: the first repo of its' \
+  '  with `second-brain branch <project> <ID> --show <branch> <file>`, or tell the user.' \
+  '- No id given: `second-brain session-check --cwd "<repo path>"` prints the repo'"'"'s `branch:` and'; do
+  file_has "story-tracker: the branch check reads git through the helper: ${c:0:48}" "$STS" "$c"
+done
+file_has "story-tracker create: the work started comes from the helper" "$STD/create.md" \
+  '- Work has started: `second-brain branch <project> <ID> --started` prints the log and the diff'
+file_has "story-tracker create: a file at another ref comes from the helper" "$STD/create.md" \
+  '  `second-brain branch <project> <ID> --show <ref> <file>`.'
+file_has "refinement: reads git through the helper alone" "$SMD/refinement.md" \
+  '  Read git there through `second-brain branch` alone, so the check asks nothing.'
 for f in "$STS" "$SMS"; do
   sk="$(basename "$(dirname "$f")")"
   tools="$(sed -n 's/^allowed-tools: //p' "$f")"
@@ -2401,7 +2412,7 @@ done
 file_has "guide: points to the sprint-planning sections" "$here/docs/guide.md" \
   '`## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.'
 file_has "guide: points to the contract's planned-releases shape" "$here/docs/guide.md" '`### Planned releases` in'
-cg12_top="$(lineno "$CG" '## 0.12.0 - unreleased')"
+cg12_top="$(lineno "$CG" '## 0.12.0 - ')"
 cg12_end="$(lineno "$CG" '## 0.11.0 - ')"
 # under_012 <desc> <line>: the line is in the 0.12.0 section, above 0.11.0.
 under_012() {

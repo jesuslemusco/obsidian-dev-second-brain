@@ -2,6 +2,12 @@
 
 ## 0.13.0 - unreleased
 
+- Before story-tracker writes a new story, yours or one from refinement, it searches the project's
+  open and done stories by title, summary and criteria, and shows each one with the same outcome,
+  with its status. It lists the open epics the story could join and proposes one, or none, with
+  the reason. You pick: change the story that exists, file the new one under an epic, or write it
+  on its own. Nothing is written before you pick.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

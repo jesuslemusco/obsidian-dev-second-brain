@@ -1072,6 +1072,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
   The scrum-master's refinement and release planning read them there.
+- Then, before it writes a new story, one from refinement too, its start mode looks for one that
+  does the same. It searches the project's open and done stories with `second-brain search`, by
+  title, summary and criteria, and shows each one whose outcome matches, with its status.
+- It lists the open epics the story could join, and proposes one, or none, with the reason. The
+  owner picks: change the story that exists, file the new one under an epic, or write it on its
+  own. Nothing is written before the owner picks.
 - Every story whose text the owner approved, in start mode or in refinement, gets the status note
   `Planned: the owner approved this text.` first. The `build` skill builds only a story with that
   note.

@@ -2479,5 +2479,66 @@ file_has "contract: an old spec folder and build.json stay as plain files of the
 file_has "contract: the delivery and spec_home keys are no keys" "$here/docs/contract.md" \
   '- `delivery` and `spec_home` are no keys of the profile, a subproject'"'"'s note or a task. Versions'
 
+# ---------------------------------------------------------------- story-tracker looks for the same story first
+# Before it writes a new story, start mode shows each story that does the same and the epics it
+# could join, and the owner picks.
+STC="$here/skills/story-tracker/create.md"
+ds_lead='Then, before step 1, look for a story that already does the same, and for the epic it could'
+line_is "same story: create.md looks for a story that does the same, and an epic" "$STC" "$ds_lead"
+line_is "same story: every new story gets the check, one from refinement too" "$STC" \
+  'join. Every new story gets this check, one from refinement too:'
+ds_at="$(linex "$STC" "$ds_lead")"
+is "same story: the check is in section 3, after the approval and the refinement rule, before step 1" \
+  "$((${ds_at:-0} > $(lineno "$STC" 'A story the scrum-master') && ${ds_at:-0} < $(lineno "$STC" '1. `second-brain task new EX-123')))" "1"
+is "same story: the check is under ## 3. Create the story" \
+  "$(section_of "$STC" '3. Create the story' | grep -cxF -- "$ds_lead")" "1"
+line_is "same story: it searches the open and done stories" "$STC" "- Search the project's stories, open and done:"
+file_has "same story: with the helper, in the tasks root" "$STC" \
+  '`second-brain search <project> "<terms>" --in <tasks_root>`, with `tasks_root` from Step 0.'
+line_is "same story: by title, summary and each criterion" "$STC" \
+  '  - Search once by the title, once by the Summary and once by each acceptance criterion, chained'
+file_has "same story: a search names few terms, as a note must hold each" "$STC" \
+  'A note matches only when it holds every term: give each search the 2 or 3 words that name'
+file_has "same story: the head of each story found gives its status" "$STC" \
+  '`second-brain task head <ID>`, with the folder that holds it'
+file_has "same story: a match is by outcome" "$STC" "A story matches when its outcome is the new story's"
+file_has "same story: each match is shown with its status" "$STC" 'id, title and status, and the outcome they share.'
+file_has "same story: an abandoned story is no match" "$STC" 'Leave out an abandoned one.'
+line_is "same story: it lists the open epics the story could join" "$STC" \
+  '- List the open epics the story could join, each `planned`, `in-progress` or `in-review` in its'
+file_has "same story: the parents of the stories found" "$STC" 'The parent each story the searches found names, on the `epic:` line'
+file_has "same story: the epics the planned-releases note lists" "$STC" \
+  'Each epic under `## Epics` in `<project path>/<topics_root>/planned-releases.md`'
+file_has "same story: it says the project's word" "$STC" '  - Say epic or feature, as Step 0 of `SKILL.md` names it.'
+line_is "same story: it proposes one epic, or none, with the reason" "$STC" \
+  '- Propose one of them, or none, with the reason: the epic whose outcome the new story serves, or'
+file_has "same story: a refinement story's proposal is its approved parent" "$STC" \
+  'For a story from refinement, propose the parent its approved draft names'
+line_is "same story: the owner picks with AskUserQuestion" "$STC" '- Ask the owner with AskUserQuestion to pick one:'
+file_has "same story: pick one, change the story that exists" "$STC" '  - Change the story that exists: show the change to it beside what it says now'
+file_has "same story: it names the story that took the new one's place" "$STC" 'say which story took its place, for a refinement to link.'
+file_has "same story: pick two, file it under an epic" "$STC" \
+  '  - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.'
+file_has "same story: pick three, write it on its own" "$STC" \
+  '  - Write it on its own: write it as the steps below say, with no `epic`.'
+line_is "same story: nothing is written before the pick" "$STC" \
+  '- Write nothing, no story, key or note, before the owner picks. No AskUserQuestion, as in a'
+file_has "same story: step 3 sets the parent the owner picked" "$STC" \
+  'plus `epic=<ID>` when the owner filed it under a parent'
+sb help
+out_has "same story: the helper's search takes --in, as create.md runs it" 'search <project> "<text>" [--in SUBPATH]'
+file_has "same story: the contract describes the check" "$here/docs/contract.md" \
+  '- Then, before it writes a new story, one from refinement too, its start mode looks for one that'
+file_has "same story: the contract says the owner picks" "$here/docs/contract.md" \
+  'owner picks: change the story that exists, file the new one under an epic, or write it on its'
+file_has "same story: the guide describes the check" "$here/docs/guide.md" \
+  '- Before story-tracker writes a new story, yours or one from refinement, it shows each story that'
+file_has "same story: the guide points to create.md" "$here/docs/guide.md" \
+  'it on its own, as `## 3. Create the story` in `skills/story-tracker/create.md` says.'
+CG="$here/CHANGELOG.md"
+ds_cg="$(lineno "$CG" '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s')"
+is "same story: the changelog line is under 0.13.0" \
+  "$((${ds_cg:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
+
 # ---------------------------------------------------------------- result
 result

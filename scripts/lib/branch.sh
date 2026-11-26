@@ -98,6 +98,12 @@ EOF
   printf -- '-\t-\n'
 }
 
+# Print a "branch: <name> <short hash>" line for each ref row; nothing for no rows.
+# Usage: sb_br_lines <ref rows>
+sb_br_lines() {
+  [ -z "$1" ] || printf '%s\n' "$1" | awk -F'\t' '{ print "branch: " $1 " " $2 }'
+}
+
 # Set SB_BR_ROW to the ref row of the ticket's branch: the task's recorded branch when the repo
 # has it, locally first, else the one branch that carries the ticket's ids. Exit 1 when none
 # does, and 4, after their branch lines, when several do.
@@ -122,7 +128,7 @@ sb_br_ticket_branch() {
     !($4 in any) { any[$4] = $0; last = $4 }
     END { if (names == 1) print (last in local ? local[last] : any[last]) }')"
   if [ -z "$row" ]; then
-    printf '%s\n' "$4" | awk -F'\t' '{ print "branch: " $1 " " $2 }'
+    sb_br_lines "$4"
     sb_die 4 "several branches carry $1: record the canonical one with second-brain task set $1 branch=<branch>"
   fi
   SB_BR_ROW="$row"
@@ -143,7 +149,7 @@ sb_br_block() {
 cmd_branch() {
   local usage="usage: second-brain branch <project> <ID> [--path <dir>] [--show <ref> <file> | --started]"
   local a n=0 project="" id="" at="" hasat=0 mode=list ref="" file=""
-  local rows hits tfile="" rec="-" sub="" ids want row rpath rstate dir name base pattern
+  local rows hits tfile="" rec="-" sub="" by_repo ids want row rpath rstate dir name base pattern
   local current head refs carried on=no tbname tbref bname bref hash kind log stat
   while [ $# -gt 0 ]; do
     a="$1"
@@ -181,7 +187,7 @@ cmd_branch() {
     shift
   done
   [ "$n" -eq 2 ] || sb_die 5 "$usage"
-  case "$id" in */* | .*) sb_die 5 "not a task id: $id" ;; esac
+  case "$id" in '' | */* | .*) sb_die 5 "not a task id: $id" ;; esac
   # A ref that starts with a dash would reach git as an option.
   case "$ref" in -*) sb_die 5 "a ref cannot start with a dash: $ref" ;; esac
   sb_need_project "$project"
@@ -234,8 +240,8 @@ EOF
   # With no subproject on the task, the one whose repos hold the repo's folder gives the settings.
   if [ -z "$SB_S_FILE" ] && [ -z "$sub" ]; then
     [ "$rpath" != "-" ] || rpath="$dir"
-    a="$(sb_sub_by_cwd "$SB_P_PATH" "$rpath" 2>/dev/null)"
-    case "$a" in '' | *$'\n'*) ;; *) sb_sub_resolve "$a" ;; esac
+    by_repo="$(sb_sub_by_cwd "$SB_P_PATH" "$rpath" 2>/dev/null)"
+    case "$by_repo" in '' | *$'\n'*) ;; *) sb_sub_resolve "$by_repo" ;; esac
   fi
   if [ -n "$SB_S_FILE" ]; then
     base="$(sb_sub_value "$SB_S_FILE" base_branch)"
@@ -292,6 +298,6 @@ EOF
   if [ -n "$current" ] && [ -n "$(printf '%s\n' "$current" | sb_br_carry "$ids")" ]; then on=yes; fi
   printf 'repo: %s\npath: %s\ncurrent: %s\nhead: %s\n' "$name" "$(sb_path_out "$dir")" "${current:--}" "${head:--}"
   printf 'base_branch: %s\nbranch_pattern: %s\n' "$base" "$pattern"
-  [ -z "$carried" ] || printf '%s\n' "$carried" | awk -F'\t' '{ print "branch: " $1 " " $2 }'
+  sb_br_lines "$carried"
   printf 'recorded: %s\non_ticket: %s\n' "$rec" "$on"
 }

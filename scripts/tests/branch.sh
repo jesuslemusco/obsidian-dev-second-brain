@@ -280,6 +280,11 @@ sb branch Example EX-1 --show main a.txt --started
 rc_is "branch: --show and --started together, exit 5" 5
 sb branch Example EX-1/x
 rc_is "branch: an id with a slash, exit 5" 5
+sb branch Example ""
+rc_is "branch: an empty id, exit 5" 5
+err_has "branch: an empty id is no task id" "not a task id"
+sb branch Example "" --started
+rc_is "branch --started: an empty id, exit 5" 5
 sb branch Nope EX-1
 rc_is "branch: an unknown project, exit 1" 1
 
@@ -287,9 +292,12 @@ rc_is "branch: an unknown project, exit 1" 1
 sb help
 out_has "help: lists branch" "branch <project> <ID> [--path DIR]"
 out_has "help: and its file and started forms" "[--show <ref> <file> | --started]"
+out_has "help: session-check takes --cwd, as the branch check runs it" "session-check [--cwd DIR]"
 CT="$here/docs/contract.md"
 file_has "contract: the branch row" "$CT" '| `branch <project> <ID> [--path <dir>]` |'
 file_has "contract: the file and started forms" "$CT" '| `branch <project> <ID> [--path <dir>] --show <ref> <file>` / `--started` |'
+file_has "contract: --started exits 1 for a branch with no history in common with the base" "$CT" \
+  'Exit 1 when no branch carries the id, when there is no base branch, or when the branch shares no history with the base;'
 file_has "contract: the helper runs git for branch" "$CT" '`second-brain <command> [args]`. Bash 3.2 and awk only, and read-only git for `branch`.'
 file_has "contract: branch.sh in the code layout" "$CT" '- `scripts/lib/branch.sh` holds `cmd_branch` and its helpers, `sb_br_*`.'
 file_has "guide: Claude reads a ticket's branches through the helper" "$here/docs/guide.md" '`second-brain branch <project> <ID>`'

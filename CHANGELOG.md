@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

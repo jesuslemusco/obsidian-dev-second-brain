@@ -62,7 +62,7 @@ then each story in order.
      says. That pick is approved: step 5 does not stop for it.
    - The owner picks a story that exists in its place: story-tracker writes no new one, and names
      that story. Its change sets the draft's parent as its `epic`, unless the owner keeps it under
-     its own parent.
+     its own parent. story-tracker names the parent it left, for step 4.
    - From then on that story stands for the draft's id: as the parent of the draft's stories, in
      step 3 for the tasks it waits on and for each story that waits on it, and in step 4, once it
      is under the draft's parent, in the epic's list in place of that id.
@@ -78,6 +78,7 @@ then each story in order.
    the owner dropped: `second-brain task dep <ID> remove <other ID>`.
 4. In each epic's list, link each story as `[[<its path, no .md>|<ID>]]`, with the path
    `second-brain find <ID> --project <project>` prints.
+   - A story that left a parent in step 1, for the draft's: drop its line from that parent's list.
 5. A step would change the approved text, such as an id that is taken or a topic tag with no
    folder: stop. Show the change, and write it only once the owner approves it.
 6. Report each story's path and the tasks it waits on.

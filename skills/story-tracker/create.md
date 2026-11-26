@@ -107,7 +107,7 @@ join. Every new story gets this check, one from refinement too:
     it. Write no new story, and say which story took its place, for a refinement to link.
     - A story from refinement whose draft names a parent: the change moves it under that parent,
       `second-brain task set <ID> epic=<parent>`, unless the owner keeps it under its own. Say
-      which parent it is under.
+      which parent it is under, and the one it left.
   - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.
   - Write it on its own: write it as the steps below say, with no `epic`.
   - With no match, offer the last two.

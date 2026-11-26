@@ -2531,6 +2531,7 @@ line_is "same story: a refinement story's place taker moves under the draft's pa
   '    - A story from refinement whose draft names a parent: the change moves it under that parent,'
 file_has "same story: through task set, unless the owner keeps its own parent" "$STC" \
   '`second-brain task set <ID> epic=<parent>`, unless the owner keeps it under its own.'
+file_has "same story: it names the parent the story left" "$STC" 'which parent it is under, and the one it left.'
 file_has "same story: pick two, file it under an epic" "$STC" \
   '  - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.'
 file_has "same story: pick three, write it on its own" "$STC" \
@@ -2561,6 +2562,15 @@ line_is "same story: refinement, a story that exists in place of a new one" "$RF
   '   - The owner picks a story that exists in its place: story-tracker writes no new one, and names'
 file_has "same story: refinement, that story takes the draft's parent" "$RFW" \
   '     that story. Its change sets the draft'"'"'s parent as its `epic`, unless the owner keeps it under'
+line_is "same story: refinement, story-tracker names the parent it left, for step 4" "$RFW" \
+  '     its own parent. story-tracker names the parent it left, for step 4.'
+ds_left='   - A story that left a parent in step 1, for the draft'"'"'s: drop its line from that parent'"'"'s list.'
+line_is "same story: refinement drops a story from the list of the parent it left" "$RFW" "$ds_left"
+ds_l="$(linex "$RFW" "$ds_left")"
+is "same story: refinement drops it in step 4" \
+  "$((${ds_l:-0} > $(lineno "$RFW" '4. In each epic'"'"'s list, link each story') && ${ds_l:-0} < $(lineno "$RFW" '5. A step would change the approved text')))" "1"
+line_is "same story: the contract drops it from the list of the parent it left" "$DSC" \
+  '- A story that leaves its own parent for the draft'"'"'s is dropped from that parent'"'"'s list.'
 line_is "same story: refinement, that story stands for the draft's id" "$RFW" \
   '   - From then on that story stands for the draft'"'"'s id: as the parent of the draft'"'"'s stories, in'
 file_has "same story: refinement, in step 3 for both ends of each link" "$RFW" \

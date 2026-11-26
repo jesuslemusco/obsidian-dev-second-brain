@@ -1100,6 +1100,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A story that exists, picked in story-tracker's check in place of a new one, takes the draft's
   parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the
   draft's id: as a parent, in each `task dep` and, under the draft's parent, in the epic's list.
+- A story that leaves its own parent for the draft's is dropped from that parent's list.
 - A story filed under another parent, or none, or kept under its own, is listed under that parent
   alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.

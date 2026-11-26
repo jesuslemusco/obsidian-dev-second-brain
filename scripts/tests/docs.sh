@@ -2527,6 +2527,10 @@ file_has "same story: a refinement story's proposal is its approved parent" "$ST
 line_is "same story: the owner picks with AskUserQuestion" "$STC" '- Ask the owner with AskUserQuestion to pick one:'
 file_has "same story: pick one, change the story that exists" "$STC" '  - Change the story that exists: show the change to it beside what it says now'
 file_has "same story: it names the story that took the new one's place" "$STC" 'say which story took its place, for a refinement to link.'
+line_is "same story: a refinement story's place taker moves under the draft's parent" "$STC" \
+  '    - A story from refinement whose draft names a parent: the change moves it under that parent,'
+file_has "same story: through task set, unless the owner keeps its own parent" "$STC" \
+  '`second-brain task set <ID> epic=<parent>`, unless the owner keeps it under its own.'
 file_has "same story: pick two, file it under an epic" "$STC" \
   '  - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.'
 file_has "same story: pick three, write it on its own" "$STC" \
@@ -2555,20 +2559,27 @@ line_is "same story: refinement names story-tracker's check" "$RFW" \
 file_has "same story: refinement takes the pick as approved" "$RFW" 'That pick is approved: step 5 does not stop for it.'
 line_is "same story: refinement, a story that exists in place of a new one" "$RFW" \
   '   - The owner picks a story that exists in its place: story-tracker writes no new one, and names'
-file_has "same story: refinement, that story stands for the draft's id" "$RFW" \
-  'From then on it stands for the draft'"'"'s id: as the parent of the draft'"'"'s stories,'
+file_has "same story: refinement, that story takes the draft's parent" "$RFW" \
+  '     that story. Its change sets the draft'"'"'s parent as its `epic`, unless the owner keeps it under'
+line_is "same story: refinement, that story stands for the draft's id" "$RFW" \
+  '   - From then on that story stands for the draft'"'"'s id: as the parent of the draft'"'"'s stories, in'
 file_has "same story: refinement, in step 3 for both ends of each link" "$RFW" \
-  'in step 3 for the tasks it waits on and for each story that waits on it, and in step 4, in'
-file_has "same story: refinement, in the epic's list" "$RFW" 'the epic'"'"'s list in place of that id.'
-line_is "same story: refinement, a story filed under another parent" "$RFW" \
-  '   - The owner files it under another parent, or none: in step 4, list it under that parent'
+  'step 3 for the tasks it waits on and for each story that waits on it, and in step 4, once it'
+file_has "same story: refinement, in the epic's list once under the draft's parent" "$RFW" \
+  'is under the draft'"'"'s parent, in the epic'"'"'s list in place of that id.'
+line_is "same story: refinement, a story filed under another parent, or kept under its own" "$RFW" \
+  '   - The owner files it under another parent, or none, or keeps the story that exists under its'
 file_has "same story: refinement, out of the list of the draft's parent" "$RFW" \
-  'alone, and drop it from the list of the parent the draft named.'
+  'own: in step 4, list it under that parent alone, and drop it from the list of the parent the'
 line_is "same story: the contract says how refinement follows the pick" "$DSC" \
-  '- A story that exists, picked in story-tracker'"'"'s check in place of a new one, stands for the'
-ds_rf="$(linex "$DSC" '  under another parent, or none, is listed under that parent alone, as `## 4. Write` in')"
+  '- A story that exists, picked in story-tracker'"'"'s check in place of a new one, takes the draft'"'"'s'
+line_is "same story: the contract, it takes the draft's parent as its epic" "$DSC" \
+  '  parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the'
+line_is "same story: the contract, in the epic's list once under the draft's parent" "$DSC" \
+  '  draft'"'"'s id: as a parent, in each `task dep` and, under the draft'"'"'s parent, in the epic'"'"'s list.'
+ds_rf="$(linex "$DSC" '- A story filed under another parent, or none, or kept under its own, is listed under that parent')"
 is "same story: the contract points to refinement's write" "$(sed -n "$((${ds_rf:-0} + 1))p" "$DSC")" \
-  '  `skills/scrum-master/refinement.md` says.'
+  '  alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.'
 line_is "same story: refinement.md has the heading the contract names" "$RFW" '## 4. Write'
 file_has "same story: the guide describes the check" "$here/docs/guide.md" \
   '- Before story-tracker writes a new story, yours or one from refinement, it shows each story that'
@@ -2578,7 +2589,7 @@ CG="$here/CHANGELOG.md"
 ds_cg="$(lineno "$CG" '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s')"
 is "same story: the changelog line is under 0.13.0" \
   "$((${ds_cg:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
-ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its links and its line in the')"
+ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its parent, its links and its line')"
 is "same story: the changelog says refinement follows the pick, under 0.13.0" \
   "$((${ds_cg2:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg2:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
 

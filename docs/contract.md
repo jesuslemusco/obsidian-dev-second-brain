@@ -1097,10 +1097,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - On the approval it writes through story-tracker: its start mode for each new epic, then each
   new story, and its update mode for each one that changed. Then it links each story to the tasks
   it waits on with `task dep`, and links the stories in the epic's list.
-- A story that exists, picked in story-tracker's check in place of a new one, stands for the
-  draft's id from then on: as a parent, in each `task dep` and in the epic's list. A story filed
-  under another parent, or none, is listed under that parent alone, as `## 4. Write` in
-  `skills/scrum-master/refinement.md` says.
+- A story that exists, picked in story-tracker's check in place of a new one, takes the draft's
+  parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the
+  draft's id: as a parent, in each `task dep` and, under the draft's parent, in the epic's list.
+- A story filed under another parent, or none, or kept under its own, is listed under that parent
+  alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
 - A request to close the sprint goes to its close. With no sprint in progress, it says so and
   stops: it opens one only when the user asks.

@@ -3,7 +3,7 @@ name: vault-setup
 description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
 argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | validation <project> | link]"
 disable-model-invocation: true
-allowed-tools: Read Glob Bash(second-brain *)
+allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)
 ---
 
 # Vault setup
@@ -104,9 +104,6 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
      quotes a backslash is an escape.
    - Never remove or reorder a key.
    - Add a key from the table only when the profile lacks it.
-   - Ask nothing for `achievements_skill`. When the profile lacks it, write
-     `achievements_skill: ""`: no skill reads it until the plugin's achievements skill, which is
-     planned.
 5. A key the user gave no answer for stays as the scaffold wrote it. Say which keys are still
    open.
    - An empty `repos_root` is fine.
@@ -114,6 +111,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    `unknown`.
 7. Fill `## Docs` of the profile:
    - Ask how a deployment is confirmed in this project. Write the answer in its opening paragraph.
+   - Offer to have `docs-keeper` draft the project's docs from its code, as
+     `${CLAUDE_SKILL_DIR}/docs.md` says.
    - For every repository named, add its Code to doc map rows as
      `## 2. The docs that follow it` in `${CLAUDE_SKILL_DIR}/repo.md` says.
    - Fill any other section only from what the user says.
@@ -124,6 +123,8 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
    - Ask for one paragraph on the project and for its rules. Write them in place of those lines.
    - Delete a line the user has nothing for.
 10. Write each repo's validation steps as `${CLAUDE_SKILL_DIR}/validation.md` says.
+    - First offer `define-validation-scope` for each repo, as step 2 of `## 3. Finish` in
+      `${CLAUDE_SKILL_DIR}/repo.md` says. A repo whose section it writes needs no more here.
     - With `validation_home: repo`, `claude/validation.md` is not used. Ask, then delete it and
       its line in `claude/README.md`.
 
@@ -136,6 +137,9 @@ to it, and follow it.
 - repo: `${CLAUDE_SKILL_DIR}/repo.md`
 - subproject: `${CLAUDE_SKILL_DIR}/subproject.md`
 - validation: `${CLAUDE_SKILL_DIR}/validation.md`
+
+`${CLAUDE_SKILL_DIR}/docs.md`, the docs setup, is no mode: read it when step 7 of project mode or
+`repo.md` points to it.
 
 In project and adopt, offer subproject when the user names repositories that differ in branches
 or docs.

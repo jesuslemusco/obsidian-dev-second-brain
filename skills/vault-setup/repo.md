@@ -21,6 +21,10 @@ Code to doc map in the same change. Never invent a name, a location, a kind of c
 
 ## 2. The docs that follow it
 
+In repo mode, first offer to have `docs-keeper` draft the repository's docs from its code, as
+`docs.md`, beside this file, says. A repository with rows from such a draft keeps them: ask step 1
+only for a kind of change they leave out.
+
 1. Ask, for each kind of change that matters, which docs must be updated.
 2. Add one row per kind of change to the table under `### Code to doc map`, in `## Docs` of the
    profile: `| <repo> | <change> | <docs> |`.
@@ -37,7 +41,13 @@ Code to doc map in the same change. Never invent a name, a location, a kind of c
 ## 3. Finish
 
 1. Run `second-brain repo <project>` and show its rows: each path and whether it exists.
-2. Write the repository's validation steps as `validation.md`, beside this file, says.
+2. Write the repository's validation steps. First offer to have the `define-validation-scope`
+   skill draft them, from the project's docs or its code, and write them once the user approves.
+   - On a yes, call it with the Skill tool as `odsb:define-validation-scope <project> <repo>`,
+     and go on once it ends.
+   - On a no, or when the session cannot call it, write them as `validation.md`, beside this
+     file, says.
 3. Run `second-brain doctor <project>`. `code-doc-map` and `repos` must be `ok`. Report every row
    that is not `ok`, with its fix.
-4. Say what was added: the name, its location, its map rows and, if any, the debt line.
+4. Say what was added: the name, its location, its map rows, the docs written and, if any, the
+   debt line.

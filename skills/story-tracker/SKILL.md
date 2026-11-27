@@ -90,29 +90,32 @@ Ticket text, in draft mode or when the user asks for text to paste into the trac
 Know the exact ref, the branch and its HEAD commit, before you reason about, recall or review a
 ticket.
 
-- `second-brain repo <project>` lists the repos, the default first. For the one the ticket
-  touches, `second-brain repo <project> <name>` prints its path.
-- Exit 1, or a state other than `ok`: say which case it is (not listed, no location recorded,
-  folder missing) and ask the user where the repo is.
-- `second-brain profile <project> repos` says what each repo holds.
-- Run git as `git -C "<repo path>"`.
-- Get the current branch and its HEAD commit: `git -C "<repo path>" branch --show-current` and
-  `git -C "<repo path>" log -1 --format=%h`.
-- List every local or remote branch whose name carries the ticket id:
-  `git -C "<repo path>" branch -a --list '*<ID>*'`.
+- Read git through the helper alone: never run `git` yourself. The helper's git only reads, and
+  `Bash(second-brain *)` covers it, so the branch check asks nothing.
+- `second-brain branch <project> <ID>` reads the ticket's default repo: the first repo of its
+  subproject, else the profile's. It prints the `repo` and its `path`, the `current` branch and
+  its `head`, `base_branch` and `branch_pattern`, one `branch: <name> <short hash>` line for each
+  local or remote branch that carries the id, the task's `recorded` branch, and `on_ticket`.
+  - The ticket touches another repo: `second-brain repo <project>` lists the repos, the default
+    first, and `second-brain profile <project> repos` says what each one holds. Add
+    `--path "<repo path>"`, with the path `second-brain repo <project> <name>` prints.
+  - Exit 1: say which case it is (not listed, no location recorded, folder missing, no git
+    repository) and ask the user where the repo is.
 - `base_branch` and `branch_pattern` give the base branch and the branch naming.
 - A new story's branch is cut from the base branch.
   - A story that needs another story's code not yet in the base branch is cut from that story's
     branch.
-- No id given: derive it from the branch with `branch_pattern`. Still unknown: ask.
-- The branch does not match the ticket: read the right ref without switching, with
-  `git -C "<repo path>" show <branch>:<file>`, or tell the user.
+- No id given: `second-brain session-check --cwd "<repo path>"` prints the repo's `branch:` and
+  the `ticket:` it names. Still none: derive it from the branch with `branch_pattern`, else ask.
+- `on_ticket: no`, the branch does not match the ticket: read the right ref without switching,
+  with `second-brain branch <project> <ID> --show <branch> <file>`, or tell the user.
 - Environment set: one branch, named for the first environment's id, serves every ticket in the
   set.
-  - Being on it for a later environment's ticket is no mismatch. A mismatch is a branch that
-    carries no id from `aliases`.
+  - Being on it for a later environment's ticket is no mismatch, and `on_ticket` counts each id
+    from `aliases`. A mismatch is a branch that carries no id from `aliases`.
   - Never rename it, or cut a branch for a later id.
-- Several branches match one ticket: ask which is canonical.
+- Several `branch:` lines name different branches: ask which is canonical. A local branch and its
+  `<remote>/` copy are one branch.
 - Record the ref:
   - `second-brain task set <ID> branch=<branch>`.
   - In the `**Branch:**` line: the branch, its HEAD and the date, plus one line per other branch

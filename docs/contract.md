@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 8
+index_version: 9
 ---
 ```
 
@@ -97,6 +97,7 @@ index_version: 8
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
   <topics_root>/planned-releases.md   optional; the releases ahead, which release-planning writes
+  <topics_root>/achievements.md   optional; the owner's achievements (section 9)
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```
@@ -129,7 +130,7 @@ repos_root: "~/code/acme"
 repo_paths: []
 validation_home: vault
 lead_check_minutes: 20
-achievements_skill: ""
+build_pairs: 1
 tags:
   - type/profile
 ---
@@ -203,8 +204,8 @@ tags:
   starting with `~`.
 - `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
 - Both may be empty. A repo's location is then unknown, and the skills ask for it.
-- `achievements_skill` is kept for the plugin's achievements skill, which is planned. No skill
-  reads it until then. Only that skill tracks achievements.
+- `achievements_skill` is no key of the profile. Versions before 0.13.0 wrote it. A profile that
+  still has it keeps it: no skill reads it, and the doctor does not name it.
 - `validation_home` is where `validation.md` lives. `vault`: `claude/validation.md` in the
   project. `repo`: `validation.md` at the root of each repo. A subproject's note may set it for its
   repos.
@@ -220,6 +221,12 @@ tags:
   other value, is 20.
 - `templates/profile.md.tmpl` leaves the key out. The doctor's `settings` check warns on a value
   it does not take.
+- `build_pairs` is how many `implementer` and `reviewer` pairs a build runs at once, as
+  `### Pairs side by side` in `skills/build/SKILL.md` says. It is a whole number from 1 to 5. A
+  missing or empty key, or any other value, is 1: one story and one agent at a time.
+- `profile <project> --keys` always prints a `build_pairs` line, with the value the build takes.
+- `templates/profile.md.tmpl` describes the key under `## Stories`, and leaves it out of the
+  frontmatter. The doctor's `settings` check warns on a value it does not take.
 
 ### Profile sections
 
@@ -298,16 +305,40 @@ tags:
 - Each step under `### Check as a user would` is one line that starts with the tool that runs it:
   a skill by its name, a command, an API call or a query.
 - Under `### Checks` a bullet's first inline code span is its command:
-  `` - `npm test` - the unit tests - when: each task ``.
-- Each bullet under `### Checks` and `### Check as a user would` ends with when it runs:
-  `when: each task`, `when: each build` or `when: release`.
-- `each task` runs in each task's review. `each build` runs once every task of a build has passed.
-  `release` runs only before a release or when the owner asks, such as an end-to-end suite.
-- A bullet with no `when:` is `each build`.
+  `` - `npm test` - the unit tests - when: each story ``.
+- Each bullet under `### Checks` and `### Check as a user would` ends with when it runs, its
+  stage: `when: each story`, `when: each merge` or `when: release`.
+- `each story` runs in each story's review. `each merge` runs on the branch a story merges into,
+  once the merge is made and before it is pushed. `release` is for a project that plans releases:
+  it runs only before a release or when the owner asks, such as an end-to-end suite.
+- No stage needs sprints or a release branch: a story merges wherever the project's git flow says.
+- A run of a stage takes the stages before it too: `each merge` runs the `each story` checks as
+  well, and `release` all three.
+- `each task` and `each build`, the names before 0.13.0, read as `each story` and `each merge`.
+  The doctor's `validation` check names each bullet that still holds one.
+- A bullet with no `when:` is `each merge`.
 - The `when:` is the last one in the bullet outside code spans. Its value is read without letter
   case, with a hyphen as a blank and a final period dropped.
-- Any other value is unknown and counts as `each build`, so a typo never drops a check.
+- Any other value is unknown and counts as `each merge`, so a typo never drops a check.
   `validation run` names it as a warning in every run.
+- A check may name the paths it covers, as `paths: <glob>, ...`. A story's review runs it only
+  when the story's change touches one of them:
+  `` - `npm run e2e:api` - the API suite - paths: api/**, `package.json` - when: each story ``.
+- The `paths:` is the last one in the bullet outside code spans, as for `when:`. Its globs run to
+  a `when:` that follows it, or to the end of the bullet, and the `when:` runs to a `paths:` that
+  follows it: the two may come in either order.
+- The globs are split at commas, each one trimmed, a final ` -` and a final period dropped. A glob
+  may be a code span of its own, so that a `*` is not read as emphasis.
+- A glob is matched against each path from the folder the checks run from, the repo's root, as git
+  matches a `:(glob)` pathspec: `*` and `?` stay within a folder, and `**` crosses folders.
+- With `--changed <base>`, `validation run` runs a check that has globs only when the diff from
+  `<base>` to the folder touches a path one of them matches. A file changed, added, deleted or
+  moved since `<base>` counts, committed or not, and so does a new file that git does not ignore.
+  A moved file counts at both of its paths.
+- A check with no `paths:`, or with an empty one, runs every time, and so does every check in a run
+  with no `--changed`. A check that git cannot match runs too, so that an error never drops it.
+- A user step takes no `paths:`. Who runs each stage's checks and user steps is under
+  **Who runs which check.** in `## 9. Skills and agents`.
 - A bullet is its first line and the indented lines under it, up to a blank line, a nested item
   or the next bullet. A nested item is part of no check.
 - A section is written when something is under its heading. One with nothing is `empty`.
@@ -540,8 +571,9 @@ Body: an up-link to the sprints hub, then `## Goal`, `## Notes`, `## Close`.
 
 ## 7. The helper
 
-`second-brain <command> [args]`. Bash 3.2 and awk only. It runs on macOS, on Linux, and on Windows
-in Git Bash. Output is plain text for Claude: short, stable, no colour.
+`second-brain <command> [args]`. Bash 3.2 and awk only, and read-only git for `branch`. It runs on
+macOS, on Linux, and on Windows in Git Bash. Output is plain text for Claude: short, stable, no
+colour.
 
 Exit codes: `0` ok, `1` not found, `2` setup missing (no pointer or not a vault), `4` ambiguous,
 `5` bad usage, `6` already exists. `3` is retired: it meant the Obsidian CLI was unavailable.
@@ -589,10 +621,12 @@ Rules that hold for every command:
 | `repo <project> [name]` | with no name, one TSV row per repo: name, path, state (`ok`, `missing`, or `unknown` with path `-` when no location is recorded). The profile's repos come first, in order, then each subproject's repos the profile does not list, by subproject name. With a name, the path alone | paths are absolute, with `~` expanded. With a name, exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `subproject <project>` | one TSV row per subproject, by name: name, repos (comma separated, or `-`), docs folder as a vault path | exit 0 with no rows for a project with none; exit 1 when the profile is missing |
 | `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are as `### Subprojects` says; lists are joined with `, `. `validation_home` includes the default (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it, or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
-| `profile <project> --keys` | the profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
+| `profile <project> --keys` | the profile frontmatter as `key: value` lines, and a `build_pairs` line always | the `build_pairs` line holds the value the build takes: the key's when it is 1, 2, 3, 4 or 5, else 1. It stands in the key's place, or last with no key (section 3). Exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
 | `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, directly under the tasks root, in a status folder, in `backlog` or another group folder, or archived, or one level deeper in a group folder, as a child task is (section 4), then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
+| `branch <project> <ID> [--path <dir>]` | `key: value` lines: `repo`, `path`, `current`, `head`, `base_branch`, `branch_pattern`, then one `branch: <name> <short hash>` line for each local or remote branch that carries the id, then `recorded` and `on_ticket` (`yes` or `no`) | for story-tracker's branch check. The repo is the folder `--path` names, such as a git worktree, else the first repo of the task's subproject, else the profile's first. `repo` names the project's repo that folder is, or is a worktree of, else `-`. `current` is `-` on a detached head, and `head` in a repository with no commit. `base_branch` and `branch_pattern` are those of the task's subproject, else of the one subproject whose repos hold the repo, as `### Subprojects` says, else the profile's. A branch carries the id when its name holds it, in any letter case, with no letter or digit right before or after it: `feature/EX-1-fix` carries `EX-1`, `feature/EX-10` does not. The ids are the one asked for, and for a task its folder id and each alias that is a key of the project, a hyphen and a number, as the later ids of an environment set are. Local branches come first, then remote ones as `<remote>/<name>`, by ref, with no remote `HEAD`. `recorded` is the task's `branch` key, `-` for a ticket with no task, which is no error. `on_ticket` is `yes` when the current branch carries the id. Each form runs only read-only git (`for-each-ref`, `symbolic-ref`, `rev-parse`, `cat-file`, `log`, `diff`), and takes no setting from outside: it clears each `GIT_` variable, such as `GIT_CONFIG_PARAMETERS` and `GIT_DIR`, and passes on no option. Exit 1 when the default repo is not listed, has no recorded location or has no folder, when `<dir>` is not a folder, or when the folder is no git repository or git is not installed. Exit 4 when several tasks match. Exit 5 for a missing argument, an unknown flag, or `--path` with no value |
+| `branch <project> <ID> [--path <dir>] --show <ref> <file>` / `--started` | `--show`: the file as it is at the ref, byte for byte. `--started`: `branch: <name>` and `base: <name>`, then `log:` and `stat:`, each with its lines indented by two blanks, or `log: -` and `stat: -` when the branch has no commit of its own | the repo is found as above, and only one of the two is taken. `--show` takes a ref as git does, such as a branch, a tag or a hash, and the file's path from the repo's root. Exit 1 when the ref names no commit, or when the file is not there or is a folder; exit 5 for a ref that starts with `-`. `--started` reads the task's recorded branch when the repo has it, the local one first, else the one branch that carries the id, the local one first. The base is `origin/<base_branch>` when the repo has it, else `<base_branch>`. `log` is `git log --format='%h %s' <base>..<branch>`, with no signature shown, and `stat` is `git diff --stat <base>...<branch>`, with no external diff or text conversion. Exit 1 when no branch carries the id, when there is no base branch, or when the branch shares no history with the base; exit 4 when several do and none is recorded, after one `branch:` line for each, with a hint to record one |
 | `task head <ID> [--project P] [--json]` | at most 15 lines: id, path, title, status, next, sprint, branch, epic, subproject (only when set), topics, envs, summary line, newest status note | `--json` prints one object whose keys are the lines' keys, `subproject` only when set. `topics` and `envs` are arrays, each env as `<env>:<id>:<status>`. The `epic` line takes its key from the profile's `parent_label`: `feature: <value>` where it is `feature`, in the text and in `--json` |
 | `task docs <ID>[,<ID>...] [--project P]` | for each task with unticked `- [ ]` lines under `## Docs to update`: a line `<id> <vault path>`, then those lines as written; nothing for a task with none | ids may be comma-separated or given as several arguments; exit 1 when an id names no task |
 | `task set <ID> key=value... [--project P]` | the changed keys, or `no change` | scalar keys only. Setting `status` also sets the `status/` tag, and setting `type` the `type/` tag. `key=` removes the key. Exit 5 for a status outside the five, for `jira_id`, for a list key (`depends_on` goes through `task dep`), and for a sprint id on a project that does not use sprints (`sprint=` still removes one). `subproject` must name a subproject of the task's project, matched as by `subproject <project> <name>`, and is written as its note is named; exit 1 when none matches. In a status project, a `status` other than the task's own, the last `status=` pair winning, moves the task's folder with `move` to `<tasks_root>/<status>/<ID>/` once the keys are written: the README's new vault path and the move's `links: <path> \| <count>` lines come after the changed keys. Exit 6, writing nothing, when anything is at that destination, an empty folder or a link too. The same status moves nothing, even from another folder, and a task whose folder is the destination already is not moved. A move that fails exits as `move` does, with the keys written. In a sprint project, a `sprint` other than the task's own, the last `sprint=` pair winning, moves the task's folder the same way, to the folder of that sprint, `<tasks_root>/<sprint folder>/<ID>/`, or to `<tasks_root>/backlog/<ID>/` for `sprint=`; there a status change moves nothing. Exit 6, writing nothing, when anything is at that destination, or when the sprint's folder is a task, with a `README.md` of its own (`the sprint folder is a task: <path>`). Exit 5, writing nothing, when `sprint_folder` gives the sprint no folder name. The same sprint moves nothing, even from another folder, and a task whose folder is the destination already is not moved. In a status or sprint project, an `epic` other than the task's own, the last `epic=` pair winning, moves the task's folder the same way, into its parent's folder in the folder of its status or sprint, `<tasks_root>/<folder>/<parent>/<ID>/`, and `epic=` or `epic=-` moves it out to `<tasks_root>/<folder>/<ID>/`. A move for a status or a sprint keeps a child under its parent, `<tasks_root>/<new folder>/<parent>/<ID>/`. An `epic` that names no single task of the project names no parent, with `note: <label> <value> names no single task of <project>` on stderr, `<label>` being the profile's `parent_label`. A task that holds children moves its own entries alone (section 4), and its destination may be a folder named for it that holds one of them; an entry already there gives exit 6, writing nothing. A move that leaves a folder that holds tasks empty removes it, and prints `removed: <path>` after the `links:` lines |
@@ -604,7 +638,7 @@ Rules that hold for every command:
 | `task archive <ID> [--project P]` | the README's new vault path, then the move's `links: <path> \| <count>` lines | moves a done or abandoned task's folder with `move` to `<tasks_root>/archive/<YYYY>/<ID>/`, the year being today's, then writes `archived: "<today>"`. Exit 5 when the project's `task_layout` is not `archive`, or when the task's status is not `done` or `abandoned`. Exit 6, moving nothing, when it is archived already or when anything is at the destination, an empty folder or a link too. Exit 1 for an unknown task. A move that fails exits as `move` does |
 | `validation <project> [--json]` | one TSV row per repo, in the order `repo` lists them: name, home (`vault` or `repo`), path, state (`ok`, `missing`, `no-section`, `empty`, or `unknown` when a `repo` home has no recorded location) | path is a vault path for `vault`, absolute for `repo`, `-` when unknown. `missing`: the file is not there. `no-section`: it has no `## <repo>` section. `empty`: nothing is under its heading. A project with no repo prints nothing. Exit 1 when the profile is missing. `--json` prints the rows with the keys `name`, `home`, `path` and `state` |
 | `validation <project> <repo> [--path <dir>] [--json]` | `path: <path>`, then the body of the repo's `## <repo>` section, as `profile <project> <section>` prints a section | the repo is matched exact first, then without letter case. Exit 1 when it is not a repo of the project, has no recorded location with a `repo` home, or when the file or its section is missing. `--path` names a folder that stands in for the repo's recorded one, such as a git worktree of it: a `repo` home's file is `<dir>/validation.md`, and the recorded location is not needed. A `vault` home's file is the same with it or without it. Exit 1 when `<dir>` is not a folder. `--json` prints one object: `path`, and `body`, the body as one string. `body` is `""` when the section is empty |
-| `validation run <project> <repo> [--when each-task\|each-build\|release] [--timeout <seconds>] [--path <dir>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-task` takes `each task`, `each-build` takes `each task` and `each build`, and `release` takes all three. `--when` is `each-build` by default. The repo and its section are found as `validation <project> <repo>` finds them, with its `--path` too. Each command runs through bash, one at a time, from the repo's root, or from `<dir>` with `--path`, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each build`, and every run names it on stderr as `note: unknown when: <value>, read as each build: <the bullet's text>`. A skipped row's command is the bullet's text, on one line, and its exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing, or `<dir>` with `--path`. Exit 5 for another `--when`, a `--timeout` that is not a whole number above 0, or a `--path` with no value. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
+| `validation run <project> <repo> [--when each-story\|each-merge\|release] [--changed <base>] [--timeout <seconds>] [--path <dir>] [--json]` | one TSV row per check it runs or skips, in order: command, result (`pass`, `fail` or `skipped`), exit code, seconds, log. Under a `fail` or `skipped` row, its lines, each indented by two blanks | runs the command of each bullet under `### Checks` in the repo's section whose `when:` the run takes (section 3): `each-story` takes `each story`, `each-merge` takes `each story` and `each merge`, and `release` takes all three. `--when` is `each-merge` by default. `each-task` and `each-build`, the old names, read as `each-story` and `each-merge`. With `--changed <base>`, a check whose `paths:` the diff from `<base>` does not touch is `skipped`, with the line `no change to its paths since <base>`, as section 3 says. `<base>` is any commit git names in the folder the checks run from, such as a hash or a branch. The repo and its section are found as `validation <project> <repo>` finds them, with its `--path` too. Each command runs through bash, one at a time, from the repo's root, or from `<dir>` with `--path`, with stdin from `/dev/null` and its output and errors in its log, a temp file outside the repo and the vault. It is stopped after `--timeout` seconds, 1800 by default: it and the processes it started get TERM, then KILL 5 seconds later, and its exit code is 124. On Windows, `taskkill` also stops the Windows processes under it. What a command leaves running when it exits gets TERM, then KILL 5 seconds later, before the next command starts. On Windows this reaches only the shell's own processes. `seconds` is whole seconds. A `fail` row's lines are `stopped after <n> seconds` for a timeout, then the first 10 lines of its output that hold `fail` or `error` in any letter case, or its last 10 lines when none does, blank lines left out and each cut at 200 bytes. A bullet with no code span is `skipped`, with the line `no command`. A bullet with an unknown `when:` runs as `each merge`, and every run names it on stderr as `note: unknown when: <value>, read as each merge: <the bullet's text>`. A row skipped for `no command` has the bullet's text, on one line, for its command, and one skipped for its paths has its command. A skipped row's exit code, seconds and log are `-`. A section with no `### Checks` prints no row, with `note: no ### Checks in <path>` on stderr. Exit 0 when no row fails, 1 when one does. Exit 1 with no row as `validation <project> <repo>` does, and when the repo's folder is missing, or `<dir>` with `--path`. Exit 1 with no row too when `<base>` is no commit in that folder, or the folder is in no git repo: `--changed: no commit <base> in <folder>`. Exit 5 for another `--when`, a `--timeout` that is not a whole number above 0, a `--path` with no value, or a `--changed` with none or with one that starts with `-`. `--json` prints the rows with the keys `command`, `result`, `exit`, `seconds`, `log` and `lines`; `exit` and `seconds` are numbers, `null` on a skipped row, and `lines` is a list |
 | `validation new <project> <repo>` | the path of the file it wrote or added the section to | from `validation-repo.md.tmpl`, writes a missing file with the repo's section, or adds the section to a file without it, after one blank line and in the file's line endings. A section that is there is never changed: `exists: <path>` on stderr, exit 0. Exit 1 as `validation <project> <repo>` does for the repo |
 | `topic <project> <tag>` | paths of task READMEs carrying the tag or a sub-tag | |
 | `search <project> "<text>" [--in SUBPATH]` | `path:line: text` matches, at most 40 | the text is split into terms at blanks; a part in double quotes is one term, a phrase. A note matches when it holds every term, in any letter case. A note gives at most three lines: for one term, the first lines that hold it; for several, the lines that hold the most terms among those holding at least two, or, when it has none, the first line that holds each term. When more than 40 lines are left, every note's best line is kept before any note's second. Lines holding more of the terms come first, then by path and line. Exit 1 when no note matches, exit 5 when the text holds no term |
@@ -822,8 +856,8 @@ Library files: `scripts/lib/link.sh` (`cmd_link`, `cmd_pointer`, `sb_link_scan`)
 | project | `repos` | a repo of the project, a subproject's included, has a recorded location whose folder is missing (warn). Nothing recorded is ok |
 | project | `subprojects` | only for a project with a subproject note. A note whose `type` is not `subproject` (`<name>:type`), one with no repos (`<name>:no-repos`), no docs folder (`<name>:no-docs`), a repo with no row in the profile's Code to doc map (`<name>/<repo>:no-map-row`), a repo whose folder is missing (`<name>/<repo>:missing`) or that has no recorded location (`<name>/<repo>:no-location`), or a repo listed by two subprojects, compared without letter case (`<repo>:twice`) (warn) |
 | project | `task-subproject` | only for a project with a subproject note. A task whose `subproject` names no note in `claude/subprojects/`, compared without letter case (`<ID>:<value>`) (warn) |
-| project | `settings` | a `validation_home` value that is not allowed, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`), and a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn). A `delivery` or `spec_home` key, which versions before 0.12.0 read, is not read |
-| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`) |
+| project | `settings` | a `validation_home` value that is not allowed, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`), a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`), and a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`) (warn). A `delivery` or `spec_home` key, which versions before 0.12.0 read, is not read |
+| project | `validation` | a repo of the project has no `validation.md` (`<repo>:missing`), no `## <repo>` section in it (`<repo>:no-section`), a section with nothing under its heading (`<repo>:empty`), or a section that still holds a placeholder of `validation-repo.md.tmpl`, or a retired one of an earlier version, listed in `sb_val_placeholders` (`<repo>:placeholders`) (warn). A `repo` home with no recorded location (`<repo>:no-location`). One whose folder is missing is left to the `repos` check. A project with no repo and a `vault` home: a missing `claude/validation.md` (`claude/validation.md:missing`). Each bullet under `### Checks` and `### Check as a user would` whose `when:` is an old name, `each task` or `each build` (section 3), as `<repo>:<name>:each-task` or `<repo>:<name>:each-build`. A check's name is its command, its first code span. A user step's name, and that of a check with no code span, is its text before its `when:` or `paths:`, with a code span in it read as its text. Those come after the other offenders, and the fix names each old name's new one |
 | project | `sprints` | two sprints in progress, one in progress past its end, or a task pointing at a sprint with no note (fail). Not an offender: an open task pointing at the id `sprint next` gives while no sprint is in progress, which is where a close leaves carried tasks. For a project that does not use sprints, the one offender is a sprint note still in progress (warn) |
 | project | `unresolved-links` | a note under the project holds a link that resolves to no file (warn) |
 | project | `bare-links` | a task README links a repeated file name without a path, such as `[[README]]` (warn) |
@@ -918,11 +952,14 @@ the function `cmd_<command>` (dashes become underscores) with the remaining argu
 - The doctor calls `sb_link_foreign` and `sb_link_in_plugin` of `scripts/lib/link.sh`.
 - `scripts/lib/platform.sh` holds what differs between systems. Its private helpers are
   `sb_plat_*`.
+- `scripts/lib/branch.sh` holds `cmd_branch` and its helpers, `sb_br_*`. It runs every git
+  command through `sb_br_git`, which clears each `GIT_` variable first.
 - `scripts/lib/subproject.sh` holds `cmd_subproject` and the subproject helpers, `sb_sub_*` and
   `sb_need_sub`. `sb_scaffold_subproject` is in `scaffold.sh`.
 - `scripts/lib/validation.sh` holds `cmd_validation` and its helpers, `sb_val_*`. The doctor,
   `scaffold project` and `subproject` call `sb_val_home`, the doctor and `scaffold project`
-  `sb_val_rows`, and the doctor `sb_val_placeholders`.
+  `sb_val_rows`, the doctor `sb_val_placeholders` and `sb_val_checks` for each old `when:`, and
+  `branch` `sb_val_repo_row` and `sb_val_need_folder`.
 - Inside the helper every absolute path is in the shell's own form: on Windows, Git Bash's
   `/c/...`. `sb_path_in` turns a path that was read into that form, and `sb_path_out` turns one
   into the printed form. On macOS and Linux both leave the path as it is.
@@ -962,10 +999,12 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - Every helper function is named `sb_*` and every command `cmd_*`.
 - A library must not redefine a function another library owns.
 - Also shared: `sb_need_root`, `sb_need_project`, `sb_setting`, `sb_fm_edit`, `sb_fm_keys`,
-  `sb_section`, `sb_task_files`, `sb_task_readme`, `sb_task_groups`, `sb_task_nested`,
-  `sb_task_scan`, `sb_task_parent`, `sb_parent_label`,
+  `sb_fm_cache`, `sb_lc`, `sb_section`, `sb_task_files`, `sb_task_list`, `sb_task_list_keep`,
+  `sb_task_list_drop`, `sb_task_readme`, `sb_task_groups`, `sb_task_nested`, `sb_task_scan`,
+  `sb_task_parent`, `sb_task_parents`, `sb_task_parent_in`, `sb_alias_hits`, `sb_parent_label`,
   `sb_sprint_current_id`, `sb_sprint_folder`, `sb_uses_sprints`, `sb_need_sprints`, `sb_fill`,
-  `sb_body_insert`, `sb_note`, `sb_md_files`, `sb_board_sprint_literal`.
+  `sb_body_insert`, `sb_note`, `sb_md_files`, `sb_board_sprint_literal`, `sb_projects_memo`,
+  `sb_repo_memo`, `sb_date_days`, `sb_date_civil`.
 - Every command that looks for a task goes through `sb_task_files`, which lists a tasks folder's
   task READMEs directly under it, in each of the five status folders and in the archive, and
   `sb_task_readme`, which finds one task folder's README in any of them.
@@ -975,6 +1014,18 @@ Shared functions, defined in `scripts/lib/core.sh`, `platform.sh`, `link.sh`, `g
 - In each group folder, both take a task one level deeper too, as section 4 says, from
   `sb_task_nested`. `sb_task_parent` names a task's parent, and `sb_parent_label` the profile's
   word for it.
+- A command that moves several tasks lists their tasks folder once for its moves.
+  `sb_task_list_keep` keeps the listing, and `sb_task_list` prints it in place of `sb_task_files`
+  for that folder, until `sb_task_list_drop`. `sb_task_parents` reads the parent of every task
+  that moves in one pass, the one `sb_task_parent` names for each. `sprint open`, `sprint close`
+  and the doctor's `--fix` do so; the doctor lists each project's tasks folder once more for its
+  rows, after the moves.
+- `sb_need_project` and the doctor's project setup call `sb_fm_cache`, which reads the scalar
+  keys of one note's frontmatter once, the project's profile, so that `sb_fm_get` and
+  `sb_setting` answer for that note with no process. `sb_fm_list`, `sb_section`, `sb_repo_paths`
+  and the doctor's profile checks still read the file. An edit through `sb_fm_edit`,
+  `sb_body_insert` or `sb_body_append` drops the cache. `sb_lc` lowers the letter case of a
+  keyword with no process.
 
 ## 8. Templates
 
@@ -1044,6 +1095,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   option or a `-c` setting, can make it write a file or run a program, such as `Bash(ls -d *)`.
 - Any other command prompts. A `git -C *` pattern never qualifies: the wildcard for the repo path
   can take `-c gpg.program=<command>`, which a signature check runs.
+- So story-tracker and the scrum-master's refinement run no `git` of their own. They read a
+  ticket's branches, a file on another branch and the work started with `second-brain branch`,
+  which `Bash(second-brain *)` covers, and their branch check asks nothing.
 - A skill that runs only by name sets `disable-model-invocation: true`.
   `vault-setup` is the one: it writes the pointer and the links into `~/.claude`.
 - Claude may call `vault-doctor` from a request: its check writes nothing, and its fix repairs only
@@ -1072,13 +1126,19 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   owner asks for is shown again before it is written.
 - Those approval rules have one home, `## 3. Create the story` in `skills/story-tracker/create.md`.
   The scrum-master's refinement and release planning read them there.
+- Then, before it writes a new story, one from refinement too, its start mode shows each open or
+  done story that does the same, with its status, and the open epics the story could join, with
+  the one it proposes.
+- The owner picks: change the story that exists, file the new one under an epic, or write it on
+  its own. Nothing is written before the owner picks. The check works as
+  `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - Every story whose text the owner approved, in start mode or in refinement, gets the status note
   `Planned: the owner approved this text.` first. The `build` skill builds only a story with that
   note.
 - Refinement writes it too on each story of an approved draft that exists and lacks it, changed
   or not: the owner may approve a story as it is.
 - A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
-  does the sprint close: only an achievements skill tracks them.
+  does the sprint close: the `achievements` skill gathers them, as below.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
   skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and
   `organize-board.md`.
@@ -1091,6 +1151,12 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - On the approval it writes through story-tracker: its start mode for each new epic, then each
   new story, and its update mode for each one that changed. Then it links each story to the tasks
   it waits on with `task dep`, and links the stories in the epic's list.
+- A story that exists, picked in story-tracker's check in place of a new one, takes the draft's
+  parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the
+  draft's id: as a parent, in each `task dep` and, under the draft's parent, in the epic's list.
+- A story that leaves its own parent for the draft's is dropped from that parent's list.
+- A story filed under another parent, or none, or kept under its own, is listed under that parent
+  alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over.
 - A request to close the sprint goes to its close. With no sprint in progress, it says so and
   stops: it opens one only when the user asks.
@@ -1101,10 +1167,30 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   that section and the `## Epics` lines.
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
+- **The `achievements` skill gathers the owner's achievements.** It is the one skill or agent
+  that gathers or logs one, and only when the owner asks: nothing logs one as a story finishes.
+  Its one file is `SKILL.md`.
+- Its period is a date range, both days in it, or a sprint, by its id.
+- It lists the project's tasks with `board <project> All` and keeps each story whose status is
+  `done`: in a sprint, each whose `sprint` is its id, and in a date range, each set to `done` in
+  it.
+- A story records no date it was set to `done`. Its done date is that of its newest status note
+  that records the move, or else of its newest note, and the result says so. One with no dated
+  note is listed apart, for the owner to keep or drop.
+- Each story gives one achievement, worded from its `**Summary:**` line and its `## Changes`, that
+  names its id. A story is listed once.
+- A part that is missing, blank, `None yet.` or still the task template's text is left out, and
+  the result says so. With both left out, the owner words the story's achievement.
+- It asks the owner whether they made any proposals to their company or project in the period,
+  and words each one from the owner's answer, with the project's and the stories' context.
+- It makes up no proposal: none comes from a story's notes, a build note or the code.
+- The result is in its reply. Only on the owner's ask, it writes it to the project's
+  `<topics_root>/achievements.md`, one section per period. The note's shape is under
+  `## 6. The note` in `skills/achievements/SKILL.md`.
 - **The `build` skill builds approved stories.** It takes one story, or an epic's open stories in
-  the order their `depends_on` sets, and builds each in turn in the owner's session. Its files
-  are `SKILL.md`, `story.md`, for one story's build, and `lead.md`, for the orders note and the
-  lead's check.
+  the order their `depends_on` sets, and builds them in the owner's session, in turn or side by
+  side as the profile's `build_pairs` lets it. Its files are `SKILL.md`, `story.md`, for one
+  story's build, and `lead.md`, for the orders note and the lead's check.
 - It is the one flow that builds a story: from its README, with no delivery mode. The spec flow
   of versions before 0.12.0 is retired, and no skill reads a story's old `spec/` folder.
 - A story is approved when its status notes hold `Planned: the owner approved this text.` One
@@ -1118,11 +1204,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   branch, and says so. It never deletes what it finds.
 - A branch that does not start on the base branch gets a baseline first: `reviewer` in baseline
   mode, in the worktree.
-- One `implementer` builds the story. Then a fresh `reviewer` grades it. A FAIL sends the review's
-  defects back to the same `implementer`, and a fresh `reviewer` grades the fix, until one passes
-  or the cap stops the build for the owner.
+- The batch's `implementer` builds the story, then the batch's `reviewer` grades it. A FAIL sends
+  the review's defects back to the same `implementer`, and the same `reviewer` grades the fix,
+  until one passes or the cap stops the build for the owner.
 - `reviewer` runs on `opus`. `implementer` builds the story and takes fix rounds 1 to 3 on `opus`,
-  as `<ID>-implementer`. Rounds 4 and 5 go to a fresh one on `fable`, the stronger model,
+  as `<batch>-implementer`. Rounds 4 and 5 go to a fresh one on `fable`, the stronger model,
   `<ID>-implementer-2`. A sixth failed review stops the build.
 - The story's progress is in its status notes. The counts read them, so each note has one of
   these shapes, word for word:
@@ -1193,9 +1279,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   stage 1 for such a file. Each of these is shown to the owner, as any other conflict.
 - Any other conflict, such as a block with base lines or a file one side deleted, is shown to the
   owner, and the merge is aborted. The skill never resolves one itself.
-- Then the repo's `each build` checks run on the merged tree, through `validation run --path`.
-  They are skipped only when the merged tree is the one the passing review read, as
-  `git rev-parse <hash>^{tree}` shows for both.
+- Then every `each merge` check of the repo runs on the merged tree, through
+  `validation run --when each-merge --path`, with no `--changed`: a review runs only the
+  `each story` checks its change touches, so the merge runs them even on the tree the review read.
+- The merge runs no user step, as it launches no agent. The skill names each `each merge` user
+  step to the owner, as one it leaves for them to ask for, so that none is skipped unsaid.
 - A failing check leaves the merge local, and goes to the owner. Undoing it is the owner's call.
 - A push runs only on the owner's word, asked for once the checks pass, and named before it runs.
 - Once the merge is done, or the owner says not to merge, the skill removes the story's worktree
@@ -1216,15 +1304,41 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Any other result runs the baseline, such as on a branch cut from `release/<version>` or with
   commits the base lacks.
 - A resumed build skips the baseline, whatever the start.
-- The baseline runs the checks through `validation run --when each-build`, and every user step but
-  the `release` ones.
-- **One story at a time.** One story and one agent at a time, never in parallel.
+- The baseline runs the checks through `validation run --when each-merge`, and the `each story`
+  and `each merge` user steps: every one but the `release` ones.
+- **Batches.** Before the first story starts, the skill cuts the run into batches of 1 to 3
+  related stories, in the run's order, as Step 3 of `skills/build/SKILL.md` says. Two stories are
+  related when they share an `epic` other than `-`, or their texts name a file in common. A story
+  with no related one next to it in that order builds alone.
+- A batch keeps the run's order, so no story goes before one it waits on.
+- One `implementer` and one `reviewer` build a batch's stories in turn, as `<batch>-implementer`
+  and `<batch>-reviewer`, `<batch>` being the id of its first story. The batch's first story and
+  its first review launch them. Each later story and each later review is a message to the same
+  agent with SendMessage, with the lines its prompt would hold.
+- Each story keeps its own branch and worktree, its own commits, its own status notes and its own
+  verdict: it passes or fails alone. The next story starts only once the one before it passed,
+  so a failed story goes back to the same `implementer` first.
+- Each story counts its own `fails` and rounds, so the cap counts per story, never per batch.
+- **Pairs.** A pair is the `implementer` and the `reviewer` of one batch. The profile's
+  `build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and
+  one agent build at a time, never in parallel.
+- With more, up to that many batches build side by side, as `### Pairs side by side` in
+  `skills/build/SKILL.md` says. Side by side go only stories that neither wait on each other nor
+  sit in one batch: a batch starts once each story it waits on in another batch has passed.
+- Each pair builds in its own stories' worktrees alone, one agent at a time, and each agent is
+  launched in the background, so the other pairs go on while it works.
+- One check of the lead watches every pair. A stop in one pair stops its batch alone, and the
+  batches that wait on it: the other pairs go on.
+- While another pair is at work, the skill asks the owner in its reply, never with
+  AskUserQuestion, which would hold every pair until the owner answers. Merges run one at a time.
+- The pairs run their checks at the same time, each in its own worktree. A repo whose checks
+  cannot run twice at once, such as two runs on one port, keeps `build_pairs` at 1.
 - No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
-  one at a time, and names each launch's model by role and round.
-- Each `implementer` launch is named, so that a fix message reaches the agent of that name again
-  with SendMessage.
-- In a new session, or when SendMessage cannot reach it, a fresh `implementer` is launched in its
-  place, with the same name and model.
+  one at a time in each pair, and names each launch's model by role and round.
+- Each `implementer` launch, and each `reviewer` launch in story mode, is named, so that a later
+  message reaches the agent of that name again with SendMessage.
+- In a new session, or when SendMessage cannot reach it, a fresh agent is launched in its place,
+  with the same name and model.
 - The skill takes each report from the agent's result. Nothing is relayed by hand.
 - A notice that repeats a reply the skill took already, such as a named agent's last reply sent
   again in its idle notice, is no new event. It changes no state and gets no reply.
@@ -1258,6 +1372,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   worktree and the running checks against the orders, as often as the profile's
   `lead_check_minutes` says (section 3). Of each order it tests the `Done when:` condition, and
   asks whether it or an agent works toward it.
+- With more than one pair, the one check looks at every pair, each on its own: what one pair
+  shows never stands for another.
 - The check closes an order whose condition holds, and never one whose condition does not. It
   never changes a condition.
 - A condition the check cannot test, such as one whose command is not found, does not hold. The
@@ -1308,9 +1424,11 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Each update of a build is a status note in the README: the build started, resumed, stopped and
   why, and finished, each review, each ruling, the owner's and the skill's, and each defect and
   follow-up a review logs.
-- **Who runs which check.** `implementer` runs its test and the repo's `each task` checks before
-  it commits. `reviewer` runs the `each build` checks and the `each task` and `each build` user
-  steps in each review.
+- **Who runs which check.** `implementer` runs its test and the repo's `each story` checks that
+  its change touches before it commits. `reviewer` runs the same checks and the `each story` user
+  steps in each review, and in baseline mode the `each merge` checks and the `each story` and
+  `each merge` user steps. The merge runs every `each merge` check and no user step, as
+  **The merge.** says.
 - `implementer` and `reviewer` run each check in the foreground, with the Bash tool's longest
   timeout, 10 minutes, and never with `run_in_background`. A check is a `validation run`, an
   `implementer` test or a `reviewer` step run with Bash. A server a step needs is no check.
@@ -1327,12 +1445,13 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   reach it, and its work waits unreported.
 - `implementer` writes a test that fails for the story's criterion first, then makes it pass.
 - A change with nothing to test, such as a doc change, gets no test, and the reply says why.
-- Its checks are its own test and the repo's `each task` checks, through
-  `validation run <project> <repo> --when each-task --path <worktree>`.
+- Its checks are its own test and the repo's `each story` checks that its change touches, through
+  `validation run <project> <repo> --when each-story --changed <base> --path <worktree>`, with
+  the story's base.
 - It commits only when they all pass, and names each result in its reply.
 - It runs its own test the narrowest way the repo allows, such as the one suite that holds it,
-  even an `each build` one.
-- It runs no other `each build` check, no `release` check and no user step.
+  even an `each merge` one.
+- It runs no other `each merge` check, no `release` check and no user step.
 - The skill runs a `release` check only when the owner asks, with the Bash tool's
   `run_in_background`, and waits for its notice.
 - `reviewer` runs each step under `### Check as a user would` with the tool its line names: a
@@ -1354,16 +1473,18 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - **Story mode.** In a story build, a prompt with `Mode: story.` gives each agent the story, its
   project, the repo, its git worktree, its branch, the base and the session id. The agents read
   the story and the code themselves.
+- In a batch, an agent takes the message of its next story or review as a new prompt: each
+  story's rulings hold for that story alone, and an earlier review is no evidence for the next.
 - `implementer` reads the story's `## Description`, `## Acceptance criteria` and
   `## Approach / Key decisions`, builds it test-first in the worktree, runs its test and the
-  `each task` checks with `--path <worktree>`, and commits there.
+  `each story` checks with `--changed <base>` and `--path <worktree>`, and commits there.
 - Before it commits, it checks its whole change against the story's criteria, and against
   `## Defects and follow-ups` and `## Code quality` in `agents/reviewer.md`. It fixes what it
   finds, so that the story passes its first review.
 - `reviewer` reads the story the same way, and the change from the base, or on a re-review the
   fix's commits alone. It grades each acceptance criterion, or on a re-review each defect the
-  fix answers. Then it runs the `each build` checks, and the `each task` and `each build` user
-  steps, in the worktree, and grades the code.
+  fix answers. Then it runs the `each story` checks with `--changed <base>`, the ones the story's
+  change touches, and the `each story` user steps, in the worktree, and grades the code.
 - It grades code quality on a FAIL too, so that one fix round answers every defect. A re-review
   grades the code quality of the fix's commits alone.
 - It logs each defect and each follow-up as a status note, `<n>` its round, in the shapes the
@@ -1371,6 +1492,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - A fix message names the review that failed, `Fix: review <m> failed.`, and the `implementer`
   fixes each of its `Defect <m>:` notes. A fresh `implementer` gets that line in its prompt, and
   takes the fix the same way.
+- The fix message names its story too, with the story, repo, worktree, branch and base lines of
+  the story's prompt.
 - A prompt with a `Worktree:` line, in baseline mode too, has `reviewer` run every `validation`
   and `validation run` with `--path <worktree>`.
 - `reviewer` is given its mode's lines and the rulings, and nothing else. The skill never gives it
@@ -1416,7 +1539,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   `issues` 1 or more, and in story mode one `Defect <n>:` note or more.
 - No block, or one that breaks these rules, is no verdict: never a PASS.
 - The skill asks the same reviewer once more only when the block is missing or does not parse.
-  Any other block with no verdict goes to one fresh `reviewer` at once.
+  Any other block with no verdict goes to one fresh `reviewer` at once, which takes the batch's
+  `reviewer` name.
 - In baseline mode `reviewer` logs nothing: it puts its findings in the reply.
 - Only a PASS passes a story, never the implementer's word.
 - A FAIL starts the fix loop. The story's `fails` picks each round, so the cap holds across
@@ -1447,6 +1571,37 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - **A renamed command goes to `docs-keeper`.** It rewrites every live reference in the vault,
   leaves the history the doctor's `old-namespace` check does not read, and adds a status note to
   each story it changed.
+- **A project with no docs gets a draft of them from `docs-keeper`.** When `vault-setup` adds a
+  project or a repository, it offers to start `docs-keeper` on its
+  `Workflow 7 - Set up a project's docs`.
+- `docs-keeper` reads each repository's README, its layout and its code at the code ref. It
+  drafts the topic folders, a hub for each, a first note per topic and the profile's Code to doc
+  map rows.
+- It returns the draft and writes nothing. An agent cannot ask the owner, so `vault-setup` holds
+  the approval.
+- `vault-setup` shows the owner the draft, and each change the owner asks for, which
+  `docs-keeper` drafts again against the code.
+- Only on the owner's approval does `vault-setup` start `docs-keeper` again to write the draft as
+  approved. It overwrites no file.
+- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
+  that are folder paths. The steps are in `skills/vault-setup/docs.md`.
+- `define-validation-scope` offers the same setup, through the same steps, to a project with no
+  docs, and holds the approval the same way.
+- **`define-validation-scope` drafts a repo's validation section.** It is a skill, as it talks
+  with the owner. It drafts each check of the section with its command, its stage and its
+  `paths:`, in the shape of `validation-repo.md.tmpl`, and each step under
+  `### Check as a user would` with its stage.
+- It reads the project's docs first: its topic notes and the repo's doc surfaces. A project with
+  none is offered `docs-keeper`'s setup first, as above.
+  On a no, it reads the repo's code: its test scripts, CI workflows and package manifests.
+- It proposes only the stages the project uses. `release` is for a project that plans releases,
+  one with a planned-releases note (section 3). In any other it drafts no `release` check or
+  user step.
+- It shows the owner the whole draft, and each change the owner asks for again. Only on the
+  owner's approval does it write the repo's section, through `second-brain validation new` for a
+  missing one, then with the Edit tool. Its steps are in `skills/define-validation-scope/SKILL.md`.
+- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and
+  calls it with the Skill tool as `odsb:define-validation-scope <project> <repo>`.
 - The sprint close only reports done tasks with unticked doc lines, from `task docs`.
 - Frontmatter is the source of truth. A status is never inferred from prose.
 - A missing or non-standard status is reported as "Needs a status" and never set without asking.

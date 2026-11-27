@@ -467,7 +467,8 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the scrum-master skill raises index_version to 8" "$vi_version" "8"
+is "index template: the define-validation-scope skill raises index_version to 9" "$vi_version" "9"
+is "index template: the achievements skill raises index_version to 9" "$vi_version" "9"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -475,7 +476,7 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.12.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.12.0 - unreleased"
+is "changelog: the newest section is 0.13.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.13.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
@@ -949,14 +950,15 @@ line_is "implementer: runs its own test narrowly, never every suite" "$IM" \
 line_is "implementer: a change with nothing to test says why" "$IM" \
   '4. A change with nothing to test, such as a doc change, gets no test. Your reply says why.'
 line_is "implementer: has a check step" "$IM" "## 2. Check"
-file_has "implementer: runs its test and the each-task checks before it commits" "$IM" \
-  "Before you commit, run your test and the repo's \`each task\` checks, which are quick and run on"
-file_has "implementer: the each-task checks through validation run in the worktree" "$IM" \
-  '`second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`. Each row'
+file_has "implementer: runs its test and the each-story checks its change touches before it commits" "$IM" \
+  "Before you commit, run your test and the repo's \`each story\` checks that your change touches,"
+file_has "implementer: the each-story checks through validation run in the worktree, from the story's base" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`,'
+file_has "implementer: with the base of its prompt" "$IM" '  with the base of your prompt. Each row it prints is one result.'
 file_has "implementer: runs each test and check in the foreground" "$IM" \
   '- Run each test and check in the foreground, with the Bash tool'"'"'s longest timeout:'
-line_is "implementer: runs no release check, no user step and no build-wide check" "$IM" \
-  '- Run no other check: no `release` check, no user step, and no `each build` check but the one'
+line_is "implementer: runs no release check, no user step and no each-merge check" "$IM" \
+  '- Run no other check: no `release` check, no user step, and no `each merge` check but the one'
 line_is "implementer: but the suite that holds its own test" "$IM" \
   '  suite that holds your own test. `reviewer` runs the rest in its review.'
 line_is "implementer: only a command it cannot pass or run blocks" "$IM" \
@@ -971,7 +973,7 @@ RV="$here/agents/reviewer.md"
 file_has "reviewer: replies with its verdict and the number of issues" "$RV" '- `issues`: the number of defects, those you logged and those in the reply. A follow-up is not'
 file_lacks "reviewer: no longer says the implementer runs no check" "$RV" "the implementer runs none"
 file_has "reviewer: runs the checks again" "$RV" \
-  "The implementer runs its test and the \`each task\` checks before it commits. You run the checks"
+  "The implementer runs its test and the \`each story\` checks before it commits. You run the checks"
 file_has "reviewer: the caller names story or baseline mode" "$RV" 'The caller names the mode: story or baseline.'
 for h in '## Task mode' '### A bundle' '## User mode' '## Branch mode' '## Findings on a finished branch'; do
   file_lacks "reviewer: no $h, which only the spec build used" "$RV" "$h"
@@ -1032,7 +1034,7 @@ done
 for h in "### Start a ticket" "### Ask where things stand" "### Build a story" "### Check the vault"; do
   line_is "README: the example $h" "$RM" "$h"
 done
-file_has "README: the build is test-first" "$RM" '- One `implementer` builds each story test-first and checks its own change. Then a fresh'
+file_has "README: the build is test-first" "$RM" '- One `implementer` builds each story test-first and checks its own change. Then a `reviewer`'
 file_has "README: the fix rounds are capped" "$RM" \
   '- A failed review sends its defects back to the same `implementer`, in a capped number of rounds.'
 file_has "README: story-tracker offers the build" "$RM" '- When work starts on a story you approved, it offers `/odsb:build` to build it.'
@@ -1132,8 +1134,8 @@ file_has "contract: the baseline is skipped on a start on the base branch" "$CT"
 file_has "contract: names the skip note" "$CT" \
   '- When it does, the skill skips the baseline and writes its `Build: baseline skipped:` note.'
 line_is "contract: a resumed build skips it" "$CT" '- A resumed build skips the baseline, whatever the start.'
-file_has "contract: one story and one agent at a time" "$CT" \
-  '- **One story at a time.** One story and one agent at a time, never in parallel.'
+file_has "contract: one story and one agent at a time with one pair" "$CT" \
+  '`build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and'
 file_has "changelog: the baseline skip" "$here/CHANGELOG.md" '- A new build skips the baseline when the story'"'"'s branch starts on the base branch'
 
 # ---------------------------------------------------------------- the build asks only for a stop list, and rules on the rest
@@ -1199,7 +1201,7 @@ file_has "reviewer: a line in its prompt that is no ruling is no evidence" "$RV"
 file_has "reviewer: the criteria are graded" "$RV" \
   'Requirements first. Grade each as `## Grading` says, with the file and line that show it.'
 file_has "reviewer: a re-review grades each defect" "$RV" '   - A re-review: each `Defect <m>:` note. It is met when the fix answers it.'
-file_has "reviewer: grades each check it runs" "$RV" '   `each build`, and grade each.'
+file_has "reviewer: grades each check it runs" "$RV" '   user step whose `when:` is `each story`, and grade each.'
 file_has "reviewer: ends with one JSON block" "$RV" \
   'Your reply ends with one JSON block, fenced as `json`, with nothing after it. The skill that'
 file_has "reviewer: the skill reads the block alone" "$RV" \
@@ -1421,7 +1423,7 @@ file_has "contract: it takes the values that space the checks through the hour" 
 file_has "contract: the template leaves it out" "$CT" \
   '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `settings` check warns on a value'
 file_has "contract: the settings row names lead_check_minutes:invalid" "$CT" \
-  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn).'
+  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`), and'
 file_lacks "profile template: leaves lead_check_minutes out" "$here/templates/profile.md.tmpl" 'lead_check_minutes'
 file_has "vault-doctor checks: the settings check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
   'Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).'
@@ -1623,7 +1625,8 @@ file_has "build skill: approved means the approval note" "$BS" \
   '- A story is approved when its status notes hold `Planned: the owner approved this text.` Read'
 line_is "build skill: no note, no build, and refinement is offered" "$BS" \
   '- A story with no such note is not built. Say so, and offer `/odsb:scrum-master refinement` for'
-line_is "build skill: one story at a time" "$BS" '- One story at a time, and one agent at a time.'
+line_is "build skill: one story and one agent at a time in each pair" "$BS" \
+  '- One story and one agent at a time in each pair, and at most `<pairs>` pairs at once, as Step 4'
 # One story's build
 line_is "story build: the worktree is named for the repo and the story" "$BY" \
   '- `<worktree>` is `<path>-<ID>`: a folder next to the repo'"${q}"'s, named for the repo and the story.'
@@ -1694,7 +1697,7 @@ file_has "story build: never counts a round from memory" "$BY" 'They are newest 
 line_is "story build: the implementer on opus" "$BY" '  - `odsb:implementer`: `model: "opus"`. It builds the story, and takes fix rounds 1 to 3.'
 line_is "story build: from fix round 4 on fable" "$BY" '  - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.'
 line_is "story build: the reviewer on opus" "$BY" '  - `odsb:reviewer`, in story or baseline mode: `model: "opus"`.'
-line_is "story build: the implementer's name" "$BY" '  - The build and fix rounds 1 to 3: `name: "<ID>-implementer"`.'
+line_is "story build: the implementer is named for the batch" "$BY" '  - The build and fix rounds 1 to 3: `name: "<batch>-implementer"`.'
 line_is "story build: and from round 4" "$BY" '  - From fix round 4 on: `name: "<ID>-implementer-2"`.'
 for l in '  - `Mode: story.`' '  - `Story: <ID>, project <project>.`' '  - `Repo: <repo>.`' \
   '  - `Worktree: <worktree>.`' '  - `Branch: <branch>.`' '  - `Base: <base>.`' '  - `Round: <n>.`'; do
@@ -1717,8 +1720,8 @@ file_has "build skill: an in-review story is built again only on a ruling to fix
 file_has "story build: a FAIL logs one defect or more" "$BY" \
   '   - A `FAIL` has `issues` 1 or more. In story mode the story holds one `Defect <n>:` note or'
 line_is "story build: the cap" "$BY" '1. `fails` 6 or more, right after a FAIL: the cap is reached. Stop, as'
-line_is "story build: rounds 1 to 3 go to the same implementer" "$BY" \
-  '   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<ID>-implementer`, and wait'
+line_is "story build: rounds 1 to 3 go to the batch's implementer" "$BY" \
+  '   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<batch>-implementer`, and wait'
 line_is "story build: a fresh one gets the fix line too" "$BY" \
   '     `implementer` in its place, with the build'"${q}"'s prompt and the fix message'"${q}"'s first line, its'
 line_is "story build: round 4 on the stronger model" "$BY" \
@@ -1756,8 +1759,8 @@ line_is "implementer: has a story mode" "$IM" '## Story mode'
 line_is "implementer: checks its own change" "$IM" '### Check it yourself'
 line_is "implementer: takes a story fix" "$IM" '### A story fix'
 file_has "implementer: reads the story's parts" "$IM" '`## Acceptance criteria` and `## Approach / Key decisions`.'
-file_has "implementer: runs the each-task checks in the worktree" "$IM" \
-  '`second-brain validation run "<project>" <repo> --when each-task --path "<worktree>"`.'
+file_has "implementer: runs the each-story checks in the worktree, from the story's base" "$IM" \
+  '`second-brain validation run "<project>" <repo> --when each-story --changed <base> --path "<worktree>"`.'
 file_has "implementer: reads the reviewer's defects and quality lists before it commits" "$IM" \
   '- Read `## Defects and follow-ups` and `## Code quality` in the reviewer'"${q}"'s agent file. Its path is'
 file_has "implementer: finds the reviewer's file at the plugin's path" "$IM" \
@@ -1772,7 +1775,12 @@ file_has "reviewer: a worktree line adds --path to each validation" "$RV" \
 file_has "reviewer: a first review reads the story's whole change" "$RV" '`git -C "<worktree>" diff <base>...HEAD`.'
 file_has "reviewer: a re-review reads the fix's commits alone" "$RV" '`git -C "<worktree>" diff <hash>..HEAD`, the fix'"${q}"'s commits alone.'
 line_is "reviewer: a first review grades each acceptance criterion" "$RV" '   - A first review: each acceptance criterion of the story.'
-file_has "reviewer: story mode runs the each-build checks" "$RV" '   the checks with `--when each-build`, and each user step whose `when:` is `each task` or'
+file_has "reviewer: story mode runs the each-story checks from the story's base" "$RV" \
+  '   the checks with `--when each-story --changed <base>`, with the base of your prompt, and each'
+file_has "reviewer: baseline mode runs the each-merge checks and both stages' user steps" "$RV" \
+  '  `--when each-merge`, then each user step whose `when:` is `each story` or `each merge`.'
+file_has "reviewer: a check its change does not touch is skipped, no finding" "$RV" \
+  '  That is no finding: the change cannot break it.'
 file_has "reviewer: logs each story defect with its round" "$RV" \
   '`second-brain task note <story> "Defect <n>: <what is wrong, at file:line> - Fix: <the fix you propose>" --session <id>`.'
 file_has "reviewer: a follow-up names no task" "$RV" '"Follow-up: <what could be better, at file:line> - <the change you propose>"'
@@ -1910,11 +1918,15 @@ file_has "contract: branches listed by full ref" "$CT" \
   '- The branches that match are listed by their full ref, local and remote, with the ref'"${q}"'s prefix'
 in_mg "merge: and the merge aborted" '`git -C "<where>" merge --abort`, and stop, as `## 7. When the story stops` says.'
 in_mg "merge: no marker is left" '   - Every block kept: no line in the files starts with a marker. Then'
-in_mg "merge: compares the merged tree with the reviewed one" '`git -C "<where>" rev-parse HEAD^{tree}` with'
-in_mg "merge: the reviewed tree is the passing review's" '`git -C "<path>" rev-parse <hash>^{tree}`, with `<hash>` that of the passing review'"${q}"'s note.'
-in_mg "merge: the same tree skips the checks" '   - The same tree: the review ran the checks on it. Skip them, and say so.'
-in_mg "merge: another tree runs the each-build checks there" \
-  '`second-brain validation run "<project>" <repo> --when each-build --path "<where>"`'
+in_mg "merge: runs every each-merge check, even on the reviewed tree" \
+  '8. The checks on the merged tree: every `each merge` one, even on the tree the review read. A'
+in_mg "merge: the each-merge checks run there" \
+  '`second-brain validation run "<project>" <repo> --when each-merge --path "<where>"`'
+mg_lacks="$(printf '%s\n' "$mg" | grep -c 'tree}' || true)"
+is "merge: compares no tree, so the checks never skip" "$mg_lacks" "0"
+in_mg "merge: runs no user step" '   - The merge runs no user step. Read the steps with'
+in_mg "merge: names each each-merge user step to the owner" \
+  '`second-brain validation "<project>" <repo> --path "<where>"`. Name to the owner each line'
 in_mg "merge: a failing check pushes nothing" '   - A `fail` row: push nothing, and skip item 9.'
 in_mg "merge: undoing it is the owner's word" '`git -C "<where>" reset --hard <before>`, is a destructive action: only'
 in_mg "merge: a push only on the owner's yes, named first" '`<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their'
@@ -1933,8 +1945,12 @@ file_has "contract: no merge rule asks, and offers to write one" "$CT" \
 file_has "contract: an add-only conflict keeps both" "$CT" '- A conflict that only adds lines keeps both sides. The merge runs with'
 file_has "contract: any other conflict is shown and aborted" "$CT" \
   '- Any other conflict, such as a block with base lines or a file one side deleted, is shown to the'
-file_has "contract: the checks run on the merged tree" "$CT" \
-  '- Then the repo'"${q}"'s `each build` checks run on the merged tree, through `validation run --path`.'
+file_has "contract: every each-merge check runs on the merged tree" "$CT" \
+  '- Then every `each merge` check of the repo runs on the merged tree, through'
+file_has "contract: the merge names each each-merge user step it leaves" "$CT" \
+  '- The merge runs no user step, as it launches no agent. The skill names each `each merge` user'
+file_has "contract: the baseline runs the each-merge checks" "$CT" \
+  '- The baseline runs the checks through `validation run --when each-merge`, and the `each story`'
 line_is "contract: a push only on the owner's word" "$CT" \
   '- A push runs only on the owner'"${q}"'s word, asked for once the checks pass, and named before it runs.'
 file_has "contract: the worktree goes once the merge is done" "$CT" \
@@ -2037,6 +2053,311 @@ file_has "README: the worktree goes once its ignored files are shown" "$here/REA
   'without your word. Then its worktree is removed, once any ignored file in it is shown to you.'
 file_has "story build: the merge's own worktree goes the same way" "$BY" \
   '`## 6. When the story passed` removes the story'"'"'s: its ignored files first.'
+
+# ---------------------------------------------------------------- one implementer and reviewer pair builds a batch of related stories
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+IM="$here/agents/implementer.md"
+RM="$here/README.md"
+RV="$here/agents/reviewer.md"
+q="'"
+# The build skill cuts the run into batches of 1 to 3 related stories, in the run's order.
+line_is "build skill: has a batches step" "$BS" '## Step 3 - Batches'
+line_is "build skill: then builds the batches" "$BS" '## Step 4 - The batches'
+file_lacks "build skill: no step says the batches go in turn, with pairs side by side" "$BS" '## Step 4 - Each batch in turn'
+file_lacks "build skill: no step builds each story apart from its batch" "$BS" '## Step 3 - Each story in turn'
+bt2="$(linex "$BS" '## Step 2 - Approved stories only')"
+bt3="$(linex "$BS" '## Step 3 - Batches')"
+bt4="$(linex "$BS" '## Step 4 - The batches')"
+is "build skill: batches are cut after the approved stories are known, before the build" \
+  "$(( ${bt2:-0} > 0 && ${bt3:-0} > ${bt2:-0} && ${bt4:-0} > ${bt3:-0} ))" "1"
+line_is "build skill: a batch is 1 to 3 related stories that one pair builds" "$BS" \
+  'A batch is 1 to 3 related stories of the run, which one `implementer` and one `reviewer` build in'
+line_is "build skill: related means a shared epic" "$BS" \
+  '- Two stories are related when they share an `epic` other than `-`, as `task head` prints it, or'
+line_is "build skill: or the same files" "$BS" \
+  '  touch the same files: their `## Acceptance criteria`, `## Approach / Key decisions` or'
+file_has "build skill: the same files are a file their texts name in common" "$BS" \
+  '`## Code verification (read-only)` name a file in common, such as `docs/billing/invoices.md`.'
+line_is "build skill: the stories go in the order of Step 1" "$BS" \
+  '- Take the stories in the order of Step 1. The first starts a batch. Each next one joins the batch'
+line_is "build skill: a story joins the batch before it, up to 3 stories" "$BS" \
+  '  of the story before it, when that batch holds fewer than 3 stories and one of them is related to'
+line_is "build skill: a batch keeps the dependency order" "$BS" \
+  '- So a batch keeps the order of Step 1: no story goes before one it waits on.'
+line_is "build skill: a story with no related one builds alone" "$BS" \
+  '- A story with no related story next to it in that order builds alone, as a batch of one.'
+file_has "build skill: shows the owner the batches before the first story" "$BS" \
+  '- Show the owner the batches, each with its stories in the order they will be built, before the'
+file_has "build skill: a batch's stories share its two agents" "$BS" \
+  'batch'"${q}"'s stories share its `implementer` and its `reviewer`, as `### A batch` there says.'
+file_has "story build: a passed story goes on to the batch's next story" "$BY" \
+  '7. Go on with the next story of the run, as Step 4 of `SKILL.md` says: the batch'"${q}"'s next story,'
+# One implementer and one reviewer build the batch's stories in turn, each on its own branch.
+line_is "story build: has a batch section" "$BY" '### A batch'
+file_has "story build: builds the story with its batch's agents" "$BY" \
+  'worktree of its own, with its batch'"${q}"'s `implementer` and `reviewer`, as `### A batch` says.'
+file_lacks "story build: no fresh reviewer for each review" "$BY" 'a fresh `reviewer` for each review'
+line_is "story build: <batch> is the id of the batch's first story" "$BY" \
+  '- `<batch>` is the id of the first story of the story'"${q}"'s batch, as Step 3 of `SKILL.md` cuts it.'
+line_is "story build: a story alone is its own batch" "$BY" \
+  '  A story that builds alone is its own batch: `<batch>` is `<ID>`.'
+line_is "story build: each story keeps its own branch, worktree and commits" "$BY" \
+  '1. Each story keeps its own branch and worktree, with a commit series of its own, its own status'
+line_is "story build: and passes or fails alone" "$BY" \
+  '   notes, its own rounds and its own verdict. It passes or fails alone.'
+line_is "story build: the batch's first story and review launch the pair" "$BY" \
+  '2. The batch'"${q}"'s first story launches `implementer`, and its first review launches `reviewer`,'
+line_is "story build: each named as the launch names say" "$BY" '   each named as `## 4. Launching an agent` says.'
+line_is "story build: each later story and review goes to the same agent" "$BY" \
+  '3. Each later story of the batch, and each later review, of the same story or the next, goes to'
+line_is "story build: by its name with SendMessage" "$BY" \
+  '   that agent by its name with SendMessage. The message holds the lines its prompt would: for'
+file_has "story build: an agent out of reach is launched fresh with its name" "$BY" \
+  '   - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh one'
+line_is "story build: a failed story goes back to the same implementer before the next starts" "$BY" \
+  '4. A failed story goes back to the batch'"${q}"'s `implementer` before the batch'"${q}"'s next story starts,'
+line_is "story build: from round 4 the fixes go to the stronger one, the next story does not" "$BY" \
+  '   The batch'"${q}"'s next story still goes to `<batch>-implementer`.'
+line_is "story build: a story-mode reviewer is named for the batch" "$BY" \
+  '- Name each `reviewer` launch in story mode `name: "<batch>-reviewer"`, so that the batch'"${q}"'s next'
+file_has "story build: a baseline reviewer has no name" "$BY" 'A `reviewer` in baseline mode has no name.'
+line_is "story build: the fix message names its story" "$BY" \
+  '  - The story, repo, worktree, branch and base lines of `implementer`'"${q}"'s prompt, for the story that'
+file_has "story build: a batch's review message holds the prompt's lines alone" "$BY" \
+  '- A `reviewer` prompt holds only these lines, and so does each next review that `### A batch`'
+line_is "story build: the build starts the batch's implementer" "$BY" \
+  '1. Start `implementer` on the story, as `### A batch` says.'
+line_is "story build: the review starts the batch's reviewer" "$BY" \
+  '2. Start `reviewer` in story mode, as `### A batch` says.'
+line_is "story build: a fresh reviewer for no verdict takes the batch's name" "$BY" \
+  '   - Name it `<batch>-reviewer`: the batch'"${q}"'s later reviews go to it.'
+file_has "story build: the fix loop's cap is per story" "$BY" \
+  'Each story of a batch has its own `fails`, so the cap counts per story. Its fix rounds all come'
+file_has "story build: an agent with no report is asked once per launch or message" "$BY" \
+  '   - Send it once per launch, or per message that starts a step, such as a fix message, never'
+# The agents take the batch's next story or review as a new prompt.
+line_is "implementer: has the next story of a batch" "$IM" '### The next story of a batch'
+file_has "implementer: its intro names the batch" "$IM" \
+  'In a batch, its next stories come one at a time, as `### The next story of a batch` says.'
+line_is "implementer: takes the next story as a new prompt" "$IM" \
+  '- Take it as a new prompt: `## Story mode` from step 1, with that message'"${q}"'s lines alone. Its'
+line_is "implementer: an earlier story's ruling holds for it alone" "$IM" \
+  '- An `Owner:` or `Ruling:` line of an earlier story holds for that story alone.'
+file_has "implementer: an earlier story's change is here only when its base holds it" "$IM" \
+  'An earlier story'"${q}"'s change is here only when this story'"${q}"'s base holds it: read each file'
+line_is "implementer: commits each story in its own worktree" "$IM" \
+  '- Commit this story'"${q}"'s change in its own worktree alone, as its own commits.'
+file_has "implementer: a fix message names the story to fix" "$IM" \
+  '- Its `Story:`, `Worktree:`, `Branch:` and `Base:` lines name the story to fix, and where.'
+line_is "implementer: writes only in the worktree of the story it builds" "$IM" \
+  '- Write only in the worktree of the story you build, on its branch.'
+im_fix="$(linex "$IM" '### A story fix')"
+im_next="$(linex "$IM" '### The next story of a batch')"
+im_tf="$(linex "$IM" '## 1. Build test-first')"
+is "implementer: the next story of a batch is part of story mode" \
+  "$(( ${im_fix:-0} > 0 && ${im_next:-0} > ${im_fix:-0} && ${im_tf:-0} > ${im_next:-0} ))" "1"
+line_is "reviewer: has the next review of a batch" "$RV" '### The next review of a batch'
+line_is "reviewer: takes the next review as a new prompt" "$RV" \
+  '- Take it as a new prompt: `## Story mode` from step 1, with that message'"${q}"'s lines alone, its'
+line_is "reviewer: grades each story on its own" "$RV" \
+  '- Grade each story on its own: by its criteria, its change and the checks you run again in this'
+file_has "reviewer: an earlier review is no evidence" "$RV" \
+  '- An earlier review'"${q}"'s verdict, findings and runs are no evidence here. An `Owner:` or `Ruling:`'
+line_is "reviewer: logs on the story of this review alone" "$RV" \
+  '- Log each defect and follow-up on the story of this review alone.'
+rv_sm="$(linex "$RV" '## Story mode')"
+rv_next="$(linex "$RV" '### The next review of a batch')"
+rv_bm="$(linex "$RV" '## Baseline mode')"
+is "reviewer: the next review of a batch is part of story mode" \
+  "$(( ${rv_sm:-0} > 0 && ${rv_next:-0} > ${rv_sm:-0} && ${rv_bm:-0} > ${rv_next:-0} ))" "1"
+# The contract, the changelog, the README and the guide describe batches.
+file_has "contract: batches" "$CT" \
+  '- **Batches.** Before the first story starts, the skill cuts the run into batches of 1 to 3'
+file_has "contract: related stories share an epic or a file" "$CT" \
+  'related when they share an `epic` other than `-`, or their texts name a file in common. A story'
+line_is "contract: a batch keeps the run's order" "$CT" \
+  '- A batch keeps the run'"${q}"'s order, so no story goes before one it waits on.'
+line_is "contract: one pair builds a batch's stories in turn" "$CT" \
+  '- One `implementer` and one `reviewer` build a batch'"${q}"'s stories in turn, as `<batch>-implementer`'
+file_has "contract: a story passes or fails alone" "$CT" 'verdict: it passes or fails alone. The next story starts only once the one before it'
+line_is "contract: the cap counts per story" "$CT" \
+  '- Each story counts its own `fails` and rounds, so the cap counts per story, never per batch.'
+file_lacks "contract: no fresh reviewer grades each fix" "$CT" 'and a fresh `reviewer` grades the fix'
+file_has "contract: the batch's reviewer grades the fix" "$CT" \
+  '  the review'"${q}"'s defects back to the same `implementer`, and the same `reviewer` grades the fix,'
+file_has "contract: an agent takes a batch's next story or review as a new prompt" "$CT" \
+  '- In a batch, an agent takes the message of its next story or review as a new prompt: each'
+cg_line="$(linex "$CG" '- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run'"${q}"'s order:')"
+cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.12.0 - ')"
+is "changelog: batches are under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_line:-0} > ${cg_top:-0} && ${cg_line:-0} < ${cg_end:-0} ))" "1"
+file_has "changelog: a story passes or fails on its own review" "$CG" \
+  'passes or fails on its own review. A failed story goes back to the same `implementer` before'
+file_has "changelog: the cap counts per story" "$CG" 'the cap of six failed reviews counts per story.'
+file_has "README: related stories share one pair" "$RM" \
+  '- Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,'
+file_has "guide: related stories share one pair" "$GD" \
+  '- Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and'
+
+# ---------------------------------------------------------------- the profile's build_pairs sets how many pairs build at once
+BL="$here/skills/build/lead.md"
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+PT="$here/templates/profile.md.tmpl"
+RM="$here/README.md"
+q="'"
+# The build skill takes the pairs from the profile, and runs side by side only batches that wait on
+# no story of another batch that has not passed.
+file_has "build skill: the profile's build_pairs sets the pairs, 1 by default" "$BS" \
+  'The profile'"${q}"'s `build_pairs` sets how many such pairs build at once, as Step 4 says: 1 by default,'
+file_has "build skill: the owner is shown how many pairs build the batches" "$BS" \
+  '  first one starts, and how many pairs build them at once, as Step 4 says.'
+line_is "build skill: <pairs> is the build_pairs line of profile --keys" "$BS" \
+  '2. `<pairs>` is how many pairs build at once: the `build_pairs` line of'
+line_is "build skill: from 1 to 5, a pair is one batch's two agents" "$BS" \
+  '   `second-brain profile "<project>" --keys`, from 1 to 5. A pair is the `implementer` and the'
+line_is "build skill: one batch at a time with 1 pair" "$BS" '   - `<pairs>` 1, the default: one batch at a time.'
+line_is "build skill: up to <pairs> batches side by side with more" "$BS" \
+  '   - More than 1: up to `<pairs>` batches side by side, as `### Pairs side by side` says.'
+file_has "build skill: a stop stops the run with 1 pair, and no other pair with more" "$BS" \
+  '   `<pairs>` 1 that stops the run. With more, the other pairs go on.'
+line_is "build skill: has a pairs side by side section" "$BS" '### Pairs side by side'
+ps4="$(linex "$BS" '## Step 4 - The batches')"
+psx="$(linex "$BS" '### Pairs side by side')"
+psr="$(linex "$BS" '## Rules')"
+is "build skill: pairs side by side is part of Step 4" \
+  "$(( ${ps4:-0} > 0 && ${psx:-0} > ${ps4:-0} && ${psr:-0} > ${psx:-0} ))" "1"
+line_is "build skill: side by side go only stories that neither wait on each other nor sit in one batch" "$BS" \
+  'side go only stories that neither wait on each other nor sit in one batch.'
+line_is "build skill: a batch is ready once each story it waits on in another batch passed" "$BS" \
+  '1. A batch is ready once each story it waits on in another batch has passed, and its merge has'
+file_has "build skill: so no story builds beside one it waits on" "$BS" \
+  '   - So no story builds beside one it waits on, or one that waits on it, and a batch'"${q}"'s own'
+line_is "build skill: the first ready batch starts when a pair is free" "$BS" \
+  '2. Start the first ready batch in the order of Step 3 each time fewer than `<pairs>` batches'
+file_has "build skill: never more than <pairs> at once" "$BS" 'Never more than `<pairs>`'
+line_is "build skill: a stopped batch holds its pair" "$BS" \
+  '   its pair until the owner answers: no other batch takes its place.'
+line_is "build skill: each pair in its own stories' worktrees" "$BS" \
+  '4. Each pair builds in its own stories'"${q}"' worktrees alone, with its agents named for its batch, as'
+file_has "build skill: no two pairs share a worktree or an agent" "$BS" 'No two pairs share a worktree or an agent.'
+line_is "build skill: each agent runs in the background" "$BS" \
+  '5. Launch each agent with the Agent tool'"${q}"'s `run_in_background: true`, so that the other pairs go'
+line_is "build skill: a stop in one pair stops no other" "$BS" \
+  '6. A stop in one pair stops no other. Its batch waits for the owner, with each batch that waits'
+file_has "build skill: the other pairs go on" "$BS" 'The other pairs go on, and the next'
+line_is "build skill: questions while another pair works go as the stop list says" "$BS" \
+  '7. While another pair is at work, ask the owner as `## 8. When to ask the owner` in `story.md`'
+line_is "build skill: one merge at a time" "$BS" \
+  '8. One merge at a time: a story that passed while another'"${q}"'s `### The merge` is open, in'
+line_is "build skill: the lead's one check watches every pair" "$BS" \
+  '9. The lead'"${q}"'s one check watches every pair, as `## The lead'"${q}"'s check` in `lead.md` says.'
+line_is "build skill: each line shown names its story" "$BS" \
+  '10. Name the story in each line you show the owner: the pairs'"${q}"' lines come in no set order.'
+file_lacks "build skill: no rule of one story at a time in the whole build" "$BS" '- One story at a time, and one agent at a time.'
+line_is "build skill: one story and one agent at a time in each pair" "$BS" \
+  '- One story and one agent at a time in each pair, and at most `<pairs>` pairs at once, as Step 4'
+# One story's build knows the pairs, launches in the background and asks in its reply.
+line_is "story build: <pairs> is Step 4's" "$BY" \
+  '- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says. With more than 1, other'
+line_is "story build: one agent at a time in each pair" "$BY" \
+  '- Launch one agent at a time in each pair with the Agent tool, and wait for its result before the'
+line_is "story build: in the background with more than one pair" "$BY" \
+  '- With `<pairs>` more than 1, launch it with `run_in_background: true`, and take its result from'
+file_lacks "story build: no rule of one agent at a time in the whole build" "$BY" \
+  '- One agent at a time: wait for each agent'"${q}"'s result or reply before the next step.'
+line_is "story build: its rule is one agent at a time in each pair" "$BY" \
+  '- One agent at a time in each pair: wait for its result or reply before the pair'"${q}"'s next step.'
+file_has "story build: a passed story goes on to the first ready batch" "$BY" \
+  'With `<pairs>` more than 1 that is the first'
+line_is "story build: the merge goes one at a time" "$BY" \
+  'With more than one pair, one merge runs at a time, as `### Pairs side by side` in `SKILL.md` says.'
+line_is "story build: the stop list asks in the reply while another pair works" "$BY" \
+  '- While another pair is at work, as `### Pairs side by side` in `SKILL.md` says, ask each'
+file_has "story build: since AskUserQuestion would hold every pair" "$BY" \
+  '  session until the owner answers, and every other pair with it. The owner'"${q}"'s answer comes in a'
+is "story build: the stop, the merge and the push point to the stop list's rule" \
+  "$(grep -cxF '   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.' "$BY")" "3"
+file_has "story build: the owner's stop stops this batch alone" "$BY" \
+  'With another pair at work, that stops this story'"${q}"'s batch alone, unless the owner stops'
+# The lead's one check watches every pair.
+line_is "build lead: <pairs> is Step 4's" "$BL" '- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says.'
+file_has "build lead: the Now line names each pair at work" "$BL" \
+  '  - With more than one pair, its `Now:` line names each pair at work: its story and its agent.'
+file_has "build lead: one check watches every pair" "$BL" 'One check watches every pair, however many build.'
+line_is "build lead: keeps one check for every pair" "$BL" \
+  '   says. Keep one check at a time, for every pair.'
+line_is "build lead: looks at each pair at work" "$BL" \
+  '   - With more than one pair, look at each pair at work: its agent, its story'"${q}"'s worktree and its'
+file_has "build lead: one pair never stands for another" "$BL" 'What one pair shows never stands for another.'
+line_is "build lead: a stopped pair holds no other" "$BL" \
+  '   - Take each pair on its own. A pair whose story stopped waits for the owner, and holds no'
+line_is "build lead: a free pair starts a ready batch" "$BL" \
+  '   - Fewer than `<pairs>` batches build and one is ready: start it, as `### Pairs side by side` in'
+# The contract, the template, the guide, the changelog and the README describe the key.
+line_is "contract: the profile example has build_pairs" "$CT" 'build_pairs: 1'
+line_is "contract: build_pairs is described with the profile keys" "$CT" \
+  '- `build_pairs` is how many `implementer` and `reviewer` pairs a build runs at once, as'
+file_has "contract: build_pairs is 1 to 5, else 1" "$CT" \
+  '`### Pairs side by side` in `skills/build/SKILL.md` says. It is a whole number from 1 to 5. A'
+line_is "contract: --keys always prints its line" "$CT" \
+  '- `profile <project> --keys` always prints a `build_pairs` line, with the value the build takes.'
+file_has "contract: the --keys row names the build_pairs line" "$CT" \
+  '| `profile <project> --keys` | the profile frontmatter as `key: value` lines, and a `build_pairs` line always | the `build_pairs` line holds the value the build takes:'
+file_lacks "contract: no rule of one story at a time in every build" "$CT" \
+  '- **One story at a time.** One story and one agent at a time, never in parallel.'
+line_is "contract: pairs" "$CT" \
+  '- **Pairs.** A pair is the `implementer` and the `reviewer` of one batch. The profile'"${q}"'s'
+file_has "contract: one story and one agent at a time with 1" "$CT" \
+  '`build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and'
+file_has "contract: side by side only stories that neither wait on each other nor sit in one batch" "$CT" \
+  'Side by side go only stories that neither wait on each other nor'
+line_is "contract: each pair in its own worktrees, in the background" "$CT" \
+  '- Each pair builds in its own stories'"${q}"' worktrees alone, one agent at a time, and each agent is'
+line_is "contract: the lead's check watches every pair, and a stop stops no other" "$CT" \
+  '- One check of the lead watches every pair. A stop in one pair stops its batch alone, and the'
+file_has "contract: questions go in the reply while another pair works" "$CT" \
+  '- While another pair is at work, the skill asks the owner in its reply, never with'
+file_has "contract: checks that cannot run twice at once keep 1" "$CT" \
+  'cannot run twice at once, such as two runs on one port, keeps `build_pairs` at 1.'
+file_has "contract: the lead's check looks at every pair" "$CT" \
+  '- With more than one pair, the one check looks at every pair, each on its own: what one pair'
+file_has "contract: agents launch one at a time in each pair" "$CT" '  one at a time in each pair, and names each launch'"${q}"'s model by role and round.'
+line_is "profile template: describes build_pairs" "$PT" \
+  '- A `build_pairs:` key added above sets how many `implementer` and `reviewer` pairs the build'
+file_has "profile template: 1 to 5, else 1" "$PT" \
+  'skill runs at once, side by side: a whole number from 1 to 5. With no key, or any other value,'
+file_lacks "profile template: leaves the build_pairs key out of the frontmatter" "$PT" 'build_pairs: '
+line_is "guide: describes build_pairs" "$GD" \
+  '- The profile'"${q}"'s `build_pairs` key builds up to that many batches side by side, each by its own'
+file_has "guide: a stop in one pair stops no other" "$GD" '- With more than one pair, a stop in one pair stops no other.'
+line_is "guide: one check watches every pair" "$GD" '- One check watches every pair, however many build at once.'
+cg_pl="$(linex "$CG" '- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`')"
+cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.12.0 - ')"
+is "changelog: build_pairs is under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_pl:-0} > ${cg_top:-0} && ${cg_pl:-0} < ${cg_end:-0} ))" "1"
+file_has "changelog: batches build side by side" "$CG" '- With more than one pair, batches build side by side, each by its own pair in its own stories'"${q}"
+file_has "changelog: a stop in one pair stops its batch alone" "$CG" \
+  '- The lead'"${q}"'s one check watches every pair, and a stop in one pair stops its batch alone. While'
+file_has "contract: the settings row names build_pairs:invalid" "$CT" \
+  'and a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`) (warn).'
+line_is "contract: the doctor warns on a build_pairs value it does not take" "$CT" \
+  '  frontmatter. The doctor'"${q}"'s `settings` check warns on a value it does not take.'
+file_has "vault-doctor checks: the settings check names build_pairs:invalid" "$here/skills/vault-doctor/checks.md" \
+  'Or a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`).'
+file_has "vault-doctor checks: a build_pairs not allowed means 1" "$here/skills/vault-doctor/checks.md" \
+  'A `build_pairs` that is not allowed means 1, so a build runs one pair at a time where the owner'
+file_has "changelog: the doctor warns on a build_pairs it does not take" "$CG" \
+  '- The doctor'"${q}"'s `settings` check warns on a `build_pairs` it does not take, `build_pairs:invalid`.'
+file_has "README: build_pairs builds batches side by side" "$RM" \
+  '- A `build_pairs` key in the profile, 1 to 5, builds that many batches side by side, when none of'
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"
@@ -2213,21 +2534,32 @@ line_is "story-tracker: it may edit notes and run ls -d" "$STS" \
   'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
 line_is "scrum-master: it may edit and write notes, call story-tracker with an id and run ls -d" "$SMS" \
   'allowed-tools: Read Grep Glob Edit Write Skill(odsb:story-tracker *) Bash(second-brain *) Bash(ls -d *)'
-# The commands the two skills' text runs, other than the helper: ls -d has a pattern, git -C has
-# none and prompts, as a -c setting before its subcommand can run a program. Read line by line, so
-# no glob in a command expands.
+# The commands the two skills' text runs, other than the helper: ls -d has a pattern, and git runs
+# only inside the helper's branch command, as no git pattern is safe: a -c setting before its
+# subcommand can run a program. Read line by line, so no glob in a command expands.
 seen_ls=0
 seen_git=0
 while IFS= read -r c; do
   case "$c" in
     'ls -d '*) seen_ls=1 ;;
-    'git -C '*) seen_git=1 ;;
+    'git '*) seen_git=1 ;;
   esac
 done <<CMDS
-$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git -C|ls -d) [^`]*`' | tr -d '`')
+$(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git|ls -d) [^`]*`' | tr -d '`')
 CMDS
 is "allowed-tools: the skills' text runs ls -d" "$seen_ls" "1"
-is "allowed-tools: the skills' text runs git -C" "$seen_git" "1"
+is "allowed-tools: the skills' text runs no git command, which would prompt" "$seen_git" "0"
+for c in '`second-brain branch <project> <ID>` reads the ticket'"'"'s default repo: the first repo of its' \
+  '  with `second-brain branch <project> <ID> --show <branch> <file>`, or tell the user.' \
+  '- No id given: `second-brain session-check --cwd "<repo path>"` prints the repo'"'"'s `branch:` and'; do
+  file_has "story-tracker: the branch check reads git through the helper: ${c:0:48}" "$STS" "$c"
+done
+file_has "story-tracker create: the work started comes from the helper" "$STD/create.md" \
+  '- Work has started: `second-brain branch <project> <ID> --started` prints the log and the diff'
+file_has "story-tracker create: a file at another ref comes from the helper" "$STD/create.md" \
+  '  `second-brain branch <project> <ID> --show <ref> <file>`.'
+file_has "refinement: reads git through the helper alone" "$SMD/refinement.md" \
+  '  Read git there through `second-brain branch` alone, so the check asks nothing.'
 for f in "$STS" "$SMS"; do
   sk="$(basename "$(dirname "$f")")"
   tools="$(sed -n 's/^allowed-tools: //p' "$f")"
@@ -2290,23 +2622,13 @@ line_is "sprint-planning: an ended sprint closes only when nothing else is asked
 is "sprint-planning: the close checks come before open" \
   "$(($(lineno "$SMW" '2. The user asks to close the sprint, with none') < $(lineno "$SMW" '3. No sprint in progress: `## Open`')))" "1"
 file_lacks "sprint-planning: no achievement" "$SMW" 'achievement'
-line_is "vault-setup: asks nothing for achievements_skill" "$here/skills/vault-setup/SKILL.md" \
-  '   - Ask nothing for `achievements_skill`. When the profile lacks it, write'
-line_is "vault-setup: writes it empty" "$here/skills/vault-setup/SKILL.md" \
-  '     `achievements_skill: ""`: no skill reads it until the plugin'"'"'s achievements skill, which is'
-file_lacks "vault-setup: no interview row for achievements_skill" "$here/skills/vault-setup/SKILL.md" '| `achievements_skill` |'
 line_is "refinement: asks for the approval without showing the draft again" "$here/skills/scrum-master/refinement.md" \
   '  `create.md` says, without showing the draft again.'
 file_has "contract: a story that refinement got approved gets the note too" "$here/docs/contract.md" \
   '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
-line_is "profile template: achievements_skill waits for the achievements skill" "$here/templates/profile.md.tmpl" \
-  '- `achievements_skill:` waits for the plugin'"'"'s achievements skill, which is planned. No skill'
 file_lacks "profile template: no story is handed to it" "$here/templates/profile.md.tmpl" 'hand it to'
-file_has "contract: only an achievements skill tracks achievements" "$here/docs/contract.md" \
-  '  reads it until then. Only that skill tracks achievements.'
 file_has "contract: a close with no sprint stops" "$here/docs/contract.md" \
   '- A request to close the sprint goes to its close. With no sprint in progress, it says so and'
-file_lacks "README: no achievement is logged" "$here/README.md" 'achievement'
 absent "skills: the sprint skill is gone" "$here/skills/sprint"
 absent "agents: the scrum-master agent is gone" "$here/agents/scrum-master.md"
 line_is "refinement: nothing is written before the approval" "$SMF" \
@@ -2375,7 +2697,7 @@ file_has "index template: names the build skill for building a story" "$here/tem
   '`build`'
 line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
   '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
-line_is "index template: still at version 8, unreleased" "$here/templates/vault-index.md.tmpl" 'index_version: 8'
+line_is "index template: at version 9 in 0.13.0" "$here/templates/vault-index.md.tmpl" 'index_version: 9'
 file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
 file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
   '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
@@ -2401,7 +2723,7 @@ done
 file_has "guide: points to the sprint-planning sections" "$here/docs/guide.md" \
   '`## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.'
 file_has "guide: points to the contract's planned-releases shape" "$here/docs/guide.md" '`### Planned releases` in'
-cg12_top="$(lineno "$CG" '## 0.12.0 - unreleased')"
+cg12_top="$(lineno "$CG" '## 0.12.0 - ')"
 cg12_end="$(lineno "$CG" '## 0.11.0 - ')"
 # under_012 <desc> <line>: the line is in the 0.12.0 section, above 0.11.0.
 under_012() {
@@ -2422,6 +2744,139 @@ under_012 "changelog: a close with no sprint stops, under 0.12.0" '- A sprint cl
 under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
 under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
 under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
+
+# ---------------------------------------------------------------- the achievements skill gathers what done stories delivered, and the owner's proposals
+AS="$here/skills/achievements/SKILL.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+RM="$here/README.md"
+q="'"
+exists "achievements: the skill exists" "$AS"
+is "achievements: SKILL.md is its one file" "$(ls "$here/skills/achievements" 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')" "SKILL.md "
+line_is "achievements: its name" "$AS" 'name: achievements'
+as_desc="$(sed -n 's/^description: //p' "$AS" 2>/dev/null)"
+is "achievements: its description is under 200 characters" "$(( ${#as_desc} > 0 && ${#as_desc} < 200 ))" "1"
+for w in "done stories" "date range" sprint proposals; do
+  case "$as_desc" in *"$w"*) pass "achievements: the description names $w" ;;
+    *) fail "achievements: the description names $w" "in: $as_desc" ;; esac
+done
+line_is "achievements: it may read, edit and write its note, and run the helper" "$AS" \
+  'allowed-tools: Read Edit Write Bash(second-brain *)'
+file_has "achievements: it carries the conventions pointer" "$AS" \
+  'Conventions: before writing notes, run `second-brain conventions` and follow it.'
+line_is "achievements: the context comes first" "$AS" '1. Your first tool call is `second-brain context`.'
+is "achievements: SKILL.md is under the doctor's 150 lines" "$(($(wc -l <"$AS" 2>/dev/null || echo 999) <= 150))" "1"
+# Each story set to done in the period, from its Summary and Changes, one achievement each, listed once.
+line_is "achievements: the period is a date range or a sprint" "$AS" \
+  '- The period is a date range or a sprint, from the request. With neither, ask which.'
+line_is "achievements: one board call lists every task, archived or not" "$AS" \
+  '1. List the project'"$q"'s tasks in one call: `second-brain board <project> All`.'
+line_is "achievements: only the done stories" "$AS" '2. Keep the rows whose `status` is `done`.'
+line_is "achievements: a sprint's stories are those whose sprint is its id" "$AS" \
+  '3. A sprint: keep the rows whose `sprint` cell is its id. A done story keeps the sprint it'
+line_is "achievements: a range's stories are those set to done in it" "$AS" \
+  '4. A date range: keep each story set to `done` from `<from>` to `<to>`.'
+line_is "achievements: a story records no done date" "$AS" \
+  '   - A story records no date it was set to `done`. Only its dated status notes show it.'
+file_has "achievements: a story whose newest note is older than the range is left out unread" "$AS" \
+  'One dated before `<from>`: no note shows it set to `done` in the range, so leave it out.'
+line_is "achievements: the done date is the note of the move to done" "$AS" \
+  '   - Its done date is the date of the newest note that records its move to `done`. With none,'
+line_is "achievements: else the newest note, and the result says so" "$AS" \
+  '     it is the date of its newest note, and its line in the result says so.'
+line_is "achievements: a story with no dated note goes to the owner" "$AS" \
+  '   - No dated note at all: list it under `No done date:`, for the owner to keep or drop.'
+line_is "achievements: a story is listed once" "$AS" \
+  '5. List each story once, under its id, whatever its aliases or its notes say. An environment set'
+file_has "achievements: reads the Summary and Changes cheapest first" "$AS" \
+  'title to `## Description`, which holds its `**Summary:**` line, and one of `## Changes`.'
+line_is "achievements: one achievement per story, from its Summary and Changes" "$AS" \
+  '- Word one achievement per story, in one or two sentences: what the story delivered, from its'
+line_is "achievements: claims nothing the story does not say" "$AS" \
+  '- Say only what they say: add no number, effect or name they lack.'
+line_is "achievements: each names its story" "$AS" '- Each achievement names its story, by its id.'
+line_is "achievements: a part is empty when it still holds the template's text" "$AS" \
+  '- A Summary or `## Changes` is empty when it is missing, blank, `None yet.`, or still the text of'
+line_is "achievements: the plugin's task template or the project's own" "$AS" \
+  '  the plugin'"$q"'s task template or the project'"$q"'s own, such as a line of `<...>` placeholders.'
+line_is "achievements: an empty Changes is worded from the Summary alone" "$AS" \
+  '- `## Changes` empty: word it from the Summary alone, and its line in the result says so.'
+line_is "achievements: an empty Summary is worded from Changes alone" "$AS" \
+  '- The Summary empty: word it from `## Changes` alone, and its line says so. Both empty: list the'
+line_is "achievements: both empty go to the owner to word" "$AS" '  story under `To word:`, for the owner to word.'
+# The owner's proposals, asked for and worded from the context, never made up.
+line_is "achievements: asks for the owner's proposals in the period" "$AS" \
+  '- Ask the owner whether they made any proposals to their company or project in the period: from'
+line_is "achievements: waits for the owner's answer" "$AS" \
+  '- Ask it as plain text, not with AskUserQuestion, and stop for the answer: only the owner knows'
+line_is "achievements: words each from the owner's words" "$AS" \
+  '- Word each one as an achievement, in one or two sentences, from the owner'"$q"'s words. Draw on the'
+line_is "achievements: with the project's and the stories' context" "$AS" \
+  '  project'"$q"'s context, a ranged read of `<project path>/README.md`, and the stories of step 2.'
+line_is "achievements: makes up no proposal" "$AS" \
+  '- Make up no proposal. Never take one from a story'"$q"'s notes, a build note or the code, and add no'
+as_story="$(lineno "$AS" '## 3. One achievement per story' 2>/dev/null)"
+as_prop="$(lineno "$AS" '## 4. The proposals' 2>/dev/null)"
+is "achievements: the proposals come after the stories" "$((${as_story:-0} > 0 && ${as_story:-0} < ${as_prop:-0}))" "1"
+# The result in the reply, a note only on the owner's ask.
+line_is "achievements: the result is in the reply" "$AS" 'Show the result in your reply, in this shape:'
+line_is "achievements: has ## 6. The note" "$AS" '## 6. The note'
+line_is "achievements: a note only on the owner's ask" "$AS" \
+  'Only on the owner'"$q"'s ask, write the result to `<project path>/<topics_root>/achievements.md`.'
+file_has "achievements: adds a period's section and never rewrites the note" "$AS" \
+  'last one, with the Edit tool. Never rewrite the note.'
+line_is "achievements: a period's section is replaced only on a yes" "$AS" \
+  '- The period has a section already: show it, and replace it only on the owner'"$q"'s yes.'
+file_has "achievements: the note's alias" "$AS" '  - "<Project> Achievements"'
+file_has "achievements: the note's up-link" "$AS" '> Up: [[<project path>/<topics_root>/README|<Project> Docs Hub]]'
+# The vault index names the skill once, to send a request for achievements to it.
+ac_hits="$(cd "$here" && grep -rlis 'achievement' skills agents hooks templates bin scripts/lib |
+  grep -v -e '^skills/achievements/' -e '^templates/vault-index\.md\.tmpl$')"
+is "achievements: no other skill, agent, template or helper file names an achievement" "$ac_hits" ""
+is "achievements: the vault index names one only to send it to the skill" \
+  "$(grep -ci 'achievement' "$here/templates/vault-index.md.tmpl")" "1"
+# The docs describe the skill, and achievements_skill is gone.
+line_is "README: a section for the achievements skill" "$RM" '### `/odsb:achievements`'
+file_has "README: it asks for the proposals and makes up none" "$RM" \
+  '- It asks you about the proposals you made to your company or project then, and helps you word'
+file_has "README: the result is in the reply, a note only on your ask" "$RM" \
+  '- The result is in its reply. It writes it to the project'"$q"'s `achievements.md` note only when you'
+file_has "guide: the achievements request is under What to say" "$GD" \
+  '| List my achievements on the Example project from 2026-11-01 to 2026-11-30. | `achievements` |'
+file_has "e2e: asks the same achievements request" "$here/scripts/e2e-claude.sh" \
+  '"List my achievements on the Example project from 2026-11-01 to 2026-11-30."'
+line_is "guide: has ## Achievements" "$GD" '## Achievements'
+line_is "contract: the achievements skill" "$CT" \
+  '- **The `achievements` skill gathers the owner'"$q"'s achievements.** It is the one skill or agent'
+file_has "contract: a part still the template's text is left out" "$CT" \
+  '- A part that is missing, blank, `None yet.` or still the task template'"$q"'s text is left out, and'
+file_has "contract: the note's shape has its home in the skill" "$CT" '`## 6. The note` in `skills/achievements/SKILL.md`'
+file_has "contract: the project holds the achievements note" "$CT" \
+  '  <topics_root>/achievements.md   optional; the owner'"$q"'s achievements (section 9)'
+file_has "contract: story-tracker and the sprint close leave achievements to the skill" "$CT" \
+  'does the sprint close: the `achievements` skill gathers them, as below.'
+file_lacks "contract: the profile example has no achievements_skill" "$CT" 'achievements_skill: ""'
+file_has "contract: a profile that still has achievements_skill keeps it" "$CT" \
+  '- `achievements_skill` is no key of the profile. Versions before 0.13.0 wrote it. A profile that'
+line_is "index template: names the achievements skill among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
+  '  `achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements. Agent:'
+file_has "index: a scaffolded index names the achievements skill" "$vault/CLAUDE.md" \
+  '`achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements.'
+for f in templates/profile.md.tmpl skills/vault-setup/SKILL.md scripts/lib/doctor.sh; do
+  file_lacks "achievements_skill: gone from $f" "$here/$f" 'achievements_skill'
+done
+cg13_top="$(lineno "$CG" '## 0.13.0 - unreleased')"
+cg13_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- The `achievements` skill gathers your achievements for a date range or a sprint: one for each' \
+  '- It asks you about the proposals you made to your company or project in that time, and helps' \
+  '- It shows the result in its reply, and writes it to `achievements.md` in the project'"$q"'s topics' \
+  '- `achievements_skill` is gone from the profile template, vault-setup and the doctor'"$q"'s `profile`' \
+  '- The vault index names the define-validation-scope and achievements skills. The plugin'"$q"'s index' \
+  '  `templates/vault-index.md.tmpl` into your vault'"$q"'s `CLAUDE.md`, then set `index_version: 9`.'; do
+  n="$(lineno "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${cg13_top:-0} > 0 && ${n:-0} > ${cg13_top:-0} && ${n:-0} < ${cg13_end:-0}))" "1"
+done
 
 # ---------------------------------------------------------------- a description with a colon and a blank is quoted
 for f in "$here"/skills/*/SKILL.md "$here"/agents/*.md; do
@@ -2478,6 +2933,445 @@ file_has "contract: an old spec folder and build.json stay as plain files of the
   '  retired spec flow wrote, before 0.12.0, stay there as plain files of the task.'
 file_has "contract: the delivery and spec_home keys are no keys" "$here/docs/contract.md" \
   '- `delivery` and `spec_home` are no keys of the profile, a subproject'"'"'s note or a task. Versions'
+
+# ---------------------------------------------------------------- docs-keeper sets up a project's docs, for the user to approve
+DK="$here/agents/docs-keeper.md"
+VSD="$here/skills/vault-setup"
+VSO="$VSD/docs.md"
+q="'"
+w7="## Workflow 7 - Set up a project${q}s docs"
+line_is "docs-keeper: Workflow 7 sets up a project's docs" "$DK" "$w7"
+w6_line="$(lineno "$DK" '## Workflow 6 - ')"
+w7_line="$(linex "$DK" "$w7")"
+wv_line="$(linex "$DK" '## Working in the vault')"
+is "docs-keeper: Workflow 7 comes after Workflow 6 and before the vault rules" \
+  "$((${w6_line:-0} > 0 && ${w6_line:-0} < ${w7_line:-0} && ${w7_line:-0} < ${wv_line:-0}))" "1"
+file_has "docs-keeper: vault-setup starts it with the project and the repositories" "$DK" \
+  'The caller, the `vault-setup` skill, gives the project and the repositories to set up: each one'
+file_has "docs-keeper: the caller holds the approval, as the agent cannot ask" "$DK" \
+  'when it adds a project, the new one when it adds a repository. You cannot ask the user, so the'
+line_is "docs-keeper: Workflow 7 has a draft round" "$DK" "### The draft"
+line_is "docs-keeper: and a write round" "$DK" "### The write"
+file_has "docs-keeper: the draft reads the code at the code ref" "$DK" \
+  '1. Read each repository at the code ref, as `## The code ref` says. The draft describes that code'
+line_is "docs-keeper: the draft reads the README" "$DK" '   - Its README: `git -C "<path>" show <ref>:README.md`.'
+line_is "docs-keeper: the draft reads the layout" "$DK" '   - Its layout: `git -C "<path>" ls-tree -r --name-only <ref>`.'
+line_is "docs-keeper: the draft reads the code the layout shows" "$DK" \
+  '   - Its code: the entry points, modules and config the layout shows.'
+file_has "docs-keeper: the draft keeps a topic folder that exists" "$DK" \
+  '   - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.'
+file_has "docs-keeper: the draft reads each subproject's docs folder" "$DK" \
+  '   `ls -d "<vault>/<project path>/<topics_root>"/*/`, each subproject'"${q}"'s docs folder, as'
+line_is "docs-keeper: as the subproject command lists it" "$DK" \
+  '   `second-brain subproject <project>` lists it, and the rows under `### Code to doc map`.'
+file_has "docs-keeper: a subproject's docs folder takes new topic folders" "$DK" \
+  '   - A subproject'"${q}"'s docs folder is the one exception: draft new topic folders inside it, and'
+line_is "docs-keeper: but nothing in a topic folder inside it that exists" "$DK" \
+  '     nothing in a topic folder inside it that exists.'
+file_has "docs-keeper: drafts the topic folders" "$DK" \
+  '3. Draft one topic per part of the code a reader asks about, such as a module, a service or a'
+file_has "docs-keeper: a topic folder's tag is its path" "$DK" 'so that its topic tag is its path'
+file_has "docs-keeper: a hub for each topic folder" "$DK" '   - Its hub, `<topic>/README.md`, as Workflow 4 says: a unique alias, `type: moc`, an up link to'
+file_has "docs-keeper: a first note per topic" "$DK" '   - Its first note, such as `<topic>/overview.md`: a unique alias, a `title`, a `type` from the'
+file_has "docs-keeper: the first note's claims come from the code" "$DK" \
+  'then what the code confirms, each claim with the file it comes from.'
+line_is "docs-keeper: a topic's hub links up to its parent hub" "$DK" \
+  '     its parent hub and a link down to its first note.'
+file_lacks "docs-keeper: not to the topics hub, whatever its parent" "$DK" \
+  'the topics hub and a link down to its first note.'
+line_is "docs-keeper: its parent hub links each new hub" "$DK" '   - The line that links its hub from its parent hub.'
+file_has "docs-keeper: the parent hub is the topics hub" "$DK" \
+  '   - The parent hub is the topics hub, with the line under `## Topics`. With `topics_root: "."`'
+file_has "docs-keeper: a subproject topic's parent hub is the subproject's docs hub" "$DK" \
+  '   - For a repository of a subproject, the parent hub is the subproject'"${q}"'s docs hub,'
+line_is "docs-keeper: the line goes under that hub's own Topics" "$DK" \
+  '     `<topics_root>/<name>/README.md`, with the line under its own `## Topics`.'
+file_has "docs-keeper: the write edits each parent hub" "$DK" \
+  '   - The parent hubs'"${q}"' lines and the map rows with the Edit tool.'
+line_is "docs-keeper: every link carries a path" "$DK" \
+  '   - Every link carries its full vault path: `[[<vault path>|<alias>]]`.'
+file_has "docs-keeper: drafts the Code to doc map rows" "$DK" \
+  '5. Draft the Code to doc map rows: for each repository, one row per kind of change that alters a'
+line_is "docs-keeper: the draft writes nothing" "$DK" \
+  '6. Return the draft, as `## Output` says, and write nothing: no folder, no note and no line of'
+file_has "docs-keeper: an asked change is checked against the code and drafted again" "$DK" \
+  '7. A caller that gives a draft and a change the user asked for: check the change against the'
+line_is "docs-keeper: the write takes the draft the user approved" "$DK" \
+  '1. The caller gives the draft the user approved, with each change the user asked for in it.'
+line_is "docs-keeper: the write adds nothing to the draft" "$DK" '2. Write it as approved, and nothing more.'
+file_has "docs-keeper: the write overwrites no file" "$DK" '     A file that exists is kept: report it, and never overwrite it.'
+file_has "docs-keeper: the write checks its links" "$DK" \
+  '3. Run `second-brain unresolved <project>`. It must list no link you wrote: fix the path of each'
+file_has "docs-keeper: the write runs the doctor" "$DK" '4. Run `second-brain doctor <project>`, and report each row that is not `ok`.'
+file_has "docs-keeper: the output of a draft" "$DK" '- A docs setup draft: each folder, each hub and note with its whole text, each line for a parent'
+file_has "docs-keeper: the output of a write" "$DK" '- A docs setup written: each file written, each file kept as it was, the rows added, and each'
+exists "vault-setup: the docs setup has a file of its own" "$VSO"
+line_is "vault-setup docs: its title" "$VSO" "# Set up a project${q}s docs from its code"
+file_has "vault-setup docs: the skill holds the approval, as docs-keeper cannot ask" "$VSO" \
+  'draft. It is an agent and cannot ask the user, so this skill holds the approval. Nothing is written'
+file_has "vault-setup docs: project mode offers it when no topic folder exists" "$VSO" \
+  '- Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds'
+file_has "vault-setup docs: a subproject's docs folder is no topic folder for the offer" "$VSO" \
+  '- Each subproject'"${q}"'s docs folder, as `second-brain subproject <project>` lists it, is no topic'
+line_is "vault-setup docs: but each folder inside it is" "$VSO" '  folder here, but each folder inside it is.'
+file_has "vault-setup docs: repo mode offers it for the new repository" "$VSO" \
+  '- Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.'
+file_has "vault-setup docs: starts docs-keeper by its plugin name" "$VSO" '1. Start the `docs-keeper` agent (`odsb:docs-keeper`) with the project and the repositories, and'
+line_is "vault-setup docs: asks for Workflow 7's draft, by the heading's name" "$VSO" \
+  "   ask it for the draft of \`${w7#\#\# }\`."
+line_is "vault-setup docs: the draft writes nothing" "$VSO" '2. It returns the draft and writes nothing.'
+file_has "vault-setup docs: shows the user the whole draft" "$VSO" '3. Show the user the whole draft, as it came:'
+file_has "vault-setup docs: an asked change goes back to docs-keeper" "$VSO" \
+  '1. A change the user asks for goes to `docs-keeper` with the draft, for a new draft. It checks the'
+line_is "vault-setup docs: each change is shown" "$VSO" '2. Show the user each part that changed, then ask again.'
+line_is "vault-setup docs: nothing is written before the approval" "$VSO" '3. Nothing is written until the user approves the draft as shown.'
+file_has "vault-setup docs: docs-keeper writes on the approval" "$VSO" \
+  '1. On the user'"${q}"'s approval, start `docs-keeper` again for the write of Workflow 7, with the draft as'
+for ptr in 'SKILL.md|## project <name>' 'repo.md|## 2. The docs that follow it'; do
+  pf="${ptr%%|*}" ph="${ptr#*|}"
+  line_is "vault-setup docs: $pf has the heading $ph" "$VSD/$pf" "$ph"
+done
+file_has "vault-setup: project mode offers the docs setup" "$VSD/SKILL.md" \
+  '   - Offer to have `docs-keeper` draft the project'"${q}"'s docs from its code, as'
+file_has "vault-setup: the router names the docs file" "$VSD/SKILL.md" '`${CLAUDE_SKILL_DIR}/docs.md`, the docs setup, is no mode'
+file_has "vault-setup repo: repo mode offers the docs setup" "$VSD/repo.md" \
+  'In repo mode, first offer to have `docs-keeper` draft the repository'"${q}"'s docs from its code, as'
+file_has "vault-setup repo: the draft's rows are kept" "$VSD/repo.md" 'A repository with rows from such a draft keeps them'
+CT="$here/docs/contract.md"
+file_has "contract: a project with no docs gets a draft from docs-keeper" "$CT" \
+  '- **A project with no docs gets a draft of them from `docs-keeper`.** When `vault-setup` adds a'
+file_has "contract: the draft reads the README, the layout and the code" "$CT" \
+  '- `docs-keeper` reads each repository'"${q}"'s README, its layout and its code at the code ref. It'
+file_has "contract: the draft writes nothing, and vault-setup holds the approval" "$CT" \
+  '- It returns the draft and writes nothing. An agent cannot ask the owner, so `vault-setup` holds'
+file_has "contract: docs-keeper writes only on the approval" "$CT" \
+  '- Only on the owner'"${q}"'s approval does `vault-setup` start `docs-keeper` again to write the draft as'
+file_has "contract: the notes follow the conventions" "$CT" \
+  '- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags'
+GD="$here/docs/guide.md"
+for ph in '## 2. The draft' '## 4. The write'; do
+  file_has "guide: points to $ph in skills/vault-setup/docs.md" "$GD" "\`$ph\` in \`skills/vault-setup/docs.md\`"
+  line_is "guide: skills/vault-setup/docs.md has the heading $ph" "$VSO" "$ph"
+done
+file_has "guide: a project with no docs can have them drafted" "$GD" '- A project with no docs can have them drafted from its code. When `vault-setup` adds a project'
+file_has "guide: nothing is written before the approval" "$GD" '- You see the whole draft, and each change you ask for, before anything is written.'
+file_has "README: docs-keeper is started by vault-setup too" "$here/README.md" \
+  '`vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |'
+CG="$here/CHANGELOG.md"
+ds_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+ds_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- `docs-keeper` sets up the docs of a project that has none, in its new' \
+  '- `vault-setup` offers it when it adds a project or a repository. The draft writes nothing:' \
+  '- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${ds_top:-0} && ${n:-0} < ${ds_end:-0}))" "1"
+done
+
+# ---------------------------------------------------------------- define-validation-scope drafts a repo's checks, for the owner to approve
+DV="$here/skills/define-validation-scope/SKILL.md"
+q="'"
+exists "define-validation-scope: a skill of its own" "$DV"
+absent "define-validation-scope: a skill, not an agent, as it talks with the owner" "$here/agents/define-validation-scope.md"
+line_is "define-validation-scope: the name is the folder's" "$DV" "name: define-validation-scope"
+dv_desc="$(sed -n 's/^description: //p' "$DV")"
+is "define-validation-scope: has a description under 200 characters" "$((${#dv_desc} > 0 && ${#dv_desc} < 200))" "1"
+file_lacks "define-validation-scope: a request may load it, and vault-setup calls it" "$DV" "disable-model-invocation"
+line_is "define-validation-scope: it may read the code, edit the section and run ls -d" "$DV" \
+  'allowed-tools: Read Grep Glob Edit Bash(second-brain *) Bash(ls -d *)'
+file_has "define-validation-scope: carries the conventions pointer" "$DV" \
+  'Conventions: before writing notes, run `second-brain conventions` and follow it.'
+line_is "define-validation-scope: the context comes first" "$DV" '1. Run `second-brain context` yourself, as your first tool call.'
+for h in '## Step 0 - Context' '## 1. The stages the project uses' "## 2. The project${q}s docs" \
+  "## 3. The repo${q}s code" '## 4. The draft' '## 5. The approval' '## 6. The write' '## Rules'; do
+  line_is "define-validation-scope: has $h" "$DV" "$h"
+done
+dv_help="$(bash "$SB" help 2>&1)"
+for w in $(grep -oE '`second-brain [a-z]+' "$DV" | sed 's/^`second-brain //' | LC_ALL=C sort -u); do
+  if printf '%s\n' "$dv_help" | grep -qw -- "$w"; then pass "define-validation-scope: second-brain $w is in help"
+  else fail "define-validation-scope: second-brain $w is in help" "help lacks: $w"; fi
+done
+# It reads the project's docs, and offers docs-keeper's setup of skills/vault-setup/docs.md to a project with none.
+file_has "define-validation-scope: the project's docs are its topic notes and the repo's doc files" "$DV" \
+  '1. The project'"${q}"'s docs are its topic notes, under the topics root in the vault, and the repo'"${q}"'s own'
+file_has "define-validation-scope: none, as docs.md counts the topic folders" "$DV" \
+  '2. It has none when the topics root holds no topic folder, as `## 1. Offer it` in'
+file_has "define-validation-scope: names the docs setup by its path" "$DV" '`${CLAUDE_PLUGIN_ROOT}/skills/vault-setup/docs.md`'
+file_has "define-validation-scope: a project with none is offered docs-keeper's setup first" "$DV" \
+  '3. A project with none: offer `docs-keeper`'"${q}"'s setup first, for this repo, as that file says. This'
+file_has "define-validation-scope: offers it once a session" "$DV" \
+  '   - Declined already in this session, such as at step 7 of vault-setup'"${q}"'s project mode: take it'
+file_has "define-validation-scope: on a no it reads the code" "$DV" \
+  '   - On a no, or when it writes nothing, read the repo'"${q}"'s code as `## 3. The repo'"${q}"'s code` says, and'
+file_has "define-validation-scope: a project with docs drafts from them" "$DV" \
+  '4. A project with docs: read the ones on how the repo is set up, tested, built and laid out,'
+file_has "define-validation-scope: a command the code does not hold is not confirmed" "$DV" \
+  '   - A command the docs name that the code does not hold goes under `Not confirmed:` in the draft,'
+line_is "define-validation-scope: the code is its test scripts" "$DV" \
+  '- Its test scripts: the test, lint and build entries of `package.json` `scripts`, the targets of a'
+line_is "define-validation-scope: its CI workflows" "$DV" \
+  '- Its CI workflows, such as `.github/workflows/*.yml` or `.gitlab-ci.yml`: the commands each job'
+line_is "define-validation-scope: and its package manifests" "$DV" \
+  '- Its package manifests, such as `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml` or'
+file_has "define-validation-scope: runs none of the repo's commands" "$DV" 'Run none of'
+VSO="$here/skills/vault-setup/docs.md"
+for ph in '## 1. Offer it' '## 2. The draft' '## 3. The approval' '## 4. The write'; do
+  line_is "define-validation-scope: docs.md has the heading $ph it follows" "$VSO" "$ph"
+done
+# It drafts each check with its command, its stage and its paths, in the template's shape.
+file_has "define-validation-scope: drafts in the template's shape" "$DV" '`${CLAUDE_PLUGIN_ROOT}/templates/validation-repo.md.tmpl`'
+exists "define-validation-scope: the template it names exists" "$here/templates/validation-repo.md.tmpl"
+for h in '### Set up and start' '### Checks' '### Check as a user would' '### A pass'; do
+  file_has "define-validation-scope: drafts $h" "$DV" "- \`$h\`: "
+  line_is "define-validation-scope: the template has $h" "$here/templates/validation-repo.md.tmpl" "$h"
+done
+file_has "define-validation-scope: a check is its command, what it proves, its paths and its when" "$DV" \
+  '- `### Checks`: one bullet per check: its command the line'"${q}"'s first code span, then what it'
+file_has "define-validation-scope: an example check with paths and a when" "$DV" \
+  '`` - `npm run test:api` - the API suite - paths: api/**, `package.json` - when: each story ``.'
+file_has "define-validation-scope: each story" "$DV" '  - `when: each story` for one each story'"${q}"'s review runs, quick enough for every change, such'
+file_has "define-validation-scope: each merge" "$DV" '  - `when: each merge` for one that runs once a story merges, such as the full suite or the'
+file_has "define-validation-scope: release" "$DV" '  - `when: release`, in a project that plans releases, for one that costs money or takes long,'
+file_has "define-validation-scope: the paths of a check only some files can break" "$DV" \
+  '- The `paths:` of a check that only some files can break, such as the suite of one part: the'
+file_has "define-validation-scope: a check any file can break has no paths" "$DV" \
+  '  - A check that any file can break, such as the linter of the whole repo or the build, has no'
+file_has "define-validation-scope: a user step takes no paths" "$DV" 'A user step takes no `paths:`.'
+line_is "define-validation-scope: invents nothing" "$DV" '- Never invent a command, a glob, a stage or a step.'
+# It proposes only the stages the project uses.
+file_has "define-validation-scope: every project uses each story and each merge" "$DV" \
+  '- Every project uses `each story`, run in each story'"${q}"'s review, and `each merge`, run on the'
+file_has "define-validation-scope: release only in a project that plans releases" "$DV" \
+  '- `release` is only for a project that plans releases: one whose planned-releases note,'
+file_has "define-validation-scope: the planned-releases note's path" "$DV" \
+  '`<vault>/<project path>/<topics_root>/planned-releases.md`, is there, as `ls -d "<that path>"`'
+line_is "define-validation-scope: no release check in a project that plans none" "$DV" \
+  '- In a project that plans no releases, draft no `release` check and no `release` user step.'
+file_has "define-validation-scope: a release check left out is named" "$DV" \
+  '  A check the code keeps for a release, such as an end-to-end suite that costs money, goes under'
+# It shows the draft and each change, and writes only on the owner's approval.
+file_has "define-validation-scope: shows the draft and stops" "$DV" \
+  '1. Show the draft, and end it with the line `What'"${q}"'s wrong or missing?` as plain text. Then stop for'
+file_has "define-validation-scope: shows each asked change again" "$DV" \
+  '2. A change the owner asks for: make it in the draft, and show each part it changed again, in'
+line_is "define-validation-scope: nothing is written before the approval" "$DV" \
+  '3. Nothing is written until the owner approves the draft as shown.'
+line_is "define-validation-scope: only a plain yes approves it" "$DV" \
+  '   - With no change left, ask for that approval. Only a plain yes is one.'
+line_is "define-validation-scope: a no writes nothing" "$DV" '4. A no to the whole draft writes nothing. Say that the section stays as it was.'
+file_has "define-validation-scope: the write is on the approval" "$DV" \
+  '1. On the owner'"${q}"'s approval, take the repo'"${q}"'s state from `second-brain validation <project>`:'
+file_has "define-validation-scope: a missing section through validation new" "$DV" \
+  '   - `missing` or `no-section`: run `second-brain validation new <project> <repo>`. It writes the'
+file_has "define-validation-scope: a section that is there keeps its other lines" "$DV" \
+  'Change no other line, and no other repo'"${q}"'s section.'
+file_has "define-validation-scope: reads the section back" "$DV" \
+  '3. Read it back with `second-brain validation <project> <repo>`. It must print the section as'
+# The docs and vault-setup.
+RM="$here/README.md"
+file_has "README: define-validation-scope proposes the checks of each stage" "$RM" \
+  'Proposes which checks run at each stage of a repo'"${q}"'s validation, from your project'"${q}"'s docs or'
+file_has "README: each check with its command, stage and paths" "$RM" \
+  '- Each check it drafts has its command, its stage, `each story`, `each merge` or `release`, and'
+file_has "README: docs first, docs-keeper's setup, then the code" "$RM" \
+  '- It reads the project'"${q}"'s docs first. A project with none is offered `docs-keeper`'"${q}"'s setup'
+file_has "README: only the stages the project uses" "$RM" \
+  '- It proposes only the stages your project uses: no `release` check in a project that plans no'
+file_has "README: writes only on the approval" "$RM" \
+  '- It shows you the whole draft, and each change you ask for again, and writes the section only'
+file_has "README: vault-setup offers it" "$RM" '- `vault-setup` offers it when it adds a repo.'
+file_has "README: docs-keeper is started by define-validation-scope too" "$RM" \
+  '`define-validation-scope` in a project with no docs, `vault-setup` when it adds a project or a repo,'
+CT="$here/docs/contract.md"
+file_has "contract: define-validation-scope drafts a repo's section" "$CT" \
+  '- **`define-validation-scope` drafts a repo'"${q}"'s validation section.** It is a skill, as it talks'
+file_has "contract: it reads the docs, offers the setup, then the code" "$CT" \
+  '- It reads the project'"${q}"'s docs first: its topic notes and the repo'"${q}"'s doc surfaces. A project with'
+file_has "contract: its code is the test scripts, CI workflows and package manifests" "$CT" \
+  'On a no, it reads the repo'"${q}"'s code: its test scripts, CI workflows and package manifests.'
+file_has "contract: only the stages the project uses" "$CT" \
+  '- It proposes only the stages the project uses. `release` is for a project that plans releases,'
+file_has "contract: writes only on the approval, through validation new" "$CT" \
+  'owner'"${q}"'s approval does it write the repo'"${q}"'s section, through `second-brain validation new` for a'
+file_has "contract: vault-setup offers it in each mode that adds a repo" "$CT" \
+  '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and'
+file_has "contract: the setup's offer has a second caller" "$CT" \
+  '- `define-validation-scope` offers the same setup, through the same steps, to a project with no'
+GD="$here/docs/guide.md"
+file_has "guide: the request is under What to say" "$GD" \
+  '| Define the validation scope of example-api for the Example project. | `define-validation-scope` |'
+file_has "guide: define-validation-scope drafts a repo's steps" "$GD" \
+  '- `define-validation-scope` drafts a repo'"${q}"'s steps for you: each check'"${q}"'s command, its stage and'
+for ph in '## 1. The stages the project uses' '## 6. The write'; do
+  file_has "guide: points to $ph in skills/define-validation-scope/SKILL.md" "$GD" "\`$ph\` in \`skills/define-validation-scope/SKILL.md\`"
+done
+file_has "guide: vault-setup offers it" "$GD" '- `vault-setup` offers it when it adds a repo.'
+CG="$here/CHANGELOG.md"
+dv_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+dv_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each' \
+  '- It proposes only the stages the project uses: a `release` check only in a project with a' \
+  '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.' \
+  '- The vault index names the define-validation-scope and achievements skills. The plugin'"${q}"'s index' \
+  '  `templates/vault-index.md.tmpl` into your vault'"${q}"'s `CLAUDE.md`, then set `index_version: 9`.'; do
+  n="$(linex "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${dv_top:-0} && ${n:-0} < ${dv_end:-0}))" "1"
+done
+line_is "index template: names define-validation-scope among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
+  '  `vault-doctor` checks them, `define-validation-scope` drafts a repo'"${q}"'s validation steps,'
+VSD="$here/skills/vault-setup"
+line_is "vault-setup: it may call define-validation-scope with the project and the repo" "$VSD/SKILL.md" \
+  'allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)'
+file_has "vault-setup: project mode offers define-validation-scope for each repo" "$VSD/SKILL.md" \
+  '    - First offer `define-validation-scope` for each repo, as step 2 of `## 3. Finish` in'
+line_is "vault-setup repo: repo.md has the heading ## 3. Finish" "$VSD/repo.md" '## 3. Finish'
+file_has "vault-setup repo: repo mode offers define-validation-scope" "$VSD/repo.md" \
+  '2. Write the repository'"${q}"'s validation steps. First offer to have the `define-validation-scope`'
+line_is "vault-setup repo: calls it with the Skill tool" "$VSD/repo.md" \
+  '   - On a yes, call it with the Skill tool as `odsb:define-validation-scope <project> <repo>`,'
+file_has "vault-setup repo: on a no, its own validation steps" "$VSD/repo.md" \
+  '   - On a no, or when the session cannot call it, write them as `validation.md`, beside this'
+file_has "vault-setup subproject: offers define-validation-scope for each repository" "$VSD/subproject.md" \
+  '   - First offer `define-validation-scope` for each repository, as step 2 of `## 3. Finish` in'
+file_has "vault-setup adopt: offers define-validation-scope for each repository" "$VSD/adopt.md" \
+  '  - First offer `define-validation-scope` for each one, as step 2 of `## 3. Finish` in `repo.md`'
+# Each mode that writes a repo's validation steps by validation.md offers define-validation-scope first.
+dv_modes=0
+for f in "$VSD"/*.md; do
+  [ "${f##*/}" != validation.md ] || continue
+  grep -qE 'validation steps as `(\$\{CLAUDE_SKILL_DIR\}/)?validation\.md`' "$f" || continue
+  dv_modes=$((dv_modes + 1))
+  file_has "vault-setup ${f##*/}: offers define-validation-scope where it writes the validation steps" "$f" \
+    'First offer `define-validation-scope` for each'
+done
+is "vault-setup: project, subproject and adopt write the validation steps by validation.md" "$dv_modes" "3"
+file_has "vault-setup docs: define-validation-scope offers the setup too" "$VSO" \
+  '- The `define-validation-scope` skill, at step 3 of `## 2. The project'"${q}"'s docs` in its `SKILL.md`:'
+file_has "docs-keeper: define-validation-scope is a caller of Workflow 7 too" "$here/agents/docs-keeper.md" \
+  'The `define-validation-scope` skill is a caller too, through the same steps, for the one'
+
+# ---------------------------------------------------------------- story-tracker looks for the same story first
+# Before it writes a new story, start mode shows each story that does the same and the epics it
+# could join, and the owner picks.
+STC="$here/skills/story-tracker/create.md"
+ds_lead='Then, before step 1, look for a story that already does the same, and for the epic it could'
+line_is "same story: create.md looks for a story that does the same, and an epic" "$STC" "$ds_lead"
+line_is "same story: every new story gets the check, one from refinement too" "$STC" \
+  'join. Every new story gets this check, one from refinement too:'
+ds_at="$(linex "$STC" "$ds_lead")"
+is "same story: the check is in section 3, after the approval and the refinement rule, before step 1" \
+  "$((${ds_at:-0} > $(lineno "$STC" 'A story the scrum-master') && ${ds_at:-0} < $(lineno "$STC" '1. `second-brain task new EX-123')))" "1"
+is "same story: the check is under ## 3. Create the story" \
+  "$(section_of "$STC" '3. Create the story' | grep -cxF -- "$ds_lead")" "1"
+line_is "same story: it searches the open and done stories" "$STC" "- Search the project's stories, open and done:"
+file_has "same story: with the helper, in the tasks root" "$STC" \
+  '`second-brain search <project> "<terms>" --in <tasks_root>`, with `tasks_root` from Step 0.'
+line_is "same story: by title, summary and each criterion" "$STC" \
+  '  - Search once by the title, once by the Summary and once by each acceptance criterion, in one'
+line_is "same story: the searches are chained with ;, so a search with no match stops none" "$STC" \
+  '    Bash call, chained with `;` so that a search with no match stops none of the others.'
+is "same story: no command of the check is chained with &&" "$(section_of "$STC" '3. Create the story' | grep -c '&&')" "0"
+file_has "same story: a search names few terms, as a note must hold each" "$STC" \
+  'A note matches only when it holds every term: give each search the 2 or 3 words that name'
+file_has "same story: the head of each story found gives its status" "$STC" \
+  '`second-brain task head <ID>`, with the folder that holds it'
+file_has "same story: a match is by outcome" "$STC" "A story matches when its outcome is the new story's"
+file_has "same story: each match is shown with its status" "$STC" 'id, title and status, and the outcome they share.'
+file_has "same story: an abandoned story is no match" "$STC" 'Leave out an abandoned one.'
+line_is "same story: it lists the open epics the story could join" "$STC" \
+  '- List the open epics the story could join, each `planned`, `in-progress` or `in-review` in its'
+file_has "same story: the parents of the stories found" "$STC" 'The parent each story the searches found names, on the `epic:` line'
+file_has "same story: the epics the planned-releases note lists" "$STC" \
+  'Each epic under `## Epics` in `<project path>/<topics_root>/planned-releases.md`'
+line_is "same story: a task the searches found is an epic when another task names it" "$STC" \
+  '  - Each task the searches found that another task names as its parent:'
+file_has "same story: its children's epic lines, with the helper" "$STC" \
+  '`second-brain search <project> "\"epic: <ID>\"" --in <tasks_root>`'
+file_has "same story: a longer id names another task" "$STC" 'A line with a longer id, such as `epic: <ID>0`, names another task.'
+line_is "same story: a refinement story's draft parent is listed" "$STC" \
+  '  - For a story from refinement, the parent its approved draft names.'
+file_has "same story: it says the project's word" "$STC" '  - Say epic or feature, as Step 0 of `SKILL.md` names it.'
+line_is "same story: it proposes one epic, or none, with the reason" "$STC" \
+  '- Propose one of them, or none, with the reason: the epic whose outcome the new story serves, or'
+file_has "same story: a refinement story's proposal is its approved parent" "$STC" \
+  'For a story from refinement, propose the parent its approved draft names'
+line_is "same story: the owner picks with AskUserQuestion" "$STC" '- Ask the owner with AskUserQuestion to pick one:'
+file_has "same story: pick one, change the story that exists" "$STC" '  - Change the story that exists: show the change to it beside what it says now'
+file_has "same story: it names the story that took the new one's place" "$STC" 'say which story took its place, for a refinement to link.'
+line_is "same story: a refinement story's place taker moves under the draft's parent" "$STC" \
+  '    - A story from refinement whose draft names a parent: the change moves it under that parent,'
+file_has "same story: through task set, unless the owner keeps its own parent" "$STC" \
+  '`second-brain task set <ID> epic=<parent>`, unless the owner keeps it under its own.'
+file_has "same story: it names the parent the story left" "$STC" 'which parent it is under, and the one it left.'
+file_has "same story: pick two, file it under an epic" "$STC" \
+  '  - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.'
+file_has "same story: pick three, write it on its own" "$STC" \
+  '  - Write it on its own: write it as the steps below say, with no `epic`.'
+line_is "same story: nothing is written before the pick" "$STC" \
+  '- Write nothing, no story, key or note, before the owner picks. No AskUserQuestion, as in a'
+file_has "same story: step 3 sets the parent the owner picked" "$STC" \
+  'plus `epic=<ID>` when the owner filed it under a parent'
+sb help
+out_has "same story: the helper's search takes --in, as create.md runs it" 'search <project> "<text>" [--in SUBPATH]'
+DSC="$here/docs/contract.md"
+line_is "same story: the contract describes the check" "$DSC" \
+  '- Then, before it writes a new story, one from refinement too, its start mode shows each open or'
+line_is "same story: the contract says the owner picks" "$DSC" \
+  '- The owner picks: change the story that exists, file the new one under an epic, or write it on'
+ds_ptr="$(linex "$DSC" '  its own. Nothing is written before the owner picks. The check works as')"
+is "same story: the contract points to the check's home" "$(sed -n "$((${ds_ptr:-0} + 1))p" "$DSC")" \
+  '  `## 3. Create the story` in `skills/story-tracker/create.md` says.'
+file_lacks "same story: the contract leaves the search to create.md" "$DSC" 'stories with `second-brain search`, by'
+# Defect 2: refinement follows the owner's pick
+RFW="$here/skills/scrum-master/refinement.md"
+line_is "same story: refinement writes each story with the parent the owner picks" "$RFW" \
+  '   as `planned`, with the parent the owner picks.'
+line_is "same story: refinement names story-tracker's check" "$RFW" \
+  '   - Before it writes, story-tracker shows the owner the stories that do the same and the epics'
+file_has "same story: refinement takes the pick as approved" "$RFW" 'That pick is approved: step 5 does not stop for it.'
+line_is "same story: refinement, a story that exists in place of a new one" "$RFW" \
+  '   - The owner picks a story that exists in its place: story-tracker writes no new one, and names'
+file_has "same story: refinement, that story takes the draft's parent" "$RFW" \
+  '     that story. Its change sets the draft'"'"'s parent as its `epic`, unless the owner keeps it under'
+line_is "same story: refinement, story-tracker names the parent it left, for step 4" "$RFW" \
+  '     its own parent. story-tracker names the parent it left, for step 4.'
+ds_left='   - A story that left a parent in step 1, for the draft'"'"'s: drop its line from that parent'"'"'s list.'
+line_is "same story: refinement drops a story from the list of the parent it left" "$RFW" "$ds_left"
+ds_l="$(linex "$RFW" "$ds_left")"
+is "same story: refinement drops it in step 4" \
+  "$((${ds_l:-0} > $(lineno "$RFW" '4. In each epic'"'"'s list, link each story') && ${ds_l:-0} < $(lineno "$RFW" '5. A step would change the approved text')))" "1"
+line_is "same story: the contract drops it from the list of the parent it left" "$DSC" \
+  '- A story that leaves its own parent for the draft'"'"'s is dropped from that parent'"'"'s list.'
+line_is "same story: refinement, that story stands for the draft's id" "$RFW" \
+  '   - From then on that story stands for the draft'"'"'s id: as the parent of the draft'"'"'s stories, in'
+file_has "same story: refinement, in step 3 for both ends of each link" "$RFW" \
+  'step 3 for the tasks it waits on and for each story that waits on it, and in step 4, once it'
+file_has "same story: refinement, in the epic's list once under the draft's parent" "$RFW" \
+  'is under the draft'"'"'s parent, in the epic'"'"'s list in place of that id.'
+line_is "same story: refinement, a story filed under another parent, or kept under its own" "$RFW" \
+  '   - The owner files it under another parent, or none, or keeps the story that exists under its'
+file_has "same story: refinement, out of the list of the draft's parent" "$RFW" \
+  'own: in step 4, list it under that parent alone, and drop it from the list of the parent the'
+line_is "same story: the contract says how refinement follows the pick" "$DSC" \
+  '- A story that exists, picked in story-tracker'"'"'s check in place of a new one, takes the draft'"'"'s'
+line_is "same story: the contract, it takes the draft's parent as its epic" "$DSC" \
+  '  parent as its `epic`, unless the owner keeps it under its own. From then on it stands for the'
+line_is "same story: the contract, in the epic's list once under the draft's parent" "$DSC" \
+  '  draft'"'"'s id: as a parent, in each `task dep` and, under the draft'"'"'s parent, in the epic'"'"'s list.'
+ds_rf="$(linex "$DSC" '- A story filed under another parent, or none, or kept under its own, is listed under that parent')"
+is "same story: the contract points to refinement's write" "$(sed -n "$((${ds_rf:-0} + 1))p" "$DSC")" \
+  '  alone, as `## 4. Write` in `skills/scrum-master/refinement.md` says.'
+line_is "same story: refinement.md has the heading the contract names" "$RFW" '## 4. Write'
+file_has "same story: the guide describes the check" "$here/docs/guide.md" \
+  '- Before story-tracker writes a new story, yours or one from refinement, it shows each story that'
+file_has "same story: the guide points to create.md" "$here/docs/guide.md" \
+  'it on its own, as `## 3. Create the story` in `skills/story-tracker/create.md` says.'
+CG="$here/CHANGELOG.md"
+ds_cg="$(lineno "$CG" '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s')"
+is "same story: the changelog line is under 0.13.0" \
+  "$((${ds_cg:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
+ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its parent, its links and its line')"
+is "same story: the changelog says refinement follows the pick, under 0.13.0" \
+  "$((${ds_cg2:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg2:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
 
 # ---------------------------------------------------------------- result
 result

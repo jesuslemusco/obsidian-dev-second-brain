@@ -36,6 +36,8 @@ In one round:
 5. Ask whether this subproject's `validation_home` differs from the profile's, and write the
    answer as step 2 says.
 6. Write each repository's validation steps as `validation.md` says.
+   - First offer `define-validation-scope` for each repository, as step 2 of `## 3. Finish` in
+     `repo.md` says. A repository whose section it writes needs no more here.
 
 ## 3. Its tasks
 

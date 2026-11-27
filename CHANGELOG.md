@@ -1,5 +1,130 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
+- Each helper command starts fewer processes, so it answers sooner, most of all on Windows, where
+  Git Bash starts each one slowly. `second-brain doctor` starts about 40% of the processes it
+  started in 0.12.0. For all of its checks it reads the index's project rows once and lists each
+  tasks folder once, and it answers each scalar setting it looks up through `sb_setting` from one
+  read of the profile's scalar keys. The repo settings, `repos`, `repos_root` and `repo_paths`,
+  are still read from the profile apart. The `task-frontmatter`, `needs-a-status`, `status-tag`,
+  `yaml-traps`, `bare-links` and `line-endings` checks and the tags of `topic-tags` read the
+  tasks' rows in one `awk` pass. The shell works out letter case and dates itself.
+- `sprint open`, `sprint close` and `doctor --fix` list the tasks folder once for their moves,
+  however many tasks they move. The parent of each task they move is read for all of them in one
+  pass, where each move read every task again, so the time grew with the square of the tasks
+  moved. `doctor --fix` lists each tasks folder once more for its rows, after the moves.
+- On Linux, `bash scripts/test-doctor.sh` takes about 112 s, down from 174 s.
+- Validation runs in stages that fit any flow, with or without sprints and releases. A check's
+  `when:` is `each story`, in the story's review, `each merge`, on the branch a story merges into
+  before its push, or `release`, in a project that plans releases. `### Validation` in
+  `docs/contract.md` says how each is read.
+- `each task` and `each build`, the old names, still run, as `each story` and `each merge`. A
+  bullet with no `when:`, or an unknown one, is `each merge`.
+- The doctor's `validation` check names each check and user step that still holds an old name, as
+  `<repo>:<name>:each-task` or `<repo>:<name>:each-build`: a check by its command, or by its text
+  with none, a user step by its text.
+- A check may name the paths it covers, as `paths: <glob>, ...`, matched as git matches a
+  `:(glob)` pathspec.
+- `second-brain validation run` takes `--changed <base>`: a check with `paths:` runs only when the
+  diff from `<base>` touches one of them, committed or not, and is `skipped` otherwise. A check
+  with no `paths:` runs every time.
+- `validation run --when` takes `each-story`, `each-merge` or `release`, `each-merge` by default.
+  `each-task` and `each-build` still work.
+- A story's review runs the `each story` checks with `--changed` set to the story's base, so it
+  runs only the checks its change can break, and the `each story` user steps. `implementer` runs
+  the same checks before it commits.
+- A merge runs every `each merge` check on the merged branch, even on the tree the review read. It
+  runs no user step, and names each `each merge` one for you to ask for.
+- The baseline runs the `each merge` checks, and the `each story` and `each merge` user steps.
+- The validation template asks for `paths:`, and its `when:` line names the new stages. The
+  doctor's `validation` check still names a section that holds the line the old template held.
+- In your `validation.md`, write `when: each story` for `each task` and `when: each merge` for
+  `each build`. A check you want in each review, such as a suite `each build` ran there: mark it
+  `each story`, with the `paths:` it covers.
+- `docs-keeper` sets up the docs of a project that has none, in its new
+  `Workflow 7 - Set up a project's docs`. It reads each repository's README, its layout and its
+  code, and drafts the topic folders, a hub for each, a first note per topic and the profile's
+  Code to doc map rows.
+- `vault-setup` offers it when it adds a project or a repository. The draft writes nothing:
+  `vault-setup` shows it to you, with each change you ask for, and has `docs-keeper` write it only
+  once you approve it, as `skills/vault-setup/docs.md` says.
+- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags
+  that are folder paths. It overwrites no file.
+- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each
+  check's command, its stage and its `paths:`, in the shape of the validation template. It reads
+  the project's docs. A project with none is offered `docs-keeper`'s setup first, and on a no the
+  skill reads the repo's test scripts, CI workflows and package manifests.
+- It proposes only the stages the project uses: a `release` check only in a project with a
+  planned-releases note. It shows you the draft, and each change you ask for again, and writes the
+  repo's section only once you approve it, through `second-brain validation new` for a missing
+  one.
+- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.
+- The vault index names the define-validation-scope and achievements skills. The plugin's index
+  template is now at `index_version: 9`, so the doctor's `index` check warns. Copy the bullet
+  that starts `- Call a plugin skill or agent` under `## In every session` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 9`.
+
+- Before story-tracker writes a new story, yours or one from refinement, it searches the project's
+  open and done stories by title, summary and criteria, and shows each one with the same outcome,
+  with its status. It lists the open epics the story could join and proposes one, or none, with
+  the reason. You pick: change the story that exists, file the new one under an epic, or write it
+  on its own. Nothing is written before you pick.
+- In refinement, a story you pick in place of a new one takes its parent, its links and its line
+  in the epic's list, unless you keep it under its own parent. A story you file under another
+  parent, or none, is listed under that one alone.
+
+- `second-brain branch <project> <ID>` reads a ticket's branches with read-only git: the repo, its
+  current branch and head, the base branch and the branch pattern, each local or remote branch
+  that carries the id, the task's recorded branch, and whether the current branch is on the
+  ticket. `--show <ref> <file>` prints a file as it is on another branch, and `--started` the log
+  and the diff stat of the ticket's branch against the base. `--path <dir>` reads another folder,
+  such as a git worktree. It takes no git setting from outside, as its rows in `docs/contract.md`
+  say.
+- story-tracker's branch check and the scrum-master's refinement read git through
+  `second-brain branch`, and run no `git -C` of their own. So a recall, a start, an update or a
+  refinement asks for no permission, whatever your permission mode.
+- A branch carries a ticket's id only with no letter or digit right before or after it:
+  `feature/EX-10-sort` is no longer taken for a branch of `EX-1`.
+
+- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run's order:
+  stories that share an epic, or whose text names a file in common. One `implementer` and one
+  `reviewer` build a batch's stories in turn, so the pair reads the code those stories touch once,
+  not again for each story. A story with no related one next to it builds alone.
+- Each story of a batch keeps its own branch, worktree and commits, its own status notes, and
+  passes or fails on its own review. A failed story goes back to the same `implementer` before
+  the batch's next story starts, and the cap of six failed reviews counts per story.
+- The batch's agents are `<batch>-implementer` and `<batch>-reviewer`, `<batch>` being the id of
+  its first story. Its next story and its next review reach them with SendMessage, and each
+  agent takes it as a new prompt: a story's rulings hold for that story alone, and an earlier
+  review is no evidence for the next. A story's review is no longer a fresh `reviewer` each time.
+- A fix message names its story, with the story, repo, worktree, branch and base lines of the
+  story's prompt.
+- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`
+  skill runs at once: a whole number from 1 to 5. With no key, or any other value, it is 1, and a
+  build runs one story at a time, as before. `second-brain profile <project> --keys` always prints
+  its line, with the value the build takes.
+- The doctor's `settings` check warns on a `build_pairs` it does not take, `build_pairs:invalid`.
+- With more than one pair, batches build side by side, each by its own pair in its own stories'
+  worktrees. Only stories that neither wait on each other nor sit in one batch go side by side: a
+  batch starts once each story it waits on in another batch has passed.
+- The lead's one check watches every pair, and a stop in one pair stops its batch alone. While
+  another pair is at work the skill asks the owner in its reply, not with AskUserQuestion, so the
+  other pairs go on. Merges run one at a time.
+
+- The `achievements` skill gathers your achievements for a date range or a sprint: one for each
+  story set to `done` in that time, worded from its Summary and `## Changes`, that names the
+  story. A story is listed once, as `## 9. Skills and agents` in `docs/contract.md` says.
+- It asks you about the proposals you made to your company or project in that time, and helps
+  you word each one from the project and its stories. It makes up no proposal.
+- It shows the result in its reply, and writes it to `achievements.md` in the project's topics
+  root only when you ask.
+- It is the one skill or agent that gathers or logs an achievement. Nothing logs one as a story
+  finishes, so none is logged twice.
+- `achievements_skill` is gone from the profile template, vault-setup and the doctor's `profile`
+  check. A profile that still has it keeps it: no skill reads it, and the doctor does not name
+  it. Remove it when you like.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

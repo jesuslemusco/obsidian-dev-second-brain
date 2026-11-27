@@ -133,16 +133,31 @@ sb_sprint_current() {
 # Print the sprint the cadence gives next for the current project: id, start, end.
 # It is the first cadence end on or after today that has no note. Returns 1 with no anchor.
 sb_sprint_next_row() {
-  local len anchor end tries=0
+  local len anchor end today a d k l tries=0
   len="$(sb_sprint_length)"
   anchor="$(sb_setting "$SB_P_PATH" sprint_anchor_end "")"
   sb_date_ok "$anchor" || return 1
-  end="$(LC_ALL=C SB_A="$anchor" SB_T="$(sb_today)" SB_L="$len" awk "$(sb_awk_lib)"'BEGIN {
-    a = date_days(ENVIRON["SB_A"]); t = date_days(ENVIRON["SB_T"]); len = ENVIRON["SB_L"] + 0
-    k = (t - a) / len
-    if (k != int(k)) k = (k > 0 ? int(k) + 1 : int(k))
-    print civil_from_days(a + k * len)
-  }')"
+  today="$(sb_today)"
+  # The first cadence end on or after today: the shell counts it for a real today and a length it
+  # can, else awk does.
+  if sb_date_ok "$today" && [ "${#len}" -le 9 ] && [ "$((10#$len))" -gt 0 ]; then
+    l=$((10#$len))
+    sb_date_days "$anchor"
+    a="$SB_DAYS"
+    sb_date_days "$today"
+    d=$((SB_DAYS - a))
+    k=$((d / l))
+    [ $((d % l)) -eq 0 ] || [ "$d" -lt 0 ] || k=$((k + 1))
+    sb_date_civil $((a + k * l))
+    end="$SB_DATE"
+  else
+    end="$(LC_ALL=C SB_A="$anchor" SB_T="$today" SB_L="$len" awk "$(sb_awk_lib)"'BEGIN {
+      a = date_days(ENVIRON["SB_A"]); t = date_days(ENVIRON["SB_T"]); len = ENVIRON["SB_L"] + 0
+      k = (t - a) / len
+      if (k != int(k)) k = (k > 0 ? int(k) + 1 : int(k))
+      print civil_from_days(a + k * len)
+    }')"
+  fi
   while [ -e "$SB_P_DIR/$SB_SPRINTS_ROOT/$end.md" ] && [ "$tries" -lt 60 ]; do
     end="$(sb_date_add "$end" "$len")"
     tries=$((tries + 1))
@@ -215,21 +230,43 @@ sb_sprint_set() {
   if [ -n "$out" ]; then printf '%s' "$out"; else printf 'no change\n'; fi
 }
 
-# Print folder ids for a comma list of task ids or aliases; an unknown name is kept as given.
+# Print folder ids for a comma list of task ids or aliases; an unknown name is kept as given. The
+# names no task folder has are looked for among the aliases of every task in one read of them.
 sb_sprint_ids() {
-  local list="$1" dir="$SB_P_DIR/$SB_TASKS_ROOT" out="" name hit nl=$'\n'
+  local list="$1" dir="$SB_P_DIR/$SB_TASKS_ROOT" out="" name n f hit hits="" names="" ask="" nl=$'\n'
   while IFS= read -r name; do
     [ -n "$name" ] || continue
-    if [ -z "$(sb_task_readme "$dir" "$name")" ]; then
-      hit="$(sb_task_files "$dir" | sb_alias_scan "$name")"
-      case "$hit" in
-        '' | *"$nl"*) ;;
-        *) name="$(basename "$(dirname "$hit")")" ;;
-      esac
-    fi
-    out="$out${out:+,}$name"
+    names="$names$name$nl"
+    [ -n "$(sb_task_readme "$dir" "$name")" ] || ask="$ask$name$nl"
   done <<EOF
 $(printf '%s\n' "$list" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+EOF
+  [ -z "$ask" ] || hits="$({ sb_task_list "$dir"; printf '\034\n%s' "$ask"; } | sb_alias_hits)"
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    case "$nl$ask" in
+      *"$nl$name$nl"*)
+        # One alias hit names its folder; none or several keep the name as given.
+        hit=""
+        while IFS=$'\t' read -r n f; do
+          [ "$n" = "$name" ] || continue
+          if [ -n "$hit" ]; then hit="$nl"; break; fi
+          hit="$f"
+        done <<EOF2
+$hits
+EOF2
+        case "$hit" in
+          '' | "$nl") ;;
+          *)
+            hit="${hit%/*}"
+            name="${hit##*/}"
+            ;;
+        esac
+        ;;
+    esac
+    out="$out${out:+,}$name"
+  done <<EOF
+$names
 EOF
   printf '%s\n' "$out"
 }
@@ -293,7 +330,7 @@ EOF
 # the new sprint's folder, every destination looked at before anything is written.
 sb_sprint_open() {
   local project="" end="" goal="" given=0 len anchor cur dir note hub alias uplink start line row
-  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir parent
+  local known moved="" file tid old tab=$'\t' nl=$'\n' layout plan="" moves="" dest tdir parent rows
   local usage="usage: second-brain sprint open <project> [--end YYYY-MM-DD] [--goal G]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -336,19 +373,26 @@ sb_sprint_open() {
   known="$(sb_sprint_files "$dir" | sb_sprint_scan | awk -F'\t' '{ print $2 }')"
   known="$known$nl$end"
   layout="$(sb_task_layout)"
-  while IFS=$'\t' read -r file tid old; do
+  # The tasks folder is listed once. In a sprint project each open task's parent, which a child
+  # moves into, is read for all of them in one pass.
+  sb_task_list_keep "$SB_P_DIR/$SB_TASKS_ROOT"
+  rows="$(sb_task_list "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan | awk -F'\t' '$4 != "-" && $3 != "done" && $3 != "abandoned" { print $1 "\t" $2 "\t" $4 }')"
+  if [ "$layout" = "sprint" ] && [ -n "$rows" ]; then
+    rows="$(printf '%s\n\034\n%s\n' "$SB_TASK_LIST" "$rows" | sb_task_parents)"
+  fi
+  sb_task_list_drop
+  while IFS=$'\t' read -r file tid old parent; do
     [ -n "$file" ] || continue
-    if printf '%s\n' "$known" | grep -qxF -- "$old"; then continue; fi
+    case "$nl$known$nl" in *"$nl$old$nl"*) continue ;; esac
     dest=""
     if [ "$layout" = "sprint" ]; then
       tdir="${file%/*}"
-      parent="$(sb_task_parent "$file")" || parent=""
       dest="$(SB_T_ID="${tdir##*/}" sb_task_sprint_dir "$end" "$parent")" || exit $?
       if [ "$dest" = "$(sb_rel "$tdir")" ]; then dest=""; else sb_task_sprint_dest_free "$dest" "$file"; fi
     fi
     plan="$plan$file$tab$tid$tab$old$tab$dest$nl"
   done <<EOF
-$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan | awk -F'\t' '$4 != "-" && $3 != "done" && $3 != "abandoned" { print $1 "\t" $2 "\t" $4 }')
+$rows
 EOF
   start="$(sb_date_add "$end" "$((1 - len))")"
   hub="$dir/README.md"
@@ -399,7 +443,7 @@ sb_sprint_close() {
   local row note id status start end goal len next plan problems action file tid title rest
   local done_ids="" carried_ids="" backlog_ids="" abandoned_ids="" text link nl=$'\n'
   local done_md="" carried_md="" backlog_md="" abandoned_md="" n_done=0 n_carried=0 n_backlog=0 n_abandoned=0
-  local moves="" dir dest layout parent
+  local moves="" dir dest layout parent parents
   local usage="usage: second-brain sprint close <project> [--carry ID,ID] [--backlog ID,ID] [--abandon ID,ID]"
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -432,10 +476,12 @@ EOF
   len="$(sb_sprint_length)"
   next="$(sb_sprint_next_row | awk -F'\t' '{ print $1 }')"
   [ -n "$next" ] || next="$(sb_date_add "$id" "$len")"
+  # The tasks folder is listed once, for the names and the plan.
+  sb_task_list_keep "$SB_P_DIR/$SB_TASKS_ROOT"
   carry="$(sb_sprint_ids "$carry")"
   backlog="$(sb_sprint_ids "$backlog")"
   abandon="$(sb_sprint_ids "$abandon")"
-  plan="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan |
+  plan="$(sb_task_list "$SB_P_DIR/$SB_TASKS_ROOT" | sb_task_scan |
     SB_ID="$id" SB_CARRY="$carry" SB_BACKLOG="$backlog" SB_ABANDON="$abandon" awk -F'\t' '
       function names(list, what,   n, a, i, x) {
         n = split(list, a, ",")
@@ -482,10 +528,15 @@ EOF
   # in the folder its list sends it to.
   layout="$(sb_task_layout)"
   if [ "$layout" = "status" ] || [ "$layout" = "sprint" ]; then
+    # The parent of each task that moves, which a child moves into, is read for all at once.
+    parents="$(printf '%s\n' "$plan" | awk -F'\t' -v L="$layout" \
+      '(L == "status" && $1 == "abandon") || (L == "sprint" && ($1 == "carry" || $1 == "backlog")) { print $2 }')"
+    [ -z "$parents" ] || parents="$(printf '%s\n\034\n%s\n' "$SB_TASK_LIST" "$parents" | sb_task_parents)"
     while IFS=$'\t' read -r action file tid title rest; do
       dir="${file%/*}"
       case "$layout:$action" in status:abandon | sprint:carry | sprint:backlog) ;; *) continue ;; esac
-      parent="$(sb_task_parent "$file")" || parent=""
+      sb_task_parent_in "$parents" "$file"
+      parent="$SB_PARENT"
       case "$layout:$action" in
         status:abandon) dest="$(SB_T_ID="${dir##*/}" sb_task_status_dir abandoned "$parent")" ;;
         sprint:carry) dest="$(SB_T_ID="${dir##*/}" sb_task_sprint_dir "$next" "$parent")" || exit $? ;;
@@ -498,6 +549,7 @@ EOF
 $plan
 EOF
   fi
+  sb_task_list_drop
   while IFS=$'\t' read -r action file tid title rest; do
     [ -n "$action" ] || continue
     link="${file#"$SB_ROOT"/}"

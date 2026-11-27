@@ -10,7 +10,8 @@ sb_val_home() {
     [ -n "$f" ] && [ -f "$f" ] || continue
     v="$(sb_fm_get "$f" validation_home 2>/dev/null)"
     [ -n "$v" ] || continue
-    case "$(printf '%s' "$v" | tr '[:upper:]' '[:lower:]')" in
+    sb_lc "$v"
+    case "$SB_LC" in
       repo) printf 'repo\n' ;;
       *) printf 'vault\n' ;;
     esac
@@ -81,7 +82,8 @@ sb_val_rows() {
     [ -n "$f" ] || continue
     h="$(sb_fm_get "$f" validation_home 2>/dev/null)"
     [ -n "$h" ] || continue
-    h="$(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')"
+    sb_lc "$h"
+    h="$SB_LC"
     [ "$h" = "repo" ] || h=vault
     while IFS= read -r r; do
       [ -n "$r" ] && map="$map$r$tab$h$nl"
@@ -143,6 +145,7 @@ sb_val_placeholders() {
       ph["<The steps that use the change as a user does, and what to look for.>"] = 1
       ph["<Each command that must pass, such as the tests, linter and build, and what it proves.>"] = 1
       ph["<One line per step that uses the change as a user does: its tool, then what to look for.>"] = 1
+      ph["<Each line ends with when it runs: when: each task, when: each build, or when: release for one run only before a release or on the owner'"'"'s ask.>"] = 1
     }
     { sub(/\r$/, ""); m = spans($0); for (k = 1; k <= m; k++) if (sp[k] in ph) { found = 1; exit } }
     END { exit(found ? 0 : 1) }'
@@ -172,17 +175,24 @@ sb_val_write() {
   printf '%s\n' "$show"
 }
 
-# Read a repo's section of a validation.md on stdin; print the bullets under "### Checks" that a run
-# takes, one TSV row each: "run<TAB><command>", or "skip<TAB><text><TAB><why>". SB_LEVEL is the run's
-# level: 1 takes "each task", 2 "each build" too, 3 "release" too. A bullet with an unknown "when:"
-# counts as "each build", and every run gets a row "warn<TAB><text><TAB><value>" for it. Prints "none" when the section has no "### Checks".
+# Read a repo's section of a validation.md on stdin; print the bullets that the level takes under
+# "### Checks", or under the headings a second argument names, such as "checks|check as a user
+# would". One TSV row each: "run<TAB><command><TAB><globs>", the globs of its "paths:" joined by
+# commas, or "skip<TAB><text><TAB><why>". Level 1 takes "each story", 2 "each merge" too, 3
+# "release" too. A bullet with an unknown "when:" counts as "each merge", with a row
+# "warn<TAB><text><TAB><value>" whatever the level. One with an old name, "each task" or "each
+# build", reads as "each story" or "each merge", with a row "old<TAB><name><TAB>each-task" or
+# "...<TAB>each-build" whatever the level: a check's name is its command, and a user step's, or a
+# check's with none, its text before its keys. Prints "none" when the section has none of the
+# headings.
+# Usage: sb_val_checks <level> [<heading>|<heading>...]
 sb_val_checks() {
-  LC_ALL=C SB_LEVEL="$1" awk "$(sb_awk_lib)"'
-    # Set CODE1 to the first code span of s and HASCODE to 1 when it has one; return s with each
-    # code span replaced by a blank. A run of backticks with no closing run of the same length is
-    # text.
-    function spans(s,   out, i, k, after, rest, m, p, content) {
-      out = ""; HASCODE = 0; CODE1 = ""
+  LC_ALL=C SB_LEVEL="$1" SB_HEADS="${2:-checks}" awk "$(sb_awk_lib)"'
+    # Set CODE1 to the first code span of s and HASCODE to 1 when it has one, and SPAN[k] to the
+    # text of its k-th span. Return s with span k replaced by the mark SO k SC, which unspan() reads
+    # back. A run of backticks with no closing run of the same length is text.
+    function spans(s,   out, i, k, after, rest, m, p, content, n) {
+      out = ""; HASCODE = 0; CODE1 = ""; n = 0
       while ((i = index(s, "`")) > 0) {
         out = out substr(s, 1, i - 1); s = substr(s, i)
         match(s, /^`+/); k = RLENGTH; after = substr(s, k + 1)
@@ -195,40 +205,76 @@ sb_val_checks() {
         content = substr(after, 1, p - 1)
         if (content ~ /^ / && content ~ / $/ && content !~ /^ +$/) content = substr(content, 2, length(content) - 2)
         if (!HASCODE) { HASCODE = 1; CODE1 = content }
-        out = out " "; s = substr(after, p + k)
+        SPAN[++n] = content
+        out = out SO n SC; s = substr(after, p + k)
       }
       return out s
     }
-    # The raw value of the last "when:" in s, or "" with none; WHENSEEN is 1 when there is one.
-    function whenof(s,   l, i, pos, last) {
-      l = tolower(s); pos = 0; last = 0; WHENSEEN = 0
-      while ((i = index(substr(l, pos + 1), "when:")) > 0) {
+    # s with the mark of each code span replaced by its text, or by a blank when blank is 1.
+    function unspan(s, blank,   out, i, j) {
+      out = ""
+      while ((i = index(s, SO)) > 0) {
+        j = index(substr(s, i + 1), SC)
+        out = out substr(s, 1, i - 1) (blank ? " " : SPAN[substr(s, i + 1, j - 1) + 0])
+        s = substr(s, i + j + 1)
+      }
+      return out s
+    }
+    # The position in l, a bullet in lower case, of the last key k that starts a word, or 0.
+    function keyat(l, k,   i, pos, last) {
+      pos = 0; last = 0
+      while ((i = index(substr(l, pos + 1), k)) > 0) {
         pos += i
         if (pos == 1 || substr(l, pos - 1, 1) !~ /[a-z0-9_]/) last = pos
       }
-      if (!last) return ""
-      WHENSEEN = 1
-      return trim(substr(s, last + 5))
+      return last
     }
-    function flush(   t, plain, raw, v, lvl) {
+    # The text after the key at pos, n bytes long, in s: up to the other key at stop when it comes
+    # after it, else to the end.
+    function valat(s, pos, n, stop) {
+      return (stop > pos ? substr(s, pos + n, stop - pos - n) : substr(s, pos + n))
+    }
+    function flush(   t, plain, l, wp, pp, raw, v, lvl, name, g, item, n, i, globs) {
       if (!have) return
       have = 0
       t = trim(txt); gsub(/\t/, " ", t)
       plain = spans(t)
-      raw = whenof(plain)
+      l = tolower(plain)
+      wp = keyat(l, "when:"); pp = keyat(l, "paths:")
       lvl = 2
-      if (WHENSEEN) {
+      if (wp) {
+        raw = trim(unspan(valat(plain, wp, 5, pp), 1))
         v = tolower(raw); gsub(/-/, " ", v); sub(/\.$/, "", v); gsub(/[ \t]+/, " ", v); v = trim(v)
-        if (v == "each task") lvl = 1
-        else if (v == "each build") lvl = 2
+        if (v == "each story" || v == "each task") lvl = 1
+        else if (v == "each merge" || v == "each build") lvl = 2
         else if (v == "release") lvl = 3
         else print "warn\t" t "\t" raw
+        if (v == "each task" || v == "each build") {
+          name = CODE1
+          if (step || !HASCODE || trim(CODE1) == "") {
+            name = trim(unspan(substr(plain, 1, (pp && pp < wp ? pp : wp) - 1), 0)); sub(/[ \t]*-$/, "", name)
+          }
+          name = trim(name)
+          print "old\t" (name != "" ? name : t) "\t" (v == "each task" ? "each-task" : "each-build")
+        }
       }
       if (lvl > LEVEL) return
-      if (!HASCODE || trim(CODE1) == "") print "skip\t" t "\tno command"
-      else print "run\t" CODE1
+      if (!HASCODE || trim(CODE1) == "") { print "skip\t" t "\tno command"; return }
+      globs = ""
+      if (pp) {
+        g = trim(unspan(valat(plain, pp, 6, wp), 0)); sub(/[ \t]+-$/, "", g); sub(/\.$/, "", g)
+        if (g == "-") g = ""
+        n = split(g, item, ",")
+        for (i = 1; i <= n; i++) if ((g = trim(item[i])) != "") globs = globs (globs == "" ? "" : ",") g
+      }
+      print "run\t" CODE1 "\t" globs
     }
-    BEGIN { LEVEL = ENVIRON["SB_LEVEL"] + 0 }
+    BEGIN {
+      LEVEL = ENVIRON["SB_LEVEL"] + 0
+      n = split(tolower(ENVIRON["SB_HEADS"]), hs, "|")
+      for (i = 1; i <= n; i++) want[hs[i]] = 1
+      SO = sprintf("%c", 1); SC = sprintf("%c", 2)
+    }
     { sub(/\r$/, "") }
     /^[ \t]*(```|~~~)/ { flush(); fence = !fence; next }
     fence { next }
@@ -237,7 +283,8 @@ sb_val_checks() {
       match($0, /^#+/)
       if (RLENGTH <= 3) {
         h = $0; sub(/^#+[ \t]*/, "", h); sub(/[ \t#]+$/, "", h)
-        inchk = (tolower(h) == "checks"); if (inchk) seen = 1
+        inchk = (tolower(h) in want); if (inchk) seen = 1
+        step = (tolower(h) == "check as a user would")
       }
       next
     }
@@ -338,12 +385,30 @@ sb_val_lines() {
     }' "$1"
 }
 
+# Return 0 when the diff from a commit to the files in a folder touches a path that one of the
+# globs matches, as git matches a ":(glob)" pathspec: a file moved counts at both its paths, and a
+# new file git does not ignore counts too. Return 0 when git cannot tell, so that an error never
+# drops a check. Usage: sb_val_touched <dir> <commit> <glob>[,<glob>...]
+sb_val_touched() {
+  local g globs=() specs=()
+  IFS=',' read -r -a globs <<<"$3"
+  for g in "${globs[@]}"; do specs+=(":(glob)$g"); done
+  [ "${#specs[@]}" -gt 0 ] || return 0
+  git -C "$1" diff --quiet --no-ext-diff --no-renames "$2" -- "${specs[@]}" >/dev/null 2>&1 || return 0
+  [ -n "$(git -C "$1" ls-files --others --exclude-standard -- "${specs[@]}" 2>/dev/null)" ]
+}
+
 # second-brain validation run <project> <repo>: run the repo's checks that the level takes, from
-# the repo's root, and print one row per check. Usage: sb_val_run <repo> <validation.md> <shown
-# path> <repo root> <level> <seconds> <json 0|1>. Exits 0 when no check fails, else 1.
+# the repo's root, and print one row per check. With a base, a check with paths runs only when the
+# diff from the base touches them. Usage: sb_val_run <repo> <validation.md> <shown path> <repo
+# root> <level> <seconds> <json 0|1> [<base>]. Exits 0 when no check fails, else 1.
 sb_val_run() {
-  local name="$1" file="$2" show="$3" dir="$4" level="$5" limit="$6" json="$7"
-  local checks kind a b logs="" rows="" n=0 bad=0 log result tab=$'\t'
+  local name="$1" file="$2" show="$3" dir="$4" level="$5" limit="$6" json="$7" base="${8:-}"
+  local checks kind a b logs="" rows="" n=0 bad=0 log result tab=$'\t' hash=""
+  if [ -n "$base" ]; then
+    hash="$(git -C "$dir" rev-parse --verify --quiet "$base^{commit}" 2>/dev/null)" ||
+      sb_die 1 "--changed: no commit $base in $(sb_path_out "$dir")"
+  fi
   checks="$(sb_section "$file" "$name" | sb_val_checks "$level")"
   if [ "$checks" = "none" ]; then
     sb_note "no ### Checks in $show"
@@ -354,10 +419,19 @@ sb_val_run() {
   SB_VAL_ROWS="$rows"
   while IFS="$tab" read -r kind a b; do
     [ -n "$kind" ] || continue
-    if [ "$kind" = "warn" ]; then
-      sb_note "unknown when: $b, read as each build: $a"
-      continue
-    fi
+    case "$kind" in
+      warn)
+        sb_note "unknown when: $b, read as each merge: $a"
+        continue
+        ;;
+      old) continue ;;
+      run)
+        if [ -n "$hash" ] && [ -n "$b" ] && ! sb_val_touched "$dir" "$hash" "$b"; then
+          kind=skip
+          b="no change to its paths since $base"
+        fi
+        ;;
+    esac
     if [ "$kind" = "skip" ]; then
       printf 'R\t%s\tskipped\t-\t-\t-\nL\t%s\n' "$a" "$b" >>"$rows"
       [ "$json" -eq 1 ] || printf '%s\tskipped\t-\t-\t-\n  %s\n' "$a" "$b"
@@ -406,13 +480,13 @@ EOF
 }
 
 # second-brain validation <project> [repo] [--path DIR] [--json] | validation new <project> <repo> |
-# validation run <project> <repo> [--when W] [--timeout S] [--path DIR] [--json]
+# validation run <project> <repo> [--when W] [--changed BASE] [--timeout S] [--path DIR] [--json]
 cmd_validation() {
   local new=0 run=0 a project="" repo="" row name home file show state rstate n=0 json=0
-  local when=each-build level=2 limit=1800 rpath rrow at="" hasat=0
+  local when=each-merge level=2 limit=1800 rpath rrow at="" hasat=0 changed=""
   local usage="usage: second-brain validation <project> [repo] [--path <dir>] [--json]"
   usage="$usage | validation new <project> <repo>"
-  usage="$usage | validation run <project> <repo> [--when each-task|each-build|release] [--timeout <seconds>] [--path <dir>] [--json]"
+  usage="$usage | validation run <project> <repo> [--when each-story|each-merge|release] [--changed <base>] [--timeout <seconds>] [--path <dir>] [--json]"
   case "${1:-}" in
     new) new=1; shift ;;
     run) run=1; shift ;;
@@ -430,6 +504,13 @@ cmd_validation() {
         [ "$run" -eq 1 ] || sb_die 5 "$usage"
         [ $# -ge 2 ] || sb_die 5 "$a needs a value"
         if [ "$a" = "--when" ]; then when="$2"; else limit="$2"; fi
+        shift 2
+        continue
+        ;;
+      --changed)
+        [ "$run" -eq 1 ] || sb_die 5 "$usage"
+        case "${2:-}" in '' | -*) sb_die 5 "--changed needs a commit, such as the story's base" ;; esac
+        changed="$2"
         shift 2
         continue
         ;;
@@ -452,10 +533,10 @@ cmd_validation() {
   [ "$hasat" -eq 0 ] || [ "$n" -eq 2 ] || sb_die 5 "$usage"
   if [ "$run" -eq 1 ]; then
     case "$when" in
-      each-task) level=1 ;;
-      each-build) level=2 ;;
+      each-story | each-task) level=1 ;;
+      each-merge | each-build) level=2 ;;
       release) level=3 ;;
-      *) sb_die 5 "--when is one of: each-task, each-build, release" ;;
+      *) sb_die 5 "--when is one of: each-story, each-merge, release" ;;
     esac
     case "$limit" in
       '' | *[!0-9]*) sb_die 5 "--timeout takes a whole number of seconds above 0: $limit" ;;
@@ -515,7 +596,7 @@ $rrow
 EOF
       sb_val_need_folder "$name" "$rpath" "$rstate"
     fi
-    sb_val_run "$name" "$file" "$show" "$rpath" "$level" "$limit" "$json"
+    sb_val_run "$name" "$file" "$show" "$rpath" "$level" "$limit" "$json" "$changed"
     return $?
   fi
   if [ "$json" -eq 1 ]; then

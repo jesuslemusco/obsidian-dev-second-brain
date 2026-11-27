@@ -164,6 +164,19 @@ $W/rank.md:1: qone qtwo a
 $W/rank.md:2: qone qtwo b"
 rm "$vault/$W/rank.md"
 rm "$vault/$W/words.md" "$vault/$W/zz-words.md" "$vault/$W/half.md" "$vault/$W/spread.md"
+# A task's children, as story-tracker's check for the same story finds them: the phrase
+# "epic: <ID>" gives each line that names it, and a line with a longer id too.
+sb task set EX-2 epic=EX-1
+sb task set EX-6 epic=EX-10
+sb search Example '"epic: EX-1"' --in tasks
+is "search: the epic line of a child is found by its parent's id" \
+  "$(printf '%s\n' "$OUT" | grep -c "^$P/tasks/EX-2/README.md:[0-9]*: epic: EX-1\$")" "1"
+is "search: a longer id shows too, so the check reads the line" \
+  "$(printf '%s\n' "$OUT" | grep -c "^$P/tasks/EX-6/README.md:[0-9]*: epic: EX-10\$")" "1"
+sb search Example '"epic: EX-5"' --in tasks
+rc_is "search: a task no other names as its parent gives exit 1" 1
+sb task set EX-2 epic=
+sb task set EX-6 epic=
 
 # ---------------------------------------------------------------- result
 result

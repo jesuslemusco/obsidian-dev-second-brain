@@ -119,6 +119,51 @@ is "sb_date_add: back over a year end" "$(sb_date_add 2027-01-03 -5)" "2026-12-2
 is "sb_date_diff: across years" "$(sb_date_diff 2028-03-05 2027-12-25)" "71"
 sb_date_ok 2026-02-30
 is "sb_date_ok: rejects an impossible date" "$?" "1"
+# The shell counts a real date with no process; it must count as the awk library does, and leave
+# what is no date to awk.
+dates="2024-02-29 2025-02-28 2026-12-31 2000-02-29 1900-02-28 0000-03-01 9999-12-31"
+by_awk="" by_shell=""
+for d in $dates; do
+  for n in 0 1 -1 13 -14 366 -146097 014; do
+    by_awk="$by_awk$(LC_ALL=C SB_D="$d" SB_N="$n" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }') "
+    by_shell="$by_shell$(sb_date_add "$d" "$n") "
+  done
+done
+is "sb_date_add: the shell counts as the awk library does" "$by_shell" "$by_awk"
+by_awk="" by_shell=""
+for dn in "2026-02-30 1" "garbage 1" "2026-01-01 1.5" "2026-01-01 +3" "2026-01-01 -" "2026-01-01 1-2"; do
+  by_awk="$by_awk$(LC_ALL=C SB_D="${dn% *}" SB_N="${dn#* }" awk "$(sb_awk_lib)"'BEGIN { print civil_from_days(date_days(ENVIRON["SB_D"]) + ENVIRON["SB_N"]) }') "
+  by_shell="$by_shell$(sb_date_add "${dn% *}" "${dn#* }") "
+done
+is "sb_date_add: what is no date or no whole number goes to awk" "$by_shell" "$by_awk"
+ok_awk="" ok_shell=""
+for d in 2024-02-29 2023-02-29 1900-02-29 2000-02-29 2026-04-31 2026-13-01 2026-00-10 2026-01-00 \
+  2026-1-01 " 2026-01-01" 2026-01-01x ""; do
+  if LC_ALL=C SB_D="$d" awk "$(sb_awk_lib)"'BEGIN { exit(date_ok(ENVIRON["SB_D"]) ? 0 : 1) }'; then ok_awk="${ok_awk}1"; else ok_awk="${ok_awk}0"; fi
+  if sb_date_ok "$d"; then ok_shell="${ok_shell}1"; else ok_shell="${ok_shell}0"; fi
+done
+is "sb_date_ok: the shell takes the dates the awk library takes" "$ok_shell" "$ok_awk"
+sb_lc "In-Progress SPRINT é"
+is "sb_lc: A to Z in lower case, the rest as it is" "$SB_LC" "in-progress sprint é"
+# sb_fm_cache reads a note's frontmatter once; sb_fm_get then answers for that note from it, as it
+# answers from the file, and an edit through the helper drops it.
+pf="$tmp/profile.md"
+printf '%s\n' '---' 'tasks_root: tasks/' "quoted: 'it''s' # note" 'empty:' 'twice: first' 'twice: second' \
+  'a-b_c: dash' 'list:' '  - item' '---' 'body: no' >"$pf"
+keys="tasks_root quoted empty twice a-b_c list item body missing"
+read_all() { for k in $keys; do printf '%s=%s:%s|' "$k" "$(sb_fm_get "$pf" "$k")" "$?"; done; }
+from_file="$(read_all)"
+sb_fm_cache "$pf"
+is "sb_fm_cache: holds the note" "$SB_FM_CACHE_FILE" "$pf"
+is "sb_fm_cache: sb_fm_get answers each key as the file does" "$(read_all)" "$from_file"
+printf '%s\n' '---' 'tasks_root: changed' 'twice: first' '---' >"$pf.new" && cat "$pf.new" >"$pf"
+is "sb_fm_cache: a change made outside the helper is not read again" "$(sb_fm_get "$pf" tasks_root)" "tasks/"
+is "sb_fm_cache: a key that is no plain name is read from the file" "$(sb_fm_get "$pf" 'tasks root' || printf none)" "none"
+sb_fm_set "$pf" twice "third"
+is "sb_fm_cache: an edit through the helper drops it" "$SB_FM_CACHE_FILE" ""
+is "sb_fm_cache: and the file is read again" "$(sb_fm_get "$pf" tasks_root)" "changed"
+sb_fm_cache "$tmp/no-such-note.md"
+is "sb_fm_cache: holds no note that is not there" "$SB_FM_CACHE_FILE" ""
 # A vault inside the plugin's folder: the template named in a refusal is the one filled.
 mkdir -p "$tmp/plug/templates" "$tmp/plug/vault/proj/claude/templates"
 printf '%s\n' '{{TEAM}}' >"$tmp/plug/templates/task-readme.md.tmpl"

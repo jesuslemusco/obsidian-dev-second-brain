@@ -45,13 +45,14 @@ commits, the files already in the task folder.
 
 - Edit no code, and write no file but the task README.
 - Stay in the repository and on the ref the branch check settled.
-- Say so when you read a file at another ref.
+- Say so when you read a file at another ref, with
+  `second-brain branch <project> <ID> --show <ref> <file>`.
 - Another repository the ticket touches: get its path as
-  `## Branch check (start, update, recall)` in `SKILL.md` says.
-- Work has started: run `git -C "<repo path>" log --oneline <base>..<branch>` and
-  `git -C "<repo path>" diff <base>...<branch>`, with `<base>` the `base_branch` the branch
-  check reads.
-- Never diff a bare `HEAD`: it may be another ticket's branch.
+  `## Branch check (start, update, recall)` in `SKILL.md` says, and add `--path "<repo path>"`
+  to each `second-brain branch` command.
+- Work has started: `second-brain branch <project> <ID> --started` prints the log and the diff
+  stat of the ticket's branch against the base branch the branch check reads.
+- Run no `git` yourself, and never diff a bare `HEAD`: it may be another ticket's branch.
 - Read the files the ticket touches, and search for the functions and components it names.
 - Confirm they exist and behave as the ticket assumes.
 - Check the ticket against the docs `second-brain profile <project> docs` lists, not against
@@ -70,6 +71,49 @@ Show the owner the text from section 1 first, and write nothing until they appro
 
 A story the scrum-master's refinement got approved is approved already. Write it from that text,
 as `planned`. Work on it has not started, so step 6 waits until it does.
+
+Then, before step 1, look for a story that already does the same, and for the epic it could
+join. Every new story gets this check, one from refinement too:
+
+- Search the project's stories, open and done:
+  `second-brain search <project> "<terms>" --in <tasks_root>`, with `tasks_root` from Step 0.
+  - Search once by the title, once by the Summary and once by each acceptance criterion, in one
+    Bash call, chained with `;` so that a search with no match stops none of the others.
+  - A note matches only when it holds every term: give each search the 2 or 3 words that name
+    its outcome. Exit 1, `no match in <folder>`: no note holds them.
+- Each story README a search finds: `second-brain task head <ID>`, with the folder that holds it
+  as the id, prints its title, status, parent and Summary. When the head leaves its outcome open,
+  read its acceptance criteria with `second-brain outline` and a ranged read.
+- A story matches when its outcome is the new story's, even in other words. Show each match: its
+  id, title and status, and the outcome they share. Leave out an abandoned one.
+- List the open epics the story could join, each `planned`, `in-progress` or `in-review` in its
+  `task head`:
+  - The parent each story the searches found names, on the `epic:` line of its head, `feature:`
+    with `parent_label: feature`.
+  - Each task the searches found that another task names as its parent:
+    `second-brain search <project> "\"epic: <ID>\"" --in <tasks_root>` prints the `epic: <ID>`
+    line of each child, chained with `;` as above. Exit 1: none does.
+    - The key is `epic` in every project, `parent_label: feature` too.
+    - A line with a longer id, such as `epic: <ID>0`, names another task.
+  - For a story from refinement, the parent its approved draft names.
+  - Each epic under `## Epics` in `<project path>/<topics_root>/planned-releases.md`, when the
+    project has that note: `second-brain outline` and a ranged read.
+  - Say epic or feature, as Step 0 of `SKILL.md` names it.
+- Propose one of them, or none, with the reason: the epic whose outcome the new story serves, or
+  why none needs it. For a story from refinement, propose the parent its approved draft names, or
+  none for `-`.
+- Ask the owner with AskUserQuestion to pick one:
+  - Change the story that exists: show the change to it beside what it says now, and write it in
+    update mode, as `## Edit an existing story` in `SKILL.md` says, only once the owner approves
+    it. Write no new story, and say which story took its place, for a refinement to link.
+    - A story from refinement whose draft names a parent: the change moves it under that parent,
+      `second-brain task set <ID> epic=<parent>`, unless the owner keeps it under its own. Say
+      which parent it is under, and the one it left.
+  - File the new one under an epic: write it as the steps below say, with `epic=<ID>` in step 3.
+  - Write it on its own: write it as the steps below say, with no `epic`.
+  - With no match, offer the last two.
+- Write nothing, no story, key or note, before the owner picks. No AskUserQuestion, as in a
+  subagent: show the matches and the epics, end with the question, and write nothing.
 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root
@@ -90,8 +134,8 @@ as `planned`. Work on it has not started, so step 6 waits until it does.
    - `note: no folder for the topic tag ...` on stderr: run
      `second-brain task tag EX-123 remove <tag>` and ask the user.
 3. `second-brain task set EX-123 status=<planned or in-progress> next="<the next action>"
-   branch="<branch or none yet>"`, plus `epic=<ID>` when the story has a parent, the project's
-   feature or epic, as Step 0 of `SKILL.md` names it.
+   branch="<branch or none yet>"`, plus `epic=<ID>` when the owner filed it under a parent, the
+   project's feature or epic, as Step 0 of `SKILL.md` names it.
    - With `task_layout: status` or `sprint`, the call moves the story into a folder named for its
      parent, and prints its new path after the keys.
 4. Fill the sections the template leaves empty:

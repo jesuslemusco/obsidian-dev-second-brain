@@ -25,7 +25,9 @@ skill next to it:
 | Open a new sprint for the Mobile project. | `scrum-master` |
 | Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
+| Define the validation scope of example-api for the Example project. | `define-validation-scope` |
 | Build the approved stories of EX-1. | `build` |
+| List my achievements on the Example project from 2026-11-01 to 2026-11-30. | `achievements` |
 
 - Any skill runs by name: `/odsb:<skill>`.
 - `vault-setup` runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
@@ -84,11 +86,22 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - An existing project keeps its folders. `/odsb:vault-setup adopt <path>`
   records them in its profile, as
   `## 2. Scaffold only what is missing` in `skills/vault-setup/adopt.md` says.
+- A project with no docs can have them drafted from its code. When `vault-setup` adds a project
+  or a repo, it offers to have `docs-keeper` draft the topic folders, a hub for each, a first note
+  per topic and the Code to doc map rows, as `## 2. The draft` in `skills/vault-setup/docs.md`
+  says.
+- You see the whole draft, and each change you ask for, before anything is written.
+- `docs-keeper` writes it only once you approve it, as
+  `## 4. The write` in `skills/vault-setup/docs.md` says.
 - A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
 - A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
   any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - In a subproject's repo the status overview lists that subproject's tasks.
 - The board's `By subproject` view groups the tasks by subproject.
+- Claude reads a ticket's branches, a file on another branch and the work started with
+  `second-brain branch <project> <ID>`, which runs read-only git itself. So a recall, a start or
+  an update asks for no permission, as `## Branch check (start, update, recall)` in
+  `skills/story-tracker/SKILL.md` says.
 - A rule you ask Claude to save goes where it applies, as
   `## 2. The index` in `docs/contract.md` says.
 - The doctor's `global-rules` check warns about a line of `~/.claude/CLAUDE.md` that names a
@@ -189,6 +202,10 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - Then story-tracker writes each story, and the skill links each one to the tasks it waits on
   with `second-brain task dep`.
 - A ticket you start with no story is shown to you the same way before story-tracker writes it.
+- Before story-tracker writes a new story, yours or one from refinement, it shows each story that
+  already does the same, with its status, and the open epics the story could join, with the one
+  it proposes. You pick: change the story that exists, file the new one under an epic, or write
+  it on its own, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - `sprint-planning` opens a sprint, picks its stories and closes it with carry-over, as
   `## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.
 - `release-planning` keeps each release's goals, epics and stories in `planned-releases.md`, in
@@ -209,9 +226,19 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   `second-brain validation run <project> <repo> --path <worktree>`.
 - `implementer` builds the story test-first, and checks its whole change against the story's
   criteria and the reviewer's list of defects before it commits.
-- A fresh `reviewer` then grades each acceptance criterion, runs the repo's `each build` checks
-  and user steps, and grades the code. A defect fails the story. A follow-up does not: the build
-  lists it for you when it finishes or stops.
+- A `reviewer` then grades each acceptance criterion, runs the repo's `each story` checks that
+  the story's change touches and its `each story` user steps, and grades the code. A defect fails
+  the story. A follow-up does not: the build lists it for you when it finishes or stops.
+- Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and
+  one `reviewer`, so the pair reads their code once. Each story keeps its own branch and worktree,
+  and passes or fails on its own review, as `### A batch` in `skills/build/story.md` says.
+- The profile's `build_pairs` key builds up to that many batches side by side, each by its own
+  `implementer` and `reviewer`, in its own stories' worktrees. It is 1 to 5, and 1 with no key:
+  one story at a time. Only stories that neither wait on each other nor sit in one batch build
+  side by side, as `### Pairs side by side` in `skills/build/SKILL.md` says.
+- With more than one pair, a stop in one pair stops no other. Claude asks you in its reply, not
+  with AskUserQuestion, so the other pairs go on. Keep the key at 1 for a repo whose checks cannot
+  run twice at once, such as two runs on one port.
 - A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under
@@ -220,8 +247,9 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   the project's `claude/README.md`, such as into the open `release/<version>`. With none written,
   Claude asks you, and offers to write your answer there.
 - The merge is local, and only on your go. A conflict where both sides only add lines keeps both.
-  Any other is shown to you. The checks run on the merged branch, and Claude pushes only on your
-  word, as `### The merge` in `skills/build/story.md` says.
+  Any other is shown to you. Every `each merge` check runs on the merged branch, and Claude names
+  each `each merge` user step for you to ask for. Claude pushes only on your word, as
+  `### The merge` in `skills/build/story.md` says.
 - Once the merge is done, or you say not to merge, the story's worktree is removed, after Claude
   shows you any ignored file in it, such as a `.env`. The branch stays.
 - Progress is kept in the story's status notes, so a new session goes on where the build stopped.
@@ -243,6 +271,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   open, as `## The owner's open orders` in `skills/build/lead.md` says.
 - While one is open, it runs a check in your session, as often as `lead_check_minutes` in the
   project's profile says, as `## The lead's check` in `skills/build/lead.md` says.
+- One check watches every pair, however many build at once.
 - Each order has a `Done when:` line, a condition a command, a file or a branch state can test.
   Claude writes it from your words, and asks you only when they give none. The check closes an
   order when its condition holds, and only you change a condition.
@@ -274,17 +303,46 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
 - `second-brain validation <project>` lists each repo's steps file and its state.
 - `second-brain validation <project> <repo>` prints one repo's steps.
 - Each repo's steps say how to check a change as a user would, under `### Check as a user would`.
-- Each check and user step ends with when it runs: `when: each task`, `when: each build` or
-  `when: release`, as `### Validation` in `docs/contract.md` says. A `release` one runs only when
-  you ask.
-- `second-brain validation run <project> <repo> --when each-task` runs the matching checks one at a
-  time, each stopped after `--timeout` seconds, and prints a row per check. Its form is under
-  `## 7. The helper` in `docs/contract.md`.
+- Each check and user step ends with when it runs: `when: each story`, `when: each merge` or
+  `when: release`, as `### Validation` in `docs/contract.md` says.
+- `each story` runs in each story's review. `each merge` runs on the branch a story merges into,
+  before its push. Neither needs sprints or a release branch.
+- A `release` one is for a project that plans releases, and runs only when you ask.
+- `each task` and `each build`, the names before 0.13.0, still run, as `each story` and
+  `each merge`. The doctor's `validation` check names each one, for you to rename.
+- A check that only some files can break names them, as `paths: <glob>, ...`. A story's review
+  runs it only when the story's change touches one of them.
+- `second-brain validation run <project> <repo> --when each-story` runs the matching checks one at
+  a time, each stopped after `--timeout` seconds, and prints a row per check. With
+  `--changed <base>`, it skips a check whose paths the diff from `<base>` does not touch. Its form
+  is under `## 7. The helper` in `docs/contract.md`.
 - Each of those steps starts with its tool, which `reviewer` runs as `## 9. Skills and agents`
   in `docs/contract.md` says.
 - The plugin ships no browser. Name the browser skill or command your repo uses.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
+- `define-validation-scope` drafts a repo's steps for you: each check's command, its stage and
+  its `paths:`, from the project's docs, or from the repo's code when it has none. A project with
+  no docs is offered `docs-keeper`'s setup first.
+- It proposes only the stages your project uses: a `release` one only in a project with a
+  planned-releases note, as
+  `## 1. The stages the project uses` in `skills/define-validation-scope/SKILL.md` says.
+- You see the whole draft, and each change you ask for, and it writes the section only once you
+  approve it, as `## 6. The write` in `skills/define-validation-scope/SKILL.md` says.
+- `vault-setup` offers it when it adds a repo.
+
+## Achievements
+
+- Ask for your achievements in a date range or a sprint, as under [What to say](#what-to-say),
+  and the `achievements` skill gathers them, as `## 9. Skills and agents` in `docs/contract.md`
+  says.
+- Each story set to `done` in that time gives one achievement, worded from its summary and its
+  `## Changes`.
+- It asks you about the proposals you made to your company or project then, and helps you word
+  each one. Only you can name a proposal: it makes up none.
+- The result is in its reply. Only when you ask, it writes it to `achievements.md` in the
+  project's topics root, one section per period.
+- No other skill or agent logs an achievement, so none is logged twice.
 
 ## On Windows
 

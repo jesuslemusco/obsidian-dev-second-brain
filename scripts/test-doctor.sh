@@ -840,6 +840,14 @@ rc_is "a named project: exit 0" 0
 chk "profile: ok on a scaffolded project" profile Example "ok | 0 | -"
 chk "board: ok when the board file is there" board Example "ok | 0 | -"
 is "board: nothing to fix" "$(fix_of board)" "-"
+# No skill reads achievements_skill: a profile without it is whole, and one that kept it is too.
+edit "$vault/$P/claude/profile.md" '/^achievements_skill:/d'
+doc Example
+chk "profile: ok with no achievements_skill" profile Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^validation_home: vault$/&\
+achievements_skill: ""/'
+doc Example
+chk "profile: ok with an achievements_skill an older version wrote" profile Example "ok | 0 | -"
 edit "$vault/$P/claude/profile.md" '/^persona:/d; /^## Live systems$/d'
 rm "$T/tasks.base"
 doc Example
@@ -1111,7 +1119,7 @@ if block 30; then
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 24 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:39, claude/profile.md:40"
+  "warn | 24 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:38, claude/profile.md:39"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -1127,7 +1135,7 @@ doc Example
 chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:39"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:38"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"
@@ -1673,6 +1681,44 @@ is "task-layout --fix: in a status project an empty status folder stays" "$(LC_A
   "README.md done in-progress in-review planned tasks.base "
 chk "task-layout --fix: a fix from a sprint folder in a status project leaves no no-readme row" no-readme Example "ok | 0 | -"
 chk "task-layout --fix: and task-layout ok" task-layout Example "ok | 0 | -"
+fi
+
+# ---------------------------------------------------------------- task-layout --fix, one scan
+# doctor --fix lists a project's tasks folder once for its moves, however many tasks it moves: the
+# parent of each child comes from that one listing. Its rows, read once the moves are done, list it
+# once more. counted_doc [args]: run doctor in a subshell of this shell, with each listing of a
+# tasks folder written to $tmp/scans, and keep its rows in OUT.
+counted_doc() {
+  rm -f "$tmp/scans"
+  run counted_doctor "$@"
+}
+counted_doctor() {
+  (
+    for f in "$here"/scripts/lib/*.sh; do . "$f"; done
+    SB_PLUGIN_ROOT="$here"
+    SB_ROOT=""
+    eval "listed_$(declare -f sb_task_files)"
+    sb_task_files() {
+      printf '%s\n' "$1" >>"$tmp/scans"
+      listed_sb_task_files "$@"
+    }
+    cmd_doctor "$@"
+  ) </dev/null
+}
+if block 5; then
+layout status
+edit "$T/EX-2/README.md" 's/^epic: .*$/epic: EX-1/'
+edit "$T/EX-3/README.md" 's/^epic: .*$/epic: ex-1/'
+counted_doc Example --fix
+rc_is "task-layout --fix, one scan: exit 0" 0
+is "task-layout --fix, one scan: each task goes to its status folder, a child inside its parent's folder" \
+  "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: EX-1 -> $P/tasks/in-progress/EX-1/README.md (Example)
+fixed: EX-2 -> $P/tasks/done/EX-1/EX-2/README.md (Example)
+fixed: EX-3 -> $P/tasks/planned/EX-1/EX-3/README.md (Example)"
+chk "task-layout --fix, one scan: and task-layout ok" task-layout Example "ok | 0 | -"
+is "task-layout --fix, one scan: the tasks folder is listed once for the three moves and once for the rows" \
+  "$(grep -cxF -- "$T" "$tmp/scans" 2>/dev/null || true)" "2"
 fi
 
 # ---------------------------------------------------------------- task-layout, the sprint folders
@@ -2817,7 +2863,7 @@ fi
 
 # ---------------------------------------------------------------- settings and validation
 PROFILE="$vault/$P/claude/profile.md"
-if block 145; then
+if block 224; then
 doc Example
 chk "settings: ok with the template's values" settings Example "ok | 0 | -"
 chk "validation: ok for a project with no repo that has its note" validation Example "ok | 0 | -"
@@ -2829,7 +2875,7 @@ edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
 doc Example
 chk "settings: a profile validation_home that is not allowed" settings Example "warn | 1 | profile:validation_home"
 is "settings: the fix names the values" "$(fix_of settings)" \
-  "write validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+  "write validation_home as vault or repo, lead_check_minutes as 10, 12, 15, 20, 30 or 60, and build_pairs as 1, 2, 3, 4 or 5, or remove the key"
 edit "$PROFILE" 's/^validation_home: always$/validation_home: Repo/'
 doc Example
 chk "settings: a value in another letter case is taken" settings Example "ok | 0 | -"
@@ -2857,6 +2903,30 @@ doc Example
 chk "settings: lead_check_minutes is named after the profile's own keys" settings Example \
   "warn | 2 | profile:validation_home, lead_check_minutes:invalid"
 reset
+# bp <value>: add build_pairs to the profile, under validation_home.
+bp() {
+  awk -v v="$1" '{ print } /^validation_home: / { print "build_pairs:" (v == "" ? "" : " " v) }' "$PROFILE" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$PROFILE"
+}
+for v in 1 2 3 4 5 "" '""' '"3"'; do
+  bp "$v"
+  doc Example
+  chk "settings: build_pairs '$v' is taken" settings Example "ok | 0 | -"
+  reset
+done
+for v in 0 6 8 -1 2.5 two '"9"'; do
+  bp "$v"
+  doc Example
+  chk "settings: build_pairs $v warns" settings Example "warn | 1 | build_pairs:invalid"
+  reset
+done
+lcm 45
+bp 8
+edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
+doc Example
+chk "settings: build_pairs is named after lead_check_minutes" settings Example \
+  "warn | 3 | profile:validation_home, lead_check_minutes:invalid, build_pairs:invalid"
+reset
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/code\"|"
 doc Example
@@ -2882,9 +2952,11 @@ chk "validation: a section that still holds a retired placeholder of an earlier 
 edit "$vault/$P/claude/validation.md" '/^- <The steps that use the change as a user does, /d'
 doc Example
 chk "validation: ok again once the retired line is gone" validation Example "ok | 0 | -"
-# The lines the template held before each check said when it runs are still flagged.
+# The lines the template held before each check said when it runs, or before the stages were
+# each story and each merge, are still flagged.
 for old in '- <Each command that must pass, such as the tests, linter and build, and what it proves.>' \
-  '- <One line per step that uses the change as a user does: its tool, then what to look for.>'; do
+  '- <One line per step that uses the change as a user does: its tool, then what to look for.>' \
+  "- <Each line ends with when it runs: when: each task, when: each build, or when: release for one run only before a release or on the owner's ask.>"; do
   if grep -qF -- "$old" "$here/templates/validation-repo.md.tmpl"; then
     fail "validation: the template no longer holds the retired line: $old"
   else
@@ -2915,7 +2987,7 @@ doc Example
 chk "settings: a subproject note's validation_home is named by the subproject" settings Example "warn | 1 | infra:validation_home"
 fi
 # ---------------------------------------------------------------- validation edge cases
-if block 10; then
+if block 20; then
 mkdir -p "$tmp/code/example-api"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api, example-ghost]|; s|^repos_root: .*|repos_root: \"\"|; s|^repo_paths: .*|repo_paths: [\"example-api=$tmp/code/example-api\"]|; s|^validation_home: vault\$|validation_home: repo|"
 doc Example
@@ -2924,6 +2996,39 @@ chk "validation: while repos leaves it" repos Example "ok | 0 | -"
 printf '# example-api validation\n\n## example-api\n' >"$tmp/code/example-api/validation.md"
 doc Example
 chk "validation: a section with nothing under its heading" validation Example "warn | 2 | example-api:empty, example-ghost:no-location"
+is "validation: with no old when, the fix names validation new alone" "$(fix_of validation)" \
+  "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line"
+# Each check and user step with an old when: is named, by its command or its text, with the old name.
+printf '%s\n' '# example-api validation' '' '## example-api' '' '### Checks' '' \
+  '- `make test` - the unit tests - when: each task' \
+  '- `make lint` - the linter - paths: src/** - when: Each-Build.' \
+  '- `make docs` - the docs - when: each story' \
+  '- `make all` - every suite - when: each merge' \
+  '- `make e2e` - costs money - when: release' \
+  '- `make odd` - when: nightly' \
+  '  - `make nested` - a nested item is no check - when: each task' \
+  '' '### Check as a user would' '' \
+  '- Browser: open the home - when: each build' \
+  '- Browser: open the admin - paths: admin/** - when: each task' \
+  '- Bash: run `make up` - when: each task' \
+  '- Browser: open the docs - when: each story' \
+  '' '### A pass' '' '- Every check passes. when: each task' >"$tmp/code/example-api/validation.md"
+doc Example
+chk "validation: names each check and user step with an old when, and no other" validation Example \
+  "warn | 6 | example-ghost:no-location, example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build, example-api:Browser: open the admin:each-task"
+is "validation: and the fix names the new name of each old one" "$(fix_of validation)" \
+  "run second-brain validation new <project> <repo> for a missing file or section, then write the repo's steps in place of each <...> line; write each old when: by its new name: each task is each story, each build is each merge"
+edit "$PROFILE" "s|^repos: .*|repos: [example-api]|"
+doc Example
+chk "validation: a user step is named by its text before its paths: or when:, a code span in it too" validation Example \
+  "warn | 5 | example-api:make test:each-task, example-api:make lint:each-build, example-api:Browser: open the home:each-build, example-api:Browser: open the admin:each-task, example-api:Bash: run make up:each-task"
+is "validation: with old whens alone, the fix names their new names alone" "$(fix_of validation)" \
+  "write each old when: by its new name: each task is each story, each build is each merge"
+printf '%s\n' '# example-api validation' '' '## example-api' '' '### Checks' '' \
+  '- Run the linter by hand - when: each build' >"$tmp/code/example-api/validation.md"
+doc Example
+chk "validation: a check with no code span is named by its text before its when:" validation Example \
+  "warn | 1 | example-api:Run the linter by hand:each-build"
 fi
 
 # ---------------------------------------------------------------- what the spec flow left

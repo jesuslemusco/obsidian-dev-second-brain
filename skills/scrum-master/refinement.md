@@ -34,6 +34,7 @@ epic and each story in the shape its section 1 gives:
   may be one that exists already.
 - A story that exists: show what changes beside what it says now.
 - Check each claim about the code read-only, as section 2 of `create.md` says, and name the ref.
+  Read git there through `second-brain branch` alone, so the check asks nothing.
 - Keep the draft in this chat.
 
 ## 3. The approval
@@ -54,9 +55,21 @@ then each story in order.
 
 1. Each new epic or story: invoke the story-tracker skill with the Skill tool, as
    `odsb:story-tracker` with its id, to start it. It writes the task note from the approved text,
-   as `planned`, with its parent.
+   as `planned`, with the parent the owner picks.
    - Invoke it, never Read its files: the Skill tool fills in the paths and the session id its
      `SKILL.md` names, and a Read leaves them as written.
+   - Before it writes, story-tracker shows the owner the stories that do the same and the epics
+     the story could join, and the owner picks, as `## 3. Create the story` in its `create.md`
+     says. That pick is approved: step 5 does not stop for it.
+   - The owner picks a story that exists in its place: story-tracker writes no new one, and names
+     that story. Its change sets the draft's parent as its `epic`, unless the owner keeps it under
+     its own parent. story-tracker names the parent it left, for step 4.
+   - From then on that story stands for the draft's id: as the parent of the draft's stories, in
+     step 3 for the tasks it waits on and for each story that waits on it, and in step 4, once it
+     is under the draft's parent, in the epic's list in place of that id.
+   - The owner files it under another parent, or none, or keeps the story that exists under its
+     own: in step 4, list it under that parent alone, and drop it from the list of the parent the
+     draft named.
 2. Each story or epic that exists and changed: invoke the story-tracker skill with its id, to
    update it with the approved change.
    - Each story of the draft that exists, changed or approved as it is, and has no status note
@@ -66,6 +79,7 @@ then each story in order.
    the owner dropped: `second-brain task dep <ID> remove <other ID>`.
 4. In each epic's list, link each story as `[[<its path, no .md>|<ID>]]`, with the path
    `second-brain find <ID> --project <project>` prints.
+   - A story that left a parent in step 1, for the draft's: drop its line from that parent's list.
 5. A step would change the approved text, such as an id that is taken or a topic tag with no
    folder: stop. Show the change, and write it only once the owner approves it.
 6. Report each story's path and the tasks it waits on.

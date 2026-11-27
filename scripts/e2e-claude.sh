@@ -157,6 +157,8 @@ ask "$tmp/health.jsonl" "Check my vault for problems."
 trigger "trigger: a vault health request loads vault-doctor" "$tmp/health.jsonl" vault-doctor
 ask "$tmp/build.jsonl" "Build the approved stories of EX-1."
 trigger "trigger: a request to build approved stories loads build" "$tmp/build.jsonl" build
+ask "$tmp/achievements.jsonl" "List my achievements on the Example project from 2026-11-01 to 2026-11-30."
+trigger "trigger: a request for achievements loads achievements" "$tmp/achievements.jsonl" achievements
 
 printf '== ticket text: a request to write a ticket loads story-tracker ==\n'
 # With no persona, section 1 of create.md asks for one, and a headless run cannot answer.

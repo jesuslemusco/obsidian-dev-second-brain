@@ -22,7 +22,9 @@ It can also build a story you approve, in a git worktree of its own, tested and 
 - **Docs.** When a ticket reaches production, `docs-keeper` brings the project's docs in step
   with its code.
 - **Builds.** Claude builds each story you approve, test-first, in a git worktree of its own, and
-  has a fresh reviewer grade it against its acceptance criteria before it waits for your merge.
+  has a separate reviewer grade it against its acceptance criteria before it waits for your merge.
+- **Achievements.** Claude gathers what your done stories delivered in a date range or a sprint,
+  and the proposals you made, for a review or a report.
 - **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
   in a `validation.md`, in the vault or in the repo.
 - **Several repos.** A project's repos can split into subprojects, each with its own branches and
@@ -106,14 +108,19 @@ Open a new sprint for the Example project.
 
 ### `/odsb:build`
 
-Builds approved stories, one at a time, each in a git worktree of its own.
+Builds approved stories, each in a git worktree of its own: one at a time, or side by side as
+your profile's `build_pairs` sets.
 
 - Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
   set.
 - It builds only a story whose text you approved: when story-tracker started it, or in
   refinement, as it is or changed.
-- One `implementer` builds each story test-first and checks its own change. Then a fresh
-  `reviewer` grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- One `implementer` builds each story test-first and checks its own change. Then a `reviewer`
+  grades its acceptance criteria and runs the repo's checks, in the same worktree.
+- Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,
+  built in turn. Each keeps its own branch and passes or fails on its own review.
+- A `build_pairs` key in the profile, 1 to 5, builds that many batches side by side, when none of
+  their stories waits on another's. With no key it is 1.
 - A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
 - A passed story merges where your project's git flow says, written under `## Rules` in its
   Claude hub, only on your go. The checks run on the merged branch, and nothing is pushed
@@ -128,6 +135,23 @@ The flow is under `## Building a story` in `docs/guide.md`, and its steps are in
 ```
 /odsb:build EX-2
 Build the approved stories of EX-1.
+```
+
+### `/odsb:achievements`
+
+Gathers your achievements for a date range or a sprint, for a review or a report.
+
+- Each story set to done in that time gives one achievement, worded from its summary and its
+  changes, that names the story. A story is listed once.
+- It asks you about the proposals you made to your company or project then, and helps you word
+  each one from the project and its stories. It makes up none.
+- The result is in its reply. It writes it to the project's `achievements.md` note only when you
+  ask.
+- It is the one skill that gathers achievements: nothing logs one as a story finishes.
+
+```
+List my achievements on the Example project from 2026-11-01 to 2026-11-30.
+/odsb:achievements sprint 2026-10-14 Example
 ```
 
 ### `/odsb:vault-setup`
@@ -149,6 +173,26 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
 ```
 /odsb:vault-setup project Example
 /odsb:vault-setup validation Example
+```
+
+### `/odsb:define-validation-scope`
+
+Proposes which checks run at each stage of a repo's validation, from your project's docs or its
+code, and writes the repo's section once you approve it.
+
+- Each check it drafts has its command, its stage, `each story`, `each merge` or `release`, and
+  the `paths:` it covers, in the shape of `templates/validation-repo.md.tmpl`.
+- It reads the project's docs first. A project with none is offered `docs-keeper`'s setup,
+  and on a no it reads the repo's test scripts, CI workflows and package manifests.
+- It proposes only the stages your project uses: no `release` check in a project that plans no
+  releases.
+- It shows you the whole draft, and each change you ask for again, and writes the section only
+  once you approve it, through `second-brain validation new` for a missing one.
+- `vault-setup` offers it when it adds a repo.
+
+```
+/odsb:define-validation-scope Example example-api
+Define the validation scope of example-api for the Example project.
 ```
 
 ### `/odsb:vault-doctor`
@@ -174,7 +218,7 @@ Most are started by a skill, and you can ask for any of them by name.
 
 | Agent | Does | Started by |
 |---|---|---|
-| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift and rewrites renamed commands. | `story-tracker` when a ticket reaches production, `vault-doctor fix` on an `old-namespace` row, or you. |
+| `docs-keeper` | Keeps a project's docs, in its repos and in the vault, in step with its code. Also audits drift, rewrites renamed commands and drafts the docs of a project that has none. | `story-tracker` when a ticket reaches production, `define-validation-scope` in a project with no docs, `vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |
 | `implementer` | Builds one approved story in its git worktree, test-first, runs its checks and commits it. | `build`. |
 | `reviewer` | Runs the repo's checks on the branch as a baseline when a build needs one, and grades a story's change. Edits no file and ends with a JSON verdict. | `build`: for the baseline, and after each build and fix of a story. |
 

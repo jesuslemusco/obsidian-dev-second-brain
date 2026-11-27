@@ -3,10 +3,14 @@
 Conventions: before writing notes, run `second-brain conventions` and follow it. The full note is ~/.claude/second-brain-vault/obsidian-conventions.md.
 
 Read this file once, as `## Files` in `SKILL.md` says. It builds one story, `<ID>`, in a git
-worktree of its own, with one `implementer` and a fresh `reviewer` for each review.
+worktree of its own, with its batch's `implementer` and `reviewer`, as `### A batch` says.
 
 - `<repo>` is the repo the story touches, and `<path>` its folder, as `## 2. The worktree` finds
   them. `<branch>` is the story's branch.
+- `<batch>` is the id of the first story of the story's batch, as Step 3 of `SKILL.md` cuts it.
+  A story that builds alone is its own batch: `<batch>` is `<ID>`.
+- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says. With more than 1, other
+  batches build beside this story's, each with its own pair: each step here is this story's own.
 - `<worktree>` is `<path>-<ID>`: a folder next to the repo's, named for the repo and the story.
 - `<short hash>` is what `git -C "<worktree>" rev-parse --short HEAD` prints.
 - `<base>` is where this build started: the hash of the newest
@@ -128,8 +132,11 @@ Then `### Build it`, whether the baseline ran or not.
 
 ## 4. Launching an agent
 
-- Launch one agent at a time with the Agent tool, and wait for its result. Its result is its
-  report: never relay a report by hand, and never read an agent's transcript.
+- Launch one agent at a time in each pair with the Agent tool, and wait for its result before the
+  pair's next step. Its result is its report: never relay a report by hand, and never read an
+  agent's transcript.
+- With `<pairs>` more than 1, launch it with `run_in_background: true`, and take its result from
+  its notice, as `### Pairs side by side` in `SKILL.md` says.
 - A named agent can send its last reply twice: as its message, then again in its idle notice. A
   notice that repeats a reply you took already is no new event: it changes no state, and gets no
   reply.
@@ -138,8 +145,10 @@ Then `### Build it`, whether the baseline ran or not.
   - `odsb:implementer` from fix round 4 on: `model: "fable"`, the stronger model.
   - `odsb:reviewer`, in story or baseline mode: `model: "opus"`.
 - Name each `implementer` launch, so that a fix can reach it again with SendMessage:
-  - The build and fix rounds 1 to 3: `name: "<ID>-implementer"`.
+  - The build and fix rounds 1 to 3: `name: "<batch>-implementer"`.
   - From fix round 4 on: `name: "<ID>-implementer-2"`.
+- Name each `reviewer` launch in story mode `name: "<batch>-reviewer"`, so that the batch's next
+  review can reach it again, as `### A batch` says. A `reviewer` in baseline mode has no name.
 - An agent reads the story and the code itself. Never put the story, a diff or this conversation
   in a prompt.
 - `implementer`'s prompt, one line each:
@@ -154,6 +163,8 @@ Then `### Build it`, whether the baseline ran or not.
 - The fix message, sent with SendMessage to an `implementer` by its name, one line each:
   - `Fix: review <m> failed. Its defects are the story's Defect <m>: status notes.`, with `<m>`
     from the newest `Build: review <m> failed at <hash>` note.
+  - The story, repo, worktree, branch and base lines of `implementer`'s prompt, for the story that
+    failed.
   - `Session: <session id>.`
   - The ruling lines.
 - `reviewer`'s prompt in story mode, one line each:
@@ -166,10 +177,30 @@ Then `### Build it`, whether the baseline ran or not.
   - The ruling lines.
 - `reviewer`'s prompt in baseline mode: `Mode: baseline.`, `Project: <project>.`,
   `Repo: <repo>.`, `Worktree: <worktree>.` and `Branch: <branch>.`
-- A `reviewer` prompt holds only these lines, and a message to it only the one that
-  `### An agent with no report` gives, or the one that `### Reading a verdict` gives. Never add a
-  view of your own on the result, such as the implementer's report, its `Test:` or `Check:`
-  lines, or the verdict you expect.
+- A `reviewer` prompt holds only these lines, and so does each next review that `### A batch`
+  sends it. Any other message to it is only the one that `### An agent with no report` gives, or
+  the one that `### Reading a verdict` gives. Never add a view of your own on the result, such as
+  the implementer's report, its `Test:` or `Check:` lines, or the verdict you expect.
+
+### A batch
+
+A batch is 1 to 3 related stories, cut as Step 3 of `SKILL.md` says. One `implementer` and one
+`reviewer` build its stories in turn, so that a pair that holds the code they touch does not read
+it again for each one.
+
+1. Each story keeps its own branch and worktree, with a commit series of its own, its own status
+   notes, its own rounds and its own verdict. It passes or fails alone.
+2. The batch's first story launches `implementer`, and its first review launches `reviewer`,
+   each named as `## 4. Launching an agent` says.
+3. Each later story of the batch, and each later review, of the same story or the next, goes to
+   that agent by its name with SendMessage. The message holds the lines its prompt would: for
+   that story, its round and the rulings of its build.
+   - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh one
+     in its place, with those lines as its prompt, its name and its model.
+4. A failed story goes back to the batch's `implementer` before the batch's next story starts,
+   as `### The fix loop` says.
+5. From fix round 4 on, a story's fixes go to `<ID>-implementer-2`, as `### The fix loop` says.
+   The batch's next story still goes to `<batch>-implementer`.
 
 ### An agent with no report
 
@@ -191,7 +222,8 @@ Before you take the reply of an agent idle with no report as final:
 3. Nothing of it runs: send that agent one message with SendMessage, by its name, or by its id
    when it has none:
    `Nothing you started is still running. Finish your step, then reply with your report.`
-   - Send it once per launch or fix message, never twice.
+   - Send it once per launch, or per message that starts a step, such as a fix message, never
+     twice.
    - SendMessage is not there: take its reply as final now.
 4. Its next reply is final, with a report or not, unless its check still runs, as item 2 says.
    - Take an `implementer`'s as items 2 to 4 of `### Build it` say.
@@ -201,7 +233,7 @@ Before you take the reply of an agent idle with no report as final:
 
 ### Build it
 
-1. Launch `implementer` on the story, named for the build.
+1. Start `implementer` on the story, as `### A batch` says.
 2. Its reply has no `Commit:` line, and does not start with `BLOCKED:`: look for its commits,
    `git -C "<worktree>" log --oneline <since>..HEAD`, with `<since>` the hash of the newest review
    note of this build, or `<base>` with none. Some: `### Review it`. None: item 3.
@@ -221,7 +253,7 @@ Before you take the reply of an agent idle with no report as final:
 
 1. Take `<n>` and, after a failed review, its `Last failed:` line, as `## 1. Where the story
    stands` and `## 4. Launching an agent` say.
-2. Launch a fresh `reviewer` in story mode.
+2. Start `reviewer` in story mode, as `### A batch` says.
 3. Read its verdict as `### Reading a verdict` says. Show the owner the round, its verdict and its
    defects, one line each. Then take it as items 4 to 6 say.
 4. PASS: `second-brain task note <ID> "Build: review <n> passed at <short hash>."`. Then
@@ -258,6 +290,7 @@ loop. A follow-up is a `Follow-up:` status note: it changes no count.
    `second-brain task note <ID> "Build: review <n> gave no verdict at <short hash>."`. The
    `Defect <n>:` notes that reviewer logged stay its own. Then launch one fresh `reviewer` in
    its place, with the same prompt but the next round, `<n>` plus one, as `## 1` counts it.
+   - Name it `<batch>-reviewer`: the batch's later reviews go to it.
 6. No good block from the fresh `reviewer` either: take it as BLOCKED, in its own round.
 
 ### The fix loop
@@ -265,11 +298,14 @@ loop. A follow-up is a `Follow-up:` status note: it changes no count.
 The story's `fails`, as `## 1. Where the story stands` counts it from the status notes, picks the
 round, across every session.
 
+Each story of a batch has its own `fails`, so the cap counts per story. Its fix rounds all come
+before the batch's next story starts.
+
 1. `fails` 6 or more, right after a FAIL: the cap is reached. Stop, as
    `## 7. When the story stops` says.
    - A ruling the owner gives at that stop sends one more round, as for `fails` 4.
 2. Otherwise, the round:
-   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<ID>-implementer`, and wait
+   - `fails` 1 to 3: the same `implementer`. Send the fix message to `<batch>-implementer`, and wait
      for its reply.
    - SendMessage is not there, or no agent has that name, as in a new session: launch a fresh
      `implementer` in its place, with the build's prompt and the fix message's first line, its
@@ -300,12 +336,15 @@ round, across every session.
    - Then `git -C "<path>" worktree remove "<worktree>"`. Never pass `--force`. It fails, as on a
      change left in the worktree: ask the owner.
 6. Test each order of the build, as item 3 of `## The owner's open orders` in `lead.md` says.
-7. Go on with the next story of the run, as Step 3 of `SKILL.md` says.
+7. Go on with the next story of the run, as Step 4 of `SKILL.md` says: the batch's next story,
+   or once the batch ends, the next batch's first. With `<pairs>` more than 1 that is the first
+   ready batch, as `### Pairs side by side` there says.
 
 ### The merge
 
 A passed story merges into `<target>`, as `### The git flow` finds it, on the owner's go. The
 merge is local. A push is another step, on the owner's word alone.
+With more than one pair, one merge runs at a time, as `### Pairs side by side` in `SKILL.md` says.
 
 1. A story cut from another story's branch merges after that story.
    - No `<target>` found: ask where it merges first, as item 5 of `### The git flow` says, then
@@ -317,6 +356,7 @@ merge is local. A push is another step, on the owner's word alone.
        later run takes it up again, as Step 1 of `SKILL.md` says.
 2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it
    unmerged. The owner may name another target in the free-text answer.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - No `<target>` found: ask where it merges in the same question, as item 5 of
      `### The git flow` says.
    - Keep it: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go
@@ -349,11 +389,15 @@ merge is local. A push is another step, on the owner's word alone.
 7. `second-brain task note <ID> "Build: merged <branch> into <target> at <short hash>."`, with the
    hash of the merge in `<where>`. Then
    `second-brain task set <ID> next="Merged into <target>; waits for the owner's go to push"`.
-8. The checks on the merged tree. Compare `git -C "<where>" rev-parse HEAD^{tree}` with
-   `git -C "<path>" rev-parse <hash>^{tree}`, with `<hash>` that of the passing review's note.
-   - The same tree: the review ran the checks on it. Skip them, and say so.
-   - Another tree: `second-brain validation run "<project>" <repo> --when each-build --path "<where>"`,
-     with the Bash tool's `run_in_background: true`, and wait for its notice.
+8. The checks on the merged tree: every `each merge` one, even on the tree the review read. A
+   review runs only the `each story` checks that its change touches.
+   - `second-brain validation run "<project>" <repo> --when each-merge --path "<where>"`, with the
+     Bash tool's `run_in_background: true`, and wait for its notice.
+   - The merge runs no user step. Read the steps with
+     `second-brain validation "<project>" <repo> --path "<where>"`. Name to the owner each line
+     under `### Check as a user would` that is `each merge`, as one for them to ask for: its
+     `when:` is `each merge` or `each build`, another value than `each story`, `each task` or
+     `release`, or none.
    - A `fail` row: push nothing, and skip item 9. Show the owner its lines, and ask what to do:
      a ruling to fix the story, as item 3 of `## 7. When the story stops` says, or undoing the
      merge. Undoing it, `git -C "<where>" reset --hard <before>`, is a destructive action: only
@@ -363,6 +407,7 @@ merge is local. A push is another step, on the owner's word alone.
 9. Every check passed or was skipped: ask the owner with AskUserQuestion whether to push
    `<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their
    yes.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - Pushed: `second-brain task note <ID> "Build: pushed <target> at <short hash>."`, and
      `second-brain task set <ID> next="Merged into <target> and pushed"`.
 
@@ -376,6 +421,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
      `### The list of follow-ups` says.
 2. `second-brain task note <ID> "Build: stopped: <why>."`.
 3. Ask the owner with AskUserQuestion what to do.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - An answer that sends the build on is an order: add it to the orders note, as `lead.md` says.
    - A ruling: `second-brain task note <ID> "Build: the owner ruled: <the ruling, as written>."`.
      Then go on from the step that stopped, with its ruling line in each later prompt, as
@@ -391,6 +437,9 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
      `/odsb:scrum-master refinement`. The build goes on once the owner approves the change.
    - The owner stops here: the status notes keep where the story stands, and the worktree stays,
      for a new session to go on from. Take the build's orders to `## Done`, as `lead.md` says.
+   - With another pair at work, that stops this story's batch alone, unless the owner stops
+     the whole build: the other pairs go on, and the orders go to `## Done` once no pair is at
+     work.
 
 ## 8. When to ask the owner
 
@@ -404,6 +453,10 @@ waits for the owner, as `## 7. When the story stops` says:
 5. A story blocked, or past its last fix round. A `BLOCKED` review is a block too.
 6. A failed baseline.
 
+- While another pair is at work, as `### Pairs side by side` in `SKILL.md` says, ask each
+  question of this file in your reply, with its story, never with AskUserQuestion: it holds the
+  session until the owner answers, and every other pair with it. The owner's answer comes in a
+  message of their own to this session.
 - An order whose words give no `Done when:` condition: ask the owner in your reply, as item 2 of
   `## The owner's open orders` in `lead.md` says. It stops nothing.
 - Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.
@@ -482,7 +535,7 @@ oldest first.
   word.
 - The agents read the story and the code themselves. Never give them this conversation.
 - Never skip a review.
-- One agent at a time: wait for each agent's result or reply before the next step.
+- One agent at a time in each pair: wait for its result or reply before the pair's next step.
 - Run a `release` check only when the owner asks:
   `second-brain validation run "<project>" <repo> --when release --path "<worktree>"`, with the
   Bash tool's `run_in_background: true`, and wait for its notice.

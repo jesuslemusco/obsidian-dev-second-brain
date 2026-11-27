@@ -12,7 +12,8 @@ SB_TASK_RESERVED="archive $SB_TASK_STATUSES backlog"
 # profile turns sprints off with uses_sprints: false.
 sb_task_layout() {
   local layout
-  layout="$(sb_setting "$SB_P_PATH" task_layout flat | tr '[:upper:]' '[:lower:]')"
+  sb_lc "$(sb_setting "$SB_P_PATH" task_layout flat)"
+  layout="$SB_LC"
   case "$layout" in
     archive | status) printf '%s\n' "$layout" ;;
     sprint) if sb_uses_sprints "$SB_P_PATH"; then printf 'sprint\n'; else printf 'flat\n'; fi ;;
@@ -27,7 +28,7 @@ sb_task_layout() {
 # README.md is a task. The names of SB_TASK_RESERVED are no task id, so the five and backlog hold
 # tasks with a README too. archive keeps its own rule, archive/<YYYY>/<ID>/, and is no group folder.
 sb_task_groups() {
-  local d s
+  local d s others="" nl=$'\n'
   for s in $SB_TASK_RESERVED; do
     [ "$s" = archive ] || [ ! -d "$1/$s" ] || printf '%s\n' "$1/$s"
   done
@@ -35,14 +36,20 @@ sb_task_groups() {
     d="${d%/}"
     [ -d "$d" ] || continue
     for s in $SB_TASK_RESERVED; do [ "${d##*/}" != "$s" ] || continue 2; done
-    [ -f "$d/README.md" ] || printf '%s\n' "$d"
-  done | LC_ALL=C sort
+    [ -f "$d/README.md" ] || others="$others$d$nl"
+  done
+  # Two folders or more are sorted; one is printed as it is, with no sort started.
+  case "$others" in
+    *"$nl"?*) printf '%s' "$others" | LC_ALL=C sort ;;
+    *) printf '%s' "$others" ;;
+  esac
 }
 
 # Print the word the project in SB_P_PATH names its parent stories by: feature when the profile's
 # parent_label is feature, in any letter case, else epic. The frontmatter key stays epic.
 sb_parent_label() {
-  case "$(sb_setting "$SB_P_PATH" parent_label epic | tr '[:upper:]' '[:lower:]')" in
+  sb_lc "$(sb_setting "$SB_P_PATH" parent_label epic)"
+  case "$SB_LC" in
     feature) printf 'feature\n' ;;
     *) printf 'epic\n' ;;
   esac
@@ -193,6 +200,35 @@ EOF
   return 0
 }
 
+# The task READMEs of one tasks folder, listed once by a command that moves several of its tasks:
+# SB_TASK_LIST_DIR is the folder and SB_TASK_LIST the READMEs, as sb_task_files prints them. A
+# lookup that needs every task, such as one in a folder with no README.md, reads them from here.
+SB_TASK_LIST_DIR=""
+SB_TASK_LIST=""
+
+# sb_task_list_keep <tasks folder>: list the tasks of a folder once, for sb_task_list.
+sb_task_list_keep() {
+  SB_TASK_LIST_DIR=""
+  SB_TASK_LIST="$(sb_task_files "$1")"
+  SB_TASK_LIST_DIR="$1"
+}
+
+# sb_task_list_drop: forget the kept list, once the tasks it names move.
+sb_task_list_drop() {
+  SB_TASK_LIST_DIR=""
+  SB_TASK_LIST=""
+}
+
+# sb_task_list <tasks folder>: print the task READMEs of a folder as sb_task_files does, from the
+# list sb_task_list_keep kept when it is that folder's.
+sb_task_list() {
+  if [ -n "${SB_TASK_LIST_DIR:-}" ] && [ "$1" = "$SB_TASK_LIST_DIR" ]; then
+    [ -z "$SB_TASK_LIST" ] || printf '%s\n' "$SB_TASK_LIST"
+    return 0
+  fi
+  sb_task_files "$1"
+}
+
 # Print the README of one task folder of a tasks folder: directly inside it, in a group folder, in
 # the order of sb_task_groups, one level deeper in a group folder, as sb_task_nested takes it, or
 # archived, in that order; nothing when it has none. A folder named in SB_TASK_RESERVED is never a
@@ -217,7 +253,7 @@ EOF
   [ -z "$rows" ] || printf '%s' "$rows" | sb_task_kids
   # Whether a folder with no README holds tasks rests on every task found elsewhere.
   if [ -n "$held" ]; then
-    all="$(sb_task_files "$1")"
+    all="$(sb_task_list "$1")"
     while IFS= read -r f; do
       [ -z "$f" ] || ! printf '%s\n' "$all" | grep -qxF -- "$f" || printf '%s\n' "$f"
     done <<EOF
@@ -255,6 +291,58 @@ sb_task_parent() {
   fi
   [ "$n" -ne 0 ] || [ "$self" -eq 0 ] || return 1
   return 2
+}
+
+# sb_task_parents [<field>]: read the task READMEs of a tasks folder, one per line, then a line
+# that is \034 alone, then TSV rows whose first field, or the field given, is a task README. Print
+# each row with one more field, the folder name sb_task_parent prints for that README among those
+# tasks, or nothing where it prints none: an epic that is empty, "-", or names the task itself
+# alone, no other task or several. The aliases of the tasks are read once, for every row, and
+# only when a row's README has an epic.
+sb_task_parents() {
+  LC_ALL=C SB_F="${1:-1}" awk -F'\t' "$(sb_awk_lib)"'
+    function named(name, f) { if (!((name SUBSEP f) in has)) { has[name SUBSEP f] = 1; hits[name] = hits[name] "\034" f } }
+    # Each task by its folder name and by each alias, in lower case.
+    function load(   i, f, p, np, al, a) {
+      loaded = 1
+      for (i = 1; i <= list_n; i++) {
+        f = list_file[i]
+        np = split(f, p, "/")
+        if (np > 1) named(tolower(p[np - 1]), f)
+        split("", al)
+        alias_set(f, al)
+        for (a in al) named(a, f)
+      }
+    }
+    # The task itself among the hits is no parent, and leaves none when it is the only one.
+    function parent(self,   e, k, a, j, n, last) {
+      e = fm_value(self, "epic")
+      if (e == "" || e == "-") return ""
+      if (!loaded) load()
+      n = 0
+      k = split(hits[tolower(e)], a, "\034")
+      for (j = 2; j <= k; j++) if (a[j] != self) { n++; last = a[j] }
+      if (n != 1) return ""
+      k = split(last, a, "/")
+      return a[k - 1]
+    }
+    BEGIN { at = ENVIRON["SB_F"] + 0 }
+    read_list() { next }
+    { print $0 "\t" parent($at) }'
+}
+
+# sb_task_parent_in <rows> <README>: set SB_PARENT to the parent field of the README's row among
+# rows that sb_task_parents printed for READMEs alone, "<README><TAB><parent>"; empty with none.
+sb_task_parent_in() {
+  local rest nl=$'\n' tab=$'\t'
+  SB_PARENT=""
+  case "$nl$1" in
+    *"$nl$2$tab"*)
+      rest="$nl$1"
+      rest="${rest#*"$nl$2$tab"}"
+      SB_PARENT="${rest%%"$nl"*}"
+      ;;
+  esac
 }
 
 # Read file paths on stdin; print one TSV row of frontmatter per readable file.

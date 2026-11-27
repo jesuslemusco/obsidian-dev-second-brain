@@ -98,7 +98,7 @@ turn, as `### A batch` in `story.md` says. Cut the run into batches before the f
 - Show the owner the batches, each with its stories in the order they will be built, before the
   first one starts, and how many pairs build them at once, as Step 4 says.
 
-## Step 4 - Each batch in turn
+## Step 4 - The batches
 
 1. Read `story.md` and `lead.md`, as `## Files` says.
 2. `<pairs>` is how many pairs build at once: the `build_pairs` line of

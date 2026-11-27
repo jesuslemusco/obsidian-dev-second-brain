@@ -19,6 +19,7 @@
   skill runs at once: a whole number from 1 to 5. With no key, or any other value, it is 1, and a
   build runs one story at a time, as before. `second-brain profile <project> --keys` always prints
   its line, with the value the build takes.
+- The doctor's `settings` check warns on a `build_pairs` it does not take, `build_pairs:invalid`.
 - With more than one pair, batches build side by side, each by its own pair in its own stories'
   worktrees. Only stories that neither wait on each other nor sit in one batch go side by side: a
   batch starts once each story it waits on in another batch has passed.

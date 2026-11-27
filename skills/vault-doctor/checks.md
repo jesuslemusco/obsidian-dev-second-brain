@@ -199,8 +199,8 @@ to read an entry and when to run its fix: `## check (default)` and `## fix` in
 
 ### settings
 
-- Means: a `validation_home` that is not `vault` or `repo`, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`). Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`). A `delivery` or `spec_home` key left from the retired spec flow is not read.
-- Why: a `validation_home` that is not allowed means `vault`, so a repo's checks are looked for in the wrong place. A `lead_check_minutes` that is not allowed means 20, so the lead of a build checks on its orders at a pace the owner did not set.
+- Means: a `validation_home` that is not `vault` or `repo`, compared without letter case, in the profile (`profile:validation_home`) or a subproject note (`<name>:validation_home`). Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`). Or a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`). A `delivery` or `spec_home` key left from the retired spec flow is not read.
+- Why: a `validation_home` that is not allowed means `vault`, so a repo's checks are looked for in the wrong place. A `lead_check_minutes` that is not allowed means 20, so the lead of a build checks on its orders at a pace the owner did not set. A `build_pairs` that is not allowed means 1, so a build runs one pair at a time where the owner may have meant more.
 - Fix: ask which value was meant and write it in the profile or the subproject note, or remove the key.
 
 ### validation

@@ -1421,7 +1421,7 @@ file_has "contract: it takes the values that space the checks through the hour" 
 file_has "contract: the template leaves it out" "$CT" \
   '- `templates/profile.md.tmpl` leaves the key out. The doctor'"${q}"'s `settings` check warns on a value'
 file_has "contract: the settings row names lead_check_minutes:invalid" "$CT" \
-  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`) (warn).'
+  'a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`), and'
 file_lacks "profile template: leaves lead_check_minutes out" "$here/templates/profile.md.tmpl" 'lead_check_minutes'
 file_has "vault-doctor checks: the settings check names lead_check_minutes:invalid" "$here/skills/vault-doctor/checks.md" \
   'Or a profile `lead_check_minutes` that is not empty, 10, 12, 15, 20, 30 or 60 (`lead_check_minutes:invalid`).'
@@ -2051,11 +2051,12 @@ RV="$here/agents/reviewer.md"
 q="'"
 # The build skill cuts the run into batches of 1 to 3 related stories, in the run's order.
 line_is "build skill: has a batches step" "$BS" '## Step 3 - Batches'
-line_is "build skill: then builds each batch in turn" "$BS" '## Step 4 - Each batch in turn'
+line_is "build skill: then builds the batches" "$BS" '## Step 4 - The batches'
+file_lacks "build skill: no step says the batches go in turn, with pairs side by side" "$BS" '## Step 4 - Each batch in turn'
 file_lacks "build skill: no step builds each story apart from its batch" "$BS" '## Step 3 - Each story in turn'
 bt2="$(linex "$BS" '## Step 2 - Approved stories only')"
 bt3="$(linex "$BS" '## Step 3 - Batches')"
-bt4="$(linex "$BS" '## Step 4 - Each batch in turn')"
+bt4="$(linex "$BS" '## Step 4 - The batches')"
 is "build skill: batches are cut after the approved stories are known, before the build" \
   "$(( ${bt2:-0} > 0 && ${bt3:-0} > ${bt2:-0} && ${bt4:-0} > ${bt3:-0} ))" "1"
 line_is "build skill: a batch is 1 to 3 related stories that one pair builds" "$BS" \
@@ -2213,7 +2214,7 @@ line_is "build skill: up to <pairs> batches side by side with more" "$BS" \
 file_has "build skill: a stop stops the run with 1 pair, and no other pair with more" "$BS" \
   '   `<pairs>` 1 that stops the run. With more, the other pairs go on.'
 line_is "build skill: has a pairs side by side section" "$BS" '### Pairs side by side'
-ps4="$(linex "$BS" '## Step 4 - Each batch in turn')"
+ps4="$(linex "$BS" '## Step 4 - The batches')"
 psx="$(linex "$BS" '### Pairs side by side')"
 psr="$(linex "$BS" '## Rules')"
 is "build skill: pairs side by side is part of Step 4" \
@@ -2330,6 +2331,16 @@ is "changelog: build_pairs is under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_pl:-0}
 file_has "changelog: batches build side by side" "$CG" '- With more than one pair, batches build side by side, each by its own pair in its own stories'"${q}"
 file_has "changelog: a stop in one pair stops its batch alone" "$CG" \
   '- The lead'"${q}"'s one check watches every pair, and a stop in one pair stops its batch alone. While'
+file_has "contract: the settings row names build_pairs:invalid" "$CT" \
+  'and a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`) (warn).'
+line_is "contract: the doctor warns on a build_pairs value it does not take" "$CT" \
+  '  frontmatter. The doctor'"${q}"'s `settings` check warns on a value it does not take.'
+file_has "vault-doctor checks: the settings check names build_pairs:invalid" "$here/skills/vault-doctor/checks.md" \
+  'Or a profile `build_pairs` that is not empty, 1, 2, 3, 4 or 5 (`build_pairs:invalid`).'
+file_has "vault-doctor checks: a build_pairs not allowed means 1" "$here/skills/vault-doctor/checks.md" \
+  'A `build_pairs` that is not allowed means 1, so a build runs one pair at a time where the owner'
+file_has "changelog: the doctor warns on a build_pairs it does not take" "$CG" \
+  '- The doctor'"${q}"'s `settings` check warns on a `build_pairs` it does not take, `build_pairs:invalid`.'
 file_has "README: build_pairs builds batches side by side" "$RM" \
   '- A `build_pairs` key in the profile, 1 to 5, builds that many batches side by side, when none of'
 

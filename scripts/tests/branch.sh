@@ -204,10 +204,13 @@ S="$tmp/sig"
 mkdir -p "$S"
 printf '#!/bin/sh\n: >"%s/ran"\ncat >/dev/null\nexit 1\n' "$S" >"$S/gpg.sh"
 chmod +x "$S/gpg.sh"
+# Git for Windows runs a program by its Windows path, not the shell's /c/... form.
+gp="$S/gpg.sh"
+case "${OSTYPE:-}" in msys* | cygwin*) gp="$(cygpath -m "$gp")" ;; esac
 sig="$(printf 'tree %s\nparent %s\nauthor Tester <tester@example.com> 1700000000 +0000\ncommitter Tester <tester@example.com> 1700000000 +0000\ngpgsig -----BEGIN PGP SIGNATURE-----\n \n -----END PGP SIGNATURE-----\n\nSigned work\n' \
   "$(git -C "$A" rev-parse 'main^{tree}')" "$(git -C "$A" rev-parse main)" | git -C "$A" hash-object -t commit -w --stdin)"
 g "$A" update-ref refs/heads/feature/EX-20-signed "$sig"
-cfg="'log.showsignature'='true' 'gpg.program'='$S/gpg.sh'"
+cfg="'log.showsignature'='true' 'gpg.program'='$gp'"
 GIT_CONFIG_PARAMETERS="$cfg" git -C "$A" log -1 --format=%h feature/EX-20-signed >/dev/null 2>&1
 exists "outside settings: git itself runs the program they name" "$S/ran"
 rm -f "$S/ran"
@@ -223,7 +226,7 @@ run env GIT_CONFIG_PARAMETERS="$cfg" "$SB" branch Example EX-20
 out_has "outside settings: the branches are read" "branch: feature/EX-20-signed $(short "$A" "$sig")"
 absent "outside settings: --show and the branch list run no program either" "$S/ran"
 g "$A" config log.showSignature true
-g "$A" config gpg.program "$S/gpg.sh"
+g "$A" config gpg.program "$gp"
 sb branch Example EX-20 --started
 absent "repo settings: --started shows no signature, so runs no gpg.program" "$S/ran"
 g "$A" config --unset log.showSignature

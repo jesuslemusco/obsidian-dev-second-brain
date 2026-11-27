@@ -476,72 +476,56 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.14.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.14.0 - unreleased"
-st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
-st_top="$(lineno "$CG" '## 0.10.0 - ')"
-st_end="$(lineno "$CG" '## 0.9.0 - ')"
-is "changelog: the status layout is under 0.10.0" \
-  "$((${st_line:-0} > ${st_top:-0} && ${st_line:-0} < ${st_end:-0}))" "1"
-vi_line="$(lineno "$CG" '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place')"
-is "changelog: the index's status line is under 0.10.0" \
-  "$((${vi_line:-0} > ${st_top:-0} && ${vi_line:-0} < ${st_end:-0}))" "1"
-sr_line="$(lineno "$CG" '- The search rule warns on a whole Read of a task note in a status folder too.')"
-is "changelog: the search rule's status line is under 0.10.0" \
-  "$((${sr_line:-0} > ${st_top:-0} && ${sr_line:-0} < ${st_end:-0}))" "1"
+file_has "changelog: the status layout" "$CG" '- A project can keep each task in the folder of its status:'
+file_has "changelog: the index's status line" "$CG" \
+  '- The vault index and docs-keeper name `tasks/<status>/` as a task'"'"'s place'
+file_has "changelog: the search rule's status line" "$CG" \
+  '- The search rule warns on a whole Read of a task note in a status folder too.'
 cv_line="$(lineno "$CG" '- The conventions note is at version 8: it names the status layout.')"
-is "changelog: the conventions note at version 8 is under 0.10.0" \
-  "$((${cv_line:-0} > ${st_top:-0} && ${cv_line:-0} < ${st_end:-0}))" "1"
 cv_text="$(awk -v n="${cv_line:-0}" 'n && NR == n { t = $0; next } n && NR > n && !d && /^  / { t = t " " substr($0, 3); next } NR > n { d = 1 } END { print t }' "$CG")"
 case "$cv_text" in
   *'The doctor'"'"'s `conventions` check warns about an older note.'*) pass "changelog: the version 8 line says the doctor warns on an older note" ;;
   *) fail "changelog: the version 8 line says the doctor warns on an older note" "in: $cv_text" ;;
 esac
-# under_011 <desc> <line>: the line is in the 0.11.0 section, above 0.10.0.
-sp_top="$(lineno "$CG" '## 0.11.0 - ')"
-under_011() {
-  local n
-  n="$(lineno "$CG" "$2")"
-  is "$1" "$((${sp_top:-0} > 0 && ${n:-0} > ${sp_top:-0} && ${n:-0} < ${st_top:-0}))" "1"
-}
-under_011 "changelog: the sprint layout is under 0.11.0" '- A project can keep each task in the folder of its sprint:'
-under_011 "changelog: sprint_folder is under 0.11.0" '- `sprint_folder` in the profile names a sprint'"'"'s folder'
-under_011 "changelog: the conventions note at version 9 is under 0.11.0" \
+file_has "changelog: the sprint layout" "$CG" '- A project can keep each task in the folder of its sprint:'
+file_has "changelog: sprint_folder" "$CG" '- `sprint_folder` in the profile names a sprint'"'"'s folder'
+file_has "changelog: the conventions note at version 9" "$CG" \
   '- The conventions note is at version 9: it names the sprint layout. The doctor'"'"'s `conventions`'
-under_011 "changelog: the index's sprint line is under 0.11.0" \
+file_has "changelog: the index's sprint line" "$CG" \
   '- The vault index names the sprint folders as a task'"'"'s place in a sprint project.'
 file_has "changelog: the index template is at version 7" "$CG" 'index template is now at `index_version: 7`'
 file_has "changelog: set index_version 7 once the task line is copied" "$CG" 'then set `index_version: 7`.'
-under_011 "changelog: a pattern with no folder name is under 0.11.0" \
+file_has "changelog: a pattern with no folder name" "$CG" \
   '  `docs/contract.md` says. A pattern that gives a sprint no folder name makes each command that'
-under_011 "changelog: task new and task set in a sprint project are under 0.11.0" \
+file_has "changelog: task new and task set in a sprint project" "$CG" \
   '- In a sprint project, `second-brain task new` writes a task into `backlog/`. `task set` with a'
-under_011 "changelog: task set's exit 6 is under 0.11.0" \
+file_has "changelog: task set's exit 6" "$CG" \
   'destination or the sprint'"'"'s folder is a task. A status change moves nothing.'
-under_011 "changelog: sprint open and sprint close moves are under 0.11.0" \
+file_has "changelog: sprint open and sprint close moves" "$CG" \
   '- `sprint open` moves each task it re-points to the new sprint'"'"'s folder. `sprint close` moves each'
-under_011 "changelog: done and abandoned tasks stay, under 0.11.0" \
+file_has "changelog: done and abandoned tasks stay" "$CG" \
   'done and abandoned tasks stay in the closed sprint'"'"'s folder.'
-under_011 "changelog: the lookup in backlog/ and the group folders is under 0.11.0" \
+file_has "changelog: the lookup in backlog/ and the group folders" "$CG" \
   '- Commands find a task in `backlog/` and in every group folder, in every layout: a folder directly'
-under_011 "changelog: task new and task alias refuse backlog, under 0.11.0" \
+file_has "changelog: task new and task alias refuse backlog" "$CG" \
   '`task new` and `task alias` exit 5 for `backlog`, in any letter case, as they do for `archive`.'
-under_011 "changelog: the board's group folder branch is under 0.11.0" \
+file_has "changelog: the board's group folder branch" "$CG" \
   '- A new board'"'"'s filters take a task in a group folder. An existing board is not rewritten: in a'
-under_011 "changelog: tasks.base:no-sprint-filter is under 0.11.0" \
+file_has "changelog: tasks.base:no-sprint-filter" "$CG" \
   '  sprint project, the doctor'"'"'s `board` check warns on one without that branch,'
-under_011 "changelog: no-readme and task-location are under 0.11.0" \
+file_has "changelog: no-readme and task-location" "$CG" \
   '- The doctor'"'"'s `no-readme` check reads each folder under `backlog/` and a group folder, and'
-under_011 "changelog: task-layout's sprint rows are under 0.11.0" \
+file_has "changelog: task-layout's sprint rows" "$CG" \
   '  folder of its sprint or `backlog/` (`<ID>:<folder>`), a `sprint_folder` that gives no folder'
-under_011 "changelog: sprint_folder:invalid and task_layout:no-sprints are under 0.11.0" \
+file_has "changelog: sprint_folder:invalid and task_layout:no-sprints" "$CG" \
   '  name (`sprint_folder:invalid`), `task_layout: sprint` with sprints off (`task_layout:no-sprints`),'
-under_011 "changelog: <folder>:<layout> is under 0.11.0" \
+file_has "changelog: <folder>:<layout>" "$CG" \
   '  and a group folder that holds a task in another layout (`<folder>:<layout>`, as `backlog:flat`).'
-under_011 "changelog: doctor --fix in a sprint project is under 0.11.0" \
+file_has "changelog: doctor --fix in a sprint project" "$CG" \
   '- In a sprint project, `doctor --fix` moves each task to the folder of its sprint, or to'
-under_011 "changelog: turning the layout on with doctor --fix once is under 0.11.0" \
+file_has "changelog: turning the layout on with doctor --fix once" "$CG" \
   '  `sprint_folder`, set the key, then run `doctor --fix` once.'
-under_011 "changelog: the search rule's sprint line is under 0.11.0" \
+file_has "changelog: the search rule's sprint line" "$CG" \
   '- The search rule warns on a whole Read of a task note in `backlog/` or a sprint'"'"'s folder too.'
 file_lacks "changelog: the sprint layout line describes, not points" "$CG" \
   '`## 4. A task` in `docs/contract.md` and `### Sprint folders` in `docs/guide.md` say how.'
@@ -691,15 +675,15 @@ is "vault-doctor fix: the sprint names come after the others and before the snap
   "$((${vd_name:-0} < ${vd_sname:-0} && ${vd_sname:-0} < ${vd_snap:-0}))" "1"
 is "vault-doctor fix: the sprint move's compare comes after the status move's and before the broken-link line" \
   "$((${vd_move:-0} < ${vd_smove:-0} && ${vd_smove:-0} < ${vd_broke:-0}))" "1"
-under_011 "changelog: story-tracker asks nothing in a sprint project, under 0.11.0" \
+file_has "changelog: story-tracker asks nothing in a sprint project" "$CG" \
   'Nothing is archived, and story-tracker asks'
-under_011 "changelog: the sprint skill and scrum-master, under 0.11.0" \
+file_has "changelog: the sprint skill and scrum-master" "$CG" \
   'sprint skill and scrum-master say what a sprint project'"'"'s close moves'
-under_011 "changelog: docs-keeper names the sprint folders, under 0.11.0" \
+file_has "changelog: docs-keeper names the sprint folders" "$CG" \
   '- docs-keeper names `tasks/backlog/` and the sprint folders as a task'"'"'s place in a sprint'
-under_011 "changelog: vault-setup offers the sprint layout, under 0.11.0" \
+file_has "changelog: vault-setup offers the sprint layout" "$CG" \
   '`vault-setup project` and `adopt` offer `task_layout: sprint`'
-under_011 "changelog: vault-doctor fix counts a sprint project's moves, under 0.11.0" \
+file_has "changelog: vault-doctor fix counts a sprint project's moves" "$CG" \
   '- The vault-doctor `fix` mode counts a sprint project'"'"'s moves as a bulk change'
 RM="$here/README.md"
 line_is "README: a ticket's note, in a sprint project" "$RM" \
@@ -739,16 +723,16 @@ sp_p6="$(lineno "$SPP" '6. A task that does not exist yet')"
 is "sprint open: the exits are under step 6 and the moves under step 7" \
   "$((${sp_o6:-0} < ${sp_oe6:-0} && ${sp_oe6:-0} < ${sp_o7:-0} && ${sp_o7:-0} < ${sp_omv:-0} && ${sp_omv:-0} < ${sp_o8:-0}))" "1"
 is "sprint pick: the moves are under step 5" "$((${sp_p5:-0} < ${sp_pmv:-0} && ${sp_pmv:-0} < ${sp_p6:-0}))" "1"
-under_011 "changelog: the sprint skill's open and plan moves, under 0.11.0" \
+file_has "changelog: the sprint skill's open and plan moves" "$CG" \
   'The sprint skill says the same of `sprint open` and of setting a task'"'"'s sprint in plan.'
-under_011 "changelog: doctor --fix removes each empty group folder, under 0.11.0" \
+file_has "changelog: doctor --fix removes each empty group folder" "$CG" \
   '  `backlog/` with none, then removes each empty group folder, a status folder too, whether or not'
 file_lacks "changelog: doctor --fix: not only the folders a move emptied" "$CG" 'group folder it leaves empty'
 file_has "guide: doctor --fix removes each empty group folder" "$GS" \
   'It also removes each empty group folder, a'
 line_is "guide: whether or not a move emptied it" "$GS" '  status folder too, whether or not a move emptied it.'
 file_lacks "guide: doctor --fix: not only the folders a move emptied" "$GS" 'removes the folders it leaves empty'
-under_011 "changelog: a status project's --fix removes each empty group folder, under 0.11.0" \
+file_has "changelog: a status project's --fix removes each empty group folder" "$CG" \
   '- In a status project, `doctor --fix` now also removes each empty group folder other than the'
 file_has "changelog: a status project's --fix removes an empty folder directly under the tasks root" "$CG" \
   '  five status folders, whether or not a move emptied it: an empty folder directly under the tasks'
@@ -1302,11 +1286,6 @@ file_has "changelog: quality on a failing story" "$here/CHANGELOG.md" \
   '- `reviewer` grades code quality on a failing story too, so that one fix round answers every'
 file_has "changelog: a re-review grades the fix's quality" "$here/CHANGELOG.md" \
   "  defect. A re-review still grades the quality of the fix${q}s commits alone."
-qf_line="$(lineno "$here/CHANGELOG.md" '- `reviewer` grades code quality on a failing story too')"
-qf_top="$(lineno "$here/CHANGELOG.md" '## 0.12.0 - ')"
-qf_end="$(lineno "$here/CHANGELOG.md" '## 0.11.0 - ')"
-is "changelog: quality on a failing story is under 0.12.0" \
-  "$((${qf_line:-0} > ${qf_top:-0} && ${qf_line:-0} < ${qf_end:-0}))" "1"
 
 # ---------------------------------------------------------------- a review sorts each finding as a defect or a follow-up
 CG="$here/CHANGELOG.md"
@@ -1393,11 +1372,6 @@ line_is "build: has the list of follow-ups" "$SM" '### The list of follow-ups'
 file_has "guide: points to the line" "$GD" '  `## Defects and follow-ups` in `agents/reviewer.md` draws the line.'
 file_has "changelog: a review sorts defects and follow-ups" "$CG" \
   '- `reviewer` sorts each finding as a defect or a follow-up, as `## Defects and follow-ups` in'
-df_line="$(lineno "$CG" '- `reviewer` sorts each finding as a defect or a follow-up')"
-df_top="$(lineno "$CG" '## 0.12.0 - ')"
-df_end="$(lineno "$CG" '## 0.11.0 - ')"
-is "changelog: the follow-ups are under 0.12.0" \
-  "$((${df_line:-0} > ${df_top:-0} && ${df_line:-0} < ${df_end:-0}))" "1"
 
 # ---------------------------------------------------------------- the build catches an agent with no report, and checks on the owner's orders
 CT="$here/docs/contract.md"
@@ -1466,19 +1440,16 @@ lc_cron="$(cd "$here" && printf '%s\n' "$lc_files" | tr '\n' '\0' | xargs -0 gre
 lc_ex='     minute 59, so no check falls on :00 or :30. With 20: `7,27,47 * * * *`.'
 is "the lead's check: the only cron line is its example for the default" "$lc_cron" \
   'skills/build/lead.md:'"$(linex "$here/skills/build/lead.md" "$lc_ex")"":$lc_ex"
-lc_min="$(awk '/^## 0\.11\.0 - / { on = 1; next } /^## / { on = 0 } on && /[0-9]+ minutes/' "$CG")$(grep -nE '[0-9]+ minutes' "$GD")"
-is "the lead's check: the changelog's 0.11.0 lines and the guide name no minutes" "$lc_min" ""
+lc_min="$(grep -nE '[0-9]+ minutes' "$GD")"
+is "the lead's check: the guide names no minutes" "$lc_min" ""
 file_lacks "the lead's check: nor in the guide" "$GD" 'The check every'
 file_lacks "the lead's check: nor in the contract" "$CT" 'The check every'
-cg_top="$(lineno "$CG" '## 0.11.0 - ')"
-cg_end="$(lineno "$CG" '## 0.10.0 - ')"
 for l in '- A spec build agent that goes idle with no report, such as one that says its checks still run,' \
   '- An idle notice that repeats a reply the skill took already, as a named agent'"${q}"'s last reply comes' \
   '- The skill keeps your open orders of a build in `<project>/claude/lead-agent-task-memory.md`,' \
   '- While an order is open, the skill checks on the agents, the branch and the running checks' \
   '- A profile key, `lead_check_minutes`, sets the pace of that check in one place, as'; do
-  n="$(linex "$CG" "$l")"
-  is "changelog: under 0.11.0: ${l:2:48}" "$((${n:-0} > ${cg_top:-0} && ${n:-0} < ${cg_end:-0}))" "1"
+  line_is "changelog: ${l:2:48}" "$CG" "$l"
 done
 
 # ---------------------------------------------------------------- each order says when it is done, and the lead's check tests it
@@ -1572,10 +1543,6 @@ file_has "changelog: each order has a done-when line" "$CG" \
   '- Each order in `lead-agent-task-memory.md` has a `Done when:` line: one condition a command, a'
 file_has "changelog: the check tests it at the profile's pace" "$CG" \
   '- The lead'"${q}"'s check tests each open order'"${q}"'s condition, at the pace `lead_check_minutes` sets. It'
-dw_line="$(lineno "$CG" '- Each order in `lead-agent-task-memory.md` has a `Done when:` line')"
-dw_top="$(lineno "$CG" '## 0.12.0 - ')"
-dw_end="$(lineno "$CG" '## 0.11.0 - ')"
-is "changelog: the done-when lines are under 0.12.0" "$((${dw_line:-0} > ${dw_top:-0} && ${dw_line:-0} < ${dw_end:-0}))" "1"
 
 # ---------------------------------------------------------------- the build skill builds each approved story in a worktree of its own
 BS="$here/skills/build/SKILL.md"
@@ -1813,10 +1780,6 @@ file_has "README: points to the guide's Building a story" "$RM" '`## Building a 
 file_has "README: names the build skill on the implementer row" "$RM" 'test-first, runs its checks and commits it. | `build`. |'
 file_has "changelog: the build skill" "$CG" '- A new `build` skill builds approved stories: one story, or an epic'"${q}"'s open stories in the order'
 file_has "changelog: the agents' story mode" "$CG" '- `implementer` and `reviewer` build and review a whole story in its git worktree, in story mode.'
-bk_line="$(lineno "$CG" '- A new `build` skill builds approved stories')"
-bk_top="$(lineno "$CG" '## 0.12.0 - ')"
-bk_end="$(lineno "$CG" '## 0.11.0 - ')"
-is "changelog: the build skill is under 0.12.0" "$(( ${bk_line:-0} > ${bk_top:-0} && ${bk_line:-0} < ${bk_end:-0} ))" "1"
 
 # ---------------------------------------------------------------- a passed story merges as the project's git flow says, on the owner's go
 BY="$here/skills/build/story.md"
@@ -1961,10 +1924,6 @@ file_has "README: a passed story merges as the git flow says" "$here/README.md" 
   '- A passed story merges where your project'"${q}"'s git flow says, written under `## Rules` in its'
 file_has "changelog: the git flow" "$CG" '- The build skill reads the project'"${q}"'s git flow from `## Rules` in its Claude hub: where a story'"${q}"'s'
 file_has "changelog: the merge" "$CG" '- A passed story merges on the owner'"${q}"'s go, locally. A conflict where both sides only add lines,'
-gf_line="$(lineno "$CG" '- The build skill reads the project'"${q}"'s git flow')"
-gf_top="$(lineno "$CG" '## 0.12.0 - ')"
-gf_end="$(lineno "$CG" '## 0.11.0 - ')"
-is "changelog: the git flow is under 0.12.0" "$(( ${gf_line:-0} > ${gf_top:-0} && ${gf_line:-0} < ${gf_end:-0} ))" "1"
 
 # ---------------------------------------------------------------- a story build resumes, relaunches and cleans up without losing its place
 BS="$here/skills/build/SKILL.md"
@@ -2191,10 +2150,8 @@ file_has "contract: the batch's reviewer grades the fix" "$CT" \
   '  the review'"${q}"'s defects back to the same `implementer`, and the same `reviewer` grades the fix,'
 file_has "contract: an agent takes a batch's next story or review as a new prompt" "$CT" \
   '- In a batch, an agent takes the message of its next story or review as a new prompt: each'
-cg_line="$(linex "$CG" '- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run'"${q}"'s order:')"
-cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
-cg_end="$(lineno "$CG" '## 0.12.0 - ')"
-is "changelog: batches are under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_line:-0} > ${cg_top:-0} && ${cg_line:-0} < ${cg_end:-0} ))" "1"
+line_is "changelog: batches" "$CG" \
+  '- The `build` skill cuts its run into batches of 1 to 3 related stories, in the run'"${q}"'s order:'
 file_has "changelog: a story passes or fails on its own review" "$CG" \
   'passes or fails on its own review. A failed story goes back to the same `implementer` before'
 file_has "changelog: the cap counts per story" "$CG" 'the cap of six failed reviews counts per story.'
@@ -2339,10 +2296,8 @@ line_is "guide: describes build_pairs" "$GD" \
   '- The profile'"${q}"'s `build_pairs` key builds up to that many batches side by side, each by its own'
 file_has "guide: a stop in one pair stops no other" "$GD" '- With more than one pair, a stop in one pair stops no other.'
 line_is "guide: one check watches every pair" "$GD" '- One check watches every pair, however many build at once.'
-cg_pl="$(linex "$CG" '- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`')"
-cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
-cg_end="$(lineno "$CG" '## 0.12.0 - ')"
-is "changelog: build_pairs is under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_pl:-0} > ${cg_top:-0} && ${cg_pl:-0} < ${cg_end:-0} ))" "1"
+line_is "changelog: build_pairs" "$CG" \
+  '- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`'
 file_has "changelog: batches build side by side" "$CG" '- With more than one pair, batches build side by side, each by its own pair in its own stories'"${q}"
 file_has "changelog: a stop in one pair stops its batch alone" "$CG" \
   '- The lead'"${q}"'s one check watches every pair, and a stop in one pair stops its batch alone. While'
@@ -2449,15 +2404,15 @@ file_has "checks task-layout: parent_label:invalid is the user's to answer" "$CH
   '`parent_label:invalid`: ask the user whether the project calls its parent stories features or epics'
 line_is "vault-doctor fix: a child offender is a task it moves" "$here/skills/vault-doctor/SKILL.md" \
   '     offender is a child it moves into a folder named for its parent: name it with that folder.'
-under_011 "changelog: the child folders are under 0.11.0" \
+file_has "changelog: the child folders" "$CG" \
   '- In a status or sprint project, a child task, one whose `epic` names another task, sits inside a'
-under_011 "changelog: epic= moves a child is under 0.11.0" \
+file_has "changelog: epic= moves a child" "$CG" \
   '- `task set <ID> epic=<parent>` moves a child into that folder, and `epic=` moves it out. A status'
-under_011 "changelog: parent_label is under 0.11.0" \
+file_has "changelog: parent_label" "$CG" \
   '- `parent_label` in the profile names a project'"'"'s parent stories `feature`, or `epic` with no key.'
-under_011 "changelog: the board's child branch is under 0.11.0" \
+file_has "changelog: the board's child branch" "$CG" \
   '- A new board'"'"'s filters take a task one level deeper. An existing board is not rewritten: in a'
-under_011 "changelog: the conventions note at version 10 is under 0.11.0" \
+file_has "changelog: the conventions note at version 10" "$CG" \
   '- The conventions note is at version 10: it names a child task'"'"'s folder. The doctor'"'"'s'
 file_has "contract: a folder with no README holds tasks when it is named for a task found elsewhere" "$CC" \
   '  deeper, when it is named for a task found elsewhere, by its folder name or an alias, without'
@@ -2475,7 +2430,7 @@ file_has "contract: the hook runs one find for it" "$CC" \
   '  deeper, in a folder with no `README.md` of its own, also runs one `find` over the tasks folder'
 file_has "contract: the shell runs that find, and no path is text a shell reads" "$CC" \
   '- The shell runs that `find`, with the path in a variable as one argument. No path is ever text a'
-under_011 "changelog: the folder named for a task is under 0.11.0" \
+file_has "changelog: the folder named for a task" "$CG" \
   '- A folder with no README of its own, one level deeper in a group folder, holds tasks only when it'
 
 # ---------------------------------------------------------------- the orders note indents with a tab
@@ -2723,27 +2678,19 @@ done
 file_has "guide: points to the sprint-planning sections" "$here/docs/guide.md" \
   '`## Open`, `## Pick` and `## Close` in `skills/scrum-master/sprint-planning.md` say.'
 file_has "guide: points to the contract's planned-releases shape" "$here/docs/guide.md" '`### Planned releases` in'
-cg12_top="$(lineno "$CG" '## 0.12.0 - ')"
-cg12_end="$(lineno "$CG" '## 0.11.0 - ')"
-# under_012 <desc> <line>: the line is in the 0.12.0 section, above 0.11.0.
-under_012() {
-  local n
-  n="$(lineno "$CG" "$2")"
-  is "$1" "$((${cg12_top:-0} > 0 && ${n:-0} > ${cg12_top:-0} && ${n:-0} < ${cg12_end:-0}))" "1"
-}
-under_012 "changelog: the scrum-master skill is under 0.12.0" \
+file_has "changelog: the scrum-master skill" "$CG" \
   '- The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four'
-under_012 "changelog: /odsb:sprint moved to sprint-planning, under 0.12.0" '- `/odsb:sprint` is now `/odsb:scrum-master sprint-planning`'
-under_012 "changelog: refinement is under 0.12.0" '- `refinement` drafts or refines an epic and its stories'
-under_012 "changelog: release-planning is under 0.12.0" '- `release-planning` sets a release'"'"'s goals, epics and stories with you'
-under_012 "changelog: organize-board is under 0.12.0" '- `organize-board` is the agent'"'"'s hygiene pass'
-under_012 "changelog: no daily status, under 0.12.0" '- The daily status is gone.'
-under_012 "changelog: story-tracker's approval, under 0.12.0" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
-under_012 "changelog: no achievements logged, under 0.12.0" '- story-tracker and the sprint close no longer log achievements'
-under_012 "changelog: a close with no sprint stops, under 0.12.0" '- A sprint close asked for with no sprint in progress says so and stops.'
-under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
-under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
-under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
+file_has "changelog: /odsb:sprint moved to sprint-planning" "$CG" '- `/odsb:sprint` is now `/odsb:scrum-master sprint-planning`'
+file_has "changelog: refinement" "$CG" '- `refinement` drafts or refines an epic and its stories'
+file_has "changelog: release-planning" "$CG" '- `release-planning` sets a release'"'"'s goals, epics and stories with you'
+file_has "changelog: organize-board" "$CG" '- `organize-board` is the agent'"'"'s hygiene pass'
+file_has "changelog: no daily status" "$CG" '- The daily status is gone.'
+file_has "changelog: story-tracker's approval" "$CG" '- story-tracker'"'"'s start mode shows a new story'"'"'s text'
+file_has "changelog: no achievements logged" "$CG" '- story-tracker and the sprint close no longer log achievements'
+file_has "changelog: a close with no sprint stops" "$CG" '- A sprint close asked for with no sprint in progress says so and stops.'
+file_has "changelog: the skills' tools" "$CG" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
+file_has "changelog: index_version 8" "$CG" 'template is now at `index_version: 8`'
+file_has "changelog: set index_version 8" "$CG" 'then set `index_version: 8`.'
 
 # ---------------------------------------------------------------- the achievements skill gathers what done stories delivered, and the owner's proposals
 AS="$here/skills/achievements/SKILL.md"
@@ -2866,16 +2813,13 @@ file_has "index: a scaffolded index names the achievements skill" "$vault/CLAUDE
 for f in templates/profile.md.tmpl skills/vault-setup/SKILL.md scripts/lib/doctor.sh; do
   file_lacks "achievements_skill: gone from $f" "$here/$f" 'achievements_skill'
 done
-cg13_top="$(lineno "$CG" '## 0.13.0 - unreleased')"
-cg13_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- The `achievements` skill gathers your achievements for a date range or a sprint: one for each' \
   '- It asks you about the proposals you made to your company or project in that time, and helps' \
   '- It shows the result in its reply, and writes it to `achievements.md` in the project'"$q"'s topics' \
   '- `achievements_skill` is gone from the profile template, vault-setup and the doctor'"$q"'s `profile`' \
   '- The vault index names the define-validation-scope and achievements skills. The plugin'"$q"'s index' \
   '  `templates/vault-index.md.tmpl` into your vault'"$q"'s `CLAUDE.md`, then set `index_version: 9`.'; do
-  n="$(lineno "$CG" "$l")"
-  is "changelog: under 0.13.0: ${l:2:48}" "$((${cg13_top:-0} > 0 && ${n:-0} > ${cg13_top:-0} && ${n:-0} < ${cg13_end:-0}))" "1"
+  file_has "changelog: ${l:2:48}" "$CG" "$l"
 done
 
 # ---------------------------------------------------------------- a description with a colon and a blank is quoted
@@ -2912,22 +2856,15 @@ sp_hits="$(cd "$here" && printf '%s\n' "$sp_files" | tr '\n' '\0' | xargs -0 gre
 is "spec flow: no file names the spec skill, spec-checker or a spec command" "$sp_hits" ""
 is "spec flow: the scan reads the skills, the agents and the docs" \
   "$(printf '%s\n' "$sp_files" | grep -cE '^(skills/build/SKILL\.md|agents/reviewer\.md|docs/contract\.md|README\.md)$')" "4"
-sp_new="$(awk '/^## / { on = ($0 ~ / - unreleased$/); next } on' "$here/CHANGELOG.md" | grep -nE -- "$sp_re")"
-is "spec flow: nor does the changelog outside its released sections" "$sp_new" ""
-sp_old="$(awk '/^## / { on = ($0 !~ / - unreleased$/); next } on' "$here/CHANGELOG.md" | grep -cE -- "$sp_re")"
-is "spec flow: the released sections keep their history" "$((sp_old > 0))" "1"
 dl_hits="$(cd "$here" && grep -rnw -- 'delivery' skills agents hooks templates bin scripts/lib 2>/dev/null |
   grep -v 'is not read' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#')"
 is "spec flow: no skill, agent, template or helper reads a delivery key, and the one that names it says so" "$dl_hits" ""
 CG="$here/CHANGELOG.md"
-sp_top="$(lineno "$CG" '## 0.12.0 - ')"
-sp_end="$(lineno "$CG" '## 0.11.0 - ')"
 for l in '- The spec flow is retired, so there is one flow to learn: the `build` skill builds every approved' \
   '- A vault with specs moves on as it is. A story'"'"'s `spec/` folder and `build.json` stay in its task' \
   '- To build a story you started from a spec, bring what its spec settled into the README'"'"'s' \
   '- The doctor'"'"'s `delivery` check is now `settings`: it names a `validation_home` or a'; do
-  n="$(linex "$CG" "$l")"
-  is "changelog: under 0.12.0: ${l:2:48}" "$((${n:-0} > ${sp_top:-0} && ${n:-0} < ${sp_end:-0}))" "1"
+  line_is "changelog: ${l:2:48}" "$CG" "$l"
 done
 file_has "contract: an old spec folder and build.json stay as plain files of the task" "$here/docs/contract.md" \
   '  retired spec flow wrote, before 0.12.0, stay there as plain files of the task.'
@@ -3058,13 +2995,10 @@ file_has "guide: nothing is written before the approval" "$GD" '- You see the wh
 file_has "README: docs-keeper is started by vault-setup too" "$here/README.md" \
   '`vault-setup` when it adds a project or a repo, `vault-doctor fix` on an `old-namespace` row, or you. |'
 CG="$here/CHANGELOG.md"
-ds_top="$(linex "$CG" '## 0.13.0 - unreleased')"
-ds_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- `docs-keeper` sets up the docs of a project that has none, in its new' \
   '- `vault-setup` offers it when it adds a project or a repository. The draft writes nothing:' \
   '- Each note it writes follows the conventions: a hub per folder, links with paths, and topic tags'; do
-  n="$(linex "$CG" "$l")"
-  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${ds_top:-0} && ${n:-0} < ${ds_end:-0}))" "1"
+  line_is "changelog: ${l:2:48}" "$CG" "$l"
 done
 
 # ---------------------------------------------------------------- define-validation-scope drafts a repo's checks, for the owner to approve
@@ -3206,15 +3140,12 @@ for ph in '## 1. The stages the project uses' '## 6. The write'; do
 done
 file_has "guide: vault-setup offers it" "$GD" '- `vault-setup` offers it when it adds a repo.'
 CG="$here/CHANGELOG.md"
-dv_top="$(linex "$CG" '## 0.13.0 - unreleased')"
-dv_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each' \
   '- It proposes only the stages the project uses: a `release` check only in a project with a' \
   '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.' \
   '- The vault index names the define-validation-scope and achievements skills. The plugin'"${q}"'s index' \
   '  `templates/vault-index.md.tmpl` into your vault'"${q}"'s `CLAUDE.md`, then set `index_version: 9`.'; do
-  n="$(linex "$CG" "$l")"
-  is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${dv_top:-0} && ${n:-0} < ${dv_end:-0}))" "1"
+  line_is "changelog: ${l:2:48}" "$CG" "$l"
 done
 line_is "index template: names define-validation-scope among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
   '  `vault-doctor` checks them, `define-validation-scope` drafts a repo'"${q}"'s validation steps,'
@@ -3366,12 +3297,10 @@ file_has "same story: the guide describes the check" "$here/docs/guide.md" \
 file_has "same story: the guide points to create.md" "$here/docs/guide.md" \
   'it on its own, as `## 3. Create the story` in `skills/story-tracker/create.md` says.'
 CG="$here/CHANGELOG.md"
-ds_cg="$(lineno "$CG" '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s')"
-is "same story: the changelog line is under 0.13.0" \
-  "$((${ds_cg:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
-ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its parent, its links and its line')"
-is "same story: the changelog says refinement follows the pick, under 0.13.0" \
-  "$((${ds_cg2:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg2:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
+file_has "same story: the changelog line" "$CG" \
+  '- Before story-tracker writes a new story, yours or one from refinement, it searches the project'"'"'s'
+file_has "same story: the changelog says refinement follows the pick" "$CG" \
+  '- In refinement, a story you pick in place of a new one takes its parent, its links and its line'
 
 # ---------------------------------------------------------------- a story names the one repo it changes
 STC="$here/skills/story-tracker/create.md"
@@ -3423,9 +3352,7 @@ for c in '- A story names the one repo it changes, `repo: <name>`, one of the re
   '- `second-brain branch <project> <ID>` reads the story'"'"'s `repo`, before the first repo of its' \
   '- story-tracker asks which repo a new story changes when the project lists more than one, and' \
   '- A new board shows each task'"'"'s repo in a `Repo` column, after its branch, in the `Active`,'; do
-  rl="$(lineno "$CG" "$c")"
-  is "story repo: under 0.14.0: ${c:2:44}" \
-    "$((${rl:-0} > $(lineno "$CG" '## 0.14.0 - unreleased') && ${rl:-0} < $(lineno "$CG" '## 0.13.0 - ')))" "1"
+  file_has "story repo: the changelog: ${c:2:44}" "$CG" "$c"
 done
 
 # ---------------------------------------------------------------- result

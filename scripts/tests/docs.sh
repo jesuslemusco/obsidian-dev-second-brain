@@ -1133,8 +1133,8 @@ file_has "contract: the baseline is skipped on a start on the base branch" "$CT"
 file_has "contract: names the skip note" "$CT" \
   '- When it does, the skill skips the baseline and writes its `Build: baseline skipped:` note.'
 line_is "contract: a resumed build skips it" "$CT" '- A resumed build skips the baseline, whatever the start.'
-file_has "contract: one story and one agent at a time" "$CT" \
-  '- **One story at a time.** One story and one agent at a time, never in parallel.'
+file_has "contract: one story and one agent at a time with one pair" "$CT" \
+  '`build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and'
 file_has "changelog: the baseline skip" "$here/CHANGELOG.md" '- A new build skips the baseline when the story'"'"'s branch starts on the base branch'
 
 # ---------------------------------------------------------------- the build asks only for a stop list, and rules on the rest
@@ -1624,7 +1624,8 @@ file_has "build skill: approved means the approval note" "$BS" \
   '- A story is approved when its status notes hold `Planned: the owner approved this text.` Read'
 line_is "build skill: no note, no build, and refinement is offered" "$BS" \
   '- A story with no such note is not built. Say so, and offer `/odsb:scrum-master refinement` for'
-line_is "build skill: one story at a time" "$BS" '- One story at a time, and one agent at a time.'
+line_is "build skill: one story and one agent at a time in each pair" "$BS" \
+  '- One story and one agent at a time in each pair, and at most `<pairs>` pairs at once, as Step 4'
 # One story's build
 line_is "story build: the worktree is named for the repo and the story" "$BY" \
   '- `<worktree>` is `<path>-<ID>`: a folder next to the repo'"${q}"'s, named for the repo and the story.'
@@ -2199,6 +2200,152 @@ file_has "README: related stories share one pair" "$RM" \
   '- Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,'
 file_has "guide: related stories share one pair" "$GD" \
   '- Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and'
+
+# ---------------------------------------------------------------- the profile's build_pairs sets how many pairs build at once
+BL="$here/skills/build/lead.md"
+BS="$here/skills/build/SKILL.md"
+BY="$here/skills/build/story.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+PT="$here/templates/profile.md.tmpl"
+RM="$here/README.md"
+q="'"
+# The build skill takes the pairs from the profile, and runs side by side only batches that wait on
+# no story of another batch that has not passed.
+file_has "build skill: the profile's build_pairs sets the pairs, 1 by default" "$BS" \
+  'The profile'"${q}"'s `build_pairs` sets how many such pairs build at once, as Step 4 says: 1 by default,'
+file_has "build skill: the owner is shown how many pairs build the batches" "$BS" \
+  '  first one starts, and how many pairs build them at once, as Step 4 says.'
+line_is "build skill: <pairs> is the build_pairs line of profile --keys" "$BS" \
+  '2. `<pairs>` is how many pairs build at once: the `build_pairs` line of'
+line_is "build skill: from 1 to 5, a pair is one batch's two agents" "$BS" \
+  '   `second-brain profile "<project>" --keys`, from 1 to 5. A pair is the `implementer` and the'
+line_is "build skill: one batch at a time with 1 pair" "$BS" '   - `<pairs>` 1, the default: one batch at a time.'
+line_is "build skill: up to <pairs> batches side by side with more" "$BS" \
+  '   - More than 1: up to `<pairs>` batches side by side, as `### Pairs side by side` says.'
+file_has "build skill: a stop stops the run with 1 pair, and no other pair with more" "$BS" \
+  '   `<pairs>` 1 that stops the run. With more, the other pairs go on.'
+line_is "build skill: has a pairs side by side section" "$BS" '### Pairs side by side'
+ps4="$(linex "$BS" '## Step 4 - Each batch in turn')"
+psx="$(linex "$BS" '### Pairs side by side')"
+psr="$(linex "$BS" '## Rules')"
+is "build skill: pairs side by side is part of Step 4" \
+  "$(( ${ps4:-0} > 0 && ${psx:-0} > ${ps4:-0} && ${psr:-0} > ${psx:-0} ))" "1"
+line_is "build skill: side by side go only stories that neither wait on each other nor sit in one batch" "$BS" \
+  'side go only stories that neither wait on each other nor sit in one batch.'
+line_is "build skill: a batch is ready once each story it waits on in another batch passed" "$BS" \
+  '1. A batch is ready once each story it waits on in another batch has passed, and its merge has'
+file_has "build skill: so no story builds beside one it waits on" "$BS" \
+  '   - So no story builds beside one it waits on, or one that waits on it, and a batch'"${q}"'s own'
+line_is "build skill: the first ready batch starts when a pair is free" "$BS" \
+  '2. Start the first ready batch in the order of Step 3 each time fewer than `<pairs>` batches'
+file_has "build skill: never more than <pairs> at once" "$BS" 'Never more than `<pairs>`'
+line_is "build skill: a stopped batch holds its pair" "$BS" \
+  '   its pair until the owner answers: no other batch takes its place.'
+line_is "build skill: each pair in its own stories' worktrees" "$BS" \
+  '4. Each pair builds in its own stories'"${q}"' worktrees alone, with its agents named for its batch, as'
+file_has "build skill: no two pairs share a worktree or an agent" "$BS" 'No two pairs share a worktree or an agent.'
+line_is "build skill: each agent runs in the background" "$BS" \
+  '5. Launch each agent with the Agent tool'"${q}"'s `run_in_background: true`, so that the other pairs go'
+line_is "build skill: a stop in one pair stops no other" "$BS" \
+  '6. A stop in one pair stops no other. Its batch waits for the owner, with each batch that waits'
+file_has "build skill: the other pairs go on" "$BS" 'The other pairs go on, and the next'
+line_is "build skill: questions while another pair works go as the stop list says" "$BS" \
+  '7. While another pair is at work, ask the owner as `## 8. When to ask the owner` in `story.md`'
+line_is "build skill: one merge at a time" "$BS" \
+  '8. One merge at a time: a story that passed while another'"${q}"'s `### The merge` is open, in'
+line_is "build skill: the lead's one check watches every pair" "$BS" \
+  '9. The lead'"${q}"'s one check watches every pair, as `## The lead'"${q}"'s check` in `lead.md` says.'
+line_is "build skill: each line shown names its story" "$BS" \
+  '10. Name the story in each line you show the owner: the pairs'"${q}"' lines come in no set order.'
+file_lacks "build skill: no rule of one story at a time in the whole build" "$BS" '- One story at a time, and one agent at a time.'
+line_is "build skill: one story and one agent at a time in each pair" "$BS" \
+  '- One story and one agent at a time in each pair, and at most `<pairs>` pairs at once, as Step 4'
+# One story's build knows the pairs, launches in the background and asks in its reply.
+line_is "story build: <pairs> is Step 4's" "$BY" \
+  '- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says. With more than 1, other'
+line_is "story build: one agent at a time in each pair" "$BY" \
+  '- Launch one agent at a time in each pair with the Agent tool, and wait for its result before the'
+line_is "story build: in the background with more than one pair" "$BY" \
+  '- With `<pairs>` more than 1, launch it with `run_in_background: true`, and take its result from'
+file_lacks "story build: no rule of one agent at a time in the whole build" "$BY" \
+  '- One agent at a time: wait for each agent'"${q}"'s result or reply before the next step.'
+line_is "story build: its rule is one agent at a time in each pair" "$BY" \
+  '- One agent at a time in each pair: wait for its result or reply before the pair'"${q}"'s next step.'
+file_has "story build: a passed story goes on to the first ready batch" "$BY" \
+  'With `<pairs>` more than 1 that is the first'
+line_is "story build: the merge goes one at a time" "$BY" \
+  'With more than one pair, one merge runs at a time, as `### Pairs side by side` in `SKILL.md` says.'
+line_is "story build: the stop list asks in the reply while another pair works" "$BY" \
+  '- While another pair is at work, as `### Pairs side by side` in `SKILL.md` says, ask each'
+file_has "story build: since AskUserQuestion would hold every pair" "$BY" \
+  '  session until the owner answers, and every other pair with it. The owner'"${q}"'s answer comes in a'
+is "story build: the stop, the merge and the push point to the stop list's rule" \
+  "$(grep -cxF '   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.' "$BY")" "3"
+file_has "story build: the owner's stop stops this batch alone" "$BY" \
+  'With another pair at work, that stops this story'"${q}"'s batch alone, unless the owner stops'
+# The lead's one check watches every pair.
+line_is "build lead: <pairs> is Step 4's" "$BL" '- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says.'
+file_has "build lead: the Now line names each pair at work" "$BL" \
+  '  - With more than one pair, its `Now:` line names each pair at work: its story and its agent.'
+file_has "build lead: one check watches every pair" "$BL" 'One check watches every pair, however many build.'
+line_is "build lead: keeps one check for every pair" "$BL" \
+  '   says. Keep one check at a time, for every pair.'
+line_is "build lead: looks at each pair at work" "$BL" \
+  '   - With more than one pair, look at each pair at work: its agent, its story'"${q}"'s worktree and its'
+file_has "build lead: one pair never stands for another" "$BL" 'What one pair shows never stands for another.'
+line_is "build lead: a stopped pair holds no other" "$BL" \
+  '   - Take each pair on its own. A pair whose story stopped waits for the owner, and holds no'
+line_is "build lead: a free pair starts a ready batch" "$BL" \
+  '   - Fewer than `<pairs>` batches build and one is ready: start it, as `### Pairs side by side` in'
+# The contract, the template, the guide, the changelog and the README describe the key.
+line_is "contract: the profile example has build_pairs" "$CT" 'build_pairs: 1'
+line_is "contract: build_pairs is described with the profile keys" "$CT" \
+  '- `build_pairs` is how many `implementer` and `reviewer` pairs a build runs at once, as'
+file_has "contract: build_pairs is 1 to 5, else 1" "$CT" \
+  '`### Pairs side by side` in `skills/build/SKILL.md` says. It is a whole number from 1 to 5. A'
+line_is "contract: --keys always prints its line" "$CT" \
+  '- `profile <project> --keys` always prints a `build_pairs` line, with the value the build takes.'
+file_has "contract: the --keys row names the build_pairs line" "$CT" \
+  '| `profile <project> --keys` | the profile frontmatter as `key: value` lines, and a `build_pairs` line always | the `build_pairs` line holds the value the build takes:'
+file_lacks "contract: no rule of one story at a time in every build" "$CT" \
+  '- **One story at a time.** One story and one agent at a time, never in parallel.'
+line_is "contract: pairs" "$CT" \
+  '- **Pairs.** A pair is the `implementer` and the `reviewer` of one batch. The profile'"${q}"'s'
+file_has "contract: one story and one agent at a time with 1" "$CT" \
+  '`build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and'
+file_has "contract: side by side only stories that neither wait on each other nor sit in one batch" "$CT" \
+  'Side by side go only stories that neither wait on each other nor'
+line_is "contract: each pair in its own worktrees, in the background" "$CT" \
+  '- Each pair builds in its own stories'"${q}"' worktrees alone, one agent at a time, and each agent is'
+line_is "contract: the lead's check watches every pair, and a stop stops no other" "$CT" \
+  '- One check of the lead watches every pair. A stop in one pair stops its batch alone, and the'
+file_has "contract: questions go in the reply while another pair works" "$CT" \
+  '- While another pair is at work, the skill asks the owner in its reply, never with'
+file_has "contract: checks that cannot run twice at once keep 1" "$CT" \
+  'cannot run twice at once, such as two runs on one port, keeps `build_pairs` at 1.'
+file_has "contract: the lead's check looks at every pair" "$CT" \
+  '- With more than one pair, the one check looks at every pair, each on its own: what one pair'
+file_has "contract: agents launch one at a time in each pair" "$CT" '  one at a time in each pair, and names each launch'"${q}"'s model by role and round.'
+line_is "profile template: describes build_pairs" "$PT" \
+  '- A `build_pairs:` key added above sets how many `implementer` and `reviewer` pairs the build'
+file_has "profile template: 1 to 5, else 1" "$PT" \
+  'skill runs at once, side by side: a whole number from 1 to 5. With no key, or any other value,'
+file_lacks "profile template: leaves the build_pairs key out of the frontmatter" "$PT" 'build_pairs: '
+line_is "guide: describes build_pairs" "$GD" \
+  '- The profile'"${q}"'s `build_pairs` key builds up to that many batches side by side, each by its own'
+file_has "guide: a stop in one pair stops no other" "$GD" '- With more than one pair, a stop in one pair stops no other.'
+line_is "guide: one check watches every pair" "$GD" '- One check watches every pair, however many build at once.'
+cg_pl="$(linex "$CG" '- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`')"
+cg_top="$(linex "$CG" '## 0.13.0 - unreleased')"
+cg_end="$(lineno "$CG" '## 0.12.0 - ')"
+is "changelog: build_pairs is under 0.13.0" "$(( ${cg_top:-0} > 0 && ${cg_pl:-0} > ${cg_top:-0} && ${cg_pl:-0} < ${cg_end:-0} ))" "1"
+file_has "changelog: batches build side by side" "$CG" '- With more than one pair, batches build side by side, each by its own pair in its own stories'"${q}"
+file_has "changelog: a stop in one pair stops its batch alone" "$CG" \
+  '- The lead'"${q}"'s one check watches every pair, and a stop in one pair stops its batch alone. While'
+file_has "README: build_pairs builds batches side by side" "$RM" \
+  '- A `build_pairs` key in the profile, 1 to 5, builds that many batches side by side, when none of'
 
 # ---------------------------------------------------------------- the child folders and the parent word
 CC="$here/docs/contract.md"

@@ -9,6 +9,8 @@ worktree of its own, with its batch's `implementer` and `reviewer`, as `### A ba
   them. `<branch>` is the story's branch.
 - `<batch>` is the id of the first story of the story's batch, as Step 3 of `SKILL.md` cuts it.
   A story that builds alone is its own batch: `<batch>` is `<ID>`.
+- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says. With more than 1, other
+  batches build beside this story's, each with its own pair: each step here is this story's own.
 - `<worktree>` is `<path>-<ID>`: a folder next to the repo's, named for the repo and the story.
 - `<short hash>` is what `git -C "<worktree>" rev-parse --short HEAD` prints.
 - `<base>` is where this build started: the hash of the newest
@@ -130,8 +132,11 @@ Then `### Build it`, whether the baseline ran or not.
 
 ## 4. Launching an agent
 
-- Launch one agent at a time with the Agent tool, and wait for its result. Its result is its
-  report: never relay a report by hand, and never read an agent's transcript.
+- Launch one agent at a time in each pair with the Agent tool, and wait for its result before the
+  pair's next step. Its result is its report: never relay a report by hand, and never read an
+  agent's transcript.
+- With `<pairs>` more than 1, launch it with `run_in_background: true`, and take its result from
+  its notice, as `### Pairs side by side` in `SKILL.md` says.
 - A named agent can send its last reply twice: as its message, then again in its idle notice. A
   notice that repeats a reply you took already is no new event: it changes no state, and gets no
   reply.
@@ -332,12 +337,14 @@ before the batch's next story starts.
      change left in the worktree: ask the owner.
 6. Test each order of the build, as item 3 of `## The owner's open orders` in `lead.md` says.
 7. Go on with the next story of the run, as Step 4 of `SKILL.md` says: the batch's next story,
-   or the next batch's first.
+   or once the batch ends, the next batch's first. With `<pairs>` more than 1 that is the first
+   ready batch, as `### Pairs side by side` there says.
 
 ### The merge
 
 A passed story merges into `<target>`, as `### The git flow` finds it, on the owner's go. The
 merge is local. A push is another step, on the owner's word alone.
+With more than one pair, one merge runs at a time, as `### Pairs side by side` in `SKILL.md` says.
 
 1. A story cut from another story's branch merges after that story.
    - No `<target>` found: ask where it merges first, as item 5 of `### The git flow` says, then
@@ -349,6 +356,7 @@ merge is local. A push is another step, on the owner's word alone.
        later run takes it up again, as Step 1 of `SKILL.md` says.
 2. Ask the owner with AskUserQuestion: merge `<branch>` into `<target>` now, or keep it
    unmerged. The owner may name another target in the free-text answer.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - No `<target>` found: ask where it merges in the same question, as item 5 of
      `### The git flow` says.
    - Keep it: `second-brain task note <ID> "Build: the owner kept <branch> unmerged."`, then go
@@ -399,6 +407,7 @@ merge is local. A push is another step, on the owner's word alone.
 9. Every check passed or was skipped: ask the owner with AskUserQuestion whether to push
    `<target>`. Name the push first: `git -C "<where>" push origin <target>`. Run it only on their
    yes.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - Pushed: `second-brain task note <ID> "Build: pushed <target> at <short hash>."`, and
      `second-brain task set <ID> next="Merged into <target> and pushed"`.
 
@@ -412,6 +421,7 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
      `### The list of follow-ups` says.
 2. `second-brain task note <ID> "Build: stopped: <why>."`.
 3. Ask the owner with AskUserQuestion what to do.
+   - While another pair is at work, ask in your reply, as `## 8. When to ask the owner` says.
    - An answer that sends the build on is an order: add it to the orders note, as `lead.md` says.
    - A ruling: `second-brain task note <ID> "Build: the owner ruled: <the ruling, as written>."`.
      Then go on from the step that stopped, with its ruling line in each later prompt, as
@@ -427,6 +437,9 @@ Only a stop that `## 8. When to ask the owner` lists comes here.
      `/odsb:scrum-master refinement`. The build goes on once the owner approves the change.
    - The owner stops here: the status notes keep where the story stands, and the worktree stays,
      for a new session to go on from. Take the build's orders to `## Done`, as `lead.md` says.
+   - With another pair at work, that stops this story's batch alone, unless the owner stops
+     the whole build: the other pairs go on, and the orders go to `## Done` once no pair is at
+     work.
 
 ## 8. When to ask the owner
 
@@ -440,6 +453,10 @@ waits for the owner, as `## 7. When the story stops` says:
 5. A story blocked, or past its last fix round. A `BLOCKED` review is a block too.
 6. A failed baseline.
 
+- While another pair is at work, as `### Pairs side by side` in `SKILL.md` says, ask each
+  question of this file in your reply, with its story, never with AskUserQuestion: it holds the
+  session until the owner answers, and every other pair with it. The owner's answer comes in a
+  message of their own to this session.
 - An order whose words give no `Done when:` condition: ask the owner in your reply, as item 2 of
   `## The owner's open orders` in `lead.md` says. It stops nothing.
 - Any other question you decide yourself, as `### A ruling` says. Never ask the owner it.
@@ -518,7 +535,7 @@ oldest first.
   word.
 - The agents read the story and the code themselves. Never give them this conversation.
 - Never skip a review.
-- One agent at a time: wait for each agent's result or reply before the next step.
+- One agent at a time in each pair: wait for its result or reply before the pair's next step.
 - Run a `release` check only when the owner asks:
   `second-brain validation run "<project>" <repo> --when release --path "<worktree>"`, with the
   Bash tool's `run_in_background: true`, and wait for its notice.

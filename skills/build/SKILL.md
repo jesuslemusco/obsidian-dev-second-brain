@@ -15,6 +15,9 @@ You build each approved story with one `implementer` and an independent `reviewe
 worktree of its own, until the reviewer passes it. The build runs in this session: you launch
 each agent with the Agent tool, and its report comes back to you as its result.
 
+The profile's `build_pairs` sets how many such pairs build at once, as Step 4 says: 1 by default,
+one story at a time.
+
 ## Files
 
 | File | What it holds | Read it |
@@ -93,18 +96,55 @@ turn, as `### A batch` in `story.md` says. Cut the run into batches before the f
 - So a batch keeps the order of Step 1: no story goes before one it waits on.
 - A story with no related story next to it in that order builds alone, as a batch of one.
 - Show the owner the batches, each with its stories in the order they will be built, before the
-  first one starts.
+  first one starts, and how many pairs build them at once, as Step 4 says.
 
 ## Step 4 - Each batch in turn
 
 1. Read `story.md` and `lead.md`, as `## Files` says.
-2. Build each batch in the order of Step 3, and each of its stories in turn, as `story.md` says. The
+2. `<pairs>` is how many pairs build at once: the `build_pairs` line of
+   `second-brain profile "<project>" --keys`, from 1 to 5. A pair is the `implementer` and the
+   `reviewer` of one batch.
+3. Build each batch in the order of Step 3, and each of its stories in turn, as `story.md` says. The
    batch's stories share its `implementer` and its `reviewer`, as `### A batch` there says.
-3. The next story starts only once the story before it passed, as `## 6. When the story passed` in
-   `story.md` says.
-4. A story that stops stops the run, as `## 7. When the story stops` in `story.md` says.
-5. Every story passed: show the owner each story's branch and its last review. Then test the
+   - `<pairs>` 1, the default: one batch at a time.
+   - More than 1: up to `<pairs>` batches side by side, as `### Pairs side by side` says.
+4. A batch's next story starts only once the story before it passed, as
+   `## 6. When the story passed` in `story.md` says. With `<pairs>` 1, so does the next batch.
+5. A story that stops stops its batch, as `## 7. When the story stops` in `story.md` says. With
+   `<pairs>` 1 that stops the run. With more, the other pairs go on.
+6. Every story passed: show the owner each story's branch and its last review. Then test the
    orders of the run, as item 3 of `## The owner's open orders` in `lead.md` says.
+
+### Pairs side by side
+
+With `<pairs>` more than 1, up to `<pairs>` batches build at once, each by its own pair. Side by
+side go only stories that neither wait on each other nor sit in one batch.
+
+1. A batch is ready once each story it waits on in another batch has passed, and its merge has
+   ended, as items 4 and 5 of `## 6. When the story passed` in `story.md` say. A story waits on
+   the stories of its `depends_on` cell, as Step 1 reads it.
+   - So no story builds beside one it waits on, or one that waits on it, and a batch's own
+     stories still build in turn.
+   - A batch keeps the order of Step 1, so it waits only on batches before it.
+2. Start the first ready batch in the order of Step 3 each time fewer than `<pairs>` batches
+   build: at the start, then each time a story passes or a batch ends. Never more than `<pairs>`
+   at once.
+3. A batch ends once its last story has passed, as item 1 says. One stopped for the owner holds
+   its pair until the owner answers: no other batch takes its place.
+4. Each pair builds in its own stories' worktrees alone, with its agents named for its batch, as
+   `## 4. Launching an agent` in `story.md` says. No two pairs share a worktree or an agent.
+5. Launch each agent with the Agent tool's `run_in_background: true`, so that the other pairs go
+   on while it works. Its result comes in its notice: take it for its own pair as it comes.
+6. A stop in one pair stops no other. Its batch waits for the owner, with each batch that waits
+   on it, as `## 7. When the story stops` in `story.md` says. The other pairs go on, and the next
+   ready batch starts as item 2 says.
+7. While another pair is at work, ask the owner as `## 8. When to ask the owner` in `story.md`
+   says: in your reply, so that no question holds the other pairs.
+8. One merge at a time: a story that passed while another's `### The merge` is open, in
+   `story.md`, starts its own once that one ends.
+9. The lead's one check watches every pair, as `## The lead's check` in `lead.md` says.
+10. Name the story in each line you show the owner: the pairs' lines come in no set order.
+11. No pair at work, and each batch left waits on a stop: say so once, and wait for the owner.
 
 ## Rules
 
@@ -112,4 +152,5 @@ turn, as `### A batch` in `story.md` says. Cut the run into batches before the f
 - Never pass on an agent's word as the owner's.
 - The owner talks to this session alone: an agent has no AskUserQuestion.
 - This skill writes no code: `implementer` does. It commits nothing.
-- One story at a time, and one agent at a time.
+- One story and one agent at a time in each pair, and at most `<pairs>` pairs at once, as Step 4
+  says. With 1, the default, one story and one agent at a time.

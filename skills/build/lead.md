@@ -8,6 +8,7 @@ the owner's orders, and check on them while one is open.
 - `<ID>` is the id the build runs on: a story's, or an epic's.
 - `<project path>`, `<vault>`, `<path>`, `<worktree>` and `<branch>` are as the top of
   `story.md` says.
+- `<pairs>` is how many pairs build at once, as Step 4 of `SKILL.md` says.
 
 ## The owner's open orders
 
@@ -21,6 +22,7 @@ what is still owed.
 - Under `## Open orders`, the note holds each open order: its date, its id, the owner's words as
   written, a `Done when:` line, and a `Now:` line on what works on it, such as you, an agent by
   its name, or a check that runs.
+  - With more than one pair, its `Now:` line names each pair at work: its story and its agent.
 - Under `## Done`, each order done, with what finished it. Last, one `Last check:` line per id:
   the time of its newest check, and what it found.
 - Another build of the project may keep its orders in the same note. Your own are the orders of
@@ -99,10 +101,10 @@ Last check: <ID> at <YYYY-MM-DD HH:MM> - <what it found>.
 ## The lead's check
 
 While an order of `<ID>` is open, check on it at the pace the profile sets. An agent can go idle
-with no report and no notice that wakes you.
+with no report and no notice that wakes you. One check watches every pair, however many build.
 
 1. Start it when the build starts or resumes, as item 7 of `## 2. The worktree` in `story.md`
-   says. Keep one check at a time.
+   says. Keep one check at a time, for every pair.
    - Its pace is the `lead_check_minutes` line of `second-brain profile "<project>" --keys`: 10,
      12, 15, 20, 30 or 60 minutes. No line, `-` or any other value: 20.
    - Its cron line runs at minute 7, then once more each time that many minutes pass, up to
@@ -119,6 +121,8 @@ with no report and no notice that wakes you.
 2. Read the orders note. Of each open order of `<ID>`, test its `Done when:` condition, then ask:
    are you or an agent working toward it? Look at the agent at work, the worktree and the running
    checks, as item 1 of `### An agent with no report` in `story.md` says.
+   - With more than one pair, look at each pair at work: its agent, its story's worktree and its
+     checks. What one pair shows never stands for another.
    - Run the condition's command as it is written, or read its file or branch. It holds only when
      what it names shows, such as exit 0 or the line.
    - A condition you cannot test, such as one whose command is not found: it does not hold. Say
@@ -134,6 +138,10 @@ with no report and no notice that wakes you.
    - A report you have not taken yet: take it now, as the step that launched its agent says.
    - An agent idle with no report: take it as `### An agent with no report` in `story.md` says.
    - An agent at work, a check that still runs, or a question to the owner: wait.
+   - Take each pair on its own. A pair whose story stopped waits for the owner, and holds no
+     other: take the others as these items say.
+   - Fewer than `<pairs>` batches build and one is ready: start it, as `### Pairs side by side` in
+     `SKILL.md` says.
    - No one works toward it, and the owner has not since interrupted you or told you to hold: go
      on with its next step now. Otherwise wait for the owner, and say so.
    - A next step that item 5 rules out waits for the owner too: say so.

@@ -97,6 +97,7 @@ index_version: 9
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
   <topics_root>/planned-releases.md   optional; the releases ahead, which release-planning writes
+  <topics_root>/achievements.md   optional; the owner's achievements, which the achievements skill writes (section 9)
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```
@@ -130,7 +131,6 @@ repo_paths: []
 validation_home: vault
 lead_check_minutes: 20
 build_pairs: 1
-achievements_skill: ""
 tags:
   - type/profile
 ---
@@ -204,8 +204,8 @@ tags:
   starting with `~`.
 - `repo_paths` lists the exceptions, one `name=path` string per repo stored elsewhere.
 - Both may be empty. A repo's location is then unknown, and the skills ask for it.
-- `achievements_skill` is kept for the plugin's achievements skill, which is planned. No skill
-  reads it until then. Only that skill tracks achievements.
+- `achievements_skill` is no key of the profile. Versions before 0.13.0 wrote it. A profile that
+  still has it keeps it: no skill reads it, and the doctor does not name it.
 - `validation_home` is where `validation.md` lives. `vault`: `claude/validation.md` in the
   project. `repo`: `validation.md` at the root of each repo. A subproject's note may set it for its
   repos.
@@ -1138,7 +1138,7 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - Refinement writes it too on each story of an approved draft that exists and lacks it, changed
   or not: the owner may approve a story as it is.
 - A story it sets to `done` goes to `docs-keeper`, as below. It logs no achievement, and neither
-  does the sprint close: only an achievements skill tracks them.
+  does the sprint close: the `achievements` skill gathers them, as below.
 - **`scrum-master`** is planning, a talk with the owner, which an agent cannot hold, so it is a
   skill. Its four workflows are `refinement.md`, `sprint-planning.md`, `release-planning.md` and
   `organize-board.md`.
@@ -1167,6 +1167,26 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   that section and the `## Epics` lines.
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
+- **The `achievements` skill gathers the owner's achievements.** It is the one skill or agent
+  that gathers or logs one, and only when the owner asks: nothing logs one as a story finishes.
+  Its one file is `SKILL.md`.
+- Its period is a date range, both days in it, or a sprint, by its id.
+- It lists the project's tasks with `board <project> All` and keeps each story whose status is
+  `done`: in a sprint, each whose `sprint` is its id, and in a date range, each set to `done` in
+  it.
+- A story records no date it was set to `done`. Its done date is that of its newest status note
+  that records the move, or else of its newest note, and the result says so. One with no dated
+  note is listed apart, for the owner to keep or drop.
+- Each story gives one achievement, worded from its `**Summary:**` line and its `## Changes`, that
+  names its id. A story is listed once.
+- A part that is missing, blank, `None yet.` or still the task template's text is left out, and
+  the result says so. With both left out, the owner words the story's achievement.
+- It asks the owner whether they made any proposals to their company or project in the period,
+  and words each one from the owner's answer, with the project's and the stories' context.
+- It makes up no proposal: none comes from a story's notes, a build note or the code.
+- The result is in its reply. Only on the owner's ask, it writes it to the project's
+  `<topics_root>/achievements.md`, one section per period. The note's shape is under
+  `## 6. The note` in `skills/achievements/SKILL.md`.
 - **The `build` skill builds approved stories.** It takes one story, or an epic's open stories in
   the order their `depends_on` sets, and builds them in the owner's session, in turn or side by
   side as the profile's `build_pairs` lets it. Its files are `SKILL.md`, `story.md`, for one

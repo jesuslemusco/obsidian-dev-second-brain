@@ -104,9 +104,6 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
      quotes a backslash is an escape.
    - Never remove or reorder a key.
    - Add a key from the table only when the profile lacks it.
-   - Ask nothing for `achievements_skill`. When the profile lacks it, write
-     `achievements_skill: ""`: no skill reads it until the plugin's achievements skill, which is
-     planned.
 5. A key the user gave no answer for stays as the scaffold wrote it. Say which keys are still
    open.
    - An empty `repos_root` is fine.

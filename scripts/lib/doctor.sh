@@ -805,7 +805,7 @@ sb_doc_check_profile() {
   bad="$SB_DOC_LEAVES$(LC_ALL=C awk '
     BEGIN {
       nk = split("aliases type project ticket_keys tracker persona tasks_root topics_root sprints_root " \
-        "sprint_length_days sprint_anchor_end base_branch branch_pattern environments repos achievements_skill tags", keys, " ")
+        "sprint_length_days sprint_anchor_end base_branch branch_pattern environments repos tags", keys, " ")
       ns = split("Stories|Topics|Repos|Environments|Sprints|Docs|Live systems", secs, "|")
     }
     { sub(/\r$/, "") }

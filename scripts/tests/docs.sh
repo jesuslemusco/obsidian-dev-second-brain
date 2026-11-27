@@ -468,6 +468,7 @@ line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
 is "index template: the define-validation-scope skill raises index_version to 9" "$vi_version" "9"
+is "index template: the achievements skill raises index_version to 9" "$vi_version" "9"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -2621,23 +2622,13 @@ line_is "sprint-planning: an ended sprint closes only when nothing else is asked
 is "sprint-planning: the close checks come before open" \
   "$(($(lineno "$SMW" '2. The user asks to close the sprint, with none') < $(lineno "$SMW" '3. No sprint in progress: `## Open`')))" "1"
 file_lacks "sprint-planning: no achievement" "$SMW" 'achievement'
-line_is "vault-setup: asks nothing for achievements_skill" "$here/skills/vault-setup/SKILL.md" \
-  '   - Ask nothing for `achievements_skill`. When the profile lacks it, write'
-line_is "vault-setup: writes it empty" "$here/skills/vault-setup/SKILL.md" \
-  '     `achievements_skill: ""`: no skill reads it until the plugin'"'"'s achievements skill, which is'
-file_lacks "vault-setup: no interview row for achievements_skill" "$here/skills/vault-setup/SKILL.md" '| `achievements_skill` |'
 line_is "refinement: asks for the approval without showing the draft again" "$here/skills/scrum-master/refinement.md" \
   '  `create.md` says, without showing the draft again.'
 file_has "contract: a story that refinement got approved gets the note too" "$here/docs/contract.md" \
   '- Every story whose text the owner approved, in start mode or in refinement, gets the status note'
-line_is "profile template: achievements_skill waits for the achievements skill" "$here/templates/profile.md.tmpl" \
-  '- `achievements_skill:` waits for the plugin'"'"'s achievements skill, which is planned. No skill'
 file_lacks "profile template: no story is handed to it" "$here/templates/profile.md.tmpl" 'hand it to'
-file_has "contract: only an achievements skill tracks achievements" "$here/docs/contract.md" \
-  '  reads it until then. Only that skill tracks achievements.'
 file_has "contract: a close with no sprint stops" "$here/docs/contract.md" \
   '- A request to close the sprint goes to its close. With no sprint in progress, it says so and'
-file_lacks "README: no achievement is logged" "$here/README.md" 'achievement'
 absent "skills: the sprint skill is gone" "$here/skills/sprint"
 absent "agents: the scrum-master agent is gone" "$here/agents/scrum-master.md"
 line_is "refinement: nothing is written before the approval" "$SMF" \
@@ -2753,6 +2744,139 @@ under_012 "changelog: a close with no sprint stops, under 0.12.0" '- A sprint cl
 under_012 "changelog: the skills' tools, under 0.12.0" '- The scrum-master skill may edit and write notes and call story-tracker with no prompt, and'
 under_012 "changelog: index_version 8 is under 0.12.0" 'template is now at `index_version: 8`'
 under_012 "changelog: set index_version 8, under 0.12.0" 'then set `index_version: 8`.'
+
+# ---------------------------------------------------------------- the achievements skill gathers what done stories delivered, and the owner's proposals
+AS="$here/skills/achievements/SKILL.md"
+CG="$here/CHANGELOG.md"
+CT="$here/docs/contract.md"
+GD="$here/docs/guide.md"
+RM="$here/README.md"
+q="'"
+exists "achievements: the skill exists" "$AS"
+is "achievements: SKILL.md is its one file" "$(ls "$here/skills/achievements" 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')" "SKILL.md "
+line_is "achievements: its name" "$AS" 'name: achievements'
+as_desc="$(sed -n 's/^description: //p' "$AS" 2>/dev/null)"
+is "achievements: its description is under 200 characters" "$(( ${#as_desc} > 0 && ${#as_desc} < 200 ))" "1"
+for w in "done stories" "date range" sprint proposals; do
+  case "$as_desc" in *"$w"*) pass "achievements: the description names $w" ;;
+    *) fail "achievements: the description names $w" "in: $as_desc" ;; esac
+done
+line_is "achievements: it may read, edit and write its note, and run the helper" "$AS" \
+  'allowed-tools: Read Edit Write Bash(second-brain *)'
+file_has "achievements: it carries the conventions pointer" "$AS" \
+  'Conventions: before writing notes, run `second-brain conventions` and follow it.'
+line_is "achievements: the context comes first" "$AS" '1. Your first tool call is `second-brain context`.'
+is "achievements: SKILL.md is under the doctor's 150 lines" "$(($(wc -l <"$AS" 2>/dev/null || echo 999) <= 150))" "1"
+# Each story set to done in the period, from its Summary and Changes, one achievement each, listed once.
+line_is "achievements: the period is a date range or a sprint" "$AS" \
+  '- The period is a date range or a sprint, from the request. With neither, ask which.'
+line_is "achievements: one board call lists every task, archived or not" "$AS" \
+  '1. List the project'"$q"'s tasks in one call: `second-brain board <project> All`.'
+line_is "achievements: only the done stories" "$AS" '2. Keep the rows whose `status` is `done`.'
+line_is "achievements: a sprint's stories are those whose sprint is its id" "$AS" \
+  '3. A sprint: keep the rows whose `sprint` cell is its id. A done story keeps the sprint it'
+line_is "achievements: a range's stories are those set to done in it" "$AS" \
+  '4. A date range: keep each story set to `done` from `<from>` to `<to>`.'
+line_is "achievements: a story records no done date" "$AS" \
+  '   - A story records no date it was set to `done`. Only its dated status notes show it.'
+file_has "achievements: a story whose newest note is older than the range is left out unread" "$AS" \
+  'One dated before `<from>`: no note shows it set to `done` in the range, so leave it out.'
+line_is "achievements: the done date is the note of the move to done" "$AS" \
+  '   - Its done date is the date of the newest note that records its move to `done`. With none,'
+line_is "achievements: else the newest note, and the result says so" "$AS" \
+  '     it is the date of its newest note, and its line in the result says so.'
+line_is "achievements: a story with no dated note goes to the owner" "$AS" \
+  '   - No dated note at all: list it under `No done date:`, for the owner to keep or drop.'
+line_is "achievements: a story is listed once" "$AS" \
+  '5. List each story once, under its id, whatever its aliases or its notes say. An environment set'
+file_has "achievements: reads the Summary and Changes cheapest first" "$AS" \
+  'title to `## Description`, which holds its `**Summary:**` line, and one of `## Changes`.'
+line_is "achievements: one achievement per story, from its Summary and Changes" "$AS" \
+  '- Word one achievement per story, in one or two sentences: what the story delivered, from its'
+line_is "achievements: claims nothing the story does not say" "$AS" \
+  '- Say only what they say: add no number, effect or name they lack.'
+line_is "achievements: each names its story" "$AS" '- Each achievement names its story, by its id.'
+line_is "achievements: a part is empty when it still holds the template's text" "$AS" \
+  '- A Summary or `## Changes` is empty when it is missing, blank, `None yet.`, or still the text of'
+line_is "achievements: the plugin's task template or the project's own" "$AS" \
+  '  the plugin'"$q"'s task template or the project'"$q"'s own, such as a line of `<...>` placeholders.'
+line_is "achievements: an empty Changes is worded from the Summary alone" "$AS" \
+  '- `## Changes` empty: word it from the Summary alone, and its line in the result says so.'
+line_is "achievements: an empty Summary is worded from Changes alone" "$AS" \
+  '- The Summary empty: word it from `## Changes` alone, and its line says so. Both empty: list the'
+line_is "achievements: both empty go to the owner to word" "$AS" '  story under `To word:`, for the owner to word.'
+# The owner's proposals, asked for and worded from the context, never made up.
+line_is "achievements: asks for the owner's proposals in the period" "$AS" \
+  '- Ask the owner whether they made any proposals to their company or project in the period: from'
+line_is "achievements: waits for the owner's answer" "$AS" \
+  '- Ask it as plain text, not with AskUserQuestion, and stop for the answer: only the owner knows'
+line_is "achievements: words each from the owner's words" "$AS" \
+  '- Word each one as an achievement, in one or two sentences, from the owner'"$q"'s words. Draw on the'
+line_is "achievements: with the project's and the stories' context" "$AS" \
+  '  project'"$q"'s context, a ranged read of `<project path>/README.md`, and the stories of step 2.'
+line_is "achievements: makes up no proposal" "$AS" \
+  '- Make up no proposal. Never take one from a story'"$q"'s notes, a build note or the code, and add no'
+as_story="$(lineno "$AS" '## 3. One achievement per story' 2>/dev/null)"
+as_prop="$(lineno "$AS" '## 4. The proposals' 2>/dev/null)"
+is "achievements: the proposals come after the stories" "$((${as_story:-0} > 0 && ${as_story:-0} < ${as_prop:-0}))" "1"
+# The result in the reply, a note only on the owner's ask.
+line_is "achievements: the result is in the reply" "$AS" 'Show the result in your reply, in this shape:'
+line_is "achievements: has ## 6. The note" "$AS" '## 6. The note'
+line_is "achievements: a note only on the owner's ask" "$AS" \
+  'Only on the owner'"$q"'s ask, write the result to `<project path>/<topics_root>/achievements.md`.'
+file_has "achievements: adds a period's section and never rewrites the note" "$AS" \
+  'last one, with the Edit tool. Never rewrite the note.'
+line_is "achievements: a period's section is replaced only on a yes" "$AS" \
+  '- The period has a section already: show it, and replace it only on the owner'"$q"'s yes.'
+file_has "achievements: the note's alias" "$AS" '  - "<Project> Achievements"'
+file_has "achievements: the note's up-link" "$AS" '> Up: [[<project path>/<topics_root>/README|<Project> Docs Hub]]'
+# The vault index names the skill once, to send a request for achievements to it.
+ac_hits="$(cd "$here" && grep -rlis 'achievement' skills agents hooks templates bin scripts/lib |
+  grep -v -e '^skills/achievements/' -e '^templates/vault-index\.md\.tmpl$')"
+is "achievements: no other skill, agent, template or helper file names an achievement" "$ac_hits" ""
+is "achievements: the vault index names one only to send it to the skill" \
+  "$(grep -ci 'achievement' "$here/templates/vault-index.md.tmpl")" "1"
+# The docs describe the skill, and achievements_skill is gone.
+line_is "README: a section for the achievements skill" "$RM" '### `/odsb:achievements`'
+file_has "README: it asks for the proposals and makes up none" "$RM" \
+  '- It asks you about the proposals you made to your company or project then, and helps you word'
+file_has "README: the result is in the reply, a note only on your ask" "$RM" \
+  '- The result is in its reply. It writes it to the project'"$q"'s `achievements.md` note only when you'
+file_has "guide: the achievements request is under What to say" "$GD" \
+  '| List my achievements on the Example project from 2026-11-01 to 2026-11-30. | `achievements` |'
+file_has "e2e: asks the same achievements request" "$here/scripts/e2e-claude.sh" \
+  '"List my achievements on the Example project from 2026-11-01 to 2026-11-30."'
+line_is "guide: has ## Achievements" "$GD" '## Achievements'
+line_is "contract: the achievements skill" "$CT" \
+  '- **The `achievements` skill gathers the owner'"$q"'s achievements.** It is the one skill or agent'
+file_has "contract: a part still the template's text is left out" "$CT" \
+  '- A part that is missing, blank, `None yet.` or still the task template'"$q"'s text is left out, and'
+file_has "contract: the note's shape has its home in the skill" "$CT" '`## 6. The note` in `skills/achievements/SKILL.md`'
+file_has "contract: the project holds the achievements note" "$CT" \
+  '  <topics_root>/achievements.md   optional; the owner'"$q"'s achievements, which the achievements skill writes'
+file_has "contract: story-tracker and the sprint close leave achievements to the skill" "$CT" \
+  'does the sprint close: the `achievements` skill gathers them, as below.'
+file_lacks "contract: the profile example has no achievements_skill" "$CT" 'achievements_skill: ""'
+file_has "contract: a profile that still has achievements_skill keeps it" "$CT" \
+  '- `achievements_skill` is no key of the profile. Versions before 0.13.0 wrote it. A profile that'
+line_is "index template: names the achievements skill among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
+  '  `achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements. Agent:'
+file_has "index: a scaffolded index names the achievements skill" "$vault/CLAUDE.md" \
+  '`achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements.'
+for f in templates/profile.md.tmpl skills/vault-setup/SKILL.md scripts/lib/doctor.sh; do
+  file_lacks "achievements_skill: gone from $f" "$here/$f" 'achievements_skill'
+done
+cg13_top="$(lineno "$CG" '## 0.13.0 - unreleased')"
+cg13_end="$(lineno "$CG" '## 0.12.0 - ')"
+for l in '- The `achievements` skill gathers your achievements for a date range or a sprint: one for each' \
+  '- It asks you about the proposals you made to your company or project in that time, and helps' \
+  '- It shows the result in its reply, and writes it to `achievements.md` in the project'"$q"'s topics' \
+  '- `achievements_skill` is gone from the profile template, vault-setup and the doctor'"$q"'s `profile`' \
+  '- The vault index names the define-validation-scope and achievements skills. The plugin'"$q"'s index' \
+  '  `templates/vault-index.md.tmpl` into your vault'"$q"'s `CLAUDE.md`, then set `index_version: 9`.'; do
+  n="$(lineno "$CG" "$l")"
+  is "changelog: under 0.13.0: ${l:2:48}" "$((${cg13_top:-0} > 0 && ${n:-0} > ${cg13_top:-0} && ${n:-0} < ${cg13_end:-0}))" "1"
+done
 
 # ---------------------------------------------------------------- a description with a colon and a blank is quoted
 for f in "$here"/skills/*/SKILL.md "$here"/agents/*.md; do
@@ -3087,13 +3211,13 @@ dv_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- The new `define-validation-scope` skill proposes which checks run at each stage of a repo: each' \
   '- It proposes only the stages the project uses: a `release` check only in a project with a' \
   '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.' \
-  '- The vault index names the define-validation-scope skill. The plugin'"${q}"'s index template is now at' \
+  '- The vault index names the define-validation-scope and achievements skills. The plugin'"${q}"'s index' \
   '  `templates/vault-index.md.tmpl` into your vault'"${q}"'s `CLAUDE.md`, then set `index_version: 9`.'; do
   n="$(linex "$CG" "$l")"
   is "changelog: under 0.13.0: ${l:2:48}" "$((${n:-0} > ${dv_top:-0} && ${n:-0} < ${dv_end:-0}))" "1"
 done
 line_is "index template: names define-validation-scope among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
-  '  `vault-doctor` checks them, `define-validation-scope` drafts a repo'"${q}"'s validation steps. Agent:'
+  '  `vault-doctor` checks them, `define-validation-scope` drafts a repo'"${q}"'s validation steps,'
 VSD="$here/skills/vault-setup"
 line_is "vault-setup: it may call define-validation-scope with the project and the repo" "$VSD/SKILL.md" \
   'allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)'

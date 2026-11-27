@@ -840,6 +840,14 @@ rc_is "a named project: exit 0" 0
 chk "profile: ok on a scaffolded project" profile Example "ok | 0 | -"
 chk "board: ok when the board file is there" board Example "ok | 0 | -"
 is "board: nothing to fix" "$(fix_of board)" "-"
+# No skill reads achievements_skill: a profile without it is whole, and one that kept it is too.
+edit "$vault/$P/claude/profile.md" '/^achievements_skill:/d'
+doc Example
+chk "profile: ok with no achievements_skill" profile Example "ok | 0 | -"
+edit "$vault/$P/claude/profile.md" 's/^validation_home: vault$/&\
+achievements_skill: ""/'
+doc Example
+chk "profile: ok with an achievements_skill an older version wrote" profile Example "ok | 0 | -"
 edit "$vault/$P/claude/profile.md" '/^persona:/d; /^## Live systems$/d'
 rm "$T/tasks.base"
 doc Example
@@ -1111,7 +1119,7 @@ if block 30; then
 doc Example
 rc_is "placeholders: a warning leaves exit 0" 0
 chk "placeholders: a fresh scaffold warns, one offender per line, as its path under the project" placeholders Example \
-  "warn | 24 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:39, claude/profile.md:40"
+  "warn | 24 | README.md:14, claude/README.md:22, claude/README.md:23, claude/profile.md:38, claude/profile.md:39"
 is "placeholders: the fix says to fill the line or delete it" "$(fix_of placeholders)" \
   "write what the <...> text asks for, such as the project's rules, in its place, or delete the line"
 # Filled as an owner would, with angle brackets of their own; the task READMEs keep the template's text.
@@ -1127,7 +1135,7 @@ doc Example
 chk "placeholders: one leftover line in a filled hub" placeholders Example "warn | 1 | claude/README.md:24"
 edit "$PF" 's/^- Tracker: none\.$/- Tracker: Jira. <where tickets live, where epics usually sit, any ticket markup to keep>./'
 doc Example
-chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:39"
+chk "placeholders: a line filled in part still warns" placeholders Example "warn | 2 | claude/README.md:24, claude/profile.md:38"
 edit "$CHUB" '/^- <A rule /d'
 edit "$PF" 's/^- Tracker: Jira\. .*$/- Tracker: Jira./'
 printf '%s\n' '```' '- <A rule Claude must follow in this project, one per bullet.>' '```' >>"$CHUB"

@@ -107,7 +107,8 @@ file_lacks "index: no line says to ignore the file" "$vault/CLAUDE.md" "ignore t
 file_has "index: story-tracker is named for any question or change on a ticket" "$vault/CLAUDE.md" "\`story-tracker\` for any question or change on a ticket (where it stands, a standup, an"
 file_has "index: the scrum-master refines the stories and plans the sprints and releases" "$vault/CLAUDE.md" "update), \`scrum-master\` refines the stories and plans the sprints and releases, \`build\`"
 file_has "index: the build skill builds an approved story or an epic's stories" "$vault/CLAUDE.md" "  builds an approved story or an epic's stories, \`vault-setup\` sets up the vault or a project,"
-file_has "index: define-validation-scope drafts a repo's validation steps" "$vault/CLAUDE.md" "\`vault-doctor\` checks them, \`define-validation-scope\` drafts a repo's validation steps. Agent:"
+file_has "index: define-validation-scope drafts a repo's validation steps" "$vault/CLAUDE.md" "\`vault-doctor\` checks them, \`define-validation-scope\` drafts a repo's validation steps,"
+file_has "index: the achievements skill gathers a date range's or a sprint's achievements" "$vault/CLAUDE.md" "  \`achievements\` gathers a date range's or a sprint's achievements. Agent:"
 is "index: the ticket text rule is said once, in the bullet that sends it to story-tracker" "$(grep -ci 'ticket text' "$vault/CLAUDE.md")" "1"
 file_has "index: ticket text is never written freehand and goes to story-tracker" "$vault/CLAUDE.md" "- Ticket text is never written freehand. Use \`story-tracker\`"
 is "index: the ticket text rule sits under the rules that most often go wrong" \

@@ -60,9 +60,9 @@
   repo's section only once you approve it, through `second-brain validation new` for a missing
   one.
 - `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode.
-- The vault index names the define-validation-scope skill. The plugin's index template is now at
-  `index_version: 9`, so the doctor's `index` check warns. Copy the bullet that starts
-  `- Call a plugin skill or agent` under `## In every session` from
+- The vault index names the define-validation-scope and achievements skills. The plugin's index
+  template is now at `index_version: 9`, so the doctor's `index` check warns. Copy the bullet
+  that starts `- Call a plugin skill or agent` under `## In every session` from
   `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 9`.
 
 - Before story-tracker writes a new story, yours or one from refinement, it searches the project's
@@ -111,6 +111,19 @@
 - The lead's one check watches every pair, and a stop in one pair stops its batch alone. While
   another pair is at work the skill asks the owner in its reply, not with AskUserQuestion, so the
   other pairs go on. Merges run one at a time.
+
+- The `achievements` skill gathers your achievements for a date range or a sprint: one for each
+  story set to `done` in that time, worded from its Summary and `## Changes`, that names the
+  story. A story is listed once, as `## 9. Skills and agents` in `docs/contract.md` says.
+- It asks you about the proposals you made to your company or project in that time, and helps
+  you word each one from the project and its stories. It makes up no proposal.
+- It shows the result in its reply, and writes it to `achievements.md` in the project's topics
+  root only when you ask.
+- It is the one skill or agent that gathers or logs an achievement. Nothing logs one as a story
+  finishes, so none is logged twice.
+- `achievements_skill` is gone from the profile template, vault-setup and the doctor's `profile`
+  check. A profile that still has it keeps it: no skill reads it, and the doctor does not name
+  it. Remove it when you like.
 
 ## 0.12.0 - 2026-11-24
 

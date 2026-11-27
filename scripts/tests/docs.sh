@@ -2521,7 +2521,7 @@ file_has "contract: a part still the template's text is left out" "$CT" \
   '- A part that is missing, blank, `None yet.` or still the task template'"$q"'s text is left out, and'
 file_has "contract: the note's shape has its home in the skill" "$CT" '`## 6. The note` in `skills/achievements/SKILL.md`'
 file_has "contract: the project holds the achievements note" "$CT" \
-  '  <topics_root>/achievements.md   optional; the owner'"$q"'s achievements, which the achievements skill writes'
+  '  <topics_root>/achievements.md   optional; the owner'"$q"'s achievements (section 9)'
 file_has "contract: story-tracker and the sprint close leave achievements to the skill" "$CT" \
   'does the sprint close: the `achievements` skill gathers them, as below.'
 file_lacks "contract: the profile example has no achievements_skill" "$CT" 'achievements_skill: ""'

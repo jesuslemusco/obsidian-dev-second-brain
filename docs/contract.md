@@ -97,7 +97,7 @@ index_version: 9
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
   <topics_root>/planned-releases.md   optional; the releases ahead, which release-planning writes
-  <topics_root>/achievements.md   optional; the owner's achievements, which the achievements skill writes (section 9)
+  <topics_root>/achievements.md   optional; the owner's achievements (section 9)
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```

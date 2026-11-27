@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.0 - unreleased
+## 0.13.0 - 2026-11-27
 
 - Each helper command starts fewer processes, so it answers sooner, most of all on Windows, where
   Git Bash starts each one slowly. `second-brain doctor` starts about 40% of the processes it

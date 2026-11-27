@@ -93,11 +93,12 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - You see the whole draft, and each change you ask for, before anything is written.
 - `docs-keeper` writes it only once you approve it, as
   `## 4. The write` in `skills/vault-setup/docs.md` says.
-- A subproject is one note, as `### Subprojects` in `docs/contract.md` says.
-- A story started in a subproject's repo gets that subproject. Elsewhere Claude asks which one, if
-  any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
-- In a subproject's repo the status overview lists that subproject's tasks.
-- The board's `By subproject` view groups the tasks by subproject.
+- A project's parts are topic folders it names itself, such as `docs/apps/`, with a folder per
+  app, or `docs/initiatives/`, with a folder per initiative. A story about one carries its tag,
+  such as `apps/billing`, as `## The short version` in `templates/obsidian-conventions.md.tmpl`
+  says.
+- A project's repos are the profile's `repos`, as `### Profile frontmatter` in `docs/contract.md`
+  says.
 - A story names the one repo it changes, `repo: <name>`, when the project lists more than one.
   Its branch check, its build and its validation run in that repo, and the board shows it in the
   `Repo` column.
@@ -294,7 +295,7 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
   them, as `## 4. A task` in `docs/contract.md` says.
 - A spec kept in a repo, in `spec/<ID>/`, stays there too. Delete it in a commit of your own when
   you no longer want it.
-- A `delivery` or `spec_home` key in a profile, a subproject note or a task is read by nothing,
+- A `delivery` or `spec_home` key in a profile or a task is read by nothing,
   and the doctor's `settings` check does not name it. Remove it when you like.
 - To build a story you started from a spec, read its spec for what the README lacks, and bring
   its criteria into the README through `/odsb:scrum-master refinement`. Once you approve the text,

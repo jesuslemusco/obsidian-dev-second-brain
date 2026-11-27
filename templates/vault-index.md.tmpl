@@ -1,5 +1,5 @@
 ---
-index_version: 9
+index_version: 10
 ---
 
 # Vault index for Claude
@@ -13,8 +13,8 @@ index_version: 9
   `~/.claude/second-brain-vault/`.
 - Add it by the steps under `## Adding a skill or agent` in the vault's `claude/README.md`.
   Claude Code loads it only after `second-brain link --apply`.
-- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`, or in its
-  subproject's note. Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
+- A rule about one project goes under `## Rules` in `<Path>/claude/README.md`.
+  Only a rule for every project goes in `~/.claude/CLAUDE.md`. Unsure which: ask.
 - Call a plugin skill or agent for its work, even when the helper alone could answer. Skills:
   `story-tracker` for any question or change on a ticket (where it stands, a standup, an
   update), `scrum-master` refines the stories and plans the sprints and releases, `build`
@@ -30,8 +30,8 @@ index_version: 9
 
 ## Working on a project or on notes
 
-- When a request belongs to a project below, read `<Path>/README.md`, then `<Path>/claude/README.md`
-  and the `claude/subprojects/<name>.md` that `second-brain context` names, before anything else.
+- When a request belongs to a project below, read `<Path>/README.md`, then
+  `<Path>/claude/README.md`, before anything else.
 - Before reading or writing notes, run `second-brain conventions` and follow it. The full note is
   `~/.claude/second-brain-vault/obsidian-conventions.md`.
 
@@ -44,7 +44,7 @@ index_version: 9
   once archived, or under `tasks/<status>/` in a project with `task_layout: status`.
   With `task_layout: sprint`, it is under the folder of its sprint, or `tasks/backlog/` in none.
 - Never file a task note inside the topic it is about. Tie it to the topic with a tag that is the
-  folder path, lowercased, and to its subproject with the `subproject` property.
+  folder path, lowercased, and to the one repo it changes with the `repo` property.
 - A bare `[[Alias]]` does not resolve. Links carry a path:
   `[[<vault path or unique file name>|<alias>]]`.
 - Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.

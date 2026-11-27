@@ -76,8 +76,8 @@ The one settings note for {{PROJECT}}. Keep it to facts: the workflow lives in t
 - The first name is the default repository for branch checks.
 - `repos_root:` is where the repositories usually sit on this machine, absolute or starting with `~`.
 - `repo_paths:` lists the ones stored elsewhere, one `name=path` string each.
-- Repositories with their own branches or docs form a subproject: one note in
-  `claude/subprojects/`, whose empty keys take the values above (`vault-setup subproject`).
+- With more than one repo listed, a story names the one it changes in its `repo` key. A story
+  with none takes the first.
 
 ## Environments
 

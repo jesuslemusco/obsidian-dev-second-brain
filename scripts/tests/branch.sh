@@ -110,32 +110,31 @@ sb branch Example EX-1 --path "$tmp/plain"
 rc_is "branch --path: a folder that is no git repository, exit 1" 1
 err_has "branch --path: says so" "not a git repository"
 
-# A task's subproject gives the default repo and the settings, and so does the repo's own.
-sb scaffold subproject Example mobile --repos shared-lib
-edit "$vault/$P/claude/subprojects/mobile.md" 's/^base_branch: ""$/base_branch: develop/; s/^branch_pattern: ""$/branch_pattern: "mobile\/<ID>"/'
-sb task set EX-2 subproject=mobile
+# A note left in claude/subprojects/, which versions before 0.14.0 wrote, and a task's subproject
+# key are read by nothing: the settings are the profile's.
+mkdir -p "$vault/$P/claude/subprojects"
+printf '%s\n' '---' 'type: subproject' 'repos: [shared-lib]' 'base_branch: develop' \
+  'branch_pattern: "mobile/<ID>"' '---' >"$vault/$P/claude/subprojects/mobile.md"
+edit "$T2" 's/^epic: "-"$/epic: "-"\
+subproject: mobile/'
 sb branch Example EX-2
-out_has "branch: a task's subproject gives its first repo" "repo: shared-lib"
-out_has "branch: and its settings" "base_branch: develop
-branch_pattern: mobile/<ID>"
+rc_is "branch: a task's subproject key, exit 0" 0
+out_has "branch: the key gives no repo" "repo: example-api"
+out_has "branch: nor any setting" "base_branch: main
+branch_pattern: feature/<ID>-<slug>"
+is "branch: and names nothing on stderr" "$ERR" ""
 sb branch Example EX-99 --path "$L"
-out_has "branch: a repo of a subproject reads that subproject's settings" "base_branch: develop"
-sb branch Example EX-99
-out_has "branch: the default repo reads the profile's" "repo: example-api"
-out_has "branch: the profile's base branch" "base_branch: main"
+out_has "branch: a repo a note lists reads the profile's settings" "base_branch: main"
+edit "$T2" '/^subproject: mobile$/d'
+rm -rf "$vault/$P/claude/subprojects"
 
-# A story's repo is the repo it reads, before its subproject's first and the profile's first.
+# A story's repo is the repo it reads, before the profile's first.
 sb task set EX-5 repo=shared-lib
 sb branch Example EX-5
 rc_is "branch: a story's repo, exit 0" 0
 out_has "branch: a story's repo is the repo it reads" "repo: shared-lib
 path: $(shown "$L")"
-out_has "branch: and the subproject whose repos hold it gives the settings" "base_branch: develop"
-sb task set EX-2 repo=example-api
-sb branch Example EX-2
-out_has "branch: a story's repo wins over its subproject's first" "repo: example-api
-path: $(shown "$A")"
-sb task set EX-2 repo=
+out_has "branch: with the profile's settings" "base_branch: main"
 sb branch Example EX-5 --path "$A"
 out_has "branch --path: the folder named wins over the story's repo" "repo: example-api"
 
@@ -254,12 +253,6 @@ after="$(git -C "$A" for-each-ref --format='%(refname) %(objectname)'; git -C "$
 is "read-only: the refs, the settings and the tree are as they were" "$after" "$before"
 
 # ---------------------------------------------------------------- what it cannot read
-edit "$T2" 's/^subproject: mobile$/subproject: gone/'
-sb branch Example EX-2
-rc_is "branch: a task's subproject that is gone, exit 0" 0
-err_has "branch: names it on stderr" "EX-2 names the subproject gone"
-out_has "branch: and reads the profile's repo and settings" "repo: example-api"
-edit "$T2" 's/^subproject: gone$/subproject: mobile/'
 edit "$T5" 's/^repo: shared-lib$/repo: gone/'
 sb branch Example EX-5
 rc_is "branch: a story's repo the project no longer lists, exit 1" 1

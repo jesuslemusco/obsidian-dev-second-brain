@@ -43,8 +43,8 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
 ## fix
 
 1. Start from a check run in this session. Run one when there is none.
-2. `second-brain doctor --fix` repairs three checks only: `status-tag`, `pull-request` and
-   `task-layout`. Their `Fix` lines in `checks.md` say what it changes.
+2. `second-brain doctor --fix` repairs four checks only: `status-tag`, `pull-request`,
+   `task-layout` and `retired-subprojects`. Their `Fix` lines in `checks.md` say what it changes.
 3. A `task-layout` row with `to-archive` offenders makes the `--fix` run a bulk change: it moves
    task folders and rewrites links.
    - So does a row with `<ID>:<status>` or `archive:status` offenders, in a status project:
@@ -75,6 +75,9 @@ Plugin root: ${CLAUDE_PLUGIN_ROOT}.
    - The count is above five: say that the doctor names only the first five, and name those. The
      count is then the most it will move, and the `fixed:` lines of step 4 name every task moved.
    - Then run `second-brain snapshot` before it.
+   - A `retired-subprojects` row makes it a bulk change too: it edits the profile,
+     `claude/README.md` and the tasks, and removes each note it folds. Name the notes and the
+     tasks, snapshot before it, and settle what it names on stderr as its `checks.md` entry says.
    - With no such row, `--fix` needs no snapshot.
 4. Run `second-brain doctor --fix`. It prints one `fixed:` line per change, then the table.
 5. Run `second-brain doctor` again. The checks `--fix` repaired are now `ok`: that is the proof.

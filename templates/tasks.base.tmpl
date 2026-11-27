@@ -43,8 +43,6 @@ properties:
     displayName: Depends on
   note.epic:
     displayName: {{PARENT_LABEL}}
-  note.subproject:
-    displayName: Subproject
   note.branch:
     displayName: Branch
   note.repo:
@@ -107,23 +105,6 @@ views:
       - next
       - branch
       - repo
-  - type: table
-    name: By subproject
-    filters:
-      or:
-        - status == "in-progress"
-        - status == "in-review"
-        - status == "planned"
-    groupBy:
-      property: subproject
-      direction: ASC
-    order:
-      - subproject
-      - formula.task
-      - title
-      - status
-      - next
-      - branch
   - type: table
     name: Needs a status
     filters:

@@ -10,14 +10,10 @@ edit a story, set a status or repair a field here.
   `id | title | status | sprint | topics | branch | next | envs | depends_on`.
 - `depends_on` is `-`, or each task the story depends on with that task's status:
   `EX-1:done,EX-2:planned`. The status is `missing` when the link leads to no note.
-- In a subproject's repo, Step 0's `second-brain context` prints a `subproject:` line. Then
-  add `--subproject <name>` to every `board` call, and name the subproject in the count line.
-- Leave the flag out when the user asks for the whole project.
 
 | The user asks for | Do |
 |---|---|
 | nothing specific | `second-brain board <project>`. Its default view, `Active`, lists status `planned`, `in-progress` and `in-review` |
-| one subproject | `--subproject <name>` on the board call. Exit 1: the name is no subproject; show `second-brain subproject <project>` |
 | "all", "everything" | view `All` |
 | one status | view `All`, keep the rows with that status |
 | one ticket | `second-brain task head <ID>`, rendered as one block |

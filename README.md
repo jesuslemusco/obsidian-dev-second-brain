@@ -27,8 +27,8 @@ It can also build a story you approve, in a git worktree of its own, tested and 
   and the proposals you made, for a review or a report.
 - **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
   in a `validation.md`, in the vault or in the repo.
-- **Several repos.** A project's repos can split into subprojects, each with its own branches and
-  docs, under one ticket key and one board.
+- **Several repos.** A project lists its repos, under one ticket key and one board, and each story
+  names the one it changes. Its parts, such as its apps, are topic folders of its own.
 - **A health check.** The doctor checks the vault, its projects and their registration in Claude
   Code, and fixes what it safely can.
 
@@ -165,7 +165,6 @@ Sets up the vault and its projects, and links your own skills and agents into Cl
 - `adopt <path>`: bring a folder of notes you already have up to the standard. It writes only
   what is missing.
 - `repo <project>`: add a repository to a project.
-- `subproject <project>`: split a project's repos into subprojects.
 - `validation <project>`: draft each repo's validation steps for you to confirm. Their shape is
   under `### Validation` in `docs/contract.md`.
 - `link`: link the skills and agents kept in your vault into Claude Code.

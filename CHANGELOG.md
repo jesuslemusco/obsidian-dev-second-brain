@@ -6,15 +6,41 @@
   `second-brain repo <project>` lists. `second-brain task new --repo <name>` and
   `second-brain task set <ID> repo=<name>` write it, as the repo is listed, and refuse a repo the
   project does not list. `task head` prints a `repo` line when it is set.
-- `second-brain branch <project> <ID>` reads the story's `repo`, before the first repo of its
-  subproject and the profile's first. So a story's branch check, its build's worktree and its
-  validation run in the repo it changes. A story with no `repo` reads the repo it read before, so
-  a project with one repo changes nothing.
+- `second-brain branch <project> <ID>` reads the story's `repo`, before the profile's first. So a
+  story's branch check, its build's worktree and its validation run in the repo it changes. A
+  story with no `repo` reads the profile's first, so a project with one repo changes nothing.
 - story-tracker asks which repo a new story changes when the project lists more than one, and
   writes no `repo` with one.
 - A new board shows each task's repo in a `Repo` column, after its branch, in the `Active`,
   `Current sprint`, `By topic` and `All` views. An existing board is not rewritten: add the
   `note.repo` property and the `repo` lines from `templates/tasks.base.tmpl` to see it there.
+- Subprojects are retired. A project's parts, such as its apps or its initiatives, are topic
+  folders it names itself, such as `docs/apps/` or `docs/initiatives/`, and each story names the
+  one repo it changes.
+- The `subproject` and `scaffold subproject` commands are gone, and so are `task new --subproject`,
+  `board --subproject`, the board's `By subproject` view, the `subproject` key of a task and
+  `vault-setup subproject`. `context` and `session-check` print no `subproject` line, `repo` lists
+  the profile's repos alone, and the branch check, `task new --envs` and `validation` read the
+  profile's settings alone.
+- No command reads a note in `claude/subprojects/` or a task's `subproject` key. The doctor's new
+  `retired-subprojects` check names each, in place of its `subprojects` and `task-subproject`
+  checks, and of the `By subproject` view its `board` check asked for.
+- `second-brain doctor --fix` folds each note into its project. It adds the note's repos and
+  `repo_paths` entries to the profile, sets `repo` on each of its tasks when it has one repo, moves
+  its `## Rules` to the end of `## Rules` in `claude/README.md`, under its name, and removes it.
+  Its docs folder stays, a topic folder like any other.
+- A setting of a note that is not the profile's, such as a `base_branch`, is not folded: `--fix`
+  names it on stderr and the note stays, for you to settle. So does a note with a task that has no
+  `repo` while the note lists several repos. Run the doctor's `check` and `fix` after the update.
+- A board you scaffolded before keeps its `By subproject` view. Remove it from `tasks.base` when
+  you like.
+- The conventions note is at version 12: it names a task's `repo` key and no subproject. The
+  doctor's `conventions` check warns about an older note.
+- The plugin's index template is now at `index_version: 10`: it names no subproject note, and ties
+  a task to its repo with the `repo` property. The doctor's `index` check warns. Copy the bullets
+  that start `- A rule about one project`, `- When a request belongs to a project below` and
+  `- Never file a task note` from `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`,
+  then set `index_version: 10`.
 
 ## 0.13.0 - 2026-11-27
 

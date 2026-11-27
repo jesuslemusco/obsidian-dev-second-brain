@@ -24,15 +24,10 @@ sb validation Checks
 rc_is "validation: a project with no repo exits 0" 0
 out_is "validation: and prints no row" ""
 edit "$CKF" "s|^repos: \\[\\]\$|repos: [check-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/ccode\"|"
-sb scaffold subproject Checks infra --repos check-infra
-CKS="$vault/$S/claude/subprojects/infra.md"
-sb subproject Checks infra
-out_has "subproject: shows the validation home, the profile's" "validation_home: vault"
 
 # ---------------------------------------------------------------- validation.md
 sb validation Checks
-out_is "validation: one row per repo, the vault home, no section yet" "check-app${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section
-check-infra${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section"
+out_is "validation: one row per repo, the vault home, no section yet" "check-app${TAB}vault${TAB}$S/claude/validation.md${TAB}no-section"
 sb validation Checks check-app
 rc_is "validation: a repo with no section exits 1" 1
 err_has "validation: and names validation new" "has no ## check-app section: run second-brain validation new"
@@ -69,19 +64,17 @@ sb validation Checks check-app extra
 rc_is "validation: too many arguments exit 5" 5
 sb validation new Checks
 rc_is "validation new: no repo exits 5" 5
-edit "$CKS" 's/^validation_home: ""$/validation_home: repo/'
+edit "$CKF" 's/^validation_home: vault$/validation_home: repo/; s/^repos: \[check-app\]$/repos: [check-app, check-infra]/'
 sb validation Checks
-out_has "validation: a subproject's home wins for its repos" "check-infra${TAB}repo${TAB}$oT/ccode/check-infra/validation.md${TAB}missing"
-out_has "validation: the profile's holds for the others" "check-app${TAB}vault${TAB}$S/claude/validation.md${TAB}ok"
-sb subproject Checks infra
-out_has "subproject: shows its own validation home" "validation_home: repo"
-edit "$CKS" 's/^validation_home: repo$/validation_home: Repo/'
+out_is "validation: the profile's repo home holds for each repo" "check-app${TAB}repo${TAB}$oT/ccode/check-app/validation.md${TAB}missing
+check-infra${TAB}repo${TAB}$oT/ccode/check-infra/validation.md${TAB}missing"
+edit "$CKF" 's/^validation_home: repo$/validation_home: Repo/'
 sb validation Checks
 out_has "validation: a home is read in any letter case" "check-infra${TAB}repo${TAB}"
-edit "$CKS" 's/^validation_home: Repo$/validation_home: somewhere/'
+edit "$CKF" 's/^validation_home: Repo$/validation_home: somewhere/'
 sb validation Checks
 out_has "validation: a home that is not allowed is the vault" "check-infra${TAB}vault${TAB}$S/claude/validation.md${TAB}"
-edit "$CKS" 's/^validation_home: somewhere$/validation_home: repo/'
+edit "$CKF" 's/^validation_home: somewhere$/validation_home: repo/'
 sb validation new Checks check-infra
 out_is "validation new: a repo home writes at the repo's root" "$oT/ccode/check-infra/validation.md"
 is "validation new: a repo file opens with its title" "$(head -1 "$tmp/ccode/check-infra/validation.md")" "# check-infra validation"
@@ -93,6 +86,7 @@ rm -rf "$tmp/ccode/check-infra"
 sb validation Checks check-infra
 rc_is "validation: a repo home whose folder is missing exits 1" 1
 err_has "validation: and says so" "the folder of check-infra is missing"
+edit "$CKF" 's/^validation_home: repo$/validation_home: vault/; s/^repos: \[check-app, check-infra\]$/repos: [check-app]/'
 sb scaffold project Checks --path "$S" --keys CK
 err_has "validation: a second scaffold leaves the note alone" "exists: $S/claude/validation.md"
 VS="$here/skills/vault-setup/SKILL.md"

@@ -41,7 +41,7 @@ sb
 rc_is "no command: exit 5" 5
 sb help
 rc_is "help: exit 0" 0
-for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] [--subproject S] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
+for c in "task tag" "task alias" "task dep <ID> add|remove <ID>" "sprint next" "sprint set" "board <project> [view] |" "--tasks-root R" "--topics-root R" "--sprints-root R" \
   "repo <project> [name]" "conventions [section]" "task new <ID> [--project P]" "link [--check | --apply | --foreign]" "link move <skill|agent> <name> [--project P]" "link drop-original <skill|agent> <name> <path>" "doctor [project] [--json] [--fix]" "snapshot [name]" "compare [name]" "session-check" \
   "outline <path>" "backlinks <path>" "unresolved [project]" "move <from> <to> [--dry-run]" "rename <path> <name> [--dry-run]" "pointer | pointer set <DIR> [--replace]"; do
   out_has "help: lists $c" "$c"

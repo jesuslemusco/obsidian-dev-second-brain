@@ -85,8 +85,7 @@ The project's git flow says where a story's branch is cut, `<from>`, and where a
 merges, `<target>`. It is the project's own rules: read them, never guess them.
 
 1. Read `## Rules` in `<project path>/claude/README.md`, with `second-brain outline` and a ranged
-   read. When `task head` names a subproject, read the `## Rules` of its note too, at the path
-   `second-brain subproject <project> <subproject>` names.
+   read.
 2. Take the rules that say where a story's branch is cut and where it merges, as written. Each
    names a branch, such as `main`, or a pattern, such as `release/<version>`.
    - A rule for a story that needs another story's code, such as one cut from that story's
@@ -114,9 +113,7 @@ merges, `<target>`. It is the project's own rules: read them, never guess them.
 The baseline tells a break already on the branch from one the story makes.
 
 1. Skip it when the build resumes.
-2. The base branch is the `base_branch` that `second-brain subproject <project> <subproject>`
-   prints when `task head` names a subproject. Else it is the one
-   `second-brain profile <project> --keys` prints.
+2. The base branch is the `base_branch` that `second-brain profile <project> --keys` prints.
    - `<base ref>` is `origin/<base_branch>` when
      `git -C "<worktree>" rev-parse --verify --quiet "refs/remotes/origin/<base_branch>"` prints
      a hash, else `<base_branch>`.

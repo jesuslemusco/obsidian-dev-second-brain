@@ -226,9 +226,8 @@ sb_need_profile() {
   [ -f "$SB_P_PROFILE" ] || sb_die 1 "no profile at $SB_P_PATH/claude/profile.md (run vault-setup adopt $SB_P_PATH)"
 }
 
-# Print name<TAB>path for each repo of a profile file, then for each repo of the subproject notes
-# given after it that the profile does not list; the path is "-" when no location is recorded.
-# repos_root comes from the profile; a repo_paths entry of a note wins over the profile's.
+# Print name<TAB>path for each repo of a profile file; the path is "-" when no location is
+# recorded. A repo_paths entry wins over repos_root.
 # A location comes out in the shell's own form; one that is not absolute is left for the caller to drop.
 sb_repo_paths() {
   local name path
@@ -236,11 +235,7 @@ sb_repo_paths() {
   LC_ALL=C awk "$(sb_awk_lib)"'
     function add(k, v,   j) {
       if (v == "") return
-      if (k == "repos") {
-        if (fileno > 1 && (tolower(v) in listed)) return
-        repo[++nr] = v
-        listed[tolower(v)] = 1
-      }
+      if (k == "repos") repo[++nr] = v
       else { j = index(v, "="); if (j > 1) other[trim(substr(v, 1, j - 1))] = trim(substr(v, j + 1)) }
     }
     function expand(p,   home) {
@@ -251,13 +246,12 @@ sb_repo_paths() {
       return p
     }
     { sub(/\r$/, "") }
-    # fileno is the place of the file among the arguments, so an empty file still counts.
-    FNR == 1 { do fileno++; while (fileno < ARGC && ARGV[fileno] != FILENAME); key = ""; sub(/^\357\273\277/, ""); done = ($0 != "---"); next }
+    FNR == 1 { key = ""; sub(/^\357\273\277/, ""); done = ($0 != "---"); next }
     done { next }
     $0 == "---" { done = 1; next }
     /^[A-Za-z0-9_][A-Za-z0-9_-]*:/ {
       i = index($0, ":"); key = substr($0, 1, i - 1); v = trim(substr($0, i + 1))
-      if (key == "repos_root") { if (fileno == 1) root = unq(v) }
+      if (key == "repos_root") root = unq(v)
       else if (key == "repos" || key == "repo_paths") {
         if (substr(v, 1, 1) == "[") { n = split_inline(v, it); for (k = 1; k <= n; k++) add(key, it[k]) }
         else add(key, unq(v))
@@ -274,7 +268,7 @@ sb_repo_paths() {
         print repo[r] "\t" p
       }
     }
-  ' "$@" | while IFS=$'\t' read -r name path; do
+  ' "$1" | while IFS=$'\t' read -r name path; do
     printf '%s\t' "$name"
     sb_path_in "$path"
   done
@@ -292,19 +286,15 @@ sb_repo_memo() {
   SB_REPO_MEMO_FOR="$1"
 }
 
-# Print the repo rows of a project path, the repos of its subprojects included: name, path, state
-# (ok, missing or unknown).
+# Print the repo rows of a project path, the profile's repos: name, path, state (ok, missing or
+# unknown).
 sb_repo_rows_at() {
-  local name path f profile="$SB_ROOT/$1/claude/profile.md" subs
+  local name path profile="$SB_ROOT/$1/claude/profile.md"
   if [ -n "${SB_REPO_MEMO_FOR:-}" ] && [ "$1" = "$SB_REPO_MEMO_FOR" ]; then
     [ -z "$SB_REPO_MEMO" ] || printf '%s\n' "$SB_REPO_MEMO"
     return 0
   fi
-  subs=()
-  for f in "$SB_ROOT/$1/claude/subprojects"/*.md; do
-    [ -f "$f" ] && subs[${#subs[@]}]="$f"
-  done
-  sb_repo_paths "$profile" ${subs[@]+"${subs[@]}"} 2>/dev/null | while IFS=$'\t' read -r name path; do
+  sb_repo_paths "$profile" 2>/dev/null | while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
     case "$path" in /*) ;; *) path="-" ;; esac
     if [ "$path" = "-" ]; then
@@ -433,7 +423,7 @@ cmd_profile() {
 
 # Print the context block: vault, project, project path and sprint.
 cmd_context() {
-  local cwd="$PWD" project="none" ppath="none" sprint="none" sub="" rows count
+  local cwd="$PWD" project="none" ppath="none" sprint="none" rows count
   while [ $# -gt 0 ]; do
     if [ "$1" = "--cwd" ] && [ $# -ge 2 ]; then
       cwd="$(sb_path_in "$2")"
@@ -453,9 +443,6 @@ $rows
 EOF
       project="$SB_P_NAME"
       ppath="$SB_P_PATH"
-      # A subproject line only when exactly one subproject's repository holds the directory.
-      sub="$(sb_sub_by_cwd "$SB_P_PATH" "$cwd" 2>/dev/null)"
-      case "$sub" in *$'\n'*) sub="" ;; esac
       if sb_uses_sprints "$SB_P_PATH"; then
         sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
         [ -n "$sprint" ] || sprint="none"
@@ -465,7 +452,6 @@ EOF
     fi
   fi
   printf 'project: %s\nproject_path: %s\n' "$project" "$ppath"
-  [ -z "$sub" ] || printf 'subproject: %s\n' "$sub"
   printf 'sprint: %s\n' "$sprint"
   return 0
 }

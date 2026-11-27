@@ -410,13 +410,15 @@ sb task dep EX-6 remove EX-2
 
 # ---------------------------------------------------------------- a story's repo
 # A story names the one repo it changes, one that second-brain repo lists: a project of its own,
-# with two repos and a subproject's third, so the Example tasks stay as the fixtures have them.
+# with two repos, so the Example tasks stay as the fixtures have them. A note left in
+# claude/subprojects/, which versions before 0.14.0 wrote, lends it no repo.
 RP="work/repos"
 sb scaffold project Repos --path "$RP" --keys RP
 edit "$vault/$RP/claude/profile.md" 's/^repos: \[\]$/repos: [rp-api, Rp-Web]/'
-sb scaffold subproject Repos tools --repos rp-tools
+mkdir -p "$vault/$RP/claude/subprojects"
+printf '%s\n' '---' 'type: subproject' 'repos: [rp-tools]' '---' >"$vault/$RP/claude/subprojects/tools.md"
 sb repo Repos
-is "repo: the project lists its repos and its subproject's" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "rp-api Rp-Web rp-tools "
+is "repo: the project lists the profile's repos alone" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "rp-api Rp-Web "
 sb task new RP-1 --project Repos --title "Web work" --repo rp-web
 rc_is "task new --repo: exit 0" 0
 RT1="$vault/$RP/tasks/RP-1/README.md"
@@ -449,18 +451,17 @@ rc_is "task set repo: exit 0" 0
 out_is "task set repo: written as the profile lists it" "repo: rp-api"
 line_is "task set repo: in the note" "$vault/$RP/tasks/RP-2/README.md" "repo: rp-api"
 sb task set RP-2 repo=rp-tools
-out_is "task set repo: a subproject's repo is one of the project's" "repo: rp-tools"
+rc_is "task set repo: a repo only a note lists is none of the project's, exit 1" 1
 sb task set RP-2 repo=nope next="Never written"
 rc_is "task set repo: a repo the project does not list gives exit 1" 1
 err_has "task set repo: says how to list them" "second-brain repo Repos"
-line_is "task set repo: the old value stays" "$vault/$RP/tasks/RP-2/README.md" "repo: rp-tools"
+line_is "task set repo: the old value stays" "$vault/$RP/tasks/RP-2/README.md" "repo: rp-api"
 file_lacks "task set repo: and no other key is written" "$vault/$RP/tasks/RP-2/README.md" "Never written"
 sb task set RP-2 repo=
 out_is "task set repo: an empty value removes the key" "repo: (removed)"
 file_lacks "task set repo: and it is gone from the note" "$vault/$RP/tasks/RP-2/README.md" "repo:"
 sb help
-out_has "help: task new takes --repo" "task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]
-              [--subproject S]"
+out_has "help: task new takes --repo" "task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]"
 
 # ---------------------------------------------------------------- task new: the status layout
 # With task_layout: status, in any letter case, a new task starts in planned/, whether or not the

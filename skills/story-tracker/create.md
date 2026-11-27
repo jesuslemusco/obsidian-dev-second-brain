@@ -32,6 +32,17 @@ commits, the files already in the task folder.
     `ls -d "<vault>/<project path>/<topics_root>/<folder>"`.
   - `second-brain profile <project> topics` holds only spelling exceptions.
   - A story about no single folder gets no topic tag.
+- **Repo** - the one repo the story changes, when `second-brain repo <project>` lists more than
+  one. Its branch check, its build and its validation run in that repo.
+  - Ask which one, as `## Story rules` in `SKILL.md` says, with each listed repo as an option.
+    The user, the ticket or a refinement draft may have named it already: take that one.
+  - `second-brain profile <project> repos` says what each one holds.
+  - In start mode, the repo settled is not the `repo:` line the branch check printed: run that
+    check again with `--path "<path>"`, the path `second-brain repo <project> <name>` prints.
+    That run gives section 2's ref, step 3's `branch=` and step 4's `**Branch:**` line, and every
+    `second-brain branch` command of this file takes the same `--path`.
+  - With one repo listed, or none, ask nothing and write no repo: a story with none takes the
+    profile's first.
 
 - Anything unclear or missing: ask for exactly that, as `## Story rules` in `SKILL.md` says. For
   example: "What has to be true for EX-123 to be done?", "Is EX-123 about docs/billing/invoices,
@@ -120,6 +131,7 @@ join. Every new story gets this check, one from refinement too:
      `docs` is the tag `billing/invoices`.
    - Add `--project <P>` when the id's key does not name one project.
    - Add `--envs` for an environment set, and read `env-split.md`.
+   - Add `--repo <name>` with the repo section 1 settled. With one repo listed, or none, no flag.
    - Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`
      from Step 0, or the subproject the user named.
    - No such line, while `second-brain subproject <project>` lists subprojects:
@@ -131,6 +143,8 @@ join. Every new story gets this check, one from refinement too:
    - Exit 5 with `--envs`: the profile lists no environments.
    - Exit 1 with `--subproject`: the name is no subproject. Show
      `second-brain subproject <project>` and ask.
+   - Exit 1 with `--repo`: the name is no repo of the project. Show
+     `second-brain repo <project>` and ask.
    - `note: no folder for the topic tag ...` on stderr: run
      `second-brain task tag EX-123 remove <tag>` and ask the user.
 3. `second-brain task set EX-123 status=<planned or in-progress> next="<the next action>"

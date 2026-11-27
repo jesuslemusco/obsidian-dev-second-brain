@@ -98,6 +98,14 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   any, as `## 3. Create the story` in `skills/story-tracker/create.md` says.
 - In a subproject's repo the status overview lists that subproject's tasks.
 - The board's `By subproject` view groups the tasks by subproject.
+- A story names the one repo it changes, `repo: <name>`, when the project lists more than one.
+  Its branch check, its build and its validation run in that repo, and the board shows it in the
+  `Repo` column.
+- When Claude writes a new story in such a project, it asks which repo the story changes, as
+  `## 1. Lock down the framing` in `skills/story-tracker/create.md` says. With one repo it asks
+  nothing, and a story with no `repo` takes the profile's first.
+- `second-brain task set <ID> repo=<name>` changes it later, as `## 4. A task` in
+  `docs/contract.md` says.
 - Claude reads a ticket's branches, a file on another branch and the work started with
   `second-brain branch <project> <ID>`, which runs read-only git itself. So a recall, a start or
   an update asks for no permission, as `## Branch check (start, update, recall)` in

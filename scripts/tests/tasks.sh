@@ -408,6 +408,60 @@ is "task dep: CRLF kept" "$(grep -c "$CR\$" "$T6")" "$(grep -c '' "$T6")"
 line_is "task dep: CRLF line written" "$T6" "  - \"[[$P/tasks/EX-2/README|EX-2]]\"$CR"
 sb task dep EX-6 remove EX-2
 
+# ---------------------------------------------------------------- a story's repo
+# A story names the one repo it changes, one that second-brain repo lists: a project of its own,
+# with two repos and a subproject's third, so the Example tasks stay as the fixtures have them.
+RP="work/repos"
+sb scaffold project Repos --path "$RP" --keys RP
+edit "$vault/$RP/claude/profile.md" 's/^repos: \[\]$/repos: [rp-api, Rp-Web]/'
+sb scaffold subproject Repos tools --repos rp-tools
+sb repo Repos
+is "repo: the project lists its repos and its subproject's" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "rp-api Rp-Web rp-tools "
+sb task new RP-1 --project Repos --title "Web work" --repo rp-web
+rc_is "task new --repo: exit 0" 0
+RT1="$vault/$RP/tasks/RP-1/README.md"
+line_is "task new --repo: the key holds the repo as the profile lists it" "$RT1" "repo: Rp-Web"
+is "task new --repo: the key sits after branch" "$(($(lineno "$RT1" 'repo:') - $(lineno "$RT1" 'branch:')))" "1"
+sb task new RP-2 --project Repos --title "Lost work" --repo nope
+rc_is "task new --repo: a repo the project does not list gives exit 1" 1
+err_has "task new --repo: names it" "no repo nope in Repos"
+err_has "task new --repo: and says how to list them" "second-brain repo Repos"
+absent "task new --repo: and writes no folder" "$vault/$RP/tasks/RP-2"
+sb task new RP-2 --project Repos --title "Any work"
+file_lacks "task new: with no --repo, no repo key" "$vault/$RP/tasks/RP-2/README.md" "repo:"
+sb task new RP-3 --project Repos --repo
+rc_is "task new --repo: with no value gives exit 5" 5
+sb task head RP-1
+out_has "task head: the story's repo, after its branch" "branch: none yet
+repo: Rp-Web
+epic: -"
+if [ "$(lines "$OUT")" -le 15 ]; then pass "task head: with a repo, at most 15 lines"; else fail "task head: with a repo, at most 15 lines" "$OUT"; fi
+text="$OUT"
+sb task head RP-1 --json
+out_has "task head --json: the repo key, after branch" "\"branch\": \"none yet\",${NL}  \"repo\": \"Rp-Web\","
+json_is "task head --json: with a repo, the same fields as the text" "$HEAD_PY" "$text"
+sb task head RP-2
+out_lacks "task head: no repo line on a story with none" "repo:"
+sb task head RP-2 --json
+out_lacks "task head --json: no repo key on a story with none" '"repo"'
+sb task set RP-2 repo=RP-API
+rc_is "task set repo: exit 0" 0
+out_is "task set repo: written as the profile lists it" "repo: rp-api"
+line_is "task set repo: in the note" "$vault/$RP/tasks/RP-2/README.md" "repo: rp-api"
+sb task set RP-2 repo=rp-tools
+out_is "task set repo: a subproject's repo is one of the project's" "repo: rp-tools"
+sb task set RP-2 repo=nope next="Never written"
+rc_is "task set repo: a repo the project does not list gives exit 1" 1
+err_has "task set repo: says how to list them" "second-brain repo Repos"
+line_is "task set repo: the old value stays" "$vault/$RP/tasks/RP-2/README.md" "repo: rp-tools"
+file_lacks "task set repo: and no other key is written" "$vault/$RP/tasks/RP-2/README.md" "Never written"
+sb task set RP-2 repo=
+out_is "task set repo: an empty value removes the key" "repo: (removed)"
+file_lacks "task set repo: and it is gone from the note" "$vault/$RP/tasks/RP-2/README.md" "repo:"
+sb help
+out_has "help: task new takes --repo" "task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]
+              [--subproject S]"
+
 # ---------------------------------------------------------------- task new: the status layout
 # With task_layout: status, in any letter case, a new task starts in planned/, whether or not the
 # project runs sprints, and its up link leads to the tasks hub as in a flat project.

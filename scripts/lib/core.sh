@@ -34,7 +34,8 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task tag <ID> add|remove <tag> | task alias <ID> add <alias>
           task docs <ID>[,<ID>...]   (unticked lines under ## Docs to update)
           task dep <ID> add|remove <ID> | task archive <ID>   (a done task, once)
-          task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--subproject S]
+          task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]
+              [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 checks:   validation <project> [repo] [--path DIR] | validation new <project> <repo>
           validation run <project> <repo> [--when each-story|each-merge|release] [--path DIR]
@@ -527,7 +528,7 @@ sb_fm_edit() {
       }
     }
     function insert_at(   m, order, i, idx, j) {
-      m = split("aliases title status next branch epic subproject envs sprint carried_from depends_on type", order, " ")
+      m = split("aliases title status next branch repo epic subproject envs sprint carried_from depends_on type", order, " ")
       idx = 0
       for (i = 1; i <= m; i++) if (order[i] == key) idx = i
       if (idx) for (j = idx - 1; j >= 1; j--) if (order[j] in kend) return kend[order[j]] + 1

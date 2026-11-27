@@ -476,7 +476,7 @@ line_is "docs-keeper: in a status project, or archived" "$DK" \
   '  `task_layout: status`, or `<tasks_root>/archive/<YYYY>/<ID>/README.md` once archived.'
 CG="$here/CHANGELOG.md"
 file_has "changelog: the index template is at version 6" "$CG" 'The plugin'"'"'s index template is now at `index_version: 6`'
-is "changelog: the newest section is 0.13.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.13.0 - unreleased"
+is "changelog: the newest section is 0.14.0, unreleased" "$(grep -m1 '^## ' "$CG")" "## 0.14.0 - unreleased"
 st_line="$(lineno "$CG" '- A project can keep each task in the folder of its status:')"
 st_top="$(lineno "$CG" '## 0.10.0 - ')"
 st_end="$(lineno "$CG" '## 0.9.0 - ')"
@@ -2549,7 +2549,7 @@ $(cat "$STD"/*.md "$SMD"/*.md | grep -oE '`(git|ls -d) [^`]*`' | tr -d '`')
 CMDS
 is "allowed-tools: the skills' text runs ls -d" "$seen_ls" "1"
 is "allowed-tools: the skills' text runs no git command, which would prompt" "$seen_git" "0"
-for c in '`second-brain branch <project> <ID>` reads the ticket'"'"'s default repo: the first repo of its' \
+for c in '`second-brain branch <project> <ID>` reads the ticket'"'"'s default repo: the story'"'"'s `repo`, else' \
   '  with `second-brain branch <project> <ID> --show <branch> <file>`, or tell the user.' \
   '- No id given: `second-brain session-check --cwd "<repo path>"` prints the repo'"'"'s `branch:` and'; do
   file_has "story-tracker: the branch check reads git through the helper: ${c:0:48}" "$STS" "$c"
@@ -3372,6 +3372,61 @@ is "same story: the changelog line is under 0.13.0" \
 ds_cg2="$(lineno "$CG" '- In refinement, a story you pick in place of a new one takes its parent, its links and its line')"
 is "same story: the changelog says refinement follows the pick, under 0.13.0" \
   "$((${ds_cg2:-0} > $(lineno "$CG" '## 0.13.0 - unreleased') && ${ds_cg2:-0} < $(lineno "$CG" '## 0.12.0 - ')))" "1"
+
+# ---------------------------------------------------------------- a story names the one repo it changes
+STC="$here/skills/story-tracker/create.md"
+line_is "story repo: create.md frames the repo a new story changes" "$STC" \
+  '- **Repo** - the one repo the story changes, when `second-brain repo <project>` lists more than'
+line_is "story repo: create.md asks which one" "$STC" \
+  '  - Ask which one, as `## Story rules` in `SKILL.md` says, with each listed repo as an option.'
+line_is "story repo: create.md asks nothing with one repo" "$STC" \
+  '  - With one repo listed, or none, ask nothing and write no repo: a story with none takes the'
+line_is "story repo: a repo other than the branch check's gets that check again" "$STC" \
+  '  - In start mode, the repo settled is not the `repo:` line the branch check printed: run that'
+line_is "story repo: with --path, the repo's own path" "$STC" \
+  '    check again with `--path "<path>"`, the path `second-brain repo <project> <name>` prints.'
+line_is "story repo: that run gives the ref, the branch and the Branch line" "$STC" \
+  '    That run gives section 2'"'"'s ref, step 3'"'"'s `branch=` and step 4'"'"'s `**Branch:**` line, and every'
+line_is "story repo: and each branch command of the file reads that repo" "$STC" \
+  '    `second-brain branch` command of this file takes the same `--path`.'
+line_is "story repo: task new takes the repo" "$STC" \
+  '   - Add `--repo <name>` with the repo section 1 settled. With one repo listed, or none, no flag.'
+line_is "story repo: an unknown repo is asked about" "$STC" \
+  '   - Exit 1 with `--repo`: the name is no repo of the project. Show'
+is "story repo: the repo is framed in section 1, before the create step that passes it" \
+  "$(($(lineno "$STC" '- **Repo** - the one repo') < $(lineno "$STC" '## 2. Verify against the code') && $(lineno "$STC" '## 3. Create the story') < $(lineno "$STC" '   - Add `--repo <name>`')))" "1"
+file_has "story repo: the build's repo is the branch check's" "$here/skills/build/story.md" \
+  '   - `<repo>` is the `repo:` line `second-brain branch <project> <ID>` prints, with no `--path`:'
+RC="$here/docs/contract.md"
+line_is "story repo: the contract's task frontmatter has the key" "$RC" \
+  'repo: example-api             # optional; the one repo the story changes'
+file_has "story repo: the contract says what it names" "$RC" \
+  '- `repo` names the one repo the story changes, as `repo <project>` lists it. Its branch check,'
+file_has "story repo: the contract's branch row reads it" "$RC" \
+  'else the task'"'"'s `repo`, else the first repo of the task'"'"'s subproject, else the profile'"'"'s first.'
+file_has "story repo: the contract's task new row takes --repo" "$RC" \
+  '| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R] [--subproject S]` |'
+file_has "story repo: the contract's task set row checks it" "$RC" \
+  '`repo` must name a repo that `repo <project>` lists, matched exact first, then without letter case'
+file_has "story repo: the contract's task head row prints it" "$RC" \
+  'branch, repo (only when set), epic, subproject (only when set)'
+file_has "story repo: the contract's board shows it" "$RC" \
+  '- It shows each task'"'"'s `repo` in a `Repo` column, after `branch`, in the `Active`,'
+RG="$here/docs/guide.md"
+file_has "story repo: the guide describes the key" "$RG" \
+  '- A story names the one repo it changes, `repo: <name>`, when the project lists more than one.'
+file_has "story repo: the guide points to create.md" "$RG" \
+  '`## 1. Lock down the framing` in `skills/story-tracker/create.md` says.'
+line_is "story repo: create.md has the heading the guide names" "$STC" '## 1. Lock down the framing'
+CG="$here/CHANGELOG.md"
+for c in '- A story names the one repo it changes, `repo: <name>`, one of the repos' \
+  '- `second-brain branch <project> <ID>` reads the story'"'"'s `repo`, before the first repo of its' \
+  '- story-tracker asks which repo a new story changes when the project lists more than one, and' \
+  '- A new board shows each task'"'"'s repo in a `Repo` column, after its branch, in the `Active`,'; do
+  rl="$(lineno "$CG" "$c")"
+  is "story repo: under 0.14.0: ${c:2:44}" \
+    "$((${rl:-0} > $(lineno "$CG" '## 0.14.0 - unreleased') && ${rl:-0} < $(lineno "$CG" '## 0.13.0 - ')))" "1"
+done
 
 # ---------------------------------------------------------------- result
 result

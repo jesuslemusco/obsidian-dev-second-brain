@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.0 - unreleased
+
+- A story names the one repo it changes, `repo: <name>`, one of the repos
+  `second-brain repo <project>` lists. `second-brain task new --repo <name>` and
+  `second-brain task set <ID> repo=<name>` write it, as the repo is listed, and refuse a repo the
+  project does not list. `task head` prints a `repo` line when it is set.
+- `second-brain branch <project> <ID>` reads the story's `repo`, before the first repo of its
+  subproject and the profile's first. So a story's branch check, its build's worktree and its
+  validation run in the repo it changes. A story with no `repo` reads the repo it read before, so
+  a project with one repo changes nothing.
+- story-tracker asks which repo a new story changes when the project lists more than one, and
+  writes no `repo` with one.
+- A new board shows each task's repo in a `Repo` column, after its branch, in the `Active`,
+  `Current sprint`, `By topic` and `All` views. An existing board is not rewritten: add the
+  `note.repo` property and the `repo` lines from `templates/tasks.base.tmpl` to see it there.
+
 ## 0.13.0 - 2026-11-27
 
 - Each helper command starts fewer processes, so it answers sooner, most of all on Windows, where

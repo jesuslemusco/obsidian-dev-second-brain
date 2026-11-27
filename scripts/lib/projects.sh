@@ -324,6 +324,14 @@ sb_repo_rows() {
   sb_repo_rows_at "$SB_P_PATH"
 }
 
+# Set SB_R_NAME to a repo of the current project as `repo <project>` lists it, matched exact first,
+# then without letter case, or exit 1. A story's repo key is written in that spelling.
+sb_need_repo() {
+  local row
+  row="$(sb_val_repo_row "$1")" || sb_die 1 "no repo $1 in $SB_P_NAME (list them with: second-brain repo $SB_P_NAME)"
+  SB_R_NAME="${row%%$'\t'*}"
+}
+
 # Print where a project's repositories are stored, or the path of one of them.
 cmd_repo() {
   local project="${1:-}" name="${2:-}" rows row rname path state

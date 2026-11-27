@@ -57,6 +57,34 @@ out_has "profile --keys: the days a done task waits for the archive" "archive_af
 out_has "profile --keys: an empty value prints a dash" "persona: -"
 out_has "profile --keys: an empty list prints a dash" "environments: -"
 is "profile: persona sits right after tracker" "$(($(lineno "$vault/$P/claude/profile.md" 'persona:') - $(lineno "$vault/$P/claude/profile.md" 'tracker:')))" "1"
+# build_pairs: how many implementer and reviewer pairs build at once. --keys prints the value the
+# build takes: the key's, when it is a whole number from 1 to 5, else 1.
+PF="$vault/$P/claude/profile.md"
+is "profile: a scaffolded profile has no build_pairs key" "$(awk 'NR > 1 && /^---$/ { exit } /^build_pairs:/' "$PF")" ""
+file_has "profile: its stories section describes build_pairs" "$PF" '- A `build_pairs:` key added above sets how many'
+pairs_line() { printf '%s\n' "$OUT" | grep '^build_pairs:'; }
+is "profile --keys: build_pairs is 1 with no key" "$(pairs_line)" "build_pairs: 1"
+is "profile --keys: with no key, build_pairs is the last line" "$(printf '%s\n' "$OUT" | tail -n 1)" "build_pairs: 1"
+# pairs <value>: write build_pairs into the Example profile, under validation_home.
+pairs() {
+  awk -v v="$1" '/^build_pairs:/ { next } { print } /^validation_home: / { print "build_pairs:" (v == "" ? "" : " " v) }' \
+    "$PF" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$PF"
+}
+for v in 1 2 3 4 5 '"4"' "'2'" '3 # three pairs'; do
+  pairs "$v"
+  sb profile Example --keys
+  w="$(printf '%s' "$v" | tr -d "\"'" | cut -c1)"
+  is "profile --keys: build_pairs $v is taken" "$(pairs_line)" "build_pairs: $w"
+done
+is "profile --keys: a build_pairs key keeps its place" \
+  "$(printf '%s\n' "$OUT" | awk 'p { print; exit } /^validation_home: / { p = 1 }')" "build_pairs: 3"
+for v in "" '""' 0 6 10 -1 +2 02 2.5 1.0 two '[2]' '1 2'; do
+  pairs "$v"
+  sb profile Example --keys
+  is "profile --keys: build_pairs '$v' is 1" "$(pairs_line)" "build_pairs: 1"
+done
+is "profile --keys: one build_pairs line" "$(printf '%s\n' "$OUT" | grep -c '^build_pairs:')" "1"
+awk '/^build_pairs:/ { next } { print }' "$PF" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$PF"
 sb profile Example stories
 out_has "profile: the stories section explains the persona" "the role a story's description opens with"
 sb profile Example stories

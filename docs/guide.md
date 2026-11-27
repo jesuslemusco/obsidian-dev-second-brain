@@ -215,6 +215,13 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
 - Up to 3 related stories, such as those of one epic, are built in turn by one `implementer` and
   one `reviewer`, so the pair reads their code once. Each story keeps its own branch and worktree,
   and passes or fails on its own review, as `### A batch` in `skills/build/story.md` says.
+- The profile's `build_pairs` key builds up to that many batches side by side, each by its own
+  `implementer` and `reviewer`, in its own stories' worktrees. It is 1 to 5, and 1 with no key:
+  one story at a time. Only stories that neither wait on each other nor sit in one batch build
+  side by side, as `### Pairs side by side` in `skills/build/SKILL.md` says.
+- With more than one pair, a stop in one pair stops no other. Claude asks you in its reply, not
+  with AskUserQuestion, so the other pairs go on. Keep the key at 1 for a repo whose checks cannot
+  run twice at once, such as two runs on one port.
 - A failed review goes back to the same `implementer`, for at most five fix rounds, the last two
   on a stronger model, as `### The fix loop` in `skills/build/story.md` says.
 - Once the build has started, Claude asks you only for the short list under
@@ -246,6 +253,7 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   open, as `## The owner's open orders` in `skills/build/lead.md` says.
 - While one is open, it runs a check in your session, as often as `lead_check_minutes` in the
   project's profile says, as `## The lead's check` in `skills/build/lead.md` says.
+- One check watches every pair, however many build at once.
 - Each order has a `Done when:` line, a condition a command, a file or a branch state can test.
   Claude writes it from your words, and asks you only when they give none. The check closes an
   order when its condition holds, and only you change a condition.

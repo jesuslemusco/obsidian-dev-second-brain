@@ -15,6 +15,16 @@
   review is no evidence for the next. A story's review is no longer a fresh `reviewer` each time.
 - A fix message names its story, with the story, repo, worktree, branch and base lines of the
   story's prompt.
+- A profile key, `build_pairs`, sets how many `implementer` and `reviewer` pairs the `build`
+  skill runs at once: a whole number from 1 to 5. With no key, or any other value, it is 1, and a
+  build runs one story at a time, as before. `second-brain profile <project> --keys` always prints
+  its line, with the value the build takes.
+- With more than one pair, batches build side by side, each by its own pair in its own stories'
+  worktrees. Only stories that neither wait on each other nor sit in one batch go side by side: a
+  batch starts once each story it waits on in another batch has passed.
+- The lead's one check watches every pair, and a stop in one pair stops its batch alone. While
+  another pair is at work the skill asks the owner in its reply, not with AskUserQuestion, so the
+  other pairs go on. Merges run one at a time.
 
 ## 0.12.0 - 2026-11-24
 

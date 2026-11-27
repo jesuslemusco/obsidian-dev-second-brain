@@ -129,6 +129,7 @@ repos_root: "~/code/acme"
 repo_paths: []
 validation_home: vault
 lead_check_minutes: 20
+build_pairs: 1
 achievements_skill: ""
 tags:
   - type/profile
@@ -220,6 +221,12 @@ tags:
   other value, is 20.
 - `templates/profile.md.tmpl` leaves the key out. The doctor's `settings` check warns on a value
   it does not take.
+- `build_pairs` is how many `implementer` and `reviewer` pairs a build runs at once, as
+  `### Pairs side by side` in `skills/build/SKILL.md` says. It is a whole number from 1 to 5. A
+  missing or empty key, or any other value, is 1: one story and one agent at a time.
+- `profile <project> --keys` always prints a `build_pairs` line, with the value the build takes.
+  `templates/profile.md.tmpl` describes the key under `## Stories`, and leaves it out of the
+  frontmatter.
 
 ### Profile sections
 
@@ -589,7 +596,7 @@ Rules that hold for every command:
 | `repo <project> [name]` | with no name, one TSV row per repo: name, path, state (`ok`, `missing`, or `unknown` with path `-` when no location is recorded). The profile's repos come first, in order, then each subproject's repos the profile does not list, by subproject name. With a name, the path alone | paths are absolute, with `~` expanded. With a name, exit 1 when the name is not in `repos`, when no location is recorded, or when the folder is missing; the message says which |
 | `subproject <project>` | one TSV row per subproject, by name: name, repos (comma separated, or `-`), docs folder as a vault path | exit 0 with no rows for a project with none; exit 1 when the profile is missing |
 | `subproject <project> <name>` / `--cwd DIR` | the effective settings as `key: value` lines: `subproject`, `note`, `docs`, `repos`, `base_branch`, `production_branch`, `branch_pattern`, `environments`, `validation_home`, `repo_paths` | the name is matched exact first, then without letter case. `base_branch` to `environments` are as `### Subprojects` says; lists are joined with `, `. `validation_home` includes the default (section 3). `repo_paths` is `<repo>=<path>` for each of its repos with a location, found as `repo` finds it, or `-`. `--cwd` takes the subproject whose repository holds the directory. Exit 1 none, exit 4 several (prints their names) |
-| `profile <project> --keys` | the profile frontmatter as `key: value` lines | exit 1 when the profile is missing, with a hint to run vault-setup adopt |
+| `profile <project> --keys` | the profile frontmatter as `key: value` lines, and a `build_pairs` line always | the `build_pairs` line holds the value the build takes: the key's when it is 1, 2, 3, 4 or 5, else 1. It stands in the key's place, or last with no key (section 3). Exit 1 when the profile is missing, with a hint to run vault-setup adopt |
 | `profile <project> <section>` | the body of that level-2 section | the name is matched without letter case; exit 1 when absent |
 | `board <project> [view] [--subproject S]` | one row per task: `id | title | status | sprint | topics | branch | next | envs | depends_on`. The `By subproject` view adds a tenth cell, `subproject` (`-` for none). `Current sprint` has no rows when no sprint is in progress or the project does not use sprints | default view `Active`: status planned, in-progress or in-review. `By subproject` lists the active tasks by subproject, those with none last. `--subproject` keeps the tasks whose `subproject` is that subproject, in any letter case; the name is matched as by `subproject <project> <name>`, exit 1 when none matches. Rows come from the frontmatter of the task READMEs, by the view's own rule; the board file is not read. `envs` is `-` or `dev:EX-1:done,qa:EX-2:planned`, each name as the note spells it. `depends_on` is `-` or `EX-1:done,EX-2:planned`: the folder of each linked task README and that task's status. The folder is spelled as on disk for a task of the project, whatever the link's letter case. The status is `-` when it has none, or `missing` when the link leads to no note in the vault. `title` falls back to the note's first heading when the property is absent |
 | `find <ID-or-alias> [--project P]` | vault path(s) | tries the task path, directly under the tasks root, in a status folder, in `backlog` or another group folder, or archived, or one level deeper in a group folder, as a child task is (section 4), then the aliases in frontmatter: task READMEs first, then every note of the project; exit 1 none |
@@ -1102,9 +1109,9 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
 - `organize-board` runs the doctor on the project, says what each failing row means, and changes
   nothing without asking.
 - **The `build` skill builds approved stories.** It takes one story, or an epic's open stories in
-  the order their `depends_on` sets, and builds each in turn in the owner's session. Its files
-  are `SKILL.md`, `story.md`, for one story's build, and `lead.md`, for the orders note and the
-  lead's check.
+  the order their `depends_on` sets, and builds them in the owner's session, in turn or side by
+  side as the profile's `build_pairs` lets it. Its files are `SKILL.md`, `story.md`, for one
+  story's build, and `lead.md`, for the orders note and the lead's check.
 - It is the one flow that builds a story: from its README, with no delivery mode. The spec flow
   of versions before 0.12.0 is retired, and no skill reads a story's old `spec/` folder.
 - A story is approved when its status notes hold `Planned: the owner approved this text.` One
@@ -1231,9 +1238,22 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   verdict: it passes or fails alone. The next story starts only once the one before it passed,
   so a failed story goes back to the same `implementer` first.
 - Each story counts its own `fails` and rounds, so the cap counts per story, never per batch.
-- **One story at a time.** One story and one agent at a time, never in parallel.
+- **Pairs.** A pair is the `implementer` and the `reviewer` of one batch. The profile's
+  `build_pairs` sets how many pairs build at once (section 3). With 1, the default, one story and
+  one agent build at a time, never in parallel.
+- With more, up to that many batches build side by side, as `### Pairs side by side` in
+  `skills/build/SKILL.md` says. Side by side go only stories that neither wait on each other nor
+  sit in one batch: a batch starts once each story it waits on in another batch has passed.
+- Each pair builds in its own stories' worktrees alone, one agent at a time, and each agent is
+  launched in the background, so the other pairs go on while it works.
+- One check of the lead watches every pair. A stop in one pair stops its batch alone, and the
+  batches that wait on it: the other pairs go on.
+- While another pair is at work, the skill asks the owner in its reply, never with
+  AskUserQuestion, which would hold every pair until the owner answers. Merges run one at a time.
+- The pairs run their checks at the same time, each in its own worktree. A repo whose checks
+  cannot run twice at once, such as two runs on one port, keeps `build_pairs` at 1.
 - No agent launches another. The skill launches `implementer` and `reviewer` with the Agent tool,
-  one at a time, and names each launch's model by role and round.
+  one at a time in each pair, and names each launch's model by role and round.
 - Each `implementer` launch, and each `reviewer` launch in story mode, is named, so that a later
   message reaches the agent of that name again with SendMessage.
 - In a new session, or when SendMessage cannot reach it, a fresh agent is launched in its place,
@@ -1271,6 +1291,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   worktree and the running checks against the orders, as often as the profile's
   `lead_check_minutes` says (section 3). Of each order it tests the `Done when:` condition, and
   asks whether it or an agent works toward it.
+- With more than one pair, the one check looks at every pair, each on its own: what one pair
+  shows never stands for another.
 - The check closes an order whose condition holds, and never one whose condition does not. It
   never changes a condition.
 - A condition the check cannot test, such as one whose command is not found, does not hold. The

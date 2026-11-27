@@ -106,7 +106,8 @@ Open a new sprint for the Example project.
 
 ### `/odsb:build`
 
-Builds approved stories, one at a time, each in a git worktree of its own.
+Builds approved stories, each in a git worktree of its own: one at a time, or side by side as
+your profile's `build_pairs` sets.
 
 - Give it a story, or an epic: it takes the epic's open stories in the order their dependencies
   set.
@@ -116,6 +117,8 @@ Builds approved stories, one at a time, each in a git worktree of its own.
   grades its acceptance criteria and runs the repo's checks, in the same worktree.
 - Up to 3 related stories, such as those of one epic, share one `implementer` and one `reviewer`,
   built in turn. Each keeps its own branch and passes or fails on its own review.
+- A `build_pairs` key in the profile, 1 to 5, builds that many batches side by side, when none of
+  their stories waits on another's. With no key it is 1.
 - A failed review sends its defects back to the same `implementer`, in a capped number of rounds.
 - A passed story merges where your project's git flow says, written under `## Rules` in its
   Claude hub, only on your go. The checks run on the merged branch, and nothing is pushed

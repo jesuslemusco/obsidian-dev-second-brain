@@ -358,9 +358,10 @@ cmd_project() {
   [ "$count" -eq 1 ] || sb_die 4 "several projects match; name one with --name"
 }
 
-# Print the profile's frontmatter keys, or one of its level-2 sections.
+# Print the profile's frontmatter keys, or one of its level-2 sections. The build_pairs line is
+# always there, with the value the build takes: the key's when it is 1 to 5, else 1.
 cmd_profile() {
-  local project="${1:-}" what=""
+  local project="${1:-}" what="" pairs
   [ $# -gt 0 ] && shift
   what="$*"
   if [ -z "$project" ] || [ -z "$what" ]; then
@@ -369,7 +370,14 @@ cmd_profile() {
   sb_need_project "$project"
   sb_need_profile
   if [ "$what" = "--keys" ]; then
-    sb_fm_keys "$SB_P_PROFILE" | sed 's/^\([^:]*\):$/\1: -/'
+    pairs="$(sb_fm_get "$SB_P_PROFILE" build_pairs 2>/dev/null)"
+    case "$pairs" in 1 | 2 | 3 | 4 | 5) ;; *) pairs=1 ;; esac
+    sb_fm_keys "$SB_P_PROFILE" | LC_ALL=C awk -v pairs="$pairs" '
+      /^build_pairs:/ { if (!seen) print "build_pairs: " pairs; seen = 1; next }
+      /^[^:]*:$/ { print $0 " -"; next }
+      { print }
+      END { if (!seen) print "build_pairs: " pairs }
+    '
     return 0
   fi
   sb_section "$SB_P_PROFILE" "$what" || sb_die 1 "no section \"## $what\" in $SB_P_PATH/claude/profile.md"

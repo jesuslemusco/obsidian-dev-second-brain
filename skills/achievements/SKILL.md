@@ -12,8 +12,7 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
 You gather the owner's achievements for one period, a date range or a sprint: one for each story
 set to `done` in it, and one for each proposal the owner made. You show them in your reply.
 
-- This skill is the one that gathers or logs an achievement, and only when the owner asks. No
-  skill or agent logs one as a story finishes.
+- No other skill or agent gathers or logs an achievement, and this one only when asked.
 
 ## Step 0 - Context
 
@@ -59,7 +58,6 @@ Run these yourself, before anything else. Chain them in one Bash call where that
    - No dated note at all: list it under `No done date:`, for the owner to keep or drop.
 5. List each story once, under its id, whatever its aliases or its notes say. An environment set
    is one row, so one story.
-6. No story is kept: say so in the result, and go on to the proposals.
 
 ## 3. One achievement per story
 
@@ -69,8 +67,11 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 - Word one achievement per story, in one or two sentences: what the story delivered, from its
   Summary and its Changes.
 - Say only what they say: add no number, effect or name they lack.
-- `## Changes` is missing, empty or `None yet.`: word it from the Summary alone, and its line in
-  the result says so.
+- A Summary or `## Changes` is empty when it is missing, blank, `None yet.`, or still the text of
+  the plugin's task template or the project's own, such as a line of `<...>` placeholders.
+- `## Changes` empty: word it from the Summary alone, and its line in the result says so.
+- The Summary empty: word it from `## Changes` alone, and its line says so. Both empty: list the
+  story under `To word:`, for the owner to word.
 - Each achievement names its story, by its id.
 
 ## 4. The proposals
@@ -111,8 +112,7 @@ Proposals:
 ## 6. The note
 
 Only on the owner's ask, write the result to `<project path>/<topics_root>/achievements.md`.
-`second-brain project --name "<project>"` prints the project's path, and Step 0's keys its
-`topics_root`.
+`second-brain project --name "<project>"` prints the project's path.
 
 - No note yet: write it whole, with the Write tool, in the shape below.
 - A note: `second-brain outline <note>` lists its periods. Add the period's section after the
@@ -146,4 +146,3 @@ Proposals:
 ```
 
 - A period's heading is `## <from> to <to>`, or `## Sprint <id>` for a sprint.
-- The note holds no status: a story's status stays in its task note.

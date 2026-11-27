@@ -49,7 +49,7 @@ The file opens with frontmatter that holds `index_version`, a whole number:
 
 ```markdown
 ---
-index_version: 8
+index_version: 9
 ---
 ```
 
@@ -97,7 +97,7 @@ index_version: 8
   <topics_root>/...            default docs/
   <topics_root>/<name>/README.md   the docs folder of a subproject
   <topics_root>/planned-releases.md   optional; the releases ahead, which release-planning writes
-  <topics_root>/achievements.md   optional; the owner's achievements, which the achievements skill writes on the owner's ask (section 9)
+  <topics_root>/achievements.md   optional; the owner's achievements, which the achievements skill writes (section 9)
   <sprints_root>/README.md     default sprints/; only when the project uses sprints
   <sprints_root>/<YYYY-MM-DD>.md
 ```
@@ -1113,6 +1113,8 @@ A project may keep its own `task-readme.md.tmpl` and `ticket-description.md.tmpl
   note is listed apart, for the owner to keep or drop.
 - Each story gives one achievement, worded from its `**Summary:**` line and its `## Changes`, that
   names its id. A story is listed once.
+- A part that is missing, blank, `None yet.` or still the task template's text is left out, and
+  the result says so. With both left out, the owner words the story's achievement.
 - It asks the owner whether they made any proposals to their company or project in the period,
   and words each one from the owner's answer, with the project's and the stories' context.
 - It makes up no proposal: none comes from a story's notes, a build note or the code.

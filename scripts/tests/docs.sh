@@ -467,7 +467,7 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the scrum-master skill raises index_version to 8" "$vi_version" "8"
+is "index template: the achievements skill raises index_version to 9" "$vi_version" "9"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -2365,7 +2365,7 @@ file_has "index template: names the build skill for building a story" "$here/tem
   '`build`'
 line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
   '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
-line_is "index template: still at version 8, unreleased" "$here/templates/vault-index.md.tmpl" 'index_version: 8'
+line_is "index template: at version 9 in 0.13.0" "$here/templates/vault-index.md.tmpl" 'index_version: 9'
 file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
 file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
   '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
@@ -2464,6 +2464,15 @@ line_is "achievements: one achievement per story, from its Summary and Changes" 
 line_is "achievements: claims nothing the story does not say" "$AS" \
   '- Say only what they say: add no number, effect or name they lack.'
 line_is "achievements: each names its story" "$AS" '- Each achievement names its story, by its id.'
+line_is "achievements: a part is empty when it still holds the template's text" "$AS" \
+  '- A Summary or `## Changes` is empty when it is missing, blank, `None yet.`, or still the text of'
+line_is "achievements: the plugin's task template or the project's own" "$AS" \
+  '  the plugin'"$q"'s task template or the project'"$q"'s own, such as a line of `<...>` placeholders.'
+line_is "achievements: an empty Changes is worded from the Summary alone" "$AS" \
+  '- `## Changes` empty: word it from the Summary alone, and its line in the result says so.'
+line_is "achievements: an empty Summary is worded from Changes alone" "$AS" \
+  '- The Summary empty: word it from `## Changes` alone, and its line says so. Both empty: list the'
+line_is "achievements: both empty go to the owner to word" "$AS" '  story under `To word:`, for the owner to word.'
 # The owner's proposals, asked for and worded from the context, never made up.
 line_is "achievements: asks for the owner's proposals in the period" "$AS" \
   '- Ask the owner whether they made any proposals to their company or project in the period: from'
@@ -2489,8 +2498,12 @@ line_is "achievements: a period's section is replaced only on a yes" "$AS" \
   '- The period has a section already: show it, and replace it only on the owner'"$q"'s yes.'
 file_has "achievements: the note's alias" "$AS" '  - "<Project> Achievements"'
 file_has "achievements: the note's up-link" "$AS" '> Up: [[<project path>/<topics_root>/README|<Project> Docs Hub]]'
-ac_hits="$(cd "$here" && grep -rlis 'achievement' skills agents hooks templates bin scripts/lib | grep -v '^skills/achievements/')"
+# The vault index names the skill once, to send a request for achievements to it.
+ac_hits="$(cd "$here" && grep -rlis 'achievement' skills agents hooks templates bin scripts/lib |
+  grep -v -e '^skills/achievements/' -e '^templates/vault-index\.md\.tmpl$')"
 is "achievements: no other skill, agent, template or helper file names an achievement" "$ac_hits" ""
+is "achievements: the vault index names one only to send it to the skill" \
+  "$(grep -ci 'achievement' "$here/templates/vault-index.md.tmpl")" "1"
 # The docs describe the skill, and achievements_skill is gone.
 line_is "README: a section for the achievements skill" "$RM" '### `/odsb:achievements`'
 file_has "README: it asks for the proposals and makes up none" "$RM" \
@@ -2504,6 +2517,8 @@ file_has "e2e: asks the same achievements request" "$here/scripts/e2e-claude.sh"
 line_is "guide: has ## Achievements" "$GD" '## Achievements'
 line_is "contract: the achievements skill" "$CT" \
   '- **The `achievements` skill gathers the owner'"$q"'s achievements.** It is the one skill or agent'
+file_has "contract: a part still the template's text is left out" "$CT" \
+  '- A part that is missing, blank, `None yet.` or still the task template'"$q"'s text is left out, and'
 file_has "contract: the note's shape has its home in the skill" "$CT" '`## 6. The note` in `skills/achievements/SKILL.md`'
 file_has "contract: the project holds the achievements note" "$CT" \
   '  <topics_root>/achievements.md   optional; the owner'"$q"'s achievements, which the achievements skill writes'
@@ -2512,6 +2527,10 @@ file_has "contract: story-tracker and the sprint close leave achievements to the
 file_lacks "contract: the profile example has no achievements_skill" "$CT" 'achievements_skill: ""'
 file_has "contract: a profile that still has achievements_skill keeps it" "$CT" \
   '- `achievements_skill` is no key of the profile. Versions before 0.13.0 wrote it. A profile that'
+line_is "index template: names the achievements skill among the plugin's skills" "$here/templates/vault-index.md.tmpl" \
+  '  `vault-doctor` checks them, `achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements.'
+file_has "index: a scaffolded index names the achievements skill" "$vault/CLAUDE.md" \
+  '`achievements` gathers a date range'"$q"'s or a sprint'"$q"'s achievements.'
 for f in templates/profile.md.tmpl skills/vault-setup/SKILL.md scripts/lib/doctor.sh; do
   file_lacks "achievements_skill: gone from $f" "$here/$f" 'achievements_skill'
 done
@@ -2520,7 +2539,9 @@ cg13_end="$(lineno "$CG" '## 0.12.0 - ')"
 for l in '- The `achievements` skill gathers your achievements for a date range or a sprint: one for each' \
   '- It asks you about the proposals you made to your company or project in that time, and helps' \
   '- It shows the result in its reply, and writes it to `achievements.md` in the project'"$q"'s topics' \
-  '- `achievements_skill` is gone from the profile template, vault-setup and the doctor'"$q"'s `profile`'; do
+  '- `achievements_skill` is gone from the profile template, vault-setup and the doctor'"$q"'s `profile`' \
+  '- The vault index names the achievements skill. The plugin'"$q"'s index template is now at' \
+  '  `templates/vault-index.md.tmpl` into your vault'"$q"'s `CLAUDE.md`, then set `index_version: 9`.'; do
   n="$(lineno "$CG" "$l")"
   is "changelog: under 0.13.0: ${l:2:48}" "$((${cg13_top:-0} > 0 && ${n:-0} > ${cg13_top:-0} && ${n:-0} < ${cg13_end:-0}))" "1"
 done

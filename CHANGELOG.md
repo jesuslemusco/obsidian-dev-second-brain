@@ -14,6 +14,10 @@
 - `achievements_skill` is gone from the profile template, vault-setup and the doctor's `profile`
   check. A profile that still has it keeps it: no skill reads it, and the doctor does not name
   it. Remove it when you like.
+- The vault index names the achievements skill. The plugin's index template is now at
+  `index_version: 9`, so the doctor's `index` check warns. Copy the bullet that starts
+  `- Call a plugin skill or agent` under `## In every session` from
+  `templates/vault-index.md.tmpl` into your vault's `CLAUDE.md`, then set `index_version: 9`.
 
 ## 0.12.0 - 2026-11-24
 

@@ -150,7 +150,7 @@ cmd_branch() {
   local usage="usage: second-brain branch <project> <ID> [--path <dir>] [--show <ref> <file> | --started]"
   local a n=0 project="" id="" at="" hasat=0 mode=list ref="" file=""
   local rows hits tfile="" rec="-" sub="" by_repo ids want row rpath rstate dir name base pattern
-  local current head refs carried on=no tbname tbref bname bref hash kind log stat
+  local current head refs carried on=no tbname tbref bname bref hash kind log stat srepo=""
   while [ $# -gt 0 ]; do
     a="$1"
     case "$a" in
@@ -194,7 +194,7 @@ cmd_branch() {
   sb_need_profile
   command -v git >/dev/null 2>&1 || sb_die 1 "git is not installed"
 
-  # The task, when the ticket has one: its recorded branch and its subproject.
+  # The task, when the ticket has one: its recorded branch, its repo and its subproject.
   hits="$(sb_task_by_path "$id" "$SB_P_NAME"$'\t'"$SB_P_PATH"$'\t'"$SB_P_KEYS")"
   [ -n "$hits" ] || hits="$(sb_task_by_alias "$id" "$SB_P_NAME"$'\t'"$SB_P_PATH"$'\t'"$SB_P_KEYS")"
   case "$hits" in
@@ -207,6 +207,7 @@ cmd_branch() {
   if [ -n "$tfile" ]; then
     rec="$(sb_fm_get "$tfile" branch 2>/dev/null)"
     [ -n "$rec" ] || rec="-"
+    srepo="$(sb_fm_get "$tfile" repo 2>/dev/null)"
     sub="$(sb_fm_get "$tfile" subproject 2>/dev/null)"
   fi
   SB_S_FILE=""
@@ -214,7 +215,8 @@ cmd_branch() {
     sb_note "$id names the subproject $sub, which $SB_P_NAME has not: the profile's settings are read"
   fi
 
-  # The repo: the folder --path names, else the subproject's first repo, else the profile's.
+  # The repo: the folder --path names, else the story's repo, else its subproject's first repo,
+  # else the profile's first.
   rows="$(sb_repo_rows_at "$SB_P_PATH")"
   if [ "$hasat" -eq 1 ]; then
     at="$(sb_path_in "$at")"
@@ -225,11 +227,16 @@ cmd_branch() {
 $row
 EOF
   else
-    want=""
-    [ -z "$SB_S_FILE" ] || want="$(sb_fm_list "$SB_S_FILE" repos 2>/dev/null | head -1)"
+    want="$srepo"
+    if [ -z "$want" ] && [ -n "$SB_S_FILE" ]; then
+      want="$(sb_fm_list "$SB_S_FILE" repos 2>/dev/null | head -1)"
+    fi
     [ -n "$want" ] || want="$(printf '%s\n' "$rows" | head -1 | cut -f1)"
     [ -n "$want" ] || sb_die 1 "no repo is listed in repos of $SB_P_NAME ($SB_P_PATH/claude/profile.md): name its folder with --path"
-    row="$(sb_val_repo_row "$want")" || sb_die 1 "$want is not in repos of $SB_P_NAME ($SB_P_PATH/claude/profile.md)"
+    if ! row="$(sb_val_repo_row "$want")"; then
+      [ -z "$srepo" ] || sb_die 1 "$id names the repo $want, which is not in repos of $SB_P_NAME: list them with second-brain repo $SB_P_NAME, and set one with second-brain task set $id repo=<name>"
+      sb_die 1 "$want is not in repos of $SB_P_NAME ($SB_P_PATH/claude/profile.md)"
+    fi
     IFS=$'\t' read -r name rpath rstate <<EOF
 $row
 EOF

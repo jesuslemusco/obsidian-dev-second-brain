@@ -124,6 +124,21 @@ sb branch Example EX-99
 out_has "branch: the default repo reads the profile's" "repo: example-api"
 out_has "branch: the profile's base branch" "base_branch: main"
 
+# A story's repo is the repo it reads, before its subproject's first and the profile's first.
+sb task set EX-5 repo=shared-lib
+sb branch Example EX-5
+rc_is "branch: a story's repo, exit 0" 0
+out_has "branch: a story's repo is the repo it reads" "repo: shared-lib
+path: $(shown "$L")"
+out_has "branch: and the subproject whose repos hold it gives the settings" "base_branch: develop"
+sb task set EX-2 repo=example-api
+sb branch Example EX-2
+out_has "branch: a story's repo wins over its subproject's first" "repo: example-api
+path: $(shown "$A")"
+sb task set EX-2 repo=
+sb branch Example EX-5 --path "$A"
+out_has "branch --path: the folder named wins over the story's repo" "repo: example-api"
+
 # The default repo must have a folder.
 sb branch "Example Two" TWO-1
 rc_is "branch: a default repo with no location, exit 1" 1
@@ -245,6 +260,11 @@ rc_is "branch: a task's subproject that is gone, exit 0" 0
 err_has "branch: names it on stderr" "EX-2 names the subproject gone"
 out_has "branch: and reads the profile's repo and settings" "repo: example-api"
 edit "$T2" 's/^subproject: gone$/subproject: mobile/'
+edit "$T5" 's/^repo: shared-lib$/repo: gone/'
+sb branch Example EX-5
+rc_is "branch: a story's repo the project no longer lists, exit 1" 1
+err_has "branch: says the story names it, and how to set another" "EX-5 names the repo gone, which is not in repos of Example: list them with second-brain repo Example, and set one with second-brain task set EX-5 repo=<name>"
+edit "$T5" 's/^repo: gone$/repo: shared-lib/'
 PF="$vault/$P/claude/profile.md"
 edit "$PF" 's/^base_branch: main$/base_branch: ""/'
 sb branch Example EX-1 --started

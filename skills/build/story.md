@@ -50,6 +50,8 @@ The notes of this build are the status notes newer than the newest
 1. Find the repo and the branch as `## Branch check (start, update, recall)` in
    `skills/story-tracker/SKILL.md` says. `<path>` is what `second-brain repo <project> <repo>`
    prints.
+   - `<repo>` is the `repo:` line `second-brain branch <project> <ID>` prints, with no `--path`:
+     the story's `repo` when it names one.
    - The branch is the story's `branch`, from `second-brain task head <ID>`.
    - No branch yet: name it by `branch_pattern`, then record it with
      `second-brain task set <ID> branch=<branch>`. Item 2 cuts it from `<from>`, as

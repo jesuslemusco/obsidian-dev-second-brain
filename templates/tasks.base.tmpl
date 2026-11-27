@@ -47,6 +47,8 @@ properties:
     displayName: Subproject
   note.branch:
     displayName: Branch
+  note.repo:
+    displayName: Repo
   file.mtime:
     displayName: Updated
 views:
@@ -67,6 +69,7 @@ views:
       - sprint
       - formula.topics
       - branch
+      - repo
       - depends_on
       - file.mtime
   - type: table
@@ -83,6 +86,7 @@ views:
       - next
       - formula.topics
       - branch
+      - repo
       - depends_on
       - carried_from
   - type: table
@@ -102,6 +106,7 @@ views:
       - status
       - next
       - branch
+      - repo
   - type: table
     name: By subproject
     filters:
@@ -147,5 +152,6 @@ views:
       - formula.topics
       - epic
       - branch
+      - repo
       - depends_on
       - file.mtime

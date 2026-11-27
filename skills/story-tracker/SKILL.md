@@ -92,10 +92,11 @@ ticket.
 
 - Read git through the helper alone: never run `git` yourself. The helper's git only reads, and
   `Bash(second-brain *)` covers it, so the branch check asks nothing.
-- `second-brain branch <project> <ID>` reads the ticket's default repo: the first repo of its
-  subproject, else the profile's. It prints the `repo` and its `path`, the `current` branch and
-  its `head`, `base_branch` and `branch_pattern`, one `branch: <name> <short hash>` line for each
-  local or remote branch that carries the id, the task's `recorded` branch, and `on_ticket`.
+- `second-brain branch <project> <ID>` reads the ticket's default repo: the story's `repo`, else
+  the first repo of its subproject, else the profile's first. It prints the `repo` and its `path`,
+  the `current` branch and its `head`, `base_branch` and `branch_pattern`, one
+  `branch: <name> <short hash>` line for each local or remote branch that carries the id, the
+  task's `recorded` branch, and `on_ticket`.
   - The ticket touches another repo: `second-brain repo <project>` lists the repos, the default
     first, and `second-brain profile <project> repos` says what each one holds. Add
     `--path "<repo path>"`, with the path `second-brain repo <project> <name>` prints.

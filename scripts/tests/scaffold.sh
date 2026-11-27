@@ -234,7 +234,7 @@ is "board: the depth of the status folders is that of a task folder in each" \
 line_is "board: sprint literal placeholder" "$vault/$P/tasks/tasks.base" '        - sprint == "none"'
 line_is "board: a Depends on column" "$vault/$P/tasks/tasks.base" "    displayName: Depends on"
 line_is "board: a Repo column" "$vault/$P/tasks/tasks.base" "    displayName: Repo"
-is "board: each view of the branch shows the story's repo after it" \
+is "board: the Active, Current sprint, By topic and All views show the repo after the branch" \
   "$(awk '/^  - type: table$/ { v = "" } /^    name: / { v = substr($0, 11) } /^      - branch$/ { b = NR } /^      - repo$/ && b == NR - 1 { printf "%s|", v }' "$vault/$P/tasks/tasks.base")" \
   "Active|Current sprint|By topic|All|"
 line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"

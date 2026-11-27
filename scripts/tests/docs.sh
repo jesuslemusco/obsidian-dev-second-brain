@@ -3381,6 +3381,14 @@ line_is "story repo: create.md asks which one" "$STC" \
   '  - Ask which one, as `## Story rules` in `SKILL.md` says, with each listed repo as an option.'
 line_is "story repo: create.md asks nothing with one repo" "$STC" \
   '  - With one repo listed, or none, ask nothing and write no repo: a story with none takes the'
+line_is "story repo: a repo other than the branch check's gets that check again" "$STC" \
+  '  - In start mode, the repo settled is not the `repo:` line the branch check printed: run that'
+line_is "story repo: with --path, the repo's own path" "$STC" \
+  '    check again with `--path "<path>"`, the path `second-brain repo <project> <name>` prints.'
+line_is "story repo: that run gives the ref, the branch and the Branch line" "$STC" \
+  '    That run gives section 2'"'"'s ref, step 3'"'"'s `branch=` and step 4'"'"'s `**Branch:**` line, and every'
+line_is "story repo: and each branch command of the file reads that repo" "$STC" \
+  '    `second-brain branch` command of this file takes the same `--path`.'
 line_is "story repo: task new takes the repo" "$STC" \
   '   - Add `--repo <name>` with the repo section 1 settled. With one repo listed, or none, no flag.'
 line_is "story repo: an unknown repo is asked about" "$STC" \

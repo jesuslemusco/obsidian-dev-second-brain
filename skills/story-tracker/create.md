@@ -37,6 +37,10 @@ commits, the files already in the task folder.
   - Ask which one, as `## Story rules` in `SKILL.md` says, with each listed repo as an option.
     The user, the ticket or a refinement draft may have named it already: take that one.
   - `second-brain profile <project> repos` says what each one holds.
+  - In start mode, the repo settled is not the `repo:` line the branch check printed: run that
+    check again with `--path "<path>"`, the path `second-brain repo <project> <name>` prints.
+    That run gives section 2's ref, step 3's `branch=` and step 4's `**Branch:**` line, and every
+    `second-brain branch` command of this file takes the same `--path`.
   - With one repo listed, or none, ask nothing and write no repo: a story with none takes the
     profile's first.
 

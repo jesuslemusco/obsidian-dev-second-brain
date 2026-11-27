@@ -1618,9 +1618,10 @@ sb_doc_check_task_subproject() {
     "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
 }
 
-# Check the validation_home values of the profile and the subproject notes, and the profile's
-# lead_check_minutes: empty, or a value that spaces the checks evenly through the hour. A delivery
-# or spec_home key, which the retired spec flow read, is not read.
+# Check the validation_home values of the profile and the subproject notes, the profile's
+# lead_check_minutes: empty, or a value that spaces the checks evenly through the hour, and its
+# build_pairs: empty, or 1 to 5. A delivery or spec_home key, which the retired spec flow read, is
+# not read.
 sb_doc_check_settings() {
   local bad="" nl=$'\n' f n v
   while IFS= read -r f; do
@@ -1640,8 +1641,12 @@ EOF
     "" | 10 | 12 | 15 | 20 | 30 | 60) ;;
     *) bad="${bad}lead_check_minutes:invalid$nl" ;;
   esac
+  case "$(sb_fm_get "$SB_P_PROFILE" build_pairs 2>/dev/null)" in
+    "" | 1 | 2 | 3 | 4 | 5) ;;
+    *) bad="${bad}build_pairs:invalid$nl" ;;
+  esac
   sb_doc_report warn settings "$SB_P_NAME" "$bad" \
-    "write validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+    "write validation_home as vault or repo, lead_check_minutes as 10, 12, 15, 20, 30 or 60, and build_pairs as 1, 2, 3, 4 or 5, or remove the key"
 }
 
 # Check that each repo of the project has a validation.md with its section, and that the section is

@@ -2855,7 +2855,7 @@ fi
 
 # ---------------------------------------------------------------- settings and validation
 PROFILE="$vault/$P/claude/profile.md"
-if block 145; then
+if block 224; then
 doc Example
 chk "settings: ok with the template's values" settings Example "ok | 0 | -"
 chk "validation: ok for a project with no repo that has its note" validation Example "ok | 0 | -"
@@ -2867,7 +2867,7 @@ edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
 doc Example
 chk "settings: a profile validation_home that is not allowed" settings Example "warn | 1 | profile:validation_home"
 is "settings: the fix names the values" "$(fix_of settings)" \
-  "write validation_home as vault or repo, and lead_check_minutes as 10, 12, 15, 20, 30 or 60, or remove the key"
+  "write validation_home as vault or repo, lead_check_minutes as 10, 12, 15, 20, 30 or 60, and build_pairs as 1, 2, 3, 4 or 5, or remove the key"
 edit "$PROFILE" 's/^validation_home: always$/validation_home: Repo/'
 doc Example
 chk "settings: a value in another letter case is taken" settings Example "ok | 0 | -"
@@ -2894,6 +2894,30 @@ edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
 doc Example
 chk "settings: lead_check_minutes is named after the profile's own keys" settings Example \
   "warn | 2 | profile:validation_home, lead_check_minutes:invalid"
+reset
+# bp <value>: add build_pairs to the profile, under validation_home.
+bp() {
+  awk -v v="$1" '{ print } /^validation_home: / { print "build_pairs:" (v == "" ? "" : " " v) }' "$PROFILE" >"$tmp/edit.tmp" &&
+    cat "$tmp/edit.tmp" >"$PROFILE"
+}
+for v in 1 2 3 4 5 "" '""' '"3"'; do
+  bp "$v"
+  doc Example
+  chk "settings: build_pairs '$v' is taken" settings Example "ok | 0 | -"
+  reset
+done
+for v in 0 6 8 -1 2.5 two '"9"'; do
+  bp "$v"
+  doc Example
+  chk "settings: build_pairs $v warns" settings Example "warn | 1 | build_pairs:invalid"
+  reset
+done
+lcm 45
+bp 8
+edit "$PROFILE" 's/^validation_home: vault$/validation_home: always/'
+doc Example
+chk "settings: build_pairs is named after lead_check_minutes" settings Example \
+  "warn | 3 | profile:validation_home, lead_check_minutes:invalid, build_pairs:invalid"
 reset
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
 edit "$PROFILE" "s|^repos: .*|repos: [example-api]|; s|^repos_root: .*|repos_root: \"$tmp/code\"|"

@@ -26,6 +26,7 @@ skill next to it:
 | Organize the board of the Example project. | `scrum-master` |
 | Check my vault for problems. | `vault-doctor` |
 | Build the approved stories of EX-1. | `build` |
+| List my achievements on the Example project from 2026-11-01 to 2026-11-30. | `achievements` |
 
 - Any skill runs by name: `/odsb:<skill>`.
 - `vault-setup` runs only by name, as `## 9. Skills and agents` in `docs/contract.md` says.
@@ -285,6 +286,19 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
 - The plugin ships no browser. Name the browser skill or command your repo uses.
 - The doctor's `validation` check names a repo whose steps are missing or still the template's
   text.
+
+## Achievements
+
+- Ask for your achievements in a date range or a sprint, as under [What to say](#what-to-say),
+  and the `achievements` skill gathers them, as `## 9. Skills and agents` in `docs/contract.md`
+  says.
+- Each story set to `done` in that time gives one achievement, worded from its summary and its
+  `## Changes`.
+- It asks you about the proposals you made to your company or project then, and helps you word
+  each one. Only you can name a proposal: it makes up none.
+- The result is in its reply. Only when you ask, it writes it to `achievements.md` in the
+  project's topics root, one section per period.
+- No other skill or agent logs an achievement, so none is logged twice.
 
 ## On Windows
 

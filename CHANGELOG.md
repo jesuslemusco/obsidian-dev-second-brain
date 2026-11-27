@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.13.0 - unreleased
+
+- The `achievements` skill gathers your achievements for a date range or a sprint: one for each
+  story set to `done` in that time, worded from its Summary and `## Changes`, that names the
+  story. A story is listed once, as `## 9. Skills and agents` in `docs/contract.md` says.
+- It asks you about the proposals you made to your company or project in that time, and helps
+  you word each one from the project and its stories. It makes up no proposal.
+- It shows the result in its reply, and writes it to `achievements.md` in the project's topics
+  root only when you ask.
+- It is the one skill or agent that gathers or logs an achievement. Nothing logs one as a story
+  finishes, so none is logged twice.
+- `achievements_skill` is gone from the profile template, vault-setup and the doctor's `profile`
+  check. A profile that still has it keeps it: no skill reads it, and the doctor does not name
+  it. Remove it when you like.
+
 ## 0.12.0 - 2026-11-24
 
 - The `scrum-master` skill replaces the `sprint` skill and the `scrum-master` agent. It has four

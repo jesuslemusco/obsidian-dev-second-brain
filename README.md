@@ -23,6 +23,8 @@ It can also build a story you approve, in a git worktree of its own, tested and 
   with its code.
 - **Builds.** Claude builds each story you approve, test-first, in a git worktree of its own, and
   has a fresh reviewer grade it against its acceptance criteria before it waits for your merge.
+- **Achievements.** Claude gathers what your done stories delivered in a date range or a sprint,
+  and the proposals you made, for a review or a report.
 - **Validation.** Each repo's commands to check it, and the steps to try it as a user would, are
   in a `validation.md`, in the vault or in the repo.
 - **Several repos.** A project's repos can split into subprojects, each with its own branches and
@@ -128,6 +130,23 @@ The flow is under `## Building a story` in `docs/guide.md`, and its steps are in
 ```
 /odsb:build EX-2
 Build the approved stories of EX-1.
+```
+
+### `/odsb:achievements`
+
+Gathers your achievements for a date range or a sprint, for a review or a report.
+
+- Each story set to done in that time gives one achievement, worded from its summary and its
+  changes, that names the story. A story is listed once.
+- It asks you about the proposals you made to your company or project then, and helps you word
+  each one from the project and its stories. It makes up none.
+- The result is in its reply. It writes it to the project's `achievements.md` note only when you
+  ask.
+- It is the one skill that gathers achievements: nothing logs one as a story finishes.
+
+```
+List my achievements on the Example project from 2026-11-01 to 2026-11-30.
+/odsb:achievements sprint 2026-10-14 Example
 ```
 
 ### `/odsb:vault-setup`

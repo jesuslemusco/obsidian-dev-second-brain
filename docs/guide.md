@@ -300,8 +300,8 @@ Version 0.12.0 retires the spec flow. A story is built one way: from its README,
 - To build a story you started from a spec, read its spec for what the README lacks, and bring
   its criteria into the README through `/odsb:scrum-master refinement`. Once you approve the text,
   run `/odsb:build <ID>`.
-- The vault's conventions note is at version 11, with no `spec` note type and no `delivery` key.
-  The doctor's `conventions` check warns about an older one.
+- From version 11 on, the vault's conventions note has no `spec` note type and no `delivery`
+  key, and the doctor's `conventions` check warns about an older one.
 
 ### Validation steps
 

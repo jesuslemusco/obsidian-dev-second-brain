@@ -885,6 +885,11 @@ reads them now. `doctor --fix` folds each note into its project, notes by name:
   `<name>: its <key> <value> is not the profile's <value>: not folded, so <note> stays`, with `-`
   for an empty value of the profile. So is a `repo_paths` entry whose repo the profile places
   elsewhere.
+- The note's own text outside `## Rules` is not folded either, as no other note takes it: each
+  other section, `<name>: its ## <section> is not folded, so <note> stays`, and any other line
+  outside a section, once, `<name>: its text outside ## Rules is not folded, so <note> stays`. Its
+  frontmatter, blank lines, its `> Up:` line, its first `# ` heading and the intro lines its
+  template wrote, in each version before 0.14.0, are no text of its own.
 - A note with nothing left that it cannot fold goes:
   - Its `## Rules`, without the line its template held as a placeholder, go to the end of
     `## Rules` in `claude/README.md`, under `### <name>` and a line `For work in <repos>:`,

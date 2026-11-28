@@ -2416,13 +2416,27 @@ is "retired-subprojects: its row sits between repos and settings" \
 is "retired-subprojects: the fix names doctor --fix" "$(fix_of retired-subprojects)" "$RS_FIX"
 mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra" "$SUBS" "$vault/$P/docs/infra"
 set_repos '[example-api]' "$tmp/code" '[]'
+# The infra note as the template of 0.13.0 wrote it, its intro lines filled in, with a section of
+# the owner's own; ops with a line of the owner's own outside any section; web with the intro lines
+# of the first template.
 printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' 'base_branch: ""' \
   'branch_pattern: "feature/<ID>-<slug>"' 'environments: []' "repo_paths: [\"example-infra=$tmp/code/example-infra\"]" \
-  'validation_home: VAULT' '---' '' '# Example infra subproject' '' '## Rules' '' \
-  '- <A rule Claude must follow in this subproject, one per bullet.>' '- Never apply a plan to prod.' '' \
+  'validation_home: VAULT' '---' '' "> Up: [[$P/claude/README|Example Claude Hub]]" '' '# Example infra subproject' '' \
+  'Read these settings with `second-brain subproject "Example" "infra"`, which fills in' \
+  "the profile's values." '' \
+  "- \`repos\`: the subproject's repositories, the first the default for branch checks." \
+  "- \`base_branch\` to \`validation_home\` are the profile's keys. One left empty takes the value in" \
+  "  [[$P/claude/profile|Example Profile]]." "- Its docs live in [[$P/docs/infra/README|Example infra Docs]]." '' \
+  '## Rules' '' '- <A rule Claude must follow in this subproject, one per bullet.>' '- Never apply a plan to prod.' '' \
   '## Notes' '' 'Not a rule.' >"$SUBS/infra.md"
-printf '%s\n' '---' 'type: subproject' 'repos: [example-api]' 'base_branch: develop' '---' >"$SUBS/ops.md"
-printf '%s\n' '---' 'type: subproject' 'repos: [web-a, web-b]' '---' '' '## Rules' '' '- Ship web-a first.' >"$SUBS/web.md"
+printf '%s\n' '---' 'type: subproject' 'repos: [example-api]' 'base_branch: develop' '---' '' 'Ops owns the pager.' >"$SUBS/ops.md"
+printf '%s\n' '---' 'type: subproject' 'repos: [web-a, web-b]' '---' '' '# Example web subproject' '' \
+  'The settings note of the web subproject of Example: its repositories, its branches' \
+  'and its rules. Read it with `second-brain subproject "Example" "web"`, which fills in' "the profile's values." '' \
+  "- \`repos\` lists the subproject's repositories. The first one is the default for branch checks." \
+  '- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` are the' \
+  "  profile's keys. One left empty takes the value in [[$P/claude/profile|Example Profile]]." \
+  "- Its docs live in [[$P/docs/web/README|Example web Docs]]." '' '## Rules' '' '- Ship web-a first.' >"$SUBS/web.md"
 printf '%s\n' '# Example infra docs' '' \
   "The subproject's repositories, branches and rules are in [[$P/claude/subprojects/infra|Example infra Subproject]]." \
   'Each folder under this one is a topic.' >"$vault/$P/docs/infra/README.md"
@@ -2448,33 +2462,26 @@ is "fold: each change it made, note by note" "$(printf '%s\n' "$OUT" | grep '^fi
   "fixed: example-infra -> repos of the profile (Example)
 fixed: example-infra=$tmp/code/example-infra -> repo_paths of the profile (Example)
 fixed: EX-1 -> repo example-infra (Example)
-fixed: $P/claude/subprojects/infra.md -> its rules under ## Rules in $P/claude/README.md (Example)
-fixed: $P/docs/infra/README.md -> its line on the note removed (Example)
-fixed: $P/claude/subprojects/infra.md -> removed (Example)
 fixed: EX-4 -> repo example-api (Example)
 fixed: web-a -> repos of the profile (Example)
 fixed: web-b -> repos of the profile (Example)
 fixed: EX-5 -> subproject removed (Example)"
 is "fold: what it cannot fold, on stderr" "$ERR" \
-  "ops: its base_branch develop is not the profile's main: not folded, so $P/claude/subprojects/ops.md stays
+  "infra: its ## Notes is not folded, so $P/claude/subprojects/infra.md stays
+ops: its base_branch develop is not the profile's main: not folded, so $P/claude/subprojects/ops.md stays
+ops: its text outside ## Rules is not folded, so $P/claude/subprojects/ops.md stays
 EX-2: its subproject web has 2 repos, web-a and web-b: set one with second-brain task set EX-2 repo=<repo> subproject=, and $P/claude/subprojects/web.md stays until then
 EX-3: its subproject ghost names no note in $P/claude/subprojects/: remove it with second-brain task set EX-3 subproject="
 chk "fold: what is left to settle" retired-subprojects Example \
-  "warn | 4 | claude/subprojects/ops.md, claude/subprojects/web.md, EX-2:web, EX-3:ghost"
+  "warn | 5 | claude/subprojects/infra.md, claude/subprojects/ops.md, claude/subprojects/web.md, EX-2:web, EX-3:ghost"
 sb repo Example
 is "fold: the profile lists each note's repos, after its own" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "example-api example-infra web-a web-b "
 is "fold: the note's location is the profile's" "$(printf '%s\n' "$OUT" | grep '^example-infra' | cut -f2)" "$tmp/code/example-infra"
 CHUB="$vault/$P/claude/README.md"
-is "fold: the rules sit at the end of ## Rules, under the note's name and its repos" \
-  "$(awk '/^## Rules$/ { on = 1; next } /^## / { on = 0 } on && NF' "$CHUB" | tail -3)" \
-  "### infra
-For work in example-infra:
-- Never apply a plan to prod."
-is "fold: no placeholder and no other section of the note comes along" \
-  "$(grep -c 'in this subproject, one per bullet\|Not a rule' "$CHUB")" "0"
-is "fold: the docs folder stays, without its line on the note" \
-  "$(grep -c 'subprojects/infra' "$vault/$P/docs/infra/README.md")/$(grep -c '^Each folder under this one' "$vault/$P/docs/infra/README.md")" "0/1"
-is "fold: the note is gone, the two it could not fold stay" "$(ls "$SUBS" | tr '\n' ' ')" "ops.md web.md "
+is "fold: a note it cannot fold keeps its text, and its rules stay in it" \
+  "$(grep -c '^Not a rule\.$\|^- Never apply a plan to prod\.$' "$SUBS/infra.md")/$(grep -c '^### ' "$CHUB")" "2/0"
+is "fold: and its docs hub keeps its line on it" "$(grep -c 'subprojects/infra' "$vault/$P/docs/infra/README.md")" "1"
+is "fold: each note it could not fold stays" "$(ls "$SUBS" | tr '\n' ' ')" "infra.md ops.md web.md "
 is "fold: a task of a note with one repo takes it, and loses the key" \
   "$(grep -c '^subproject:' "$T/EX-1/README.md")/$(sed -n 's/^repo: //p' "$T/EX-1/README.md")" "0/example-infra"
 is "fold: a task with a repo keeps it, and loses the key" \
@@ -2482,26 +2489,43 @@ is "fold: a task with a repo keeps it, and loses the key" \
 is "fold: a task it cannot fold keeps its key and gets no repo" "$(grep -c '^subproject: web$\|^repo:' "$T/EX-2/README.md")" "1"
 doc Example --fix
 is "fold: --fix again changes nothing" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
-is "fold: and moves the rules once" "$(grep -c '^### infra$' "$CHUB")" "1"
 sb task set EX-2 repo=web-a subproject=
 sb task set EX-3 subproject=
-edit "$SUBS/ops.md" 's/^base_branch: develop$/base_branch: main/'
+edit "$SUBS/ops.md" 's/^base_branch: develop$/base_branch: main/; /^Ops owns the pager\.$/d'
+edit "$SUBS/infra.md" '/^## Notes$/,$d'
 mkdir -p "$vault/$P/docs/web"
 printf '%s\n' '# Example web docs' '' "See [[$P/claude/subprojects/web|the web note]] for more." >"$vault/$P/docs/web/README.md"
 edit "$CHUB" 's/^## Rules$/## House rules/'
 doc Example --fix
-is "fold: once settled, the notes go, then their folder" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
-  "fixed: $P/claude/subprojects/ops.md -> removed (Example)
+is "fold: once settled, a note with nothing else goes, then their folder" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: $P/claude/subprojects/infra.md -> its rules under ## Rules in $P/claude/README.md (Example)
+fixed: $P/docs/infra/README.md -> its line on the note removed (Example)
+fixed: $P/claude/subprojects/infra.md -> removed (Example)
+fixed: $P/claude/subprojects/ops.md -> removed (Example)
 fixed: $P/claude/subprojects/web.md -> its rules under ## Rules in $P/claude/README.md (Example)
 fixed: $P/claude/subprojects/web.md -> removed (Example)
 fixed: $P/claude/subprojects -> removed (Example)"
-is "fold: a second note's rules come under its own name, with its repos" \
-  "$(awk '/^### web$/ { on = 1; next } on && NF' "$CHUB" | head -2)" \
-  "For work in web-a, web-b:
+is "fold: and names nothing on stderr" "$ERR" ""
+is "fold: the intro lines of each template count as nothing else, and stay behind" \
+  "$(grep -c 'Read these settings\|Its docs live in\|the profile.s values\|The settings note of\|lists the subproject' "$CHUB")" "0"
+is "fold: each note's rules, under its name and its repos, in a ## Rules at the end of a README with none" \
+  "$(awk '/^## Rules$/ { on = 1; next } /^## / { on = 0 } on && NF' "$CHUB")" \
+  "### infra
+For work in example-infra:
+- Never apply a plan to prod.
+### web
+For work in web-a, web-b:
 - Ship web-a first."
-is "fold: a README with no ## Rules gets one, at its end" "$(grep '^## ' "$CHUB" | tail -1)/$(grep -c '^## Rules$' "$CHUB")" "## Rules/1"
+is "fold: that ## Rules is the README's last section, and its one" "$(grep '^## ' "$CHUB" | tail -1)/$(grep -c '^## Rules$' "$CHUB")" "## Rules/1"
+is "fold: no placeholder and no other line of the note comes along" \
+  "$(grep -c 'in this subproject, one per bullet\|Not a rule\|Ops owns' "$CHUB")" "0"
+is "fold: the docs folder stays, without its line on the note" \
+  "$(grep -c 'subprojects/infra' "$vault/$P/docs/infra/README.md")/$(grep -c '^Each folder under this one' "$vault/$P/docs/infra/README.md")" "0/1"
 is "fold: a docs hub line of the owner's own stays" "$(grep -c 'the web note' "$vault/$P/docs/web/README.md")" "1"
 is "retired-subprojects: no row once all is folded" "$(row retired-subprojects)" ""
+doc Example --fix
+is "fold: a run with nothing left changes nothing" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+is "fold: and moves the rules once" "$(grep -c '^### infra$' "$CHUB")" "1"
 fi
 
 # ---------------------------------------------------------------- sprints

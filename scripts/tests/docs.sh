@@ -3354,6 +3354,13 @@ file_has "retired: a task key goes to the task's repo" "$RC" \
 file_has "retired: a note's tasks take its one repo" "$RC" '  note with one repo, it takes that repo as the profile spells it,'
 file_has "retired: a setting of its own is named, not folded" "$RC" \
   '  `<name>: its <key> <value> is not the profile'"'"'s <value>: not folded, so <note> stays`, with `-`'
+line_is "retired: a note's own text outside ## Rules keeps it" "$RC" \
+  '- The note'"'"'s own text outside `## Rules` is not folded either, as no other note takes it: each'
+file_has "retired: each other section is named" "$RC" '  other section, `<name>: its ## <section> is not folded, so <note> stays`, and any other line'
+file_has "retired: the doctor skill says how to settle it" "$here/skills/vault-doctor/checks.md" \
+  'a section or a line of the note outside `## Rules`, which the owner moves where it belongs'
+file_has "retired: and the changelog says so" "$here/CHANGELOG.md" \
+  '  `repo` while the note lists several repos, and a note with text of yours outside `## Rules`,'
 file_has "retired: its rules go to claude/README.md" "$RC" '    `## Rules` in `claude/README.md`, under `### <name>` and a line `For work in <repos>:`,'
 file_has "retired: its docs folder stays a topic folder" "$RC" '  - Its docs folder stays, a topic folder like any other. Its hub loses the line that began'
 line_is "retired: a project's parts are topic folders" "$RC" \
@@ -3371,6 +3378,9 @@ RG="$here/docs/guide.md"
 file_has "retired: the guide's example topic folders" "$RG" \
   "- A project's parts are topic folders it names itself, such as \`docs/apps/\`, with a folder per"
 file_has "retired: and initiatives" "$RG" '  app, or `docs/initiatives/`, with a folder per initiative. A story about one carries its tag,'
+line_is "retired: the guide says from which version the conventions note has no spec type" "$RG" \
+  '- From version 11 on, the vault'"'"'s conventions note has no `spec` note type and no `delivery`'
+file_lacks "retired: and names no version as the current one" "$RG" 'conventions note is at version'
 file_has "retired: the README's several repos" "$here/README.md" \
   '- **Several repos.** A project lists its repos, under one ticket key and one board, and each story'
 CG="$here/CHANGELOG.md"

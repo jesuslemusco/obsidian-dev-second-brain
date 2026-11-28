@@ -1931,6 +1931,60 @@ sb_doc_fold_rules() {
     }'
 }
 
+# The intro lines the template of a subproject note wrote in each version before 0.14.0, a
+# placeholder in braces standing for any text. The fold counts them as nothing of the owner's. The
+# two keys of the retired spec flow that one version named stand as {{KEY}}.
+SB_DOC_NOTE_INTRO='Read these settings with `second-brain subproject "{{PROJECT}}" "{{SUBPROJECT}}"`, which fills in
+the profile'"'"'s values.
+- `repos`: the subproject'"'"'s repositories, the first the default for branch checks.
+- `base_branch` to `validation_home` are the profile'"'"'s keys. One left empty takes the value in
+  [[{{PATH}}/claude/profile|{{ALIAS}}]].
+- Its docs live in [[{{PATH}}/README|{{ALIAS}}]].
+The settings note of the {{SUBPROJECT}} subproject of {{PROJECT}}: its repositories, its branches
+and its rules. Read it with `second-brain subproject "{{PROJECT}}" "{{SUBPROJECT}}"`, which fills in
+- `repos` lists the subproject'"'"'s repositories. The first one is the default for branch checks.
+- `base_branch`, `production_branch`, `branch_pattern`, `environments`, `repo_paths`, `{{KEY}}`,
+  `{{KEY}}` and `validation_home` are the profile'"'"'s keys. One left empty takes the value in
+- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` are the
+  profile'"'"'s keys. One left empty takes the value in [[{{PATH}}/claude/profile|{{ALIAS}}]].'
+
+# Print what a note holds that the fold does not carry, one line each: "## <heading>" for each
+# section other than ## Rules, as written, and "text" once for any other line outside a section
+# that is not blank, its up line, its first H1 or an intro line of SB_DOC_NOTE_INTRO. Frontmatter
+# is not read, and a heading in fenced code is no heading.
+sb_doc_fold_leftover() {
+  SB_INTRO="$SB_DOC_NOTE_INTRO" LC_ALL=C awk '
+    # Return 1 when s is the pattern p, each {{...}} in p standing for any text.
+    function glob(s, p,   n, part, i, at, k, tail) {
+      n = split(p, part, /[{][{][A-Z_]+[}][}]/)
+      if (n == 1) return s == p
+      if (substr(s, 1, length(part[1])) != part[1]) return 0
+      at = length(part[1]) + 1
+      for (i = 2; i < n; i++) {
+        k = index(substr(s, at), part[i])
+        if (!k) return 0
+        at += k - 1 + length(part[i])
+      }
+      tail = part[n]
+      return (length(s) - at + 1 >= length(tail) && substr(s, length(s) - length(tail) + 1) == tail)
+    }
+    BEGIN { nt = split(ENVIRON["SB_INTRO"], t, "\n") }
+    { line = $0; sub(/\r$/, "", line) }
+    NR == 1 { sub(/^\357\273\277/, "", line); if (line == "---") { fm = 1; next } }
+    fm { if (line == "---") fm = 0; next }
+    line ~ /^[ \t]*(```|~~~)/ { fence = !fence }
+    !fence && line ~ /^##? / {
+      if (line ~ /^# / && sec == "" && !h1) { h1 = 1; next }
+      h = line; sub(/[ \t#]+$/, "", h)
+      if (tolower(h) ~ /^##[ \t]+rules$/) sec = "rules"
+      else { sec = h; print h }
+      next
+    }
+    sec != "" || line ~ /^[ \t]*$/ || line ~ /^> Up: / { next }
+    { for (i = 1; i <= nt; i++) if (glob(line, t[i])) next }
+    !text++ { print "text" }' "$1"
+}
+
 # Write text at the end of the ## Rules section of a note, after one blank line, or in a new
 # ## Rules section at its end when it has none; keeps line endings. A heading in fenced code is no
 # heading. Usage: sb_doc_fold_add_rules <file> <text>
@@ -1967,10 +2021,11 @@ sb_doc_fold_add_rules() {
 # Fold the notes left in claude/subprojects/ and the subproject keys of the tasks into the current
 # project, as doctor --fix does, and print each change. A note's repos and repo_paths entries join
 # the profile's. Its tasks take its one repo, or none when it has none or they have a repo, and
-# lose the key. Then, when no setting of it differs from the profile's and each of its tasks is
-# folded, its rules go to the end of ## Rules in claude/README.md, the line its docs hub holds
-# about it goes, and so does the note, then the folder once it is empty. What it cannot fold it
-# names on stderr. Usage: sb_doc_fold_subprojects <project name>
+# lose the key. Then, when no setting of it differs from the profile's, it holds nothing outside
+# ## Rules but what sb_doc_fold_leftover passes over, and each of its tasks is folded, its rules go
+# to the end of ## Rules in claude/README.md, the line its docs hub holds about it goes, and so
+# does the note, then the folder once it is empty. What it cannot fold it names on stderr.
+# Usage: sb_doc_fold_subprojects <project name>
 sb_doc_fold_subprojects() {
   local project="$1" notes keys f n low rel r pr e er ep pe k nv pv keep id file v cnt list rules
   local text readme hub tmp nl=$'\n' names="" dir="$SB_P_DIR/claude/subprojects"
@@ -2021,6 +2076,18 @@ EOF
       keep=1
       printf "%s: its %s %s is not the profile's %s: not folded, so %s stays\n" "$n" "$k" "$nv" "${pv:--}" "$rel" >&2
     done
+    # The owner's own text outside ## Rules goes nowhere else, so the note keeps it.
+    while IFS= read -r e; do
+      [ -n "$e" ] || continue
+      keep=1
+      if [ "$e" = text ]; then
+        printf '%s: its text outside ## Rules is not folded, so %s stays\n' "$n" "$rel" >&2
+      else
+        printf '%s: its %s is not folded, so %s stays\n' "$n" "$e" "$rel" >&2
+      fi
+    done <<EOF
+$(sb_doc_fold_leftover "$f")
+EOF
     cnt="$(sb_fm_list "$f" repos 2>/dev/null | grep -c . || true)"
     list="$(sb_fm_list "$f" repos 2>/dev/null | sb_doc_fold_join and)"
     while IFS=$'\t' read -r id file v; do

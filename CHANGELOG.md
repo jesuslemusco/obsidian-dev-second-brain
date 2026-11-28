@@ -31,7 +31,9 @@
   Its docs folder stays, a topic folder like any other.
 - A setting of a note that is not the profile's, such as a `base_branch`, is not folded: `--fix`
   names it on stderr and the note stays, for you to settle. So does a note with a task that has no
-  `repo` while the note lists several repos. Run the doctor's `check` and `fix` after the update.
+  `repo` while the note lists several repos, and a note with text of yours outside `## Rules`,
+  such as a section of notes: move that text where it belongs, then delete it from the note. Run
+  the doctor's `check` and `fix` after the update.
 - A board you scaffolded before keeps its `By subproject` view. Remove it from `tasks.base` when
   you like.
 - The conventions note is at version 12: it names a task's `repo` key and no subproject. The

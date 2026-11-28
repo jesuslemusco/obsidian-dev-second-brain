@@ -14,6 +14,14 @@
 - A new board shows each task's repo in a `Repo` column, after its branch, in the `Active`,
   `Current sprint`, `By topic` and `All` views. An existing board is not rewritten: add the
   `note.repo` property and the `repo` lines from `templates/tasks.base.tmpl` to see it there.
+- A change across repos is an epic with one story per repo, each with its own branch and pull
+  request in its repo, and `task dep` links each story to the stories it needs. story-tracker
+  proposes that split when a change touches more than one repo.
+- `second-brain task head` of an epic prints a `story: <ID> | <repo> | <waits on>` line for each of
+  its stories, and `--json` a `stories` array.
+- `second-brain branch <project> <ID>` prints an `elsewhere: <repo> <branch> <short hash>` line
+  for each branch with the id in another repo of the project, and story-tracker's branch check
+  warns about it.
 - Subprojects are retired. A project's parts, such as its apps or its initiatives, are topic
   folders it names itself, such as `docs/apps/` or `docs/initiatives/`, and each story names the
   one repo it changes.

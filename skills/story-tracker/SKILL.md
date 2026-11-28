@@ -93,6 +93,9 @@ ticket.
   the profile's first. It prints the `repo` and its `path`, the `current` branch and its `head`,
   `base_branch` and `branch_pattern`, one `branch: <name> <short hash>` line for each local or
   remote branch that carries the id, the task's `recorded` branch, and `on_ticket`.
+  - An `elsewhere: <repo> <branch> <short hash>` line is a branch with the id in another repo of
+    the project. Warn the user and name that repo: the story may name the wrong repo, or that part
+    of the change is another story, as `## A change across repos` says.
   - The ticket touches another repo: `second-brain repo <project>` lists the repos, the default
     first, and `second-brain profile <project> repos` says what each one holds. Add
     `--path "<repo path>"`, with the path `second-brain repo <project> <name>` prints.
@@ -119,6 +122,17 @@ ticket.
     with that id and how it differs.
   - No branch yet: record `none yet`, and name the branch the repo was on.
   - A changed canonical branch also gets a status note.
+
+## A change across repos
+
+One story changes one repo: its `repo`, with its own branch, review and pull request there.
+
+- A change that touches more than one repo is an epic with one story per repo, each with its own
+  `repo`. Propose that split when you write the story, as `## 3. Create the story` in `create.md`
+  says.
+- A story that needs another story's change first waits on it:
+  `second-brain task dep <ID> add <other ID>`. The build takes them in that order.
+- `second-brain task head <epic>` lists each of its stories as `story: <ID> | <repo> | <waits on>`.
 
 ## Building a story
 

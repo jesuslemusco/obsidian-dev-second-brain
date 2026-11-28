@@ -150,7 +150,7 @@ cmd_branch() {
   local usage="usage: second-brain branch <project> <ID> [--path <dir>] [--show <ref> <file> | --started]"
   local a n=0 project="" id="" at="" hasat=0 mode=list ref="" file=""
   local rows hits tfile="" rec="-" ids want row rpath rstate dir name base pattern
-  local current head refs carried on=no tbname tbref bname bref hash kind log stat srepo=""
+  local current head refs carried on=no tbname tbref bname bref hash kind log stat srepo="" rn rp rs
   while [ $# -gt 0 ]; do
     a="$1"
     case "$a" in
@@ -287,4 +287,13 @@ EOF
   printf 'base_branch: %s\nbranch_pattern: %s\n' "$base" "$pattern"
   sb_br_lines "$carried"
   printf 'recorded: %s\non_ticket: %s\n' "$rec" "$on"
+  # A branch with the id in another repo of the project: the story may name the wrong repo, or that
+  # part of the change is another story's, one per repo.
+  while IFS=$'\t' read -r rn rp rs; do
+    [ -n "$rn" ] && [ "$rn" != "$name" ] && [ "$rs" = ok ] || continue
+    sb_br_git "$rp" rev-parse --git-dir >/dev/null 2>&1 || continue
+    sb_br_refs "$rp" | sb_br_carry "$ids" | SB_R="$rn" awk -F'\t' '{ print "elsewhere: " ENVIRON["SB_R"] " " $1 " " $2 }'
+  done <<EOF
+$rows
+EOF
 }

@@ -43,6 +43,9 @@ commits, the files already in the task folder.
     `second-brain branch` command of this file takes the same `--path`.
   - With one repo listed, or none, ask nothing and write no repo: a story with none takes the
     profile's first.
+  - The change touches more than one repo: it is no one story. Propose an epic with one story per
+    repo, each with its repo and the stories it needs first, as `## A change across repos` in
+    `SKILL.md` says. Show the split with the text, for the owner to approve with it.
 
 - Anything unclear or missing: ask for exactly that, as `## Story rules` in `SKILL.md` says. For
   example: "What has to be true for EX-123 to be done?", "Is EX-123 about docs/billing/invoices,
@@ -125,6 +128,15 @@ join. Every new story gets this check, one from refinement too:
   - With no match, offer the last two.
 - Write nothing, no story, key or note, before the owner picks. No AskUserQuestion, as in a
   subagent: show the matches and the epics, end with the question, and write nothing.
+
+An epic across repos, as section 1 proposed it: write the epic, then each of its stories, each by
+steps 1 to 5. Each story needs its own ticket id: ask for the ids, as `## Story rules` in
+`SKILL.md` says.
+
+- Each story takes its `--repo` in step 1 and `epic=<epic ID>` in step 3.
+- Then, for each story that needs another story's change first, run
+  `second-brain task dep <ID> add <other ID>`.
+- Then show `second-brain task head <epic ID>`: each story with its repo and what it waits on.
 
 1. `second-brain task new EX-123 --title "<title>" --topics billing/invoices`.
    - Topics are tags, comma separated. The folder `docs/billing/invoices` under the topics root

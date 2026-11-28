@@ -83,11 +83,12 @@ EOF
   SB_T_ID="$(basename "$(dirname "$SB_T_FILE")")"
 }
 
-# Print the short head of a task: properties, summary line and newest status note. With --json,
-# one JSON object with the same keys; topics and envs are arrays. The epic line takes its key from
-# the profile's parent_label.
+# Print the short head of a task: properties, summary line and newest status note, and for an
+# epic one story line per task whose epic names it. With --json, one JSON object with the same
+# keys; topics, envs and stories are arrays. The epic line takes its key from the profile's
+# parent_label.
 sb_task_head() {
-  local id="" project="" json=0 usage="usage: second-brain task head <ID> [--project P] [--json]"
+  local id="" project="" json=0 files stories usage="usage: second-brain task head <ID> [--project P] [--json]"
   while [ $# -gt 0 ]; do
     case "$1" in
       --project)
@@ -109,7 +110,14 @@ sb_task_head() {
   done
   [ -n "$id" ] || sb_die 5 "$usage"
   sb_need_task "$id" "$project"
-  LC_ALL=C SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" SB_JSON="$json" SB_LABEL="$(sb_parent_label)" awk "$(sb_awk_lib)"'
+  # An epic's stories: each task of the project whose epic names this one, by its id, with its repo
+  # and the tasks it waits on, as the board's depends_on cell gives them.
+  files="$(sb_task_files "$SB_P_DIR/$SB_TASKS_ROOT")"
+  stories="$(printf '%s\n\034\n%s\n' "$files" "$files" | sb_task_parents |
+    SB_ME="$SB_T_ID" awk -F'\t' '$2 == ENVIRON["SB_ME"] { print $1 }' | sb_task_scan | sb_board_deps |
+    awk -F'\t' '{ print $2 " | " $16 " | " $13 }' | LC_ALL=C sort)"
+  SB_ID="$SB_T_ID" SB_REL="$SB_T_REL" SB_JSON="$json" SB_LABEL="$(sb_parent_label)" SB_STORIES="$stories" \
+    LC_ALL=C awk "$(sb_awk_lib)"'
     function addtag(v) {
       sub(/^#/, "", v)
       if (v == "" || substr(v, 1, 5) == "type/" || substr(v, 1, 7) == "status/") return
@@ -125,7 +133,7 @@ sb_task_head() {
       l = ""; for (i = 1; i <= n; i++) l = l (i > 1 ? ", " : "") jstr(a[i])
       printf "%s\n  %s: [%s]", (nk++ ? "," : "{"), jstr(k), l
     }
-    BEGIN { id = ENVIRON["SB_ID"]; state = 0; json = (ENVIRON["SB_JSON"] == "1") }
+    BEGIN { id = ENVIRON["SB_ID"]; state = 0; json = (ENVIRON["SB_JSON"] == "1"); nst = split(ENVIRON["SB_STORIES"], st, "\n") }
     {
       line = $0; sub(/\r$/, "", line)
       if (NR == 1) {
@@ -185,6 +193,8 @@ sb_task_head() {
       show(ENVIRON["SB_LABEL"], epic)
       showlist("topics", topics, ntp, tp)
       showlist("envs", envs, nen, en)
+      if (nst && json) showlist("stories", "", nst, st)
+      else for (i = 1; i <= nst; i++) show("story", st[i])
       show("summary", cut(summary, 300)); show("last_note", cut(note, 300))
       if (json) print "\n}"
     }

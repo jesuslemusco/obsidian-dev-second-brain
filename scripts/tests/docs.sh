@@ -3394,5 +3394,53 @@ for c in '- Subprojects are retired. A project'"'"'s parts, such as its apps or 
   line_is "retired: the changelog: ${c:2:44}" "$CG" "$c"
 done
 
+# ---------------------------------------------------------------- an epic spans repos, one story per repo
+STS="$here/skills/story-tracker/SKILL.md"
+STC="$here/skills/story-tracker/create.md"
+line_is "across repos: SKILL.md has its section" "$STS" '## A change across repos'
+line_is "across repos: one story changes one repo" "$STS" \
+  'One story changes one repo: its `repo`, with its own branch, review and pull request there.'
+line_is "across repos: an epic with one story per repo" "$STS" \
+  '- A change that touches more than one repo is an epic with one story per repo, each with its own'
+line_is "across repos: a story waits on the stories it needs" "$STS" \
+  '  `second-brain task dep <ID> add <other ID>`. The build takes them in that order.'
+line_is "across repos: task head lists the epic's stories" "$STS" \
+  '- `second-brain task head <epic>` lists each of its stories as `story: <ID> | <repo> | <waits on>`.'
+line_is "across repos: the branch check names an elsewhere line" "$STS" \
+  '  - An `elsewhere: <repo> <branch> <short hash>` line is a branch with the id in another repo of'
+file_has "across repos: and warns, naming that repo" "$STS" 'Warn the user and name that repo: the story may name the wrong repo, or that part'
+is "across repos: the section sits after the branch check" \
+  "$(($(linex "$STS" '## Branch check (start, update, recall)') < $(linex "$STS" '## A change across repos') && $(linex "$STS" '## A change across repos') < $(linex "$STS" '## Building a story')))" "1"
+line_is "across repos: create.md proposes the split" "$STC" \
+  '  - The change touches more than one repo: it is no one story. Propose an epic with one story per'
+line_is "across repos: create.md writes the epic, then each story" "$STC" \
+  'An epic across repos, as section 1 proposed it: write the epic, then each of its stories, each by'
+line_is "across repos: each story takes its repo and its epic" "$STC" \
+  '- Each story takes its `--repo` in step 1 and `epic=<epic ID>` in step 3.'
+line_is "across repos: then the dependencies" "$STC" '  `second-brain task dep <ID> add <other ID>`.'
+CA="$here/docs/contract.md"
+line_is "across repos: the contract says one story per repo" "$CA" \
+  '- A story changes one repo, with its own branch and pull request there. A change across repos is'
+file_has "across repos: the contract's branch row prints the elsewhere lines" "$CA" \
+  'then one `elsewhere: <repo> <name> <short hash>` line for each branch that carries the id in another repo of the project |'
+file_has "across repos: the contract's task head row prints the stories" "$CA" \
+  'for an epic, one `story: <ID> \| <repo> \| <waits on>` line after `envs` for each task whose `epic` names it, with no cap'
+file_has "across repos: the cap counts the lines besides the story lines" "$CA" \
+  '| `task head <ID> [--project P] [--json]` | at most 15 lines besides the story lines: id, path,'
+GE="$here/docs/guide.md"
+file_has "across repos: the guide describes it" "$GE" \
+  '- A change across repos is an epic with one story per repo, each with its own branch and pull'
+file_has "across repos: the guide points to the skill's section" "$GE" \
+  '`## A change across repos` in
+  `skills/story-tracker/SKILL.md` says.'
+CG="$here/CHANGELOG.md"
+for c in '- A change across repos is an epic with one story per repo, each with its own branch and pull' \
+  '- `second-brain task head` of an epic prints a `story: <ID> | <repo> | <waits on>` line for each of' \
+  '- `second-brain branch <project> <ID>` prints an `elsewhere: <repo> <branch> <short hash>` line'; do
+  line_is "across repos: the changelog: ${c:2:44}" "$CG" "$c"
+done
+sb help
+out_has "across repos: help still lists task dep" "task dep <ID> add|remove <ID>"
+
 # ---------------------------------------------------------------- result
 result

@@ -3424,7 +3424,9 @@ line_is "across repos: the contract says one story per repo" "$CA" \
 file_has "across repos: the contract's branch row prints the elsewhere lines" "$CA" \
   'then one `elsewhere: <repo> <name> <short hash>` line for each branch that carries the id in another repo of the project |'
 file_has "across repos: the contract's task head row prints the stories" "$CA" \
-  'for an epic, one `story: <ID> \| <repo> \| <waits on>` line after `envs` for each task whose `epic` names it'
+  'for an epic, one `story: <ID> \| <repo> \| <waits on>` line after `envs` for each task whose `epic` names it, with no cap'
+file_has "across repos: the cap counts the lines besides the story lines" "$CA" \
+  '| `task head <ID> [--project P] [--json]` | at most 15 lines besides the story lines: id, path,'
 GE="$here/docs/guide.md"
 file_has "across repos: the guide describes it" "$GE" \
   '- A change across repos is an epic with one story per repo, each with its own branch and pull'

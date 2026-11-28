@@ -494,6 +494,12 @@ out_lacks "task head --json: and no stories key" '"stories"'
 sb task set RP-12 status=done
 sb task head RP-10
 out_has "task head: a story's status follows what it waits on" "story: RP-13 | - | RP-11:planned,RP-12:done"
+sb task new RP-14 --project Repos --title "A fourth part" --repo rp-api
+sb task set RP-14 epic=RP-10
+sb task head RP-10
+is "task head: an epic of four stories prints a line for each, with no cap" "$(printf '%s\n' "$OUT" | grep -c '^story: ')" "4"
+is "task head: and at most 15 lines besides its story lines" \
+  "$(($(printf '%s\n' "$OUT" | grep -vc '^story: ') <= 15 && $(lines "$OUT") > 15))" "1"
 
 # ---------------------------------------------------------------- task new: the status layout
 # With task_layout: status, in any letter case, a new task starts in planned/, whether or not the

@@ -94,7 +94,7 @@ line_is "vault Claude hub: link --check lists dangling links" "$vault/claude/REA
 is "index: the pull request rule is in the section for every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'pull-request.md') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
 line_is "index: table header as in the contract" "$vault/CLAUDE.md" "| Project | Path | Keys | Use when |"
-line_is "index: version property" "$vault/CLAUDE.md" "index_version: 9"
+line_is "index: version property" "$vault/CLAUDE.md" "index_version: 10"
 rules="$(section_of "$vault/CLAUDE.md" "Rules for notes that most often go wrong" | tr '\n' ' ' | tr -s ' ')"
 is "index: the rules for notes hold the search and read rule" "$(printf '%s\n' "$rules" | grep -c -F 'Find and read notes with the helper, never with grep, cat or sed on vault files: `second-brain find`, `search` (also for related notes before a decision), `task head`, then `outline` and a ranged read, and a whole note last.')" "1"
 is "index: what holds in every session comes before what holds for a project" \
@@ -116,7 +116,8 @@ is "index: the ticket text rule sits under the rules that most often go wrong" \
 file_has "index: a rule about one project goes under the project's Rules" "$vault/CLAUDE.md" 'A rule about one project goes under `## Rules` in `<Path>/claude/README.md`'
 is "index: the rule placement holds in every session" \
   "$(($(lineno "$vault/CLAUDE.md" 'A rule about one project') < $(lineno "$vault/CLAUDE.md" '## Working on a project or on notes')))" "1"
-file_has "index: the subproject note is read with the project's rules" "$vault/CLAUDE.md" 'the `claude/subprojects/<name>.md` that `second-brain context` names'
+file_has "index: the project's Claude hub is read before anything else" "$vault/CLAUDE.md" '  `<Path>/claude/README.md`, before anything else.'
+file_lacks "index: names no subproject" "$vault/CLAUDE.md" 'subproject'
 file_has "index: a new skill is added by the steps of the vault Claude hub" "$vault/CLAUDE.md" \
   '- Add it by the steps under `## Adding a skill or agent` in the vault'"'"'s `claude/README.md`.'
 line_is "vault Claude hub: holds the heading the index points to" "$vault/claude/README.md" '## Adding a skill or agent'
@@ -129,7 +130,7 @@ line_is "index: a plugin skill or agent is called for its work" "$vault/CLAUDE.m
 file_has "index: a task note is never filed inside its topic" "$vault/CLAUDE.md" '- Never file a task note inside the topic it is about.'
 line_is "index: notes move and rename with the helper" "$vault/CLAUDE.md" \
   '- Move and rename notes with `second-brain move` and `second-brain rename`, never `mv`.'
-line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 11"
+line_is "conventions: version property" "$vault/obsidian-conventions.md" "conventions_version: 12"
 is "conventions: no command of the Obsidian CLI is left" "$(grep -c -e 'brain ob ' -e '`obsidian ' -e 'probe' "$vault/obsidian-conventions.md")" "0"
 is "conventions: the short version is the first section" "$(grep -m1 '^## ' "$vault/obsidian-conventions.md")" "## The short version"
 sb conventions
@@ -237,11 +238,12 @@ line_is "board: a Repo column" "$vault/$P/tasks/tasks.base" "    displayName: Re
 is "board: the Active, Current sprint, By topic and All views show the repo after the branch" \
   "$(awk '/^  - type: table$/ { v = "" } /^    name: / { v = substr($0, 11) } /^      - branch$/ { b = NR } /^      - repo$/ && b == NR - 1 { printf "%s|", v }' "$vault/$P/tasks/tasks.base")" \
   "Active|Current sprint|By topic|All|"
-line_is "board: a Subproject column" "$vault/$P/tasks/tasks.base" "    displayName: Subproject"
-for v in Active "Current sprint" "By topic" "By subproject" "Needs a status" All; do
+file_lacks "board: no subproject column or view" "$vault/$P/tasks/tasks.base" "ubproject"
+for v in Active "Current sprint" "By topic" "Needs a status" All; do
   line_is "board: view $v" "$vault/$P/tasks/tasks.base" "    name: $v"
 done
-file_has "tasks hub: names the By subproject view" "$vault/$P/tasks/README.md" '`By subproject`, `Needs a status` and `All`'
+file_has "tasks hub: names the other views" "$vault/$P/tasks/README.md" '`Needs a status` and `All`. Nothing is added to it by hand.'
+file_lacks "tasks hub: and no By subproject view" "$vault/$P/tasks/README.md" 'By subproject'
 line_is "tasks hub: embedded board" "$vault/$P/tasks/README.md" "![[$P/tasks/tasks.base#Active]]"
 line_is "tasks hub: unique alias" "$vault/$P/tasks/README.md" '  - "Example Tasks Hub"'
 line_is "tasks hub: up-link in the full-path form" "$vault/$P/tasks/README.md" "> Up: [[$P/README|Example Hub]]"
@@ -282,7 +284,6 @@ line_is "profile: with archive only, when a done task is due for the archive" "$
 line_is "profile: the doctor names a due task and doctor --fix archives it" "$PF" '  status note or its sprint'"'"'s end, before the doctor names it and `doctor --fix` archives it.'
 for k in delivery spec_home; do
   file_lacks "profile: no $k key, as the spec flow is retired" "$PF" "$k"
-  file_lacks "subproject template: no $k key" "$here/templates/subproject.md.tmpl" "$k"
 done
 line_is "profile: where validation_home puts validation.md" "$PF" '- `validation_home:` puts `validation.md` in `claude/` (`vault`) or at each repo'"'"'s root (`repo`).'
 line_is "profile: list every repository" "$PF" '- List every repository'"'"'s folder name in `repos:` above.'
@@ -443,11 +444,11 @@ is "no sprints: every map link points at a file" "$(check_links "$vault/$N/READM
 file_lacks "no sprints: the tasks hub names no sprint view" "$vault/$N/tasks/README.md" "Current sprint"
 file_lacks "no sprints: the board has no sprint view, filter or column" "$vault/$N/tasks/tasks.base" "sprint"
 file_lacks "no sprints: the board has no carried-from column" "$vault/$N/tasks/tasks.base" "carried_from"
-for v in Active "By topic" "By subproject" "Needs a status" All; do
+for v in Active "By topic" "Needs a status" All; do
   line_is "no sprints: board view $v" "$vault/$N/tasks/tasks.base" "    name: $v"
 done
 is "no sprints: the board takes the status folders too" "$(filters_of "$vault/$N/tasks/tasks.base")" "$(filters_want "$N/tasks" 4)"
-is "no sprints: the board keeps its five views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "5"
+is "no sprints: the board keeps its four views whole" "$(grep -c '^  - type: table$' "$vault/$N/tasks/tasks.base")" "4"
 line_is "no sprints: the last view keeps its last column" "$vault/$N/tasks/tasks.base" "      - file.mtime"
 sb context --cwd "$vault/$N"
 out_has "no sprints: context says off" "sprint: off"

@@ -74,36 +74,12 @@ sb_val_state() {
 # name, home, absolute file (or "-"), shown path (or "-"), state, repo state. State is ok, missing,
 # no-section, empty, or unknown for a repo home with no recorded location.
 sb_val_rows() {
-  local only="${1:-}" nl=$'\n' tab=$'\t' f h r rest lower name path rstate home file show
-  local phome map="$nl"
+  local only="${1:-}" name path rstate home file show phome
   phome="$(sb_val_home "$SB_P_PROFILE")"
-  # Read each subproject note once: its repos, in lower case, with the home it sets.
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    h="$(sb_fm_get "$f" validation_home 2>/dev/null)"
-    [ -n "$h" ] || continue
-    sb_lc "$h"
-    h="$SB_LC"
-    [ "$h" = "repo" ] || h=vault
-    while IFS= read -r r; do
-      [ -n "$r" ] && map="$map$r$tab$h$nl"
-    done <<EOF2
-$(sb_fm_list "$f" repos 2>/dev/null | tr '[:upper:]' '[:lower:]')
-EOF2
-  done <<EOF
-$(sb_sub_files "$SB_P_PATH")
-EOF
   while IFS=$'\t' read -r name path rstate; do
     [ -n "$name" ] || continue
     [ -z "$only" ] || [ "$name" = "$only" ] || continue
     home="$phome"
-    lower="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
-    case "$map" in
-      *"$nl$lower$tab"*)
-        rest="${map#*"$nl$lower$tab"}"
-        home="${rest%%"$nl"*}"
-        ;;
-    esac
     if [ "$home" = "vault" ]; then
       file="$SB_P_DIR/claude/validation.md"
       show="$SB_P_PATH/claude/validation.md"

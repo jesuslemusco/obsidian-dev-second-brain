@@ -2,7 +2,7 @@
 aliases:
   - Obsidian Conventions
 type: onboarding
-conventions_version: 11
+conventions_version: 12
 tags:
   - type/onboarding
 ---
@@ -29,9 +29,10 @@ tags:
    Every other note starts with `> Up: [[<path>|<Hub alias>]]`.
 6. **Move and rename with `second-brain move` / `second-brain rename`**, never `mv`.
 7. **Frontmatter is the truth.** A task carries `title`, `status`, `next` (the next action, in one
-   phrase), `branch` and `epic`, and `subproject` when it belongs to one. `status` is `planned`,
-   `in-progress`, `in-review`, `done` or `abandoned`; its tag is `status/done` for the last two
-   and `status/active` for the rest. Change both with `second-brain task set <ID> status=<status>`.
+   phrase), `branch` and `epic`, and `repo`, the one repo it changes, where the project has more
+   than one. `status` is `planned`, `in-progress`, `in-review`, `done` or `abandoned`; its tag is
+   `status/done` for the last two and `status/active` for the rest. Change both with
+   `second-brain task set <ID> status=<status>`.
 8. **Quote a YAML value** that holds a colon then a space or a `#`, starts with `-` or `[`, is a
    lone dash, or looks like a date or a number: `- "Runbook: rotate the API keys"`, `epic: "-"`.
 9. A **sprint** is `<project>/sprints/<YYYY-MM-DD>.md`, named by its end date, which is its id.
@@ -62,14 +63,13 @@ tags:
 
 - **`type`** and the `type/<type>` tag - one of `task`, `bug`, `investigation`, `architecture`,
   `runbook`, `validation`, `tool`, `ops`, `onboarding`, `data-source`, `data-output`, `sprint`,
-  `profile`, `subproject`, `moc`. A project may add its own.
+  `profile`, `moc`. A project may add its own.
 - `moc` is for hubs.
 - The ticket id is the folder name and the first alias, not a property.
 - A task note may also carry:
   - `carried_from` - the sprint ids it was carried over from.
   - `depends_on` - the tasks it waits on, as quoted path links. `second-brain task dep` edits it.
-  - `subproject` is the name of the task's subproject, spelled as its note in `claude/subprojects/`
-    is named.
+  - `repo` - the one repo it changes, as `second-brain repo <project>` lists it.
   - `archived` - the date `task archive` moved it.
 
 ## Topic tags
@@ -135,13 +135,12 @@ folder  <project>/docs/api/rate_limits/    ->  tag  api/rate-limits
 - A goal tracked as one ticket per environment is **one** task, under the first environment's id,
   with every id in `aliases` and an `envs:` mapping in the frontmatter.
 - The **task board**, `tasks.base`, is a live table over the README frontmatter, with the views
-  `Active`, `Current sprint`, `By topic`, `By subproject`, `Needs a status` and `All`. Nothing is
-  added to it by hand.
+  `Active`, `Current sprint`, `By topic`, `Needs a status` and `All`. Nothing is added to it by
+  hand.
 - A status edited in the board changes the property only: fix the `status/` tag the next time the
   note is touched. With `status`, the folder stays too, until `second-brain doctor --fix` moves it.
 - With `sprint`, a sprint edited in the board moves nothing either, until
   `second-brain doctor --fix` moves the task to the folder of its sprint.
-- A subproject's tasks stay in the one `tasks/` folder.
 - A status note is one line, newest first, under `## Status notes`:
   `` **YYYY-MM-DD (session `<id>`) - <text>** ``.
 
@@ -198,7 +197,6 @@ command.
 |---|---|
 | A note by id or alias | `second-brain find "<ID or alias>"` |
 | A project's task board | `second-brain board <project> [view]` |
-| The tasks of one subproject | `second-brain board <project> --subproject <name>` |
 | Tasks carrying a topic tag or a sub-tag | `second-brain topic <project> billing/invoices` |
 | What links to a note | `second-brain backlinks "<vault path>"` |
 | Links that go nowhere | `second-brain unresolved [project]` |

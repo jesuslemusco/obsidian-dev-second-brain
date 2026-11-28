@@ -11,8 +11,6 @@ holds the approval the same way.
 - Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds
   no topic folder yet, as `ls -d "<vault>/<path>/<topics_root>"/*/` lists them. With
   `topics_root: "."`, the tasks, sprints and `claude/` folders are no topics.
-- Each subproject's docs folder, as `second-brain subproject <project>` lists it, is no topic
-  folder here, but each folder inside it is.
 - Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.
 - The `define-validation-scope` skill, at step 3 of `## 2. The project's docs` in its `SKILL.md`:
   offer it for the repo it drafts, in a project with no docs, as step 2 there tells.

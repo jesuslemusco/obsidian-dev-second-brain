@@ -308,7 +308,7 @@ sb_doc_check_global_rules() {
         }
       }' "$f")"
   fi
-  fix="move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+  fix="move the line to the project's claude/README.md under ## Rules"
   case "$bad" in
     *:@*) fix="$fix; remove an @ import of a project's file: the index already leads to the project's rules" ;;
   esac
@@ -871,9 +871,9 @@ sb_doc_has_sprint_filter() {
 }
 
 # Check that the board file exists, that its Current sprint view filters on the sprint in progress,
-# that a project with a subproject has the By subproject view, and that an archive, status or
-# sprint project's board takes the archived tasks, the status folders or the group folders, and a
-# status or sprint project's with a child task the tasks one level deeper.
+# and that an archive, status or sprint project's board takes the archived tasks, the status
+# folders or the group folders, and a status or sprint project's with a child task the tasks one
+# level deeper.
 sb_doc_check_board() {
   local base="$SB_P_DIR/$SB_TASKS_ROOT/tasks.base" cur="" lit bad="" fix="" nl=$'\n'
   if [ ! -f "$base" ]; then
@@ -900,11 +900,6 @@ sb_doc_check_board() {
       bad="tasks.base:no-view"
       fix="add the Current sprint view and the sprint columns from templates/tasks.base.tmpl, with the filter on the sprint in progress, $cur"
     fi
-  fi
-  # A board scaffolded before the By subproject view lacks it; only a project with a subproject needs it.
-  if [ -n "$(sb_sub_files "$SB_P_PATH")" ] && ! sb_doc_has_view "$base" "By subproject"; then
-    bad="${bad:+$bad$nl}tasks.base:no-subproject-view"
-    fix="${fix:+$fix; }add the By subproject view and the subproject column from templates/tasks.base.tmpl"
   fi
   # A board scaffolded before the archive layout shows no archived task in Obsidian.
   if [ "$SB_DOC_LAYOUT" = "archive" ] && ! sb_doc_has_archive_filter "$base"; then
@@ -948,21 +943,15 @@ sb_doc_check_hubs() {
     "run second-brain scaffold project again with the same name and path: it writes what is missing and overwrites nothing, so delete an empty hub first" 120
 }
 
-# Check that the project hub, claude/README.md, the profile and each subproject note hold no
-# placeholder of the template they were written from: text in angle brackets, outside inline code
-# unless it opens the code. Only the template's own placeholders count, so the owner's angle
-# brackets never do. Frontmatter and fenced code are not read, nor are task READMEs. An offender
-# is the note's path under the project and the line.
+# Check that the project hub, claude/README.md and the profile hold no placeholder of the template
+# they were written from: text in angle brackets, outside inline code unless it opens the code.
+# Only the template's own placeholders count, so the owner's angle brackets never do. Frontmatter
+# and fenced code are not read, nor are task READMEs. An offender is the note's path under the
+# project and the line.
 sb_doc_check_placeholders() {
-  local f bad
-  bad="$({
-    printf '%s\t%s\n' project-readme.md.tmpl README.md project-claude-hub.md.tmpl claude/README.md \
-      profile.md.tmpl claude/profile.md
-    for f in "$SB_P_DIR"/claude/subprojects/*.md; do
-      [ -f "$f" ] || continue
-      printf 'subproject.md.tmpl\tclaude/subprojects/%s\n' "${f##*/}"
-    done
-  } | LC_ALL=C SB_T="$(sb_plugin_root)/templates/" SB_D="$SB_P_DIR/" awk -F'\t' '
+  local bad
+  bad="$(printf '%s\t%s\n' project-readme.md.tmpl README.md project-claude-hub.md.tmpl claude/README.md \
+    profile.md.tmpl claude/profile.md | LC_ALL=C SB_T="$(sb_plugin_root)/templates/" SB_D="$SB_P_DIR/" awk -F'\t' '
     # Put the placeholders of a line in sp; return how many.
     function spans(s,   i, j, n, c, code, start) {
       n = 0; code = 0
@@ -1503,8 +1492,8 @@ EOF
   sb_doc_report warn topic-tags "$SB_P_NAME" "$bad" "create the folder, fix the tag, or add \"- <tag> -> <folder>\" under ## Topics in the profile"
 }
 
-# Print the repositories in the frontmatter of a note, the profile or a subproject note, that have
-# no row in the Code to doc map of the profile's Docs section.
+# Print the repositories in the frontmatter of a note, such as the profile, that have no row in the
+# Code to doc map of the profile's Docs section.
 sb_doc_unmapped() {
   [ -f "$1" ] && [ -f "$SB_P_PROFILE" ] || return 0
   LC_ALL=C awk "$(sb_awk_lib)"'
@@ -1559,84 +1548,55 @@ sb_doc_check_repos() {
   sb_doc_report warn repos "$SB_P_NAME" "$bad" "correct repos_root or the repo_paths entry in the profile, then run second-brain repo <project>"
 }
 
-# Check each subproject note: its type, its repositories (listed, found, in one subproject only,
-# each with a map row) and its docs folder. A project with no subproject gets no row.
-sb_doc_check_subprojects() {
-  local files f n r lr rows unmapped rn rp rs state seen bad="" nl=$'\n'
-  files="$(sb_sub_files "$SB_P_PATH")"
-  [ -n "$files" ] || return 0
-  rows="$(sb_repo_rows_at "$SB_P_PATH")"
-  seen="$nl"
+# Print the absolute path of each note in the current project's claude/subprojects/ folder, by
+# name: versions before 0.14.0 wrote one per subproject.
+sb_doc_old_notes() {
+  local f
+  for f in "$SB_P_DIR/claude/subprojects"/*.md; do
+    [ -f "$f" ] && printf '%s\n' "$f"
+  done
+  return 0
+}
+
+# Print id, file and value for each task of the project with a subproject key, which versions
+# before 0.14.0 wrote, as sb_task_scan read it.
+sb_doc_old_keys() {
+  [ -n "$SB_DOC_SCAN" ] || return 0
+  printf '%s\n' "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' 'NF >= 14 && $14 != "-" { print $2 "\t" $1 "\t" $14 }'
+}
+
+# Check that no note is left in claude/subprojects/ and no task has a subproject key: subprojects
+# retired in 0.14.0, and doctor --fix folds them into the project. A project with neither gets no
+# row.
+sb_doc_check_retired_subprojects() {
+  local bad="" f id file v nl=$'\n'
   while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    n="$(sb_sub_name "$f")"
-    [ "$(sb_fm_get "$f" type 2>/dev/null)" = "subproject" ] || bad="$bad$n:type$nl"
-    [ -n "$(sb_fm_list "$f" repos 2>/dev/null)" ] || bad="$bad$n:no-repos$nl"
-    [ -d "$SB_ROOT/$(sb_sub_docs "$n")" ] || bad="$bad$n:no-docs$nl"
-    unmapped="$nl$(sb_doc_unmapped "$f")$nl"
-    while IFS= read -r r; do
-      [ -n "$r" ] || continue
-      lr="$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]')"
-      case "$seen" in *"$nl$lr$nl"*) bad="$bad$r:twice$nl" ;; esac
-      seen="$seen$lr$nl"
-      case "$unmapped" in *"$nl$r$nl"*) bad="$bad$n/$r:no-map-row$nl" ;; esac
-      state="unknown"
-      while IFS=$'\t' read -r rn rp rs; do
-        if [ "$rn" = "$r" ]; then
-          state="$rs"
-          break
-        fi
-      done <<EOF2
-$rows
-EOF2
-      case "$state" in
-        ok) ;;
-        missing) bad="$bad$n/$r:missing$nl" ;;
-        *) bad="$bad$n/$r:no-location$nl" ;;
-      esac
-    done <<EOF2
-$(sb_fm_list "$f" repos 2>/dev/null)
-EOF2
+    [ -n "$f" ] && bad="${bad}claude/subprojects/${f##*/}$nl"
   done <<EOF
-$files
+$(sb_doc_old_notes)
 EOF
-  sb_doc_report warn subprojects "$SB_P_NAME" "$bad" \
-    "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
+  while IFS=$'\t' read -r id file v; do
+    [ -n "$id" ] && bad="$bad$id:$v$nl"
+  done <<EOF
+$(sb_doc_old_keys)
+EOF
+  [ -n "$bad" ] || return 0
+  sb_doc_report warn retired-subprojects "$SB_P_NAME" "$bad" \
+    "run second-brain doctor --fix: it adds each note's repos to the profile, moves its rules into claude/README.md, sets repo on its tasks and removes it; settle by hand what it names on stderr"
 }
 
-# Check that each task's subproject names a subproject note, without letter case as the helper
-# resolves it. A project with no subproject gets no row.
-sb_doc_check_task_subproject() {
-  local files bad
-  files="$(sb_sub_files "$SB_P_PATH")"
-  [ -n "$files" ] || return 0
-  bad="$(printf '%s\n\034\n%s\n' "$files" "$SB_DOC_SCAN" | LC_ALL=C awk -F'\t' '
-    $0 == "\034" { part = 2; next }
-    !part { n = $0; sub(/^.*\//, "", n); sub(/\.md$/, "", n); has[tolower(n)] = 1; next }
-    NF >= 14 && $14 != "-" && !(tolower($14) in has) { print $2 ":" $14 }')"
-  sb_doc_report warn task-subproject "$SB_P_NAME" "$bad" \
-    "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
-}
-
-# Check the validation_home values of the profile and the subproject notes, the profile's
-# lead_check_minutes: empty, or a value that spaces the checks evenly through the hour, and its
-# build_pairs: empty, or 1 to 5. A delivery or spec_home key, which the retired spec flow read, is
-# not read.
+# Check the profile's validation_home, its lead_check_minutes: empty, or a value that spaces the
+# checks evenly through the hour, and its build_pairs: empty, or 1 to 5. A delivery or spec_home
+# key, which the retired spec flow read, is not read.
 sb_doc_check_settings() {
-  local bad="" nl=$'\n' f n v
-  while IFS= read -r f; do
-    [ -n "$f" ] && [ -f "$f" ] || continue
-    if [ "$f" = "$SB_P_PROFILE" ]; then n=profile; else n="$(sb_sub_name "$f")"; fi
-    sb_lc "$(sb_fm_get "$f" validation_home 2>/dev/null)"
-    v="$SB_LC"
-    case "$v" in
+  local bad="" nl=$'\n'
+  if [ -f "$SB_P_PROFILE" ]; then
+    sb_lc "$(sb_fm_get "$SB_P_PROFILE" validation_home 2>/dev/null)"
+    case "$SB_LC" in
       "" | vault | repo) ;;
-      *) bad="$bad$n:validation_home$nl" ;;
+      *) bad="${bad}profile:validation_home$nl" ;;
     esac
-  done <<EOF
-$SB_P_PROFILE
-$(sb_sub_files "$SB_P_PATH")
-EOF
+  fi
   case "$(sb_fm_get "$SB_P_PROFILE" lead_check_minutes 2>/dev/null)" in
     "" | 10 | 12 | 15 | 20 | 30 | 60) ;;
     *) bad="${bad}lead_check_minutes:invalid$nl" ;;
@@ -1884,7 +1844,7 @@ sb_doc_rows() {
     sb_doc_folder "$path" || continue
     sb_doc_project "$name" "$SB_DOC_FOLD" "$keys"
     for c in profile board hubs placeholders task_template task_frontmatter needs_a_status status_tag yaml_traps \
-      alias_unique no_readme task_location task_layout topic_tags code_doc_map repos subprojects task_subproject \
+      alias_unique no_readme task_location task_layout topic_tags code_doc_map repos retired_subprojects \
       settings validation sprints unresolved_links bare_links line_endings depends_on; do
       "sb_doc_check_$c"
     done
@@ -1932,10 +1892,274 @@ sb_doc_fix_pull_request() {
   printf 'fixed: claude/pull-request.md -> version %s (vault)\n' "$SB_DOC_WANT"
 }
 
+# Read lines on stdin; print the ones that hold something, joined with ", ", or with " and " before
+# the last one when the argument is "and": a, b and c.
+sb_doc_fold_join() {
+  SB_LAST="${1:-}" awk 'NF { w[++n] = $0 }
+    END {
+      for (i = 1; i <= n; i++) printf "%s%s", w[i], (i == n ? "" : (i == n - 1 && ENVIRON["SB_LAST"] == "and" ? " and " : ", "))
+      print ""
+    }'
+}
+
+# Print a setting of a note as the fold compares it with the profile's: a list joined with ", ",
+# and validation_home in lower case. Usage: sb_doc_fold_value <file> <key>
+sb_doc_fold_value() {
+  local v
+  if [ "$2" = environments ]; then
+    v="$(sb_fm_list "$1" environments 2>/dev/null | sb_doc_fold_join)"
+  else
+    v="$(sb_fm_get "$1" "$2" 2>/dev/null)"
+  fi
+  if [ "$2" = validation_home ]; then
+    sb_lc "$v"
+    v="$SB_LC"
+  fi
+  printf '%s\n' "$v"
+}
+
+# Print the lines under a note's ## Rules, with no blank line at either end and without the line
+# the note's template held as its placeholder.
+sb_doc_fold_rules() {
+  sb_section "$1" Rules 2>/dev/null | awk '
+    $0 == "- <A rule Claude must follow in this subproject, one per bullet.>" { next }
+    { line[++n] = $0 }
+    END {
+      a = 1; while (a <= n && line[a] ~ /^[ \t]*$/) a++
+      b = n; while (b >= a && line[b] ~ /^[ \t]*$/) b--
+      for (i = a; i <= b; i++) print line[i]
+    }'
+}
+
+# The intro lines the template of a subproject note wrote in each version before 0.14.0, a
+# placeholder in braces standing for any text. The fold counts them as nothing of the owner's. The
+# two keys of the retired spec flow that one version named stand as {{KEY}}.
+SB_DOC_NOTE_INTRO='Read these settings with `second-brain subproject "{{PROJECT}}" "{{SUBPROJECT}}"`, which fills in
+the profile'"'"'s values.
+- `repos`: the subproject'"'"'s repositories, the first the default for branch checks.
+- `base_branch` to `validation_home` are the profile'"'"'s keys. One left empty takes the value in
+  [[{{PATH}}/claude/profile|{{ALIAS}}]].
+- Its docs live in [[{{PATH}}/README|{{ALIAS}}]].
+The settings note of the {{SUBPROJECT}} subproject of {{PROJECT}}: its repositories, its branches
+and its rules. Read it with `second-brain subproject "{{PROJECT}}" "{{SUBPROJECT}}"`, which fills in
+- `repos` lists the subproject'"'"'s repositories. The first one is the default for branch checks.
+- `base_branch`, `production_branch`, `branch_pattern`, `environments`, `repo_paths`, `{{KEY}}`,
+  `{{KEY}}` and `validation_home` are the profile'"'"'s keys. One left empty takes the value in
+- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` are the
+  profile'"'"'s keys. One left empty takes the value in [[{{PATH}}/claude/profile|{{ALIAS}}]].'
+
+# Print what a note holds that the fold does not carry, one line each: "## <heading>" for each
+# section other than ## Rules, as written, and "text" once for any other line outside a section
+# that is not blank, its up line, its first H1 or an intro line of SB_DOC_NOTE_INTRO. Frontmatter
+# is not read, and a heading in fenced code is no heading.
+sb_doc_fold_leftover() {
+  SB_INTRO="$SB_DOC_NOTE_INTRO" LC_ALL=C awk '
+    # Return 1 when s is the pattern p, each {{...}} in p standing for any text.
+    function glob(s, p,   n, part, i, at, k, tail) {
+      n = split(p, part, /[{][{][A-Z_]+[}][}]/)
+      if (n == 1) return s == p
+      if (substr(s, 1, length(part[1])) != part[1]) return 0
+      at = length(part[1]) + 1
+      for (i = 2; i < n; i++) {
+        k = index(substr(s, at), part[i])
+        if (!k) return 0
+        at += k - 1 + length(part[i])
+      }
+      tail = part[n]
+      return (length(s) - at + 1 >= length(tail) && substr(s, length(s) - length(tail) + 1) == tail)
+    }
+    BEGIN { nt = split(ENVIRON["SB_INTRO"], t, "\n") }
+    { line = $0; sub(/\r$/, "", line) }
+    NR == 1 { sub(/^\357\273\277/, "", line); if (line == "---") { fm = 1; next } }
+    fm { if (line == "---") fm = 0; next }
+    line ~ /^[ \t]*(```|~~~)/ { fence = !fence }
+    !fence && line ~ /^##? / {
+      if (line ~ /^# / && sec == "" && !h1) { h1 = 1; next }
+      h = line; sub(/[ \t#]+$/, "", h)
+      if (tolower(h) ~ /^##[ \t]+rules$/) sec = "rules"
+      else { sec = h; print h }
+      next
+    }
+    sec != "" || line ~ /^[ \t]*$/ || line ~ /^> Up: / { next }
+    { for (i = 1; i <= nt; i++) if (glob(line, t[i])) next }
+    !text++ { print "text" }' "$1"
+}
+
+# Write text at the end of the ## Rules section of a note, after one blank line, or in a new
+# ## Rules section at its end when it has none; keeps line endings. A heading in fenced code is no
+# heading. Usage: sb_doc_fold_add_rules <file> <text>
+sb_doc_fold_add_rules() {
+  local tmp
+  sb_fm_drop "$1"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sb-fold.XXXXXX")" || return 1
+  LC_ALL=C SB_TEXT="$2" awk '
+    function flush(   i) { for (i = 1; i <= nb; i++) print held[i]; nb = 0 }
+    function puttext(   i) { print eol; for (i = 1; i <= nt; i++) print tl[i] eol; done = 1 }
+    BEGIN { nt = split(ENVIRON["SB_TEXT"], tl, "\n"); eol = ""; nb = 0; inr = 0; done = 0; last = 1 }
+    {
+      raw = $0; line = raw; sub(/\r$/, "", line)
+      if (NR == 1 && raw != line) eol = "\r"
+      if (line ~ /^[ \t]*(```|~~~)/) fence = !fence
+      if (!fence && line ~ /^##? /) {
+        if (inr && !done) { nb = 0; puttext(); print eol }
+        else flush()
+        h = tolower(line); sub(/[ \t#]+$/, "", h)
+        inr = (h ~ /^##[ \t]+rules$/)
+        print raw; last = 0; next
+      }
+      if (inr && !done && line ~ /^[ \t]*$/) { held[++nb] = raw; next }
+      flush(); print raw; last = (line ~ /^[ \t]*$/)
+    }
+    END {
+      if (inr && !done) { nb = 0; puttext() }
+      else if (!done) { flush(); if (NR && !last) print eol; print "## Rules" eol; puttext() }
+    }' "$1" >"$tmp" || { rm -f "$tmp"; return 1; }
+  cat "$tmp" >"$1"
+  rm -f "$tmp"
+}
+
+# Fold the notes left in claude/subprojects/ and the subproject keys of the tasks into the current
+# project, as doctor --fix does, and print each change. A note's repos and repo_paths entries join
+# the profile's. Its tasks take its one repo, or none when it has none or they have a repo, and
+# lose the key. Then, when no setting of it differs from the profile's, it holds nothing outside
+# ## Rules but what sb_doc_fold_leftover passes over, and each of its tasks is folded, its rules go
+# to the end of ## Rules in claude/README.md, the line its docs hub holds about it goes, and so
+# does the note, then the folder once it is empty. What it cannot fold it names on stderr.
+# Usage: sb_doc_fold_subprojects <project name>
+sb_doc_fold_subprojects() {
+  local project="$1" notes keys f n low rel r pr e er ep pe k nv pv keep id file v cnt list rules
+  local text readme hub tmp nl=$'\n' names="" dir="$SB_P_DIR/claude/subprojects"
+  [ -f "$SB_P_PROFILE" ] || return 0
+  notes="$(sb_doc_old_notes)"
+  keys="$(sb_doc_old_keys)"
+  [ -n "$notes$keys" ] || return 0
+  readme="$SB_P_DIR/claude/README.md"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    n="${f##*/}"
+    n="${n%.md}"
+    sb_lc "$n"
+    low="$SB_LC"
+    names="$names$low$nl"
+    rel="$(sb_rel "$f")"
+    keep=0
+    while IFS= read -r r; do
+      [ -n "$r" ] || continue
+      [ -z "$(sb_fm_list "$SB_P_PROFILE" repos 2>/dev/null | grep -ixF -- "$r")" ] || continue
+      sb_fm_edit "$SB_P_PROFILE" listadd repos "$r" || continue
+      printf 'fixed: %s -> repos of the profile (%s)\n' "$r" "$project"
+    done <<EOF
+$(sb_fm_list "$f" repos 2>/dev/null)
+EOF
+    while IFS= read -r e; do
+      case "$e" in ?*=?*) ;; *) continue ;; esac
+      er="$(printf '%s' "${e%%=*}" | sed 's/[[:space:]]*$//')"
+      ep="$(printf '%s' "${e#*=}" | sed 's/^[[:space:]]*//')"
+      pe="$(sb_fm_list "$SB_P_PROFILE" repo_paths 2>/dev/null | SB_W="$er" awk '
+        { i = index($0, "="); if (!i) next; k = substr($0, 1, i - 1); sub(/[ \t]+$/, "", k) }
+        tolower(k) == tolower(ENVIRON["SB_W"]) { v = substr($0, i + 1); sub(/^[ \t]+/, "", v); print v; exit }')"
+      if [ -z "$pe" ]; then
+        sb_fm_edit "$SB_P_PROFILE" listadd repo_paths "$er=$ep" || continue
+        printf 'fixed: %s -> repo_paths of the profile (%s)\n' "$er=$ep" "$project"
+      elif [ "$pe" != "$ep" ]; then
+        keep=1
+        printf "%s: its repo_paths %s is not the profile's %s: not folded, so %s stays\n" "$n" "$er=$ep" "$er=$pe" "$rel" >&2
+      fi
+    done <<EOF
+$(sb_fm_list "$f" repo_paths 2>/dev/null)
+EOF
+    for k in base_branch production_branch branch_pattern environments validation_home; do
+      nv="$(sb_doc_fold_value "$f" "$k")"
+      [ -n "$nv" ] || continue
+      pv="$(sb_doc_fold_value "$SB_P_PROFILE" "$k")"
+      [ "$nv" != "$pv" ] || continue
+      keep=1
+      printf "%s: its %s %s is not the profile's %s: not folded, so %s stays\n" "$n" "$k" "$nv" "${pv:--}" "$rel" >&2
+    done
+    # The owner's own text outside ## Rules goes nowhere else, so the note keeps it.
+    while IFS= read -r e; do
+      [ -n "$e" ] || continue
+      keep=1
+      if [ "$e" = text ]; then
+        printf '%s: its text outside ## Rules is not folded, so %s stays\n' "$n" "$rel" >&2
+      else
+        printf '%s: its %s is not folded, so %s stays\n' "$n" "$e" "$rel" >&2
+      fi
+    done <<EOF
+$(sb_doc_fold_leftover "$f")
+EOF
+    cnt="$(sb_fm_list "$f" repos 2>/dev/null | grep -c . || true)"
+    list="$(sb_fm_list "$f" repos 2>/dev/null | sb_doc_fold_join and)"
+    while IFS=$'\t' read -r id file v; do
+      [ -n "$id" ] || continue
+      sb_lc "$v"
+      [ "$SB_LC" = "$low" ] || continue
+      if [ -n "$(sb_fm_get "$file" repo 2>/dev/null)" ] || [ "$cnt" -eq 0 ]; then
+        sb_fm_set "$file" subproject "" || continue
+        printf 'fixed: %s -> subproject removed (%s)\n' "$id" "$project"
+      elif [ "$cnt" -eq 1 ]; then
+        pr="$(sb_fm_list "$SB_P_PROFILE" repos 2>/dev/null | grep -ixF -- "$list" | head -1)"
+        sb_fm_set "$file" repo "${pr:-$list}" && sb_fm_set "$file" subproject "" || continue
+        printf 'fixed: %s -> repo %s (%s)\n' "$id" "${pr:-$list}" "$project"
+      else
+        keep=1
+        printf '%s: its subproject %s has %s repos, %s: set one with second-brain task set %s repo=<repo> subproject=, and %s stays until then\n' \
+          "$id" "$v" "$cnt" "$list" "$id" "$rel" >&2
+      fi
+    done <<EOF
+$keys
+EOF
+    [ "$keep" -eq 0 ] || continue
+    rules="$(sb_doc_fold_rules "$f")"
+    if [ -n "$rules" ]; then
+      if [ ! -f "$readme" ]; then
+        printf '%s: no claude/README.md takes its rules: not folded, so %s stays\n' "$n" "$rel" >&2
+        continue
+      fi
+      text="### $n"
+      [ "$cnt" -eq 0 ] || text="$text${nl}${nl}For work in $(sb_fm_list "$f" repos 2>/dev/null | sb_doc_fold_join):"
+      sb_doc_fold_add_rules "$readme" "$text$nl$nl$rules" || continue
+      printf 'fixed: %s -> its rules under ## Rules in %s (%s)\n' "$rel" "$(sb_rel "$readme")" "$project"
+    fi
+    # The docs folder stays, a topic folder like any other; its hub's line about the note goes.
+    hub="$SB_P_DIR/$SB_TOPICS_ROOT/$n/README.md"
+    [ "$SB_TOPICS_ROOT" != "." ] || hub="$SB_P_DIR/$n/README.md"
+    if [ -f "$hub" ] && tmp="$(mktemp "${TMPDIR:-/tmp}/sb-fold.XXXXXX")"; then
+      if SB_L="[[$SB_P_PATH/claude/subprojects/$n|" LC_ALL=C awk '
+        index($0, "The subproject'"'"'s repositories, branches and rules are in [[") == 1 && index($0, ENVIRON["SB_L"]) { gone = 1; next }
+        { print }
+        END { exit(gone ? 0 : 1) }' "$hub" >"$tmp"; then
+        sb_fm_drop "$hub"
+        cat "$tmp" >"$hub"
+        printf 'fixed: %s -> its line on the note removed (%s)\n' "$(sb_rel "$hub")" "$project"
+      fi
+      rm -f "$tmp"
+    fi
+    rm -f "$f" || continue
+    printf 'fixed: %s -> removed (%s)\n' "$rel" "$project"
+  done <<EOF
+$notes
+EOF
+  while IFS=$'\t' read -r id file v; do
+    [ -n "$id" ] || continue
+    sb_lc "$v"
+    case "$nl$names" in *"$nl$SB_LC$nl"*) continue ;; esac
+    printf '%s: its subproject %s names no note in %s/claude/subprojects/: remove it with second-brain task set %s subproject=\n' \
+      "$id" "$v" "$SB_P_PATH" "$id" >&2
+  done <<EOF
+$keys
+EOF
+  if [ -d "$dir" ] && [ ! -L "$dir" ] && rmdir "$dir" 2>/dev/null; then
+    printf 'fixed: %s -> removed (%s)\n' "$SB_P_PATH/claude/subprojects" "$project"
+  fi
+  return 0
+}
+
 # Replace an old, never edited pull request note, make the status/ tag follow the status on each
-# task where they disagree, then fix each task the task-layout check names; print each change. In
-# an archive project each done or abandoned task is archived, and an open task is never moved. In
-# a status project each task goes to the folder of its status, then each empty group folder other
+# task where they disagree, fold the retired subprojects as sb_doc_fold_subprojects says, then fix
+# each task the task-layout check names; print each change. In an archive project each done or
+# abandoned task is archived, and an open task is never moved. In a status project each task goes
+# to the folder of its status, then each empty group folder other
 # than the five status folders, such as backlog/ or a sprint's folder, is removed, in the order of
 # sb_task_groups, then each empty year folder of the archive, and the archive when it is empty. In a
 # sprint project each task goes to the folder of its sprint, or to backlog/ with none, then each
@@ -1962,6 +2186,11 @@ sb_doc_fix() {
     done 4<<EOF
 $(sb_doc_status_drift)
 EOF
+    out="$(sb_doc_fold_subprojects "$name")"
+    if [ -n "$out" ]; then
+      printf '%s\n' "$out"
+      n=$((n + $(printf '%s\n' "$out" | grep -c .)))
+    fi
     # task archive and the status and sprint moves read the tasks root as written, so they never run
     # where that root leaves the project. A task they refuse stays where it is, with the reason on
     # stderr.
@@ -2137,7 +2366,7 @@ sb_doc_ticket() {
 
 # Print the session block for a directory, or nothing when no project of the index holds it.
 sb_doc_session() {
-  local cwd rows sub sprint branch ticket f status nxt
+  local cwd rows sprint branch ticket f status nxt
   cwd="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
   SB_ROOT="$(sb_root 2>/dev/null)" || return 0
   rows="$(sb_project_rows_by_cwd "$cwd" 2>/dev/null)"
@@ -2146,8 +2375,6 @@ sb_doc_session() {
 $rows
 EOF
   printf 'second-brain context for this session:\nproject: %s\n' "$SB_P_NAME"
-  sub="$(sb_sub_by_cwd "$SB_P_PATH" "$cwd" 2>/dev/null)"
-  case "$sub" in '' | *$'\n'*) ;; *) printf 'subproject: %s\n' "$sub" ;; esac
   if sb_uses_sprints "$SB_P_PATH"; then
     sprint="$(sb_sprint_current_id "$SB_P_PATH" 2>/dev/null)"
     printf 'sprint: %s\n' "${sprint:-none}"

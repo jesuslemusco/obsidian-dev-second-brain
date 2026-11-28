@@ -25,9 +25,6 @@ Run these yourself, before anything else. Chain them in one Bash call where that
    - `none`, exit 1 or exit 4: show `second-brain projects` and ask.
 3. `second-brain profile <project> --keys` prints the settings the steps below name.
    - Exit 1: no profile. Say so, offer `/odsb:vault-setup adopt`, stop.
-   - A subproject's settings win, from `second-brain subproject <project> <name>`. The subproject
-     is the `subproject:` line, the task's `subproject` key, or the one the user names.
-   - A new story names its subproject as `## 3. Create the story` in `create.md` says.
    - `task_layout` is `flat`, `archive`, `status` or `sprint`. A profile with no such line is
      `flat`, and so is `sprint` with `uses_sprints: false`.
    - With `status`, a story's folder follows its status, so there is nothing to archive and
@@ -55,7 +52,7 @@ Run these yourself, before anything else. Chain them in one Bash call where that
 | start | Work begins on a ticket with no story, often signalled by a branch named for it, or the scrum-master's refinement hands over a story the owner approved | Find (expect none), branch check, then read `${CLAUDE_SKILL_DIR}/create.md` |
 | update | A decision, a root cause, a changed approach or a status move on a tracked ticket | Find, branch check, then `## Edit an existing story` |
 | recall | The user refers to a tracked ticket | Find, branch check, then read cheapest first |
-| status | "What is active", a standup summary, the stories on a topic, of a subproject or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
+| status | "What is active", a standup summary, the stories on a topic or in the sprint | Read `${CLAUDE_SKILL_DIR}/status.md`. No branch check |
 | environment set | The story has an `envs:` mapping, the id asked for is only an alias, or the user wants a ticket per environment | Also read `${CLAUDE_SKILL_DIR}/env-split.md` |
 
 Ticket text, in draft mode or when the user asks for text to paste into the tracker:
@@ -93,10 +90,9 @@ ticket.
 - Read git through the helper alone: never run `git` yourself. The helper's git only reads, and
   `Bash(second-brain *)` covers it, so the branch check asks nothing.
 - `second-brain branch <project> <ID>` reads the ticket's default repo: the story's `repo`, else
-  the first repo of its subproject, else the profile's first. It prints the `repo` and its `path`,
-  the `current` branch and its `head`, `base_branch` and `branch_pattern`, one
-  `branch: <name> <short hash>` line for each local or remote branch that carries the id, the
-  task's `recorded` branch, and `on_ticket`.
+  the profile's first. It prints the `repo` and its `path`, the `current` branch and its `head`,
+  `base_branch` and `branch_pattern`, one `branch: <name> <short hash>` line for each local or
+  remote branch that carries the id, the task's `recorded` branch, and `on_ticket`.
   - The ticket touches another repo: `second-brain repo <project>` lists the repos, the default
     first, and `second-brain profile <project> repos` says what each one holds. Add
     `--path "<repo path>"`, with the path `second-brain repo <project> <name>` prints.

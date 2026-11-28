@@ -31,14 +31,7 @@ one project are in the `## Docs` section of its profile.
 5. `repo` prints each repository's name, path and state.
    - Run every git command as `git -C "<path>" ...`.
    - A repository the job needs is `missing` or `unknown`: say so, and stop or ask.
-6. `second-brain subproject "$p"` lists each subproject's repos and docs folder. The job is in one
-   when the context's `subproject:` line or the story's `subproject` key names it, or the change
-   is in one of its repos. Then:
-   - `second-brain subproject "$p" <name>` prints its branches, used as `## The code ref` says.
-   - Its docs are in its docs folder, `<topics_root>/<name>/`. A vault doc for its repository
-     goes there, not elsewhere.
-   - Follow the rules under `## Rules` in its note.
-7. Follow the profile's "Live systems" section. Read `claude/README.md` only if that section
+6. Follow the profile's "Live systems" section. Read `claude/README.md` only if that section
    points there.
 
 ## The code ref
@@ -47,8 +40,6 @@ one project are in the `## Docs` section of its profile.
   hash, commit date, and whether it is the default.
 - The default is the production branch on the remote, `origin/<production_branch>`.
 - An empty `production_branch` means `base_branch`.
-- For a subproject's repository, both are the ones `second-brain subproject <project> <name>`
-  prints.
 - A caller may name another ref.
 - Read code at the ref, never from the working tree: it may be on another branch with local
   changes.
@@ -204,18 +195,13 @@ repository whose checks it drafts.
    - Its code: the entry points, modules and config the layout shows.
    - A repository with no such ref: say so in the draft, and draft nothing for it.
 2. Read what the vault holds: the folders under the topics root, with
-   `ls -d "<vault>/<project path>/<topics_root>"/*/`, each subproject's docs folder, as
-   `second-brain subproject <project>` lists it, and the rows under `### Code to doc map`.
+   `ls -d "<vault>/<project path>/<topics_root>"/*/`, and the rows under `### Code to doc map`.
    - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.
-   - A subproject's docs folder is the one exception: draft new topic folders inside it, and
-     nothing in a topic folder inside it that exists.
    - Draft no row that a repository already has.
 3. Draft one topic per part of the code a reader asks about, such as a module, a service or a
    public interface.
    - Name its folder in lowercase, with hyphens between words, so that its topic tag is its path
      below the topics root.
-   - A repository of a subproject: its topics go in the subproject's docs folder,
-     `<topics_root>/<name>/`.
 4. Draft each topic's files, as the conventions say:
    - Its hub, `<topic>/README.md`, as Workflow 4 says: a unique alias, `type: moc`, an up link to
      its parent hub and a link down to its first note.
@@ -225,8 +211,6 @@ repository whose checks it drafts.
    - The line that links its hub from its parent hub.
    - The parent hub is the topics hub, with the line under `## Topics`. With `topics_root: "."`
      it is the project's `README.md`, with the line under `## Map`.
-   - For a repository of a subproject, the parent hub is the subproject's docs hub,
-     `<topics_root>/<name>/README.md`, with the line under its own `## Topics`.
    - Every link carries its full vault path: `[[<vault path>|<alias>]]`.
 5. Draft the Code to doc map rows: for each repository, one row per kind of change that alters a
    topic, as `| <repo> | <change> | <docs> |`.

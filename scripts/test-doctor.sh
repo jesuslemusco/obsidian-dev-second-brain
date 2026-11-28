@@ -246,11 +246,11 @@ is "rows: six cells each" "$(printf '%s\n' "$OUT" | awk -F' [|] ' 'NF != 6' | gr
 
 # ---------------------------------------------------------------- the skill's entries
 # The skill reads an entry with one Grep and the four lines after its heading.
-# The fresh vault has no subproject, so its rows lack subprojects and task-subproject, which come
-# right after repos.
+# The fresh vault has no note in claude/subprojects/, so its rows lack retired-subprojects, which
+# comes right after repos.
 is "checks.md: one entry for each check the doctor prints, in the order of its table" \
   "$(sed -n 's/^### //p' "$CHECKS" | tr '\n' ' ')" \
-  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos subprojects task-subproject /')"
+  "$(printf '%s\n' "$OUT" | awk -F' [|] ' '!seen[$2]++ { printf "%s ", $2 }' | sed 's/ repos / repos retired-subprojects /')"
 is "checks.md: every entry is its heading, a blank line, then Means, Why and Fix on one line each" "$(awk '
   function entry() {
     while (n > 0 && body[n] == "") n--
@@ -657,7 +657,7 @@ printf '# Mine\n\n- In Example, run the tests first.\r\n- Notes live in %s/notes
 doc
 chk "global-rules: a line naming the project by name or path warns" global-rules vault "warn | 2 | Example:3, Example:4"
 is "global-rules: the fix moves the line to the project's rules" "$(fix_of global-rules vault)" \
-  "move the line to the project's claude/README.md under ## Rules, or to its subproject's note"
+  "move the line to the project's claude/README.md under ## Rules"
 rc_is "global-rules: a warn alone keeps exit 0" 0
 printf 'Example runs the tests first.\n%s keeps its notes.\n' "$P" >"$home/CLAUDE.md"
 doc
@@ -1144,9 +1144,11 @@ note: "<One paragraph: what the project is, who it is for, and where its code li
 printf '%s\n' '<A rule Claude must follow in this subproject, one per bullet.>' >>"$HUB"
 doc Example
 chk "placeholders: frontmatter, fenced code and another template's placeholder are not read" placeholders Example "ok | 0 | -"
-sb scaffold subproject Example infra --repos example-infra
+mkdir -p "$vault/$P/claude/subprojects"
+printf '%s\n' '---' 'type: subproject' '---' '' '## Rules' '' '- <A rule Claude must follow in this subproject, one per bullet.>' \
+  >"$vault/$P/claude/subprojects/infra.md"
 doc Example
-chk "placeholders: a subproject note is read against its own template" placeholders Example "warn | 1 | claude/subprojects/infra.md:31"
+chk "placeholders: a note left in claude/subprojects/ is not read" placeholders Example "ok | 0 | -"
 fi
 
 # ---------------------------------------------------------------- task-template
@@ -2394,81 +2396,136 @@ doc Example
 chk "code-doc-map: the map counts only inside the Docs section" code-doc-map Example "warn | 3 | example-api, Example-Web, example-jobs"
 fi
 
-# ---------------------------------------------------------------- subprojects
+# ---------------------------------------------------------------- retired subprojects
+# A note in claude/subprojects/ and a task's subproject key are what versions before 0.14.0 wrote.
 SUBS="$vault/$P/claude/subprojects"
+RS_FIX="run second-brain doctor --fix: it adds each note's repos to the profile, moves its rules into claude/README.md, sets repo on its tasks and removes it; settle by hand what it names on stderr"
 if block 63; then
+doc Example
+is "retired-subprojects: no row for a project with no note and no task key" "$(row retired-subprojects)" ""
+is "retired-subprojects: a project with neither keeps twenty-three rows" "$(scope_rows Example)" "23"
 edit "$T/EX-3/README.md" 's/^epic: "-"$/epic: "-"\
 subproject: ghost/'
 doc Example
-is "subprojects: no row for a project with no subproject" "$(row subprojects)" ""
-is "task-subproject: no row for a project with no subproject, whatever its tasks say" "$(row task-subproject)" ""
-is "subprojects: a project with no subproject keeps twenty-three rows" "$(scope_rows Example)" "23"
-edit "$T/tasks.base" 's/name: By subproject$/name: By repo/'
-doc Example
-chk "board: a project with no subproject is not asked for the By subproject view" board Example "ok | 0 | -"
-mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra"
+rc_is "retired-subprojects: a warning leaves exit 0" 0
+chk "retired-subprojects: a task's subproject key warns as <ID>:<value>" retired-subprojects Example "warn | 1 | EX-3:ghost"
+is "retired-subprojects: one row more" "$(scope_rows Example)" "24"
+is "retired-subprojects: its row sits between repos and settings" \
+  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "retired-subprojects" || $2 == "settings" { printf "%s ", $2 }')" \
+  "repos retired-subprojects settings "
+is "retired-subprojects: the fix names doctor --fix" "$(fix_of retired-subprojects)" "$RS_FIX"
+mkdir -p "$tmp/code/example-api" "$tmp/code/example-infra" "$SUBS" "$vault/$P/docs/infra"
 set_repos '[example-api]' "$tmp/code" '[]'
-add_map_row '| example-api | a new endpoint | the API reference |'
-sb scaffold subproject Example infra --repos example-infra
-rc_is "subprojects: scaffold subproject exits 0" 0
-doc Example
-is "subprojects: two more rows once the project has one" "$(scope_rows Example)" "25"
-is "subprojects: its rows sit between repos and sprints" \
-  "$(printf '%s\n' "$OUT" | grep ' | Example | ' | awk -F' [|] ' '$2 == "repos" || $2 == "subprojects" || $2 == "task-subproject" || $2 == "sprints" { printf "%s ", $2 }')" \
-  "repos subprojects task-subproject sprints "
-chk "task-subproject: a value that names no note warns as <ID>:<value>" task-subproject Example "warn | 1 | EX-3:ghost"
-is "task-subproject: the fix names task set" "$(fix_of task-subproject)" \
-  "run second-brain task set <ID> subproject=<name> with a subproject of the project, or subproject= for a task in none"
-chk "subprojects: a repository with no map row" subprojects Example "warn | 1 | infra/example-infra:no-map-row"
-chk "subprojects: the profile's own map check is left as it was" code-doc-map Example "ok | 0 | -"
-chk "board: a project with a subproject and a board with no By subproject view warns" board Example "warn | 1 | tasks.base:no-subproject-view"
-is "board: the fix names what to add" "$(fix_of board)" "add the By subproject view and the subproject column from templates/tasks.base.tmpl"
-edit "$T/tasks.base" 's/sprint == "2026-01-14"/sprint == "2025-12-31"/'
-doc Example
-chk "board: the sprint finding and the missing view share one row" board Example \
-  "warn | 2 | tasks.base:2025-12-31, tasks.base:no-subproject-view"
-is "board: the fix holds both" "$(fix_of board)" \
-  "set the filter of the board's Current sprint view to the sprint in progress, 2026-01-14; add the By subproject view and the subproject column from templates/tasks.base.tmpl"
-edit "$T/tasks.base" 's/sprint == "2025-12-31"/sprint == "2026-01-14"/; s/name: By repo$/name: By subproject/'
-doc Example
-chk "board: ok once the view is back" board Example "ok | 0 | -"
-sb task set EX-3 subproject=infra
+# The infra note as the template of 0.13.0 wrote it, its intro lines filled in, with a section of
+# the owner's own; ops with a line of the owner's own outside any section; web with the intro lines
+# of the first template.
+printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' 'base_branch: ""' \
+  'branch_pattern: "feature/<ID>-<slug>"' 'environments: []' "repo_paths: [\"example-infra=$tmp/code/example-infra\"]" \
+  'validation_home: VAULT' '---' '' "> Up: [[$P/claude/README|Example Claude Hub]]" '' '# Example infra subproject' '' \
+  'Read these settings with `second-brain subproject "Example" "infra"`, which fills in' \
+  "the profile's values." '' \
+  "- \`repos\`: the subproject's repositories, the first the default for branch checks." \
+  "- \`base_branch\` to \`validation_home\` are the profile's keys. One left empty takes the value in" \
+  "  [[$P/claude/profile|Example Profile]]." "- Its docs live in [[$P/docs/infra/README|Example infra Docs]]." '' \
+  '## Rules' '' '- <A rule Claude must follow in this subproject, one per bullet.>' '- Never apply a plan to prod.' '' \
+  '## Notes' '' 'Not a rule.' >"$SUBS/infra.md"
+printf '%s\n' '---' 'type: subproject' 'repos: [example-api]' 'base_branch: develop' '---' '' 'Ops owns the pager.' >"$SUBS/ops.md"
+printf '%s\n' '---' 'type: subproject' 'repos: [web-a, web-b]' '---' '' '# Example web subproject' '' \
+  'The settings note of the web subproject of Example: its repositories, its branches' \
+  'and its rules. Read it with `second-brain subproject "Example" "web"`, which fills in' "the profile's values." '' \
+  "- \`repos\` lists the subproject's repositories. The first one is the default for branch checks." \
+  '- `base_branch`, `production_branch`, `branch_pattern`, `environments` and `repo_paths` are the' \
+  "  profile's keys. One left empty takes the value in [[$P/claude/profile|Example Profile]]." \
+  "- Its docs live in [[$P/docs/web/README|Example web Docs]]." '' '## Rules' '' '- Ship web-a first.' >"$SUBS/web.md"
+printf '%s\n' '# Example infra docs' '' \
+  "The subproject's repositories, branches and rules are in [[$P/claude/subprojects/infra|Example infra Subproject]]." \
+  'Each folder under this one is a topic.' >"$vault/$P/docs/infra/README.md"
+sb task new EX-4 --project Example --title "Fourth task"
+sb task new EX-5 --project Example --title "Fifth task"
 edit "$T/EX-1/README.md" 's/^epic: "-"$/epic: "-"\
 subproject: INFRA/'
+edit "$T/EX-2/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: web/'
+edit "$T/EX-4/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: ops/'
+edit "$T/EX-5/README.md" 's/^epic: "-"$/epic: "-"\
+repo: web-b\
+subproject: web/'
 doc Example
-chk "task-subproject: ok when each value names a note, in any letter case" task-subproject Example "ok | 0 | -"
-add_map_row '| example-infra | a new module | docs/infra |'
-doc Example
-rc_is "subprojects: exit 0" 0
-chk "subprojects: ok with its type, repos found, a docs folder and a map row" subprojects Example "ok | 0 | -"
-rm -rf "$vault/$P/docs/infra"
-edit "$SUBS/infra.md" 's/^type: subproject$/type: note/'
-edit "$SUBS/infra.md" 's/^repos: .*$/repos: [example-infra, gone-infra]/'
-doc Example
-chk "subprojects: a wrong type, no docs folder, a missing repo with no map row" subprojects Example \
-  "warn | 4 | infra:type, infra:no-docs, infra/gone-infra:no-map-row, infra/gone-infra:missing"
-is "subprojects: the fix names each part" "$(fix_of subprojects)" \
-  "set type: subproject and the repos in the note, record where each repo is, create the docs folder <topics root>/<name>/, add a Code to doc map row per repo, and keep each repo in one subproject"
-chk "subprojects: the repos check sees the subproject's repositories too" repos Example "warn | 1 | gone-infra"
-printf '%s\n' '---' 'type: subproject' 'repos: [EXAMPLE-INFRA]' '---' >"$SUBS/ops.md"
-printf '%s\n' '---' 'type: subproject' 'repos: []' '---' >"$SUBS/web.md"
-mkdir -p "$vault/$P/docs/ops" "$vault/$P/docs/web"
-edit "$PROFILE" 's/^repos_root: .*$/repos_root: ""/'
-doc Example
-chk "subprojects: with no location recorded, every note is read, five offenders shown" subprojects Example \
-  "warn | 8 | infra:type, infra:no-docs, infra/example-infra:no-location, infra/gone-infra:no-map-row, infra/gone-infra:no-location"
-rm -f "$SUBS/infra.md"
-printf '%s\n' '---' 'type: subproject' 'repos: [example-infra]' '---' >"$SUBS/more.md"
-mkdir -p "$vault/$P/docs/more"
-doc Example
-chk "task-subproject: a removed note leaves its tasks with a stale value" task-subproject Example "warn | 2 | EX-1:INFRA, EX-3:infra"
-chk "subprojects: a repo in two subprojects, whatever the case, and a subproject with no repos" subprojects Example \
-  "warn | 4 | more/example-infra:no-location, EXAMPLE-INFRA:twice, ops/EXAMPLE-INFRA:no-location, web:no-repos"
-rm -f "$SUBS/more.md" "$SUBS/ops.md" "$SUBS/web.md"
-: >"$SUBS/blank.md"
-doc Example
-chk "subprojects: an empty note lends the profile's repos to nobody" subprojects Example \
-  "warn | 3 | blank:type, blank:no-repos, blank:no-docs"
+chk "retired-subprojects: each note, then each task's key" retired-subprojects Example \
+  "warn | 8 | claude/subprojects/infra.md, claude/subprojects/ops.md, claude/subprojects/web.md, EX-1:INFRA, EX-2:web"
+sb repo Example
+is "retired-subprojects: a note's repos are no repos of the project before the fold" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "example-api "
+doc Example --fix
+rc_is "fold: --fix exits 0" 0
+is "fold: each change it made, note by note" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: example-infra -> repos of the profile (Example)
+fixed: example-infra=$tmp/code/example-infra -> repo_paths of the profile (Example)
+fixed: EX-1 -> repo example-infra (Example)
+fixed: EX-4 -> repo example-api (Example)
+fixed: web-a -> repos of the profile (Example)
+fixed: web-b -> repos of the profile (Example)
+fixed: EX-5 -> subproject removed (Example)"
+is "fold: what it cannot fold, on stderr" "$ERR" \
+  "infra: its ## Notes is not folded, so $P/claude/subprojects/infra.md stays
+ops: its base_branch develop is not the profile's main: not folded, so $P/claude/subprojects/ops.md stays
+ops: its text outside ## Rules is not folded, so $P/claude/subprojects/ops.md stays
+EX-2: its subproject web has 2 repos, web-a and web-b: set one with second-brain task set EX-2 repo=<repo> subproject=, and $P/claude/subprojects/web.md stays until then
+EX-3: its subproject ghost names no note in $P/claude/subprojects/: remove it with second-brain task set EX-3 subproject="
+chk "fold: what is left to settle" retired-subprojects Example \
+  "warn | 5 | claude/subprojects/infra.md, claude/subprojects/ops.md, claude/subprojects/web.md, EX-2:web, EX-3:ghost"
+sb repo Example
+is "fold: the profile lists each note's repos, after its own" "$(printf '%s\n' "$OUT" | cut -f1 | tr '\n' ' ')" "example-api example-infra web-a web-b "
+is "fold: the note's location is the profile's" "$(printf '%s\n' "$OUT" | grep '^example-infra' | cut -f2)" "$tmp/code/example-infra"
+CHUB="$vault/$P/claude/README.md"
+is "fold: a note it cannot fold keeps its text, and its rules stay in it" \
+  "$(grep -c '^Not a rule\.$\|^- Never apply a plan to prod\.$' "$SUBS/infra.md")/$(grep -c '^### ' "$CHUB")" "2/0"
+is "fold: and its docs hub keeps its line on it" "$(grep -c 'subprojects/infra' "$vault/$P/docs/infra/README.md")" "1"
+is "fold: each note it could not fold stays" "$(ls "$SUBS" | tr '\n' ' ')" "infra.md ops.md web.md "
+is "fold: a task of a note with one repo takes it, and loses the key" \
+  "$(grep -c '^subproject:' "$T/EX-1/README.md")/$(sed -n 's/^repo: //p' "$T/EX-1/README.md")" "0/example-infra"
+is "fold: a task with a repo keeps it, and loses the key" \
+  "$(grep -c '^subproject:' "$T/EX-5/README.md")/$(sed -n 's/^repo: //p' "$T/EX-5/README.md")" "0/web-b"
+is "fold: a task it cannot fold keeps its key and gets no repo" "$(grep -c '^subproject: web$\|^repo:' "$T/EX-2/README.md")" "1"
+doc Example --fix
+is "fold: --fix again changes nothing" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+sb task set EX-2 repo=web-a subproject=
+sb task set EX-3 subproject=
+edit "$SUBS/ops.md" 's/^base_branch: develop$/base_branch: main/; /^Ops owns the pager\.$/d'
+edit "$SUBS/infra.md" '/^## Notes$/,$d'
+mkdir -p "$vault/$P/docs/web"
+printf '%s\n' '# Example web docs' '' "See [[$P/claude/subprojects/web|the web note]] for more." >"$vault/$P/docs/web/README.md"
+edit "$CHUB" 's/^## Rules$/## House rules/'
+doc Example --fix
+is "fold: once settled, a note with nothing else goes, then their folder" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" \
+  "fixed: $P/claude/subprojects/infra.md -> its rules under ## Rules in $P/claude/README.md (Example)
+fixed: $P/docs/infra/README.md -> its line on the note removed (Example)
+fixed: $P/claude/subprojects/infra.md -> removed (Example)
+fixed: $P/claude/subprojects/ops.md -> removed (Example)
+fixed: $P/claude/subprojects/web.md -> its rules under ## Rules in $P/claude/README.md (Example)
+fixed: $P/claude/subprojects/web.md -> removed (Example)
+fixed: $P/claude/subprojects -> removed (Example)"
+is "fold: and names nothing on stderr" "$ERR" ""
+is "fold: the intro lines of each template count as nothing else, and stay behind" \
+  "$(grep -c 'Read these settings\|Its docs live in\|the profile.s values\|The settings note of\|lists the subproject' "$CHUB")" "0"
+is "fold: each note's rules, under its name and its repos, in a ## Rules at the end of a README with none" \
+  "$(awk '/^## Rules$/ { on = 1; next } /^## / { on = 0 } on && NF' "$CHUB")" \
+  "### infra
+For work in example-infra:
+- Never apply a plan to prod.
+### web
+For work in web-a, web-b:
+- Ship web-a first."
+is "fold: that ## Rules is the README's last section, and its one" "$(grep '^## ' "$CHUB" | tail -1)/$(grep -c '^## Rules$' "$CHUB")" "## Rules/1"
+is "fold: no placeholder and no other line of the note comes along" \
+  "$(grep -c 'in this subproject, one per bullet\|Not a rule\|Ops owns' "$CHUB")" "0"
+is "fold: the docs folder stays, without its line on the note" \
+  "$(grep -c 'subprojects/infra' "$vault/$P/docs/infra/README.md")/$(grep -c '^Each folder under this one' "$vault/$P/docs/infra/README.md")" "0/1"
+is "fold: a docs hub line of the owner's own stays" "$(grep -c 'the web note' "$vault/$P/docs/web/README.md")" "1"
+is "retired-subprojects: no row once all is folded" "$(row retired-subprojects)" ""
+doc Example --fix
+is "fold: a run with nothing left changes nothing" "$(printf '%s\n' "$OUT" | grep '^fixed: ')" "fixed: nothing"
+is "fold: and moves the rules once" "$(grep -c '^### infra$' "$CHUB")" "1"
 fi
 
 # ---------------------------------------------------------------- sprints
@@ -2841,13 +2898,11 @@ out_has "session-check: no sprint in progress" "sprint: none"
 edit "$vault/$P/claude/profile.md" 's/^uses_sprints: .*$/uses_sprints: false/'
 sb session-check --cwd "$R"
 out_lacks "session-check: no sprint line for a project without sprints" "sprint:"
-sb scaffold subproject Example infra --repos example-infra
-mkdir -p "$tmp/code/example-infra/.git"
-on_branch "$tmp/code/example-infra" 'ref: refs/heads/feature/EX-3-infra'
-sb session-check --cwd "$tmp/code/example-infra"
-out_has "session-check: the subproject of the repo" "project: Example
-subproject: infra"
-out_has "session-check: the subproject's repo names its ticket too" "ticket: EX-3"
+mkdir -p "$vault/$P/claude/subprojects"
+printf '%s\n' '---' 'type: subproject' 'repos: [example-api]' '---' >"$vault/$P/claude/subprojects/infra.md"
+sb session-check --cwd "$R"
+out_lacks "session-check: a note left in claude/subprojects/ gives no line" "subproject"
+out_has "session-check: and the block still names the project" "project: Example"
 sb session-check --cwd "$tmp/code/outside"
 rc_is "session-check: exit 0 in a repo outside every project" 0
 out_is "session-check: silent in a repo outside every project" ""
@@ -2969,22 +3024,20 @@ for old in '- <Each command that must pass, such as the tests, linter and build,
   doc Example
   chk "validation: ok again without ${old:0:40}" validation Example "ok | 0 | -"
 done
-sb scaffold subproject Example infra --repos example-infra
+mkdir -p "$vault/$P/claude/subprojects"
 SUBN="$vault/$P/claude/subprojects/infra.md"
-edit "$SUBN" 's/^validation_home: ""$/validation_home: repo/'
-awk '{ print } /^validation_home: / { print "delivery: later"; print "spec_home: Repo" }' "$SUBN" >"$tmp/edit.tmp" && cat "$tmp/edit.tmp" >"$SUBN"
+printf '%s\n' '---' 'type: subproject' 'repos: [example-api]' 'validation_home: later' '---' >"$SUBN"
 doc Example
-chk "validation: a subproject's repo home with no file" validation Example "warn | 1 | example-infra:missing"
-chk "settings: a subproject note's delivery and spec_home, left from the spec flow, are not read" settings Example "ok | 0 | -"
-sb validation new Example example-infra
+chk "validation: a note left in claude/subprojects/ sets no home" validation Example "ok | 0 | -"
+chk "settings: nor is its validation_home read" settings Example "ok | 0 | -"
+rm -f "$SUBN"
+edit "$PROFILE" 's/^validation_home: vault$/validation_home: repo/'
+sb validation new Example example-api
 doc Example
-chk "validation: a repo file that still holds the template's text" validation Example "warn | 1 | example-infra:placeholders"
-rm -rf "$tmp/code/example-infra"
+chk "validation: a repo file that still holds the template's text" validation Example "warn | 1 | example-api:placeholders"
+rm -rf "$tmp/code/example-api"
 doc Example
 chk "validation: a repo home whose folder is missing is left to the repos check" validation Example "ok | 0 | -"
-edit "$SUBN" 's/^validation_home: repo$/validation_home: later/'
-doc Example
-chk "settings: a subproject note's validation_home is named by the subproject" settings Example "warn | 1 | infra:validation_home"
 fi
 # ---------------------------------------------------------------- validation edge cases
 if block 20; then

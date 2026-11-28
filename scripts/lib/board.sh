@@ -349,7 +349,8 @@ sb_task_parent_in() {
 # Fields: path, id, status, sprint, topics, branch, next, title, carried_from, type, envs, heading,
 # depends_on, subproject, epic. Empty is "-". envs is env:id:status,...; heading is the first heading,
 # read when title is absent; depends_on is the vault paths its links lead to, without .md, comma
-# separated.
+# separated. subproject is a key versions before 0.14.0 wrote, which the doctor's
+# retired-subprojects check reads.
 sb_task_scan() {
   LC_ALL=C awk "$(sb_awk_lib)"'
     function clean(s) { gsub(/[\t\r]/, " ", s); return (s == "" ? "-" : s) }
@@ -458,21 +459,18 @@ sb_board_deps() {
     }'
 }
 
-# Read scan rows on stdin; keep the rows of one view, sorted the way the view sorts. A third
-# argument keeps only the tasks of that subproject, compared without letter case.
+# Read scan rows on stdin; keep the rows of one view, sorted the way the view sorts.
 sb_board_filter() {
-  SB_VIEW="$1" SB_SPRINT="${2:-}" SB_SUB="${3:-}" awk -F'\t' '
+  SB_VIEW="$1" SB_SPRINT="${2:-}" awk -F'\t' '
     function active(s) { return (s == "planned" || s == "in-progress" || s == "in-review") }
     function known(s) { return (active(s) || s == "done" || s == "abandoned") }
-    BEGIN { view = ENVIRON["SB_VIEW"]; cur = ENVIRON["SB_SPRINT"]; want = tolower(ENVIRON["SB_SUB"]) }
-    want != "" && tolower($14) != want { next }
+    BEGIN { view = ENVIRON["SB_VIEW"]; cur = ENVIRON["SB_SPRINT"] }
     {
       keep = 0; k = $3 "\t" $2
       if (view == "Active") keep = active($3)
       else if (view == "All") keep = 1
       else if (view == "Needs a status") { keep = !known($3); k = $2 }
       else if (view == "Current sprint") keep = (cur != "" && $4 == cur)
-      else if (view == "By subproject") { keep = active($3); k = ($14 == "-" ? "~" : $14) "\t" $2 }
       else if (view == "By topic") {
         keep = active($3)
         t = $5; sub(/,.*$/, "", t)
@@ -484,15 +482,13 @@ sb_board_filter() {
 }
 
 # Read scan rows on stdin; print board rows:
-# id | title | status | sprint | topics | branch | next | envs | depends_on, and | subproject in the
-# By subproject view, the one its rows are grouped by.
+# id | title | status | sprint | topics | branch | next | envs | depends_on.
 sb_board_rows() {
-  SB_VIEW="${1:-}" awk -F'\t' '
+  awk -F'\t' '
     function cell(s) { gsub(/\|/, "/", s); return s }
-    BEGIN { bysub = (ENVIRON["SB_VIEW"] == "By subproject") }
     {
       title = ($8 != "-" ? $8 : $12)
-      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11) " | " cell($13) (bysub ? " | " cell($14) : "")
+      print cell($2) " | " cell(title) " | " cell($3) " | " cell($4) " | " cell($5) " | " cell($6) " | " cell($7) " | " cell($11) " | " cell($13)
     }
   '
 }
@@ -503,7 +499,6 @@ sb_board_view() {
     '' | active) printf 'Active\n' ;;
     'current sprint' | current | sprint) printf 'Current sprint\n' ;;
     'by topic' | topic | topics) printf 'By topic\n' ;;
-    'by subproject' | subproject | subprojects) printf 'By subproject\n' ;;
     'needs a status' | needs | 'needs status') printf 'Needs a status\n' ;;
     all) printf 'All\n' ;;
     *) return 1 ;;
@@ -528,18 +523,12 @@ sb_board_sprint_literal() {
   ' "$1"
 }
 
-# Print a project's board for one view, from the frontmatter of its task READMEs; with
-# --subproject, only the tasks of that subproject.
+# Print a project's board for one view, from the frontmatter of its task READMEs.
 cmd_board() {
-  local project="" view="" sub="" dir cur=""
-  local usage="usage: second-brain board <project> [view] [--subproject S]"
+  local project="" view="" dir cur=""
+  local usage="usage: second-brain board <project> [view]"
   while [ $# -gt 0 ]; do
     case "$1" in
-      --subproject)
-        [ $# -ge 2 ] || sb_die 5 "--subproject needs a value"
-        sub="$2"
-        shift
-        ;;
       -*) sb_die 5 "$usage" ;;
       *)
         if [ -z "$project" ]; then project="$1"; else view="${view:+$view }$1"; fi
@@ -548,13 +537,8 @@ cmd_board() {
     shift
   done
   [ -n "$project" ] || sb_die 5 "$usage"
-  view="$(sb_board_view "$view")" || sb_die 5 "unknown view (views: Active, Current sprint, By topic, By subproject, Needs a status, All)"
+  view="$(sb_board_view "$view")" || sb_die 5 "unknown view (views: Active, Current sprint, By topic, Needs a status, All)"
   sb_need_project "$project"
-  # The value is the note's name, as task set writes it.
-  if [ -n "$sub" ]; then
-    sb_need_sub "$sub"
-    sub="$SB_S_NAME"
-  fi
   dir="$SB_P_DIR/$SB_TASKS_ROOT"
   [ -d "$dir" ] || sb_die 1 "no tasks folder at $SB_P_PATH/$SB_TASKS_ROOT"
   if [ "$view" = "Current sprint" ]; then
@@ -562,7 +546,7 @@ cmd_board() {
     ! sb_uses_sprints "$SB_P_PATH" || cur="$(sb_sprint_current_id "$SB_P_PATH")"
     [ -n "$cur" ] || return 0
   fi
-  sb_task_files "$dir" | sb_task_scan | sb_board_deps | sb_board_filter "$view" "$cur" "$sub" | sb_board_rows "$view"
+  sb_task_files "$dir" | sb_task_scan | sb_board_deps | sb_board_filter "$view" "$cur" | sb_board_rows
   return 0
 }
 

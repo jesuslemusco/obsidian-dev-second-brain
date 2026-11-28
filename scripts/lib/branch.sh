@@ -149,7 +149,7 @@ sb_br_block() {
 cmd_branch() {
   local usage="usage: second-brain branch <project> <ID> [--path <dir>] [--show <ref> <file> | --started]"
   local a n=0 project="" id="" at="" hasat=0 mode=list ref="" file=""
-  local rows hits tfile="" rec="-" sub="" by_repo ids want row rpath rstate dir name base pattern
+  local rows hits tfile="" rec="-" ids want row rpath rstate dir name base pattern
   local current head refs carried on=no tbname tbref bname bref hash kind log stat srepo=""
   while [ $# -gt 0 ]; do
     a="$1"
@@ -194,7 +194,7 @@ cmd_branch() {
   sb_need_profile
   command -v git >/dev/null 2>&1 || sb_die 1 "git is not installed"
 
-  # The task, when the ticket has one: its recorded branch, its repo and its subproject.
+  # The task, when the ticket has one: its recorded branch and its repo.
   hits="$(sb_task_by_path "$id" "$SB_P_NAME"$'\t'"$SB_P_PATH"$'\t'"$SB_P_KEYS")"
   [ -n "$hits" ] || hits="$(sb_task_by_alias "$id" "$SB_P_NAME"$'\t'"$SB_P_PATH"$'\t'"$SB_P_KEYS")"
   case "$hits" in
@@ -208,15 +208,9 @@ cmd_branch() {
     rec="$(sb_fm_get "$tfile" branch 2>/dev/null)"
     [ -n "$rec" ] || rec="-"
     srepo="$(sb_fm_get "$tfile" repo 2>/dev/null)"
-    sub="$(sb_fm_get "$tfile" subproject 2>/dev/null)"
-  fi
-  SB_S_FILE=""
-  if [ -n "$sub" ] && ! sb_sub_resolve "$sub"; then
-    sb_note "$id names the subproject $sub, which $SB_P_NAME has not: the profile's settings are read"
   fi
 
-  # The repo: the folder --path names, else the story's repo, else its subproject's first repo,
-  # else the profile's first.
+  # The repo: the folder --path names, else the story's repo, else the profile's first.
   rows="$(sb_repo_rows_at "$SB_P_PATH")"
   if [ "$hasat" -eq 1 ]; then
     at="$(sb_path_in "$at")"
@@ -228,9 +222,6 @@ $row
 EOF
   else
     want="$srepo"
-    if [ -z "$want" ] && [ -n "$SB_S_FILE" ]; then
-      want="$(sb_fm_list "$SB_S_FILE" repos 2>/dev/null | head -1)"
-    fi
     [ -n "$want" ] || want="$(printf '%s\n' "$rows" | head -1 | cut -f1)"
     [ -n "$want" ] || sb_die 1 "no repo is listed in repos of $SB_P_NAME ($SB_P_PATH/claude/profile.md): name its folder with --path"
     if ! row="$(sb_val_repo_row "$want")"; then
@@ -244,19 +235,8 @@ EOF
     dir="$rpath"
   fi
   sb_br_git "$dir" rev-parse --git-dir >/dev/null 2>&1 || sb_die 1 "not a git repository: $(sb_path_out "$dir")"
-  # With no subproject on the task, the one whose repos hold the repo's folder gives the settings.
-  if [ -z "$SB_S_FILE" ] && [ -z "$sub" ]; then
-    [ "$rpath" != "-" ] || rpath="$dir"
-    by_repo="$(sb_sub_by_cwd "$SB_P_PATH" "$rpath" 2>/dev/null)"
-    case "$by_repo" in '' | *$'\n'*) ;; *) sb_sub_resolve "$by_repo" ;; esac
-  fi
-  if [ -n "$SB_S_FILE" ]; then
-    base="$(sb_sub_value "$SB_S_FILE" base_branch)"
-    pattern="$(sb_sub_value "$SB_S_FILE" branch_pattern)"
-  else
-    base="$(sb_fm_get "$SB_P_PROFILE" base_branch 2>/dev/null)"
-    pattern="$(sb_fm_get "$SB_P_PROFILE" branch_pattern 2>/dev/null)"
-  fi
+  base="$(sb_fm_get "$SB_P_PROFILE" base_branch 2>/dev/null)"
+  pattern="$(sb_fm_get "$SB_P_PROFILE" branch_pattern 2>/dev/null)"
   [ -n "$base" ] || base="-"
   [ -n "$pattern" ] || pattern="-"
 

@@ -1,7 +1,7 @@
 ---
 name: vault-setup
 description: Set up an Obsidian vault and its projects on the second-brain standard, and register vault skills and agents by link.
-argument-hint: "[init | project <name> | adopt <path> | repo <project> | subproject <project> | validation <project> | link]"
+argument-hint: "[init | project <name> | adopt <path> | repo <project> | validation <project> | link]"
 disable-model-invocation: true
 allowed-tools: Read Glob Skill(odsb:define-validation-scope *) Bash(second-brain *)
 ---
@@ -14,7 +14,6 @@ The first argument is the mode. With none, ask which.
 - `project <name>`: add a project.
 - `adopt <path>`: bring a project that already holds notes onto the standard.
 - `repo <project>`: add a repository to a project.
-- `subproject <project>`: add a subproject, repos with their own branches and docs folder.
 - `validation <project>`: write or fix how each repo is run and checked.
 - `link`: register the vault's own skills and agents.
 
@@ -128,21 +127,17 @@ Conventions: before writing notes, run `second-brain conventions` and follow it.
     - With `validation_home: repo`, `claude/validation.md` is not used. Ask, then delete it and
       its line in `claude/README.md`.
 
-## adopt <path>, repo <project>, subproject <project> and validation <project>
+## adopt <path>, repo <project> and validation <project>
 
 Each of these modes has its own file. Read a mode's file only in that mode, or when a step points
 to it, and follow it.
 
 - adopt: `${CLAUDE_SKILL_DIR}/adopt.md`
 - repo: `${CLAUDE_SKILL_DIR}/repo.md`
-- subproject: `${CLAUDE_SKILL_DIR}/subproject.md`
 - validation: `${CLAUDE_SKILL_DIR}/validation.md`
 
 `${CLAUDE_SKILL_DIR}/docs.md`, the docs setup, is no mode: read it when step 7 of project mode or
 `repo.md` points to it.
-
-In project and adopt, offer subproject when the user names repositories that differ in branches
-or docs.
 
 ## link
 

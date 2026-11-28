@@ -88,28 +88,19 @@ sb scaffold project Kanban --path "$N" --keys KB
 sb sprint open Kanban --end 2026-02-01
 sb task set KB-1 sprint=2026-02-01
 edit "$vault/$N/claude/profile.md" 's/^uses_sprints: true$/uses_sprints: false/'
-# subprojects
+# subprojects, retired: a note left by an earlier version, and the tasks the area writes
 M="work/multi"
 MF="$vault/$M/claude/profile.md"
 sb scaffold project Multi --path "$M" --keys MU
 edit "$MF" "s|^repos: \\[\\]\$|repos: [multi-app]|; s|^repos_root: \"\"\$|repos_root: \"$tmp/mcode\"|"
-edit "$MF" 's|^base_branch: main$|base_branch: develop|; s|^production_branch: ""$|production_branch: release|; s|^environments: \[\]$|environments: [dev, prod]|'
-sb scaffold subproject Multi infra --repos multi-infra
-edit "$vault/$M/claude/subprojects/infra.md" 's|^base_branch: ""$|base_branch: main|; s|^branch_pattern: ""$|branch_pattern: "infra/<ID>"|; s|^environments: \[\]$|environments:\
-  - staging\
-  - live|'
-sb scaffold subproject Multi tools --repos multi-tools
-edit "$vault/$M/claude/subprojects/tools.md" "s|^repo_paths: \\[\\]\$|repo_paths: [\"multi-tools=$tmp/far/multi-tools\"]|"
-sb scaffold subproject Multi loose --repos multi-loose
-sb scaffold subproject Multi tasks --repos tasks
-sb scaffold subproject Multi dup --repos "dup-a, DUP-A ,dup-b"
-sb task new MU-1 --project Multi --title "Infra work" --subproject INFRA --envs
-sb task new MU-2 --project Multi --title "App work"
-sb task set MU-2 subproject=Tools
-sb task set MU-2 subproject=
-sb task new MU-3 --project Multi --title "Tools work" --subproject tools
-edit "$vault/$M/tasks/MU-3/README.md" 's/^subproject: tools$/subproject: TOOLS/'
-sb task set MU-3 status=done
+edit "$MF" 's|^environments: \[\]$|environments: [dev, prod]|'
+mkdir -p "$vault/$M/claude/subprojects"
+printf '%s\n' '---' 'type: subproject' 'repos: [multi-infra]' 'base_branch: develop' 'environments: [staging]' \
+  'validation_home: repo' '---' '' '## Rules' '' '- Never apply a plan to prod.' >"$vault/$M/claude/subprojects/infra.md"
+sb task new MU-1 --project Multi --title "Infra work" --envs
+edit "$vault/$M/tasks/MU-1/README.md" 's/^epic: "-"$/epic: "-"\
+subproject: infra/'
+sb task set MU-1 subproject=
 # task archive
 A="work/shelf"
 sb scaffold project Shelf --path "$A" --keys SH

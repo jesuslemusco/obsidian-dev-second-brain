@@ -6,7 +6,7 @@ Exit 1 or 4: show `second-brain projects` and ask. Never invent a step.
 ## 1. Where it lives
 
 1. Run `second-brain validation <project>` and read each repo's home and state.
-2. A repo's home is `validation_home` in its subproject's note, else in the profile:
+2. A repo's home is `validation_home` in the profile:
    - `vault`: every repo's section is in `claude/validation.md`.
    - `repo`: each repo has a `validation.md` at its root.
 3. To change a home, ask, then edit `validation_home` with the Edit tool.

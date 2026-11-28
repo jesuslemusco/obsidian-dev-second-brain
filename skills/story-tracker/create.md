@@ -132,17 +132,10 @@ join. Every new story gets this check, one from refinement too:
    - Add `--project <P>` when the id's key does not name one project.
    - Add `--envs` for an environment set, and read `env-split.md`.
    - Add `--repo <name>` with the repo section 1 settled. With one repo listed, or none, no flag.
-   - Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`
-     from Step 0, or the subproject the user named.
-   - No such line, while `second-brain subproject <project>` lists subprojects:
-     ask which one the story is in, or none, and pass the answer.
-   - A project with no subproject gets no flag.
    - A folder with no README gets one.
 2. When `task new` fails or warns:
    - Exit 6: the story exists, or the id is another story's alias. Switch to update mode.
    - Exit 5 with `--envs`: the profile lists no environments.
-   - Exit 1 with `--subproject`: the name is no subproject. Show
-     `second-brain subproject <project>` and ask.
    - Exit 1 with `--repo`: the name is no repo of the project. Show
      `second-brain repo <project>` and ask.
    - `note: no folder for the topic tag ...` on stderr: run

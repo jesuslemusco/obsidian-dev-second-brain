@@ -63,13 +63,11 @@ file_lacks "story-tracker: a done story logs no achievement" "$here/skills/story
 file_has "sprint close: does not start docs-keeper" "$here/skills/scrum-master/sprint-planning.md" 'Do not start it here: the close only reports.'
 file_has "index: names a ticket marked done for docs-keeper" "$vault/CLAUDE.md" '`docs-keeper` for docs that follow the code and for a ticket marked done.'
 
-# ---------------------------------------------------------------- skills follow the subproject and layout standards
+# ---------------------------------------------------------------- skills follow the layout standards
 ST="$here/skills/story-tracker/SKILL.md"
 STC="$here/skills/story-tracker/create.md"
 CL="$here/skills/scrum-master/sprint-planning.md"
-file_has "story-tracker create: task new takes the subproject from context" "$STC" 'Add `--subproject <name>` with the name on the `subproject:` line of `second-brain context`'
-file_has "story-tracker create: asks when the repo is in no subproject" "$STC" 'ask which one the story is in, or none'
-file_has "story-tracker create: a name that is no subproject is asked about" "$STC" 'Exit 1 with `--subproject`: the name is no'
+file_lacks "story-tracker create: task new takes no subproject" "$STC" '--subproject'
 file_has "story-tracker: a story set done in an archive project gets one question" "$ST" 'the profile says `task_layout: archive`: after'
 file_has "story-tracker: the question is asked once" "$ST" 'ask once whether to archive it now'
 file_has "story-tracker: it archives through the helper" "$ST" '`second-brain task archive <ID>`'
@@ -91,9 +89,7 @@ file_has "vault-setup: and for archive_after_days" "$here/skills/vault-setup/SKI
 file_has "vault-setup adopt: asks for task_layout through the project interview" "$here/skills/vault-setup/adopt.md" 'Fill the frontmatter keys as steps 3 to 6 of `## project <name>` in `SKILL.md` say.'
 file_has "vault-setup adopt: moves nothing under task_layout archive" "$here/skills/vault-setup/adopt.md" 'With `task_layout: archive`, the done tasks already there stay where they are.'
 file_has "vault-setup adopt: names the task-layout check" "$here/skills/vault-setup/adopt.md" '`flat` project: `task-layout`.'
-line_is "vault-setup subproject: a section on its tasks" "$here/skills/vault-setup/subproject.md" "## 3. Its tasks"
-file_has "vault-setup subproject: a task names its subproject" "$here/skills/vault-setup/subproject.md" 'frontmatter, `subproject: <name>`, spelled as the note is named'
-file_has "vault-setup subproject: sets it through task set" "$here/skills/vault-setup/subproject.md" '`second-brain task set <ID> subproject=<name>`'
+absent "vault-setup: no subproject mode" "$here/skills/vault-setup/subproject.md"
 file_has "docs-keeper: the path task head prints wins" "$DK" 'The `path:` line wins over the path'
 file_has "docs-keeper: a task is found at both depths" "$DK" '`<tasks_root>/archive/<YYYY>/<ID>/README.md` once'
 file_has "docs-keeper: docs to update go into the README find names" "$DK" 'the path `second-brain find <ID> --project <project>` prints'
@@ -134,13 +130,15 @@ line_is "contract: a README in a folder inside a task is no task note" "$here/do
   '- A README in a folder inside a task, such as `tasks/<ID>/notes/README.md`, is no task note, and'
 file_lacks "contract: the hook no longer takes any folder" "$here/docs/contract.md" 'The hook cannot see whether a folder'
 file_has "index: an archived task's path" "$vault/CLAUDE.md" 'under `tasks/archive/<YYYY>/`'
-file_has "index: a task names its subproject" "$vault/CLAUDE.md" 'to its subproject with the `subproject` property.'
-file_has "conventions: the short version names subproject on a task" "$vault/obsidian-conventions.md" '`branch` and `epic`, and `subproject` when it belongs to one.'
-file_has "conventions: subproject is spelled as its note" "$vault/obsidian-conventions.md" '`subproject` is the name of the task'"'"'s subproject, spelled as its note'
+file_has "index: a task names its repo" "$vault/CLAUDE.md" 'to the one repo it changes with the `repo` property.'
+file_has "conventions: the short version names repo on a task" "$vault/obsidian-conventions.md" \
+  '`branch` and `epic`, and `repo`, the one repo it changes, where the project has more'
+line_is "conventions: repo is a repo second-brain repo lists" "$vault/obsidian-conventions.md" \
+  '  - `repo` - the one repo it changes, as `second-brain repo <project>` lists it.'
 VD="$here/skills/vault-doctor/SKILL.md"
-file_has "vault-doctor fix: --fix repairs three checks" "$VD" 'repairs three checks only'
-file_lacks "vault-doctor fix: no longer says two" "$VD" 'repairs two checks only'
-file_has "vault-doctor fix: names the checks --fix repairs" "$VD" '`status-tag`, `pull-request` and'
+file_has "vault-doctor fix: --fix repairs four checks" "$VD" 'repairs four checks only'
+file_lacks "vault-doctor fix: no longer says three" "$VD" 'repairs three checks only'
+file_has "vault-doctor fix: names the checks --fix repairs" "$VD" '`status-tag`, `pull-request`,'
 file_has "vault-doctor checks: names the archive repair" "$here/skills/vault-doctor/checks.md" '`to-archive`: `second-brain doctor --fix` archives each one through `second-brain task archive <ID>`'
 file_has "vault-doctor fix: a snapshot comes before an archive" "$VD" 'Then run `second-brain snapshot` before it.'
 file_has "vault-doctor fix: compare proves the archive" "$VD" 'After an archive, run `second-brain compare` with that snapshot. It is the proof of the move.'
@@ -338,7 +336,7 @@ file_has "contract: the lookup goes through the group folders of sb_task_groups"
   '- Both also look in each group folder that `sb_task_groups` lists'
 CV="$here/templates/obsidian-conventions.md.tmpl"
 cv_version="$(sed -n 's/^conventions_version: *//p' "$CV" | head -1)"
-is "conventions: the retired spec type and delivery key raise conventions_version to 11" "$cv_version" "11"
+is "conventions: the repo key and the retired subprojects raise conventions_version to 12" "$cv_version" "12"
 file_lacks "conventions: no delivery key, as the spec flow is retired" "$CV" "delivery"
 file_lacks "conventions: no spec note type" "$CV" '`spec`'
 file_has "conventions: the short version names the sprint folders" "$CV" 'With `sprint`,'
@@ -467,8 +465,7 @@ VI="$here/templates/vault-index.md.tmpl"
 line_is "index template: a task note's place names the status folders" "$VI" \
   '  once archived, or under `tasks/<status>/` in a project with `task_layout: status`.'
 vi_version="$(sed -n 's/^index_version: *//p' "$VI" | head -1)"
-is "index template: the define-validation-scope skill raises index_version to 9" "$vi_version" "9"
-is "index template: the achievements skill raises index_version to 9" "$vi_version" "9"
+is "index template: the retired subprojects raise index_version to 10" "$vi_version" "10"
 line_is "contract: the index example is at the template's version" "$here/docs/contract.md" "index_version: $vi_version"
 line_is "docs-keeper: a task's place names the status folders" "$DK" \
   '- A task is `<tasks_root>/<ID>/README.md`, `<tasks_root>/<status>/<ID>/README.md` with'
@@ -1034,15 +1031,15 @@ file_has "README: the hand-off to docs-keeper is in story-tracker" "$here/skills
   'The story reaches production: start the `docs-keeper` agent'
 file_has "README: vault-setup link leaves a foreign entry alone" "$here/skills/vault-setup/SKILL.md" \
   'It is normal and never touched'
-file_has "README: --fix changes three checks without asking" "$here/skills/vault-doctor/SKILL.md" \
-  '`second-brain doctor --fix` repairs three checks only'
+file_has "README: --fix changes four checks without asking" "$here/skills/vault-doctor/SKILL.md" \
+  '`second-brain doctor --fix` repairs four checks only'
 
 # ---------------------------------------------------------------- guide: each rule it points to has a home
 GD="$here/docs/guide.md"
 line_is "guide: keeps the What to say heading that its links name" "$GD" "## What to say"
 for ptr in 'docs/contract.md|## 1. Words and paths' 'docs/contract.md|## 2. The index' \
   'docs/contract.md|## 3. The project' 'docs/contract.md|### Profile frontmatter' \
-  'docs/contract.md|### Subprojects' 'docs/contract.md|### Validation' 'docs/contract.md|## 4. A task' \
+  'docs/contract.md|### Validation' 'docs/contract.md|## 4. A task' \
   'docs/contract.md|### Links between notes' 'docs/contract.md|### link, doctor, snapshot' \
   'docs/contract.md|## 9. Skills and agents' 'templates/obsidian-conventions.md.tmpl|## The short version' \
   'skills/vault-setup/adopt.md|## 2. Scaffold only what is missing' 'skills/vault-setup/SKILL.md|## project <name>' \
@@ -1088,7 +1085,7 @@ file_has "guide: a story is built one way" "$GD" 'Version 0.12.0 retires the spe
 file_has "guide: the spec folders and build.json stay, read by nothing" "$GD" \
   "- A story's \`spec/\` folder and \`build.json\` stay in its task folder, as plain notes and files of"
 file_has "guide: the old keys are read by nothing" "$GD" \
-  '- A `delivery` or `spec_home` key in a profile, a subproject note or a task is read by nothing,'
+  '- A `delivery` or `spec_home` key in a profile or a task is read by nothing,'
 file_has "guide: a spec story is built once its text is approved" "$GD" \
   'its criteria into the README through `/odsb:scrum-master refinement`. Once you approve the text,'
 file_lacks "guide: no spec-driven delivery section is left" "$GD" '## Spec-driven delivery'
@@ -1797,7 +1794,8 @@ w2_at="$(linex "$BY" '## 2. The worktree')"
 b3_at="$(linex "$BY" '## 3. The baseline')"
 is "git flow: it sits in the worktree step, before the baseline" "$(( ${w2_at:-0} > 0 && ${w2_at:-0} < ${gf_at:-0} && ${gf_at:-0} < ${b3_at:-0} ))" "1"
 in_gf "git flow: reads the project's rules" '1. Read `## Rules` in `<project path>/claude/README.md`, with `second-brain outline` and a ranged'
-in_gf "git flow: and the subproject's rules" 'When `task head` names a subproject, read the `## Rules` of its note too, at the path'
+in_gf_lacks=$(printf '%s\n' "$gf" | grep -c 'subproject' || true)
+is "git flow: reads no other rules" "$in_gf_lacks" "0"
 in_gf "git flow: never guesses" "It is the project's own rules: read them, never guess them."
 in_gf "git flow: a rule names a branch or a pattern" 'names a branch, such as `main`, or a pattern, such as `release/<version>`.'
 in_gf "git flow: lists the branches a pattern matches by full ref, prefix stripped" "\`git -C \"<path>\" for-each-ref --format='%(refname)' 'refs/heads/<prefix>*' 'refs/remotes/*/<prefix>*' | sed -E 's#^refs/(heads|remotes/[^/]+)/##' | sort -rVu\`"
@@ -1901,7 +1899,7 @@ file_has "story build: a merge and a push wait for the owner's own answer" "$BY"
   '- A merge and a push each wait for the owner'"${q}"'s own answer, as `### The merge` asks for it: never'
 file_has "contract: the git flow is the project's rules" "$CT" \
   '- **The git flow.** Where a story'"${q}"'s branch is cut, and where a passed story merges, is the'
-file_has "contract: no profile key holds the flow" "$CT" '  story'"${q}"'s subproject note. The skill reads them there. No profile key holds the flow.'
+file_has "contract: no profile key holds the flow" "$CT" '  reads them there. No profile key holds the flow.'
 file_has "contract: a pattern stands for its open branch" "$CT" '  stands for its open branch: the highest that matches it, when no tag `<version>` or'
 file_has "contract: no merge rule asks, and offers to write one" "$CT" \
   '- No rule says where a story merges: the skill asks the owner, and offers to write the answer'
@@ -2652,7 +2650,7 @@ file_has "index template: names the build skill for building a story" "$here/tem
   '`build`'
 line_is "index template: what the build skill is for" "$here/templates/vault-index.md.tmpl" \
   '  builds an approved story or an epic'"'"'s stories, `vault-setup` sets up the vault or a project,'
-line_is "index template: at version 9 in 0.13.0" "$here/templates/vault-index.md.tmpl" 'index_version: 9'
+line_is "index template: at version 10 in 0.14.0" "$here/templates/vault-index.md.tmpl" 'index_version: 10'
 file_has "index: a scaffolded index names the build skill" "$vault/CLAUDE.md" '  builds an approved story or an epic'"'"'s stories,'
 file_has "changelog: the index at 8 names the build skill" "$here/CHANGELOG.md" \
   '- The vault index names the scrum-master skill and the build skill, and no `sprint` skill or'
@@ -2869,7 +2867,7 @@ done
 file_has "contract: an old spec folder and build.json stay as plain files of the task" "$here/docs/contract.md" \
   '  retired spec flow wrote, before 0.12.0, stay there as plain files of the task.'
 file_has "contract: the delivery and spec_home keys are no keys" "$here/docs/contract.md" \
-  '- `delivery` and `spec_home` are no keys of the profile, a subproject'"'"'s note or a task. Versions'
+  '- `delivery` and `spec_home` are no keys of the profile or a task. Versions'
 
 # ---------------------------------------------------------------- docs-keeper sets up a project's docs, for the user to approve
 DK="$here/agents/docs-keeper.md"
@@ -2897,14 +2895,8 @@ line_is "docs-keeper: the draft reads the code the layout shows" "$DK" \
   '   - Its code: the entry points, modules and config the layout shows.'
 file_has "docs-keeper: the draft keeps a topic folder that exists" "$DK" \
   '   - Draft nothing in a topic folder that exists. Workflow 4 gives it a hub.'
-file_has "docs-keeper: the draft reads each subproject's docs folder" "$DK" \
-  '   `ls -d "<vault>/<project path>/<topics_root>"/*/`, each subproject'"${q}"'s docs folder, as'
-line_is "docs-keeper: as the subproject command lists it" "$DK" \
-  '   `second-brain subproject <project>` lists it, and the rows under `### Code to doc map`.'
-file_has "docs-keeper: a subproject's docs folder takes new topic folders" "$DK" \
-  '   - A subproject'"${q}"'s docs folder is the one exception: draft new topic folders inside it, and'
-line_is "docs-keeper: but nothing in a topic folder inside it that exists" "$DK" \
-  '     nothing in a topic folder inside it that exists.'
+line_is "docs-keeper: the draft reads the topic folders and the map" "$DK" \
+  '   `ls -d "<vault>/<project path>/<topics_root>"/*/`, and the rows under `### Code to doc map`.'
 file_has "docs-keeper: drafts the topic folders" "$DK" \
   '3. Draft one topic per part of the code a reader asks about, such as a module, a service or a'
 file_has "docs-keeper: a topic folder's tag is its path" "$DK" 'so that its topic tag is its path'
@@ -2919,10 +2911,6 @@ file_lacks "docs-keeper: not to the topics hub, whatever its parent" "$DK" \
 line_is "docs-keeper: its parent hub links each new hub" "$DK" '   - The line that links its hub from its parent hub.'
 file_has "docs-keeper: the parent hub is the topics hub" "$DK" \
   '   - The parent hub is the topics hub, with the line under `## Topics`. With `topics_root: "."`'
-file_has "docs-keeper: a subproject topic's parent hub is the subproject's docs hub" "$DK" \
-  '   - For a repository of a subproject, the parent hub is the subproject'"${q}"'s docs hub,'
-line_is "docs-keeper: the line goes under that hub's own Topics" "$DK" \
-  '     `<topics_root>/<name>/README.md`, with the line under its own `## Topics`.'
 file_has "docs-keeper: the write edits each parent hub" "$DK" \
   '   - The parent hubs'"${q}"' lines and the map rows with the Edit tool.'
 line_is "docs-keeper: every link carries a path" "$DK" \
@@ -2948,9 +2936,6 @@ file_has "vault-setup docs: the skill holds the approval, as docs-keeper cannot 
   'draft. It is an agent and cannot ask the user, so this skill holds the approval. Nothing is written'
 file_has "vault-setup docs: project mode offers it when no topic folder exists" "$VSO" \
   '- Project mode, at step 7 of `## project <name>` in `SKILL.md`: offer it when the topics root holds'
-file_has "vault-setup docs: a subproject's docs folder is no topic folder for the offer" "$VSO" \
-  '- Each subproject'"${q}"'s docs folder, as `second-brain subproject <project>` lists it, is no topic'
-line_is "vault-setup docs: but each folder inside it is" "$VSO" '  folder here, but each folder inside it is.'
 file_has "vault-setup docs: repo mode offers it for the new repository" "$VSO" \
   '- Repo mode, at `## 2. The docs that follow it` in `repo.md`: offer it for the new repository.'
 file_has "vault-setup docs: starts docs-keeper by its plugin name" "$VSO" '1. Start the `docs-keeper` agent (`odsb:docs-keeper`) with the project and the repositories, and'
@@ -3127,7 +3112,7 @@ file_has "contract: only the stages the project uses" "$CT" \
 file_has "contract: writes only on the approval, through validation new" "$CT" \
   'owner'"${q}"'s approval does it write the repo'"${q}"'s section, through `second-brain validation new` for a'
 file_has "contract: vault-setup offers it in each mode that adds a repo" "$CT" \
-  '- `vault-setup` offers it when it adds a repo, in project, repo, subproject or adopt mode, and'
+  '- `vault-setup` offers it when it adds a repo, in project, repo or adopt mode, and'
 file_has "contract: the setup's offer has a second caller" "$CT" \
   '- `define-validation-scope` offers the same setup, through the same steps, to a project with no'
 GD="$here/docs/guide.md"
@@ -3161,8 +3146,6 @@ line_is "vault-setup repo: calls it with the Skill tool" "$VSD/repo.md" \
   '   - On a yes, call it with the Skill tool as `odsb:define-validation-scope <project> <repo>`,'
 file_has "vault-setup repo: on a no, its own validation steps" "$VSD/repo.md" \
   '   - On a no, or when the session cannot call it, write them as `validation.md`, beside this'
-file_has "vault-setup subproject: offers define-validation-scope for each repository" "$VSD/subproject.md" \
-  '   - First offer `define-validation-scope` for each repository, as step 2 of `## 3. Finish` in'
 file_has "vault-setup adopt: offers define-validation-scope for each repository" "$VSD/adopt.md" \
   '  - First offer `define-validation-scope` for each one, as step 2 of `## 3. Finish` in `repo.md`'
 # Each mode that writes a repo's validation steps by validation.md offers define-validation-scope first.
@@ -3174,7 +3157,7 @@ for f in "$VSD"/*.md; do
   file_has "vault-setup ${f##*/}: offers define-validation-scope where it writes the validation steps" "$f" \
     'First offer `define-validation-scope` for each'
 done
-is "vault-setup: project, subproject and adopt write the validation steps by validation.md" "$dv_modes" "3"
+is "vault-setup: project and adopt write the validation steps by validation.md" "$dv_modes" "2"
 file_has "vault-setup docs: define-validation-scope offers the setup too" "$VSO" \
   '- The `define-validation-scope` skill, at step 3 of `## 2. The project'"${q}"'s docs` in its `SKILL.md`:'
 file_has "docs-keeper: define-validation-scope is a caller of Workflow 7 too" "$here/agents/docs-keeper.md" \
@@ -3332,13 +3315,13 @@ line_is "story repo: the contract's task frontmatter has the key" "$RC" \
 file_has "story repo: the contract says what it names" "$RC" \
   '- `repo` names the one repo the story changes, as `repo <project>` lists it. Its branch check,'
 file_has "story repo: the contract's branch row reads it" "$RC" \
-  'else the task'"'"'s `repo`, else the first repo of the task'"'"'s subproject, else the profile'"'"'s first.'
+  'else the task'"'"'s `repo`, else the profile'"'"'s first.'
 file_has "story repo: the contract's task new row takes --repo" "$RC" \
-  '| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R] [--subproject S]` |'
+  '| `task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]` |'
 file_has "story repo: the contract's task set row checks it" "$RC" \
   '`repo` must name a repo that `repo <project>` lists, matched exact first, then without letter case'
 file_has "story repo: the contract's task head row prints it" "$RC" \
-  'branch, repo (only when set), epic, subproject (only when set)'
+  'branch, repo (only when set), epic, topics,'
 file_has "story repo: the contract's board shows it" "$RC" \
   '- It shows each task'"'"'s `repo` in a `Repo` column, after `branch`, in the `Active`,'
 RG="$here/docs/guide.md"
@@ -3349,10 +3332,66 @@ file_has "story repo: the guide points to create.md" "$RG" \
 line_is "story repo: create.md has the heading the guide names" "$STC" '## 1. Lock down the framing'
 CG="$here/CHANGELOG.md"
 for c in '- A story names the one repo it changes, `repo: <name>`, one of the repos' \
-  '- `second-brain branch <project> <ID>` reads the story'"'"'s `repo`, before the first repo of its' \
+  '- `second-brain branch <project> <ID>` reads the story'"'"'s `repo`, before the profile'"'"'s first. So a' \
   '- story-tracker asks which repo a new story changes when the project lists more than one, and' \
   '- A new board shows each task'"'"'s repo in a `Repo` column, after its branch, in the `Active`,'; do
   file_has "story repo: the changelog: ${c:2:44}" "$CG" "$c"
+done
+
+# ---------------------------------------------------------------- subprojects retire, and doctor --fix folds them
+RC="$here/docs/contract.md"
+for t in '| `subproject <project>' '`scaffold subproject' '[--subproject S]' 'subproject: example-infra' \
+  '| project | `subprojects` |' '| project | `task-subproject` |' '### Subprojects' 'subproject.md.tmpl' 'sb_sub_'; do
+  file_lacks "retired: the contract has no $t" "$RC" "$t"
+done
+line_is "retired: the board's views" "$RC" '- Views, by exact name: `Active`, `Current sprint`, `By topic`, `Needs a status`, `All`.'
+file_has "retired: the doctor's check of what is left" "$RC" '| project | `retired-subprojects` | a note is left in `claude/subprojects/`'
+line_is "retired: the contract says how --fix folds them" "$RC" '### The retired subprojects'
+file_has "retired: the doctor row points there" "$RC" \
+  'Then it folds each note in `claude/subprojects/` and each task'"'"'s `subproject` key into the project, as `### The retired subprojects` says.'
+file_has "retired: a task key goes to the task's repo" "$RC" \
+  '  `retired-subprojects` check names each, and `doctor --fix` folds it into the task'"'"'s `repo`.'
+file_has "retired: a note's tasks take its one repo" "$RC" '  note with one repo, it takes that repo as the profile spells it,'
+file_has "retired: a setting of its own is named, not folded" "$RC" \
+  '  `<name>: its <key> <value> is not the profile'"'"'s <value>: not folded, so <note> stays`, with `-`'
+line_is "retired: a note's own text outside ## Rules keeps it" "$RC" \
+  '- The note'"'"'s own text outside `## Rules` is not folded either, as no other note takes it: each'
+file_has "retired: each other section is named" "$RC" '  other section, `<name>: its ## <section> is not folded, so <note> stays`, and any other line'
+file_has "retired: the doctor skill says how to settle it" "$here/skills/vault-doctor/checks.md" \
+  'a section or a line of the note outside `## Rules`, which the owner moves where it belongs'
+file_has "retired: and the changelog says so" "$here/CHANGELOG.md" \
+  '  `repo` while the note lists several repos, and a note with text of yours outside `## Rules`,'
+file_has "retired: its rules go to claude/README.md" "$RC" '    `## Rules` in `claude/README.md`, under `### <name>` and a line `For work in <repos>:`,'
+file_has "retired: its docs folder stays a topic folder" "$RC" '  - Its docs folder stays, a topic folder like any other. Its hub loses the line that began'
+line_is "retired: a project's parts are topic folders" "$RC" \
+  "- A project's parts, such as its apps or its initiatives, are topic folders it names itself, such"
+# The skills, agents, templates, README and guide name no subproject. The doctor's skill alone names
+# the check that finds what versions before 0.14.0 left.
+named="$(cd "$here" && grep -rli 'subproject' skills agents templates README.md docs/guide.md 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')"
+is "retired: only the doctor's skill names a subproject, for its retired-subprojects check" "$named" \
+  "skills/vault-doctor/SKILL.md skills/vault-doctor/checks.md "
+is "retired: and each of its lines that does names that check, the folder it finds or the key it drops" \
+  "$(grep -hi 'subproject' "$here/skills/vault-doctor/SKILL.md" "$here/skills/vault-doctor/checks.md" | grep -vc 'retired-subprojects\|claude/subprojects/\|subproject=' || true)" "0"
+for f in subproject.md.tmpl subproject-docs.md.tmpl; do absent "retired: no template $f" "$here/templates/$f"; done
+absent "retired: no subproject library" "$here/scripts/lib/subproject.sh"
+RG="$here/docs/guide.md"
+file_has "retired: the guide's example topic folders" "$RG" \
+  "- A project's parts are topic folders it names itself, such as \`docs/apps/\`, with a folder per"
+file_has "retired: and initiatives" "$RG" '  app, or `docs/initiatives/`, with a folder per initiative. A story about one carries its tag,'
+line_is "retired: the guide says from which version the conventions note has no spec type" "$RG" \
+  '- From version 11 on, the vault'"'"'s conventions note has no `spec` note type and no `delivery`'
+file_lacks "retired: and names no version as the current one" "$RG" 'conventions note is at version'
+file_has "retired: the README's several repos" "$here/README.md" \
+  '- **Several repos.** A project lists its repos, under one ticket key and one board, and each story'
+CG="$here/CHANGELOG.md"
+for c in '- Subprojects are retired. A project'"'"'s parts, such as its apps or its initiatives, are topic' \
+  '- The `subproject` and `scaffold subproject` commands are gone, and so are `task new --subproject`,' \
+  '- No command reads a note in `claude/subprojects/` or a task'"'"'s `subproject` key. The doctor'"'"'s new' \
+  '- `second-brain doctor --fix` folds each note into its project. It adds the note'"'"'s repos and' \
+  '- A setting of a note that is not the profile'"'"'s, such as a `base_branch`, is not folded: `--fix`' \
+  '- The conventions note is at version 12: it names a task'"'"'s `repo` key and no subproject. The' \
+  '- The plugin'"'"'s index template is now at `index_version: 10`: it names no subproject note, and ties'; do
+  line_is "retired: the changelog: ${c:2:44}" "$CG" "$c"
 done
 
 # ---------------------------------------------------------------- result

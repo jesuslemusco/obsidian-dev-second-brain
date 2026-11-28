@@ -22,8 +22,7 @@ lookups:  help | version | root | context [--cwd DIR] | projects
           conventions [section]   (default: The short version)
           project --name N | --key K | --cwd DIR
           profile <project> --keys | <section> | repo <project> [name]
-          subproject <project> [name | --cwd DIR]
-          board <project> [view] [--subproject S] | topic <project> <tag>
+          board <project> [view] | topic <project> <tag>
           find <ID-or-alias> [--project P] | search <project> "<text>" [--in SUBPATH]
           branch <project> <ID> [--path DIR] [--show <ref> <file> | --started]
               (a ticket's branches, a file on another branch, the work started; read-only git)
@@ -35,7 +34,6 @@ tasks:    task head <ID> | task set <ID> key=value... | task note <ID> "<text>" 
           task docs <ID>[,<ID>...]   (unticked lines under ## Docs to update)
           task dep <ID> add|remove <ID> | task archive <ID>   (a done task, once)
           task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]
-              [--subproject S]
           (<ID> is the folder id or any alias; every task command takes --project P)
 checks:   validation <project> [repo] [--path DIR] | validation new <project> <repo>
           validation run <project> <repo> [--when each-story|each-merge|release] [--path DIR]
@@ -49,7 +47,6 @@ sprints:  sprint current <project> | sprint next <project>
 setup:    scaffold vault [DIR]
           scaffold project <name> --path P [--keys K1,K2] [--use-when TEXT]
               [--tasks-root R] [--topics-root R] [--sprints-root R] [--no-sprints]
-          scaffold subproject <project> <name> [--repos R1,R2]
           pointer | pointer set <DIR> [--replace]
           link [--check | --apply | --foreign] | doctor [project] [--json] [--fix]
           link move <skill|agent> <name> [--project P]   (a foreign one into the vault)
@@ -528,7 +525,7 @@ sb_fm_edit() {
       }
     }
     function insert_at(   m, order, i, idx, j) {
-      m = split("aliases title status next branch repo epic subproject envs sprint carried_from depends_on type", order, " ")
+      m = split("aliases title status next branch repo epic envs sprint carried_from depends_on type", order, " ")
       idx = 0
       for (i = 1; i <= m; i++) if (order[i] == key) idx = i
       if (idx) for (j = idx - 1; j >= 1; j--) if (order[j] in kend) return kend[order[j]] + 1

@@ -29,7 +29,7 @@ epic and each story in the shape its section 1 gives:
   from evidence, and at most 4 acceptance criteria.
 - The epic's criteria say when it is done, such as each of its stories done. Its context lists
   its stories, one line each: the id and the title.
-- Each story's topics, and its subproject in a project that has subprojects.
+- Each story's topics, and in a project with more than one repo, the one repo it changes.
 - Under each story, two lines: `Parent: <ID or ->` and `Waits on: <IDs or ->`. A task it waits on
   may be one that exists already.
 - A story that exists: show what changes beside what it says now.

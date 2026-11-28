@@ -160,8 +160,11 @@ json_is() {
 d = json.load(sys.stdin.buffer)
 $2" 2>&1 | tr -d '\r')" "$3"
 }
-# The task head lines rebuilt from its JSON.
+# The task head lines rebuilt from its JSON: an epic's stories one line each.
 HEAD_PY='for k, v in d.items():
+    if k == "stories":
+        for s in v: print("story: " + s)
+        continue
     if isinstance(v, list): v = (", " if k == "topics" else ",").join(v) or "-"
     print(k + ": " + v)'
 # linex <file> <line>: the number of the first line that is exactly that text.

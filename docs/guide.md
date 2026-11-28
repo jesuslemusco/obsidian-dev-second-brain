@@ -107,6 +107,12 @@ Your vault and notes are not touched. Then restart Claude Code and run the docto
   nothing, and a story with no `repo` takes the profile's first.
 - `second-brain task set <ID> repo=<name>` changes it later, as `## 4. A task` in
   `docs/contract.md` says.
+- A change across repos is an epic with one story per repo, each with its own branch and pull
+  request. Claude proposes the split when it writes the story, and links each story to the
+  stories it needs with `task dep`, as `## A change across repos` in
+  `skills/story-tracker/SKILL.md` says.
+- `second-brain task head <epic>` lists each story with its repo and what it waits on, and the
+  branch check warns about a branch with a story's id in another repo.
 - Claude reads a ticket's branches, a file on another branch and the work started with
   `second-brain branch <project> <ID>`, which runs read-only git itself. So a recall, a start or
   an update asks for no permission, as `## Branch check (start, update, recall)` in

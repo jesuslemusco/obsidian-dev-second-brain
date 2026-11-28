@@ -463,6 +463,38 @@ file_lacks "task set repo: and it is gone from the note" "$vault/$RP/tasks/RP-2/
 sb help
 out_has "help: task new takes --repo" "task new <ID> [--project P] [--title T] [--topics a,b] [--envs] [--repo R]"
 
+# ---------------------------------------------------------------- an epic across repos
+# A change across repos is an epic with one story per repo, each waiting on the stories it needs.
+sb task new RP-10 --project Repos --title "Across the repos"
+sb task new RP-11 --project Repos --title "The API part" --repo rp-api
+sb task new RP-12 --project Repos --title "The web part" --repo rp-web
+sb task new RP-13 --project Repos --title "No repo named"
+sb task set RP-11 epic=RP-10
+sb task set RP-12 epic=RP-10
+sb task set RP-13 epic=rp-10
+sb task dep RP-12 add RP-11
+sb task dep RP-13 add RP-11
+sb task dep RP-13 add RP-12
+sb task head RP-10
+rc_is "task head: an epic, exit 0" 0
+out_has "task head: each of its stories, with its repo and what it waits on, after envs" "envs: -
+story: RP-11 | rp-api | -
+story: RP-12 | Rp-Web | RP-11:planned
+story: RP-13 | - | RP-11:planned,RP-12:planned
+summary: "
+text="$OUT"
+sb task head RP-10 --json
+out_has "task head --json: the stories are an array, after envs" \
+  "\"envs\": [],${NL}  \"stories\": [\"RP-11 | rp-api | -\", \"RP-12 | Rp-Web | RP-11:planned\", \"RP-13 | - | RP-11:planned,RP-12:planned\"],"
+json_is "task head --json: an epic, the same fields as the text" "$HEAD_PY" "$text"
+sb task head RP-11
+out_lacks "task head: a story with no stories of its own has no story line" "story:"
+sb task head RP-11 --json
+out_lacks "task head --json: and no stories key" '"stories"'
+sb task set RP-12 status=done
+sb task head RP-10
+out_has "task head: a story's status follows what it waits on" "story: RP-13 | - | RP-11:planned,RP-12:done"
+
 # ---------------------------------------------------------------- task new: the status layout
 # With task_layout: status, in any letter case, a new task starts in planned/, whether or not the
 # project runs sprints, and its up link leads to the tasks hub as in a flat project.

@@ -135,6 +135,19 @@ rc_is "branch: a story's repo, exit 0" 0
 out_has "branch: a story's repo is the repo it reads" "repo: shared-lib
 path: $(shown "$L")"
 out_has "branch: with the profile's settings" "base_branch: main"
+out_has "branch: a branch with the id in another repo of the project is named, with that repo" \
+  "on_ticket: no
+elsewhere: example-api feature/EX-5-wt $hM"
+g "$L" branch feature/EX-1-lib main
+sb branch Example EX-1
+out_has "branch: each other repo is read, after the ticket's own lines" "on_ticket: no
+elsewhere: shared-lib feature/EX-1-lib $(short "$L" main)"
+is "branch: and a repo's own branches are never named as elsewhere" "$(printf '%s\n' "$OUT" | grep -c '^elsewhere: example-api' || true)" "0"
+sb branch Example EX-1 --path "$code/example-api-EX-5"
+out_has "branch --path: a worktree's repo is the story's, the other repo is elsewhere" "elsewhere: shared-lib feature/EX-1-lib"
+g "$L" branch -D feature/EX-1-lib
+sb branch Example EX-1
+out_lacks "branch: no elsewhere line when no other repo has one" "elsewhere:"
 sb branch Example EX-5 --path "$A"
 out_has "branch --path: the folder named wins over the story's repo" "repo: example-api"
 

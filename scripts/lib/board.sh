@@ -347,9 +347,9 @@ sb_task_parent_in() {
 
 # Read file paths on stdin; print one TSV row of frontmatter per readable file.
 # Fields: path, id, status, sprint, topics, branch, next, title, carried_from, type, envs, heading,
-# depends_on, subproject, epic. Empty is "-". envs is env:id:status,...; heading is the first heading,
-# read when title is absent; depends_on is the vault paths its links lead to, without .md, comma
-# separated. subproject is a key versions before 0.14.0 wrote, which the doctor's
+# depends_on, subproject, epic, repo. Empty is "-". envs is env:id:status,...; heading is the first
+# heading, read when title is absent; depends_on is the vault paths its links lead to, without .md,
+# comma separated. subproject is a key versions before 0.14.0 wrote, which the doctor's
 # retired-subprojects check reads.
 sb_task_scan() {
   LC_ALL=C awk "$(sb_awk_lib)"'
@@ -366,7 +366,7 @@ sb_task_scan() {
     {
       path = $0
       if (path == "") next
-      status = ""; sprint = ""; branch = ""; nxt = ""; title = ""; type = ""; topics = ""; carried = ""; deps = ""; subp = ""; epic = ""
+      status = ""; sprint = ""; branch = ""; nxt = ""; title = ""; type = ""; topics = ""; carried = ""; deps = ""; subp = ""; epic = ""; repo = ""
       envs = ""; h1 = ""; key = ""; lineno = 0; readable = 0; st = 0; after = 0
       n = split(path, part, "/")
       id = (n >= 2 ? part[n - 1] : path)
@@ -397,6 +397,7 @@ sb_task_scan() {
           else if (key == "title") title = unq(v)
           else if (key == "type") type = unq(v)
           else if (key == "subproject") subp = unq(v)
+          else if (key == "repo") repo = unq(v)
           else if (key == "epic") epic = unq(v)
           else if (key == "tags" || key == "carried_from" || key == "depends_on") {
             if (substr(v, 1, 1) == "[") { n = split_inline(v, it); for (k = 1; k <= n; k++) additem(key, it[k]) }
@@ -413,7 +414,7 @@ sb_task_scan() {
       }
       close(path)
       if (!readable) next
-      print path "\t" clean(id) "\t" clean(status) "\t" clean(sprint) "\t" clean(topics) "\t" clean(branch) "\t" clean(nxt) "\t" clean(title) "\t" clean(carried) "\t" clean(type) "\t" clean(envs) "\t" clean(h1) "\t" clean(deps) "\t" clean(subp) "\t" clean(epic)
+      print path "\t" clean(id) "\t" clean(status) "\t" clean(sprint) "\t" clean(topics) "\t" clean(branch) "\t" clean(nxt) "\t" clean(title) "\t" clean(carried) "\t" clean(type) "\t" clean(envs) "\t" clean(h1) "\t" clean(deps) "\t" clean(subp) "\t" clean(epic) "\t" clean(repo)
     }
   '
 }
